@@ -1,0 +1,47 @@
+name: Build Flutter APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Create Flutter project structure
+        run: |
+          # Generate missing Flutter files
+          cd android
+          if [ ! -f "app/src/main/res/mipmap-hdpi/ic_launcher.png" ]; then
+            mkdir -p app/src/main/res/mipmap-hdpi
+            mkdir -p app/src/main/res/mipmap-mdpi
+            mkdir -p app/src/main/res/mipmap-xhdpi
+            mkdir -p app/src/main/res/mipmap-xxhdpi
+            mkdir -p app/src/main/res/mipmap-xxxhdpi
+            # Generate default icon
+            convert -size 48x48 xc:#6C63FF app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || python3 -c "
+          from PIL import Image
+          for size, folder in [(48,'mdpi'),(72,'hdpi'),(96,'xhdpi'),(144,'xxhdpi'),(192,'xxxhdpi')]:
+              img = Image.new('RGB', (size, size), color=(108, 99, 255))
+              img.save(f'app/src/main/res/mipmap-{folder}/ic_launcher.png')
+          " 2>/dev/null || echo "Will use default icons"
+          fi
+          cd ..
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: family-score-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
