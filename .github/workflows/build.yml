@@ -14,6 +14,27 @@ jobs:
           flutter-version: '3.41.4'
           channel: 'stable'
 
+      - name: Backup custom files
+        run: |
+          cp android/app/google-services.json /tmp/google-services.json
+          cp android/app/build.gradle.kts /tmp/build.gradle.kts
+          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
+          cp android/app/proguard-rules.pro /tmp/proguard-rules.pro 2>/dev/null || true
+          cp android/settings.gradle.kts /tmp/settings.gradle.kts 2>/dev/null || true
+          cp android/build.gradle.kts /tmp/root-build.gradle.kts 2>/dev/null || true
+          cp android/gradle.properties /tmp/gradle.properties 2>/dev/null || true
+          cp android/key.properties /tmp/key.properties 2>/dev/null || true
+
+      - name: Regenerate Android folder
+        run: |
+          rm -rf android
+          flutter create --platforms android .
+          cp /tmp/google-services.json android/app/google-services.json
+          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp /tmp/build.gradle.kts android/app/build.gradle.kts
+          cp /tmp/proguard-rules.pro android/app/proguard-rules.pro 2>/dev/null || true
+          cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
+
       - name: Get dependencies
         run: flutter pub get
 
