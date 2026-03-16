@@ -14,6 +14,7 @@ import '../screens/pin_verification_screen.dart';
 import '../screens/badges_screen.dart';
 import '../screens/punishment_lines_screen.dart';
 import '../screens/immunity_lines_screen.dart';
+import '../screens/school_notes_screen.dart';
 import '../screens/manage_children_screen.dart';
 import '../screens/family_screen.dart';
 import '../screens/notes_screen.dart';
@@ -101,4 +102,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _build<span class="cursor">█</span>
+  Widget _buildGlassNavBar(PinProvider pin, Color primary) {
+    final items = [
+      _Nav<span class="cursor">█</span>
