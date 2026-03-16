@@ -223,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: const Text('SKS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: 2)),
                   ),
                   const SizedBox(height: 16),
-                  NeonText(text: 'SKS Family', fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, glowIntensity: 0.3),
+                  Text('SKS Family', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, shadows: [Shadow(color: primary.withValues(alpha: 0.3), blurRadius: 8)])),
                   const SizedBox(height: 4),
                   Text(
                     '${provider.children.length} enfants - ${provider.history.length} activites',
@@ -258,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   _DrawerItem(icon: Icons.emoji_events_rounded, label: 'Badges', color: const Color(0xFFFFD740),
                     subtitle: '${provider.children.fold<int>(0, (s, c) => s + c.badgeIds.length)} obtenus',
-                    onTap: () { Navigator.pop(context); Navigator.push(context, _glassRoute(const BadgesScreen())); }),
+                    onTap: () { Navigator.pop(context); Navigator.push(context, _glassRoute(BadgesScreen())); }),
                   _DrawerItem(icon: Icons.school_rounded, label: 'Notes scolaires', color: const Color(0xFF448AFF),
                     subtitle: '${provider.history.where((h) => h.category == 'school_note').length} notes',
                     onTap: () { Navigator.pop(context); PinGuard.guardNavigation(context, const SchoolNotesScreen()); }),
@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(height: 12),
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 12),
-            NeonText(text: 'Historique complet', fontSize: 18, color: Colors.white),
+            Text('Historique complet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
             const SizedBox(height: 8),
             Expanded(
               child: provider.history.isEmpty
@@ -373,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
-            NeonText(text: 'Choisir un enfant', fontSize: 18, color: Colors.white),
+            Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
             const SizedBox(height: 16),
             ...provider.children.map((child) => ListTile(
               leading: Container(
