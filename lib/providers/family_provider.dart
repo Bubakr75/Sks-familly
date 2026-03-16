@@ -37,7 +37,7 @@ class FamilyProvider extends ChangeNotifier {
   List<PunishmentLines> get punishments => _punishments;
   List<ImmunityLines> get immunities => _immunities;
   List<NoteModel> get notes => _notes;
-
+  List<BadgeModel> get customBadges => _customBadges;
   bool get isSyncEnabled => _firestore.isConnected;
   String? get familyId => _firestore.familyId;
 
