@@ -40,12 +40,11 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
     final primary = Theme.of(context).colorScheme.primary;
 
     return GlassCard(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
       glowColor: primary,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Title with glow
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -61,7 +60,6 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
             ],
           ),
           const SizedBox(height: 24),
-          // Podium
           if (top3.length >= 3)
             _buildThreePodium(top3, primary)
           else if (top3.length == 2)
@@ -79,9 +77,9 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(child: _podiumPlace(top3[1], 2, 75, const Color(0xFFC0C0C0), primary)),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(child: _podiumPlace(top3[0], 1, 105, const Color(0xFFFFD700), primary)),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(child: _podiumPlace(top3[2], 3, 55, const Color(0xFFCD7F32), primary)),
       ],
     );
@@ -93,7 +91,7 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(child: _podiumPlace(top2[1], 2, 75, const Color(0xFFC0C0C0), primary)),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(child: _podiumPlace(top2[0], 1, 105, const Color(0xFFFFD700), primary)),
       ],
     );
@@ -103,9 +101,16 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
     return _podiumPlace(child, 1, 105, const Color(0xFFFFD700), primary);
   }
 
+  bool _hasValidPhoto(ChildModel child) {
+    final p = child.photoBase64;
+    return p != null && p.isNotEmpty && p.length > 100;
+  }
+
   Widget _podiumPlace(ChildModel child, int place, double height, Color medalColor, Color primary) {
     final emoji = child.avatar.isNotEmpty ? child.avatar : '\u{1F466}';
     final isFirst = place == 1;
+    final avatarSize = isFirst ? 88.0 : 68.0;
+    final innerSize = avatarSize - 8;
 
     return AnimatedBuilder(
       animation: _shimmerController,
@@ -115,13 +120,12 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Avatar with glow ring
             Stack(
               alignment: Alignment.topRight,
               children: [
                 Container(
-                  width: isFirst ? 76 : 60,
-                  height: isFirst ? 76 : 60,
+                  width: avatarSize,
+                  height: avatarSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
@@ -136,27 +140,27 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
                       ),
                     ],
                   ),
-                  child: child.hasPhoto
+                  child: _hasValidPhoto(child)
                       ? ClipOval(
                           child: Image.memory(
-                            base64Decode(child.photoBase64),
-                            width: isFirst ? 68 : 54,
-                            height: isFirst ? 68 : 54,
+                            base64Decode(child.photoBase64!),
+                            width: innerSize,
+                            height: innerSize,
                             fit: BoxFit.cover,
+                            gaplessPlayback: true,
                             errorBuilder: (_, __, ___) => CircleAvatar(
-                              radius: isFirst ? 34 : 27,
+                              radius: innerSize / 2,
                               backgroundColor: Colors.white.withValues(alpha: 0.1),
-                              child: Text(emoji, style: TextStyle(fontSize: isFirst ? 36 : 28)),
+                              child: Text(emoji, style: TextStyle(fontSize: isFirst ? 40 : 30)),
                             ),
                           ),
                         )
                       : CircleAvatar(
-                          radius: isFirst ? 34 : 27,
+                          radius: innerSize / 2,
                           backgroundColor: Colors.white.withValues(alpha: 0.1),
-                          child: Text(emoji, style: TextStyle(fontSize: isFirst ? 36 : 28)),
+                          child: Text(emoji, style: TextStyle(fontSize: isFirst ? 40 : 30)),
                         ),
                 ),
-                // Medal badge
                 Container(
                   width: 24,
                   height: 24,
@@ -182,21 +186,23 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
               ],
             ),
             const SizedBox(height: 10),
-            // Name
-            Text(
-              child.name,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: isFirst ? 15 : 13,
-                fontWeight: FontWeight.w700,
+            SizedBox(
+              width: isFirst ? 90 : 70,
+              child: Text(
+                child.name,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isFirst ? 14 : 12,
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-            // Points with glow
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: primary.withValues(alpha: 0.15),
@@ -206,15 +212,14 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
                 '${child.points} pts',
                 style: TextStyle(
                   color: primary,
-                  fontSize: isFirst ? 14 : 12,
+                  fontSize: isFirst ? 13 : 11,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
             const SizedBox(height: 8),
-            // Podium bar with gradient
             Container(
-              width: isFirst ? 80 : 60,
+              width: isFirst ? 76 : 58,
               height: height,
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.only(
@@ -234,24 +239,29 @@ class _PodiumWidgetState extends State<PodiumWidget> with SingleTickerProviderSt
                     ? [BoxShadow(color: medalColor.withValues(alpha: 0.2), blurRadius: 12)]
                     : null,
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    child.levelTitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      child.levelTitle,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Niv. ${child.level}',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      'Nv.${child.level}',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
