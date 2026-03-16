@@ -18,15 +18,10 @@ class SettingsScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // ── App bar ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                    ),
                     const Icon(Icons.settings, size: 22),
                     const SizedBox(width: 8),
                     const Text(
@@ -37,18 +32,14 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              // ── Body ──
               Expanded(
                 child: Consumer3<ThemeProvider, PinProvider, FamilyProvider>(
                   builder: (context, themeProv, pinProv, familyProv, _) {
                     return ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       children: [
-                        // ═══════════ APPARENCE ═══════════
                         const _GlassSectionTitle(icon: Icons.palette, title: 'Apparence'),
                         const SizedBox(height: 8),
-
-                        // Dark/Light toggle
                         _GlassSettingsTile(
                           icon: themeProv.isDark ? Icons.dark_mode : Icons.light_mode,
                           title: 'Mode sombre',
@@ -58,8 +49,6 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-
-                        // Accent color picker
                         GlassCard(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -108,8 +97,6 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-
-                        // Background color picker
                         GlassCard(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -167,8 +154,6 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // ═══════════ FAMILLE ═══════════
                         const _GlassSectionTitle(icon: Icons.family_restroom, title: 'Famille'),
                         const SizedBox(height: 8),
                         _GlassSettingsTile(
@@ -185,8 +170,6 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // ═══════════ SÉCURITÉ ═══════════
                         const _GlassSectionTitle(icon: Icons.security, title: 'Sécurité'),
                         const SizedBox(height: 8),
                         _GlassSettingsTile(
@@ -216,8 +199,6 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // ═══════════ DONNÉES ═══════════
                         const _GlassSectionTitle(icon: Icons.storage, title: 'Données'),
                         const SizedBox(height: 8),
                         _GlassSettingsTile(
@@ -234,8 +215,6 @@ class SettingsScreen extends StatelessWidget {
                           onTap: () => PinGuard.guardAction(context, () => _confirmClearHistory(context, familyProv)),
                         ),
                         const SizedBox(height: 16),
-
-                        // ═══════════ À PROPOS ═══════════
                         const _GlassSectionTitle(icon: Icons.info_outline, title: 'À propos'),
                         const SizedBox(height: 8),
                         _GlassSettingsTile(
@@ -397,7 +376,6 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-// ── Section Title ──
 class _GlassSectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -423,7 +401,6 @@ class _GlassSectionTitle extends StatelessWidget {
   }
 }
 
-// ── Settings Tile ──
 class _GlassSettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
