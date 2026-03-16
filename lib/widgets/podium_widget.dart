@@ -12,30 +12,54 @@ class PodiumWidget extends StatefulWidget {
   State<PodiumWidget> createState() => _PodiumWidgetState();
 }
 
-class _PodiumWidgetState extends State<PodiumWidget> with TickerProviderStateMixin {
-  late AnimationController _shimmerController;
-  late AnimationController _pulseController;
-  late AnimationController _crownController;
-  late AnimationController _rotateController;
-  late AnimationController _particleController;
+class _PodiumWidgetState extends State<PodiumWidget>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  late AnimationController _shimmerCtrl;
+  late AnimationController _pulseCtrl;
+  late AnimationController _crownCtrl;
 
   @override
   void initState() {
     super.initState();
-    _shimmerController = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
-    _crownController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))..repeat(reverse: true);
-    _rotateController = AnimationController(vsync: this, duration: const Duration(seconds: 6))..repeat();
-    _particleController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+    WidgetsBinding.instance.addObserver(this);
+
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _crownCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _shimmerCtrl.stop();
+      _pulseCtrl.stop();
+      _crownCtrl.stop();
+    } else if (state == AppLifecycleState.resumed) {
+      _shimmerCtrl.repeat();
+      _pulseCtrl.repeat(reverse: true);
+      _crownCtrl.repeat(reverse: true);
+    }
   }
 
   @override
   void dispose() {
-    _shimmerController.dispose();
-    _pulseController.dispose();
-    _crownController.dispose();
-    _rotateController.dispose();
-    _particleController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _shimmerCtrl.dispose();
+    _pulseCtrl.dispose();
+    _crownCtrl.dispose();
     super.dispose();
   }
 
@@ -43,354 +67,243 @@ class _PodiumWidgetState extends State<PodiumWidget> with TickerProviderStateMix
   Widget build(BuildContext context) {
     if (widget.children.isEmpty) return const SizedBox.shrink();
 
-    final sorted = List<ChildModel>.from(widget.children);
-    sorted.sort((a, b) => b.points.compareTo(a.points));
-    final top3 = sorted.take(3).toList();
-    final primary = Theme.of(context).colorScheme.primary;
+    final sorted = List<ChildModel>.from(widget.children)
+      ..sort((a, b) => b.points.compareTo(a.points));
+    final top = sorted.take(3).toList();
+    final theme = Theme.of(context);
 
     return GlassCard(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-      glowColor: primary,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              GlowIcon(icon: Icons.emoji_events_rounded, color: const Color(0xFFFFD700), size: 28),
-              const SizedBox(width: 10),
-              NeonText(text: 'CLASSEMENT', fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white, glowIntensity: 0.3),
+              AnimatedBuilder(
+                animation: _crownCtrl,
+                builder: (context, child) {
+                  final bounce = sin(_crownCtrl.value * pi) * 4;
+                  return Transform.translate(
+                    offset: Offset(0, -bounce),
+                    child: const Text('👑', style: TextStyle(fontSize: 24)),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Podium',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 24),
-          if (top3.length >= 3)
-            _buildThreePodium(top3, primary)
-          else if (top3.length == 2)
-            _buildTwoPodium(top3, primary)
+          const SizedBox(height: 16),
+          if (top.length >= 3)
+            _buildThreePodium(top, theme)
+          else if (top.length == 2)
+            _buildTwoPodium(top, theme)
           else
-            _buildOnePodium(top3[0], primary),
+            _buildOnePodium(top.first, theme),
         ],
       ),
     );
   }
 
-  Widget _buildThreePodium(List<ChildModel> top3, Color primary) {
+  Widget _buildThreePodium(List<ChildModel> top, ThemeData theme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Expanded(child: _podiumPlace(top3[1], 2, 75, const Color(0xFFC0C0C0), primary)),
-        const SizedBox(width: 6),
-        Expanded(child: _podiumPlace(top3[0], 1, 105, const Color(0xFFFFD700), primary)),
-        const SizedBox(width: 6),
-        Expanded(child: _podiumPlace(top3[2], 3, 55, const Color(0xFFCD7F32), primary)),
+        Expanded(child: _podiumPlace(top[1], 2, theme, 100)),
+        Expanded(child: _podiumPlace(top[0], 1, theme, 130)),
+        Expanded(child: _podiumPlace(top[2], 3, theme, 80)),
       ],
     );
   }
 
-  Widget _buildTwoPodium(List<ChildModel> top2, Color primary) {
+  Widget _buildTwoPodium(List<ChildModel> top, ThemeData theme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Expanded(child: _podiumPlace(top2[1], 2, 75, const Color(0xFFC0C0C0), primary)),
-        const SizedBox(width: 12),
-        Expanded(child: _podiumPlace(top2[0], 1, 105, const Color(0xFFFFD700), primary)),
+        Expanded(child: _podiumPlace(top[0], 1, theme, 130)),
+        const SizedBox(width: 16),
+        Expanded(child: _podiumPlace(top[1], 2, theme, 100)),
       ],
     );
   }
 
-  Widget _buildOnePodium(ChildModel child, Color primary) {
-    return _podiumPlace(child, 1, 105, const Color(0xFFFFD700), primary);
+  Widget _buildOnePodium(ChildModel child, ThemeData theme) {
+    return _podiumPlace(child, 1, theme, 130);
   }
 
-  bool _hasValidPhoto(ChildModel child) {
-    final p = child.photoBase64;
-    return p != null && p.isNotEmpty && p.length > 100;
-  }
+  Widget _podiumPlace(ChildModel child, int rank, ThemeData theme, double height) {
+    final colors = _rankColors(rank);
+    final primaryColor = colors[0];
+    final secondaryColor = colors[1];
 
-  Widget _podiumPlace(ChildModel child, int place, double height, Color medalColor, Color primary) {
-    final emoji = child.avatar.isNotEmpty ? child.avatar : '\u{1F466}';
-    final isFirst = place == 1;
-    final avatarSize = isFirst ? 92.0 : 68.0;
-    final innerSize = avatarSize - 8;
-
-    return AnimatedBuilder(
-      animation: Listenable.merge([_shimmerController, _pulseController, _crownController, _rotateController, _particleController]),
-      builder: (context, _) {
-        final shimmer = sin(_shimmerController.value * 2 * pi) * 0.3 + 0.7;
-        final pulse = _pulseController.value;
-        final crownBounce = sin(_crownController.value * pi) * 6;
-        final rotateAngle = _rotateController.value * 2 * pi;
-
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Couronne animee pour le 1er
-            if (isFirst) ...[
-              Transform.translate(
-                offset: Offset(0, crownBounce),
-                child: ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [
-                      const Color(0xFFFFD700),
-                      const Color(0xFFFFF176),
-                      const Color(0xFFFFD700),
-                    ],
-                    stops: [
-                      (_shimmerController.value - 0.3).clamp(0.0, 1.0),
-                      _shimmerController.value.clamp(0.0, 1.0),
-                      (_shimmerController.value + 0.3).clamp(0.0, 1.0),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(bounds),
-                  child: const Text('\u{1F451}', style: TextStyle(fontSize: 30)),
-                ),
-              ),
-              const SizedBox(height: 2),
-            ],
-
-            // Avatar avec effets 3D
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                // Particules dorees pour le 1er
-                if (isFirst)
-                  ...List.generate(6, (i) {
-                    final angle = (rotateAngle + i * pi / 3);
-                    final radius = avatarSize / 2 + 12 + sin(_particleController.value * 2 * pi + i) * 6;
-                    final particleX = cos(angle) * radius;
-                    final particleY = sin(angle) * radius;
-                    final opacity = (sin(_particleController.value * 2 * pi + i * 1.5) * 0.5 + 0.5).clamp(0.0, 1.0);
-                    return Transform.translate(
-                      offset: Offset(particleX, particleY),
-                      child: Opacity(
-                        opacity: opacity,
-                        child: Container(
-                          width: 4 + sin(_particleController.value * pi + i) * 2,
-                          height: 4 + sin(_particleController.value * pi + i) * 2,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFFFFD700),
-                            boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.6), blurRadius: 4)],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-
-                // Anneau lumineux rotatif pour le 1er
-                if (isFirst)
-                  Transform.rotate(
-                    angle: rotateAngle,
-                    child: Container(
-                      width: avatarSize + 16,
-                      height: avatarSize + 16,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: SweepGradient(
-                          colors: [
-                            medalColor.withValues(alpha: 0.0),
-                            medalColor.withValues(alpha: 0.6),
-                            medalColor.withValues(alpha: 0.0),
-                            medalColor.withValues(alpha: 0.3),
-                            medalColor.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // Photo/Avatar principal avec effet 3D
-                Transform(
-                  alignment: Alignment.center,
-                  transform: isFirst
-                      ? (Matrix4.identity()
-                        ..setEntry(3, 2, 0.002)
-                        ..rotateY(sin(_shimmerController.value * 2 * pi) * 0.08)
-                        ..rotateX(cos(_shimmerController.value * 2 * pi) * 0.05)
-                        ..scale(1.0 + pulse * 0.06))
-                      : Matrix4.identity(),
-                  child: Container(
-                    width: avatarSize,
-                    height: avatarSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: medalColor.withValues(alpha: isFirst ? shimmer.clamp(0.0, 1.0) : 0.6),
-                        width: isFirst ? 3.5 : 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: medalColor.withValues(alpha: isFirst ? 0.5 * shimmer.clamp(0.0, 1.0) : 0.2),
-                          blurRadius: isFirst ? 24 + pulse * 8 : 8,
-                          spreadRadius: isFirst ? 4 + pulse * 2 : 0,
-                        ),
-                        if (isFirst)
-                          BoxShadow(
-                            color: const Color(0xFFFFD700).withValues(alpha: 0.15),
-                            blurRadius: 40,
-                            spreadRadius: 8,
-                          ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: _hasValidPhoto(child)
-                          ? Image.memory(
-                              base64Decode(child.photoBase64!),
-                              width: innerSize,
-                              height: innerSize,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                              errorBuilder: (_, __, ___) => _buildEmojiAvatar(emoji, innerSize, isFirst),
-                            )
-                          : _buildEmojiAvatar(emoji, innerSize, isFirst),
-                    ),
-                  ),
-                ),
-
-                // Badge medaille
-                Positioned(
-                  top: 0,
-                  right: isFirst ? 0 : 0,
-                  child: Transform.scale(
-                    scale: isFirst ? 1.0 + pulse * 0.1 : 1.0,
-                    child: Container(
-                      width: isFirst ? 28 : 24,
-                      height: isFirst ? 28 : 24,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [medalColor, medalColor.withValues(alpha: 0.7)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2),
-                        boxShadow: [
-                          BoxShadow(color: medalColor.withValues(alpha: 0.5), blurRadius: isFirst ? 10 : 6),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$place',
-                          style: TextStyle(color: Colors.white, fontSize: isFirst ? 13 : 11, fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Nom
-            SizedBox(
-              width: isFirst ? 95 : 70,
-              child: Text(
-                child.name,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isFirst ? 14 : 12,
-                  fontWeight: FontWeight.w700,
-                  shadows: isFirst
-                      ? [Shadow(color: medalColor.withValues(alpha: 0.5), blurRadius: 8)]
-                      : null,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 4),
-            // Points
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: primary.withValues(alpha: isFirst ? 0.2 : 0.15),
-                border: Border.all(color: primary.withValues(alpha: isFirst ? 0.5 : 0.3)),
-                boxShadow: isFirst
-                    ? [BoxShadow(color: primary.withValues(alpha: 0.2), blurRadius: 8)]
-                    : null,
-              ),
-              child: Text(
-                '${child.points} pts',
-                style: TextStyle(color: primary, fontSize: isFirst ? 13 : 11, fontWeight: FontWeight.w800),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Barre podium
-            Container(
-              width: isFirst ? 76 : 58,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (rank == 1)
+          AnimatedBuilder(
+            animation: _crownCtrl,
+            builder: (context, _) {
+              final bounce = sin(_crownCtrl.value * pi) * 3;
+              return Transform.translate(
+                offset: Offset(0, -bounce),
+                child: const Text('👑', style: TextStyle(fontSize: 28)),
+              );
+            },
+          ),
+        const SizedBox(height: 4),
+        AnimatedBuilder(
+          animation: _pulseCtrl,
+          builder: (context, child) {
+            final scale = rank == 1 ? 1.0 + _pulseCtrl.value * 0.05 : 1.0;
+            return Transform.scale(
+              scale: scale,
+              child: child,
+            );
+          },
+          child: _buildAvatar(child, rank, primaryColor, secondaryColor),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          child.name,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: primaryColor,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+        Text(
+          '${child.points} pts',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: secondaryColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        AnimatedBuilder(
+          animation: _shimmerCtrl,
+          builder: (context, _) {
+            return Container(
               height: height,
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    medalColor.withValues(alpha: isFirst ? 0.6 + pulse * 0.15 : 0.5),
-                    medalColor.withValues(alpha: 0.15),
+                    primaryColor.withValues(alpha: 0.8),
+                    secondaryColor.withValues(alpha: 0.4),
                   ],
                 ),
-                border: Border.all(color: medalColor.withValues(alpha: isFirst ? 0.6 : 0.4), width: 1),
-                boxShadow: isFirst
-                    ? [
-                        BoxShadow(color: medalColor.withValues(alpha: 0.3), blurRadius: 16),
-                        BoxShadow(color: medalColor.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 4),
-                      ]
-                    : null,
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      child.levelTitle,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Nv.${child.level}',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9),
-                    ),
-                  ],
+              child: Center(
+                child: Text(
+                  '$rank',
+                  style: TextStyle(
+                    fontSize: rank == 1 ? 36 : 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
+            );
+          },
+        ),
+      ],
     );
   }
 
-  Widget _buildEmojiAvatar(String emoji, double size, bool isFirst) {
+  Widget _buildAvatar(ChildModel child, int rank, Color primary, Color secondary) {
+    final size = rank == 1 ? 64.0 : 52.0;
+
+    Widget avatarContent;
+    if (_hasValidPhoto(child)) {
+      avatarContent = ClipOval(
+        child: Image.memory(
+          base64Decode(child.photoBase64!),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => _emojiAvatar(child, size),
+        ),
+      );
+    } else {
+      avatarContent = _emojiAvatar(child, size);
+    }
+
+    return Container(
+      width: size + 6,
+      height: size + 6,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: primary, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: primary.withValues(alpha: 0.4),
+            blurRadius: 12,
+          ),
+        ],
+      ),
+      child: ClipOval(child: avatarContent),
+    );
+  }
+
+  Widget _emojiAvatar(ChildModel child, double size) {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.1),
-        gradient: isFirst
-            ? LinearGradient(
-                colors: [
-                  const Color(0xFFFFD700).withValues(alpha: 0.15),
-                  Colors.white.withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
+        color: Color(0xFF1A1A2E),
       ),
-      child: Center(child: Text(emoji, style: TextStyle(fontSize: isFirst ? 42 : 30))),
+      child: Center(
+        child: Text(
+          child.avatar.isNotEmpty ? child.avatar : '👤',
+          style: TextStyle(fontSize: size * 0.5),
+        ),
+      ),
     );
+  }
+
+  bool _hasValidPhoto(ChildModel child) {
+    if (child.photoBase64 == null || child.photoBase64!.isEmpty) return false;
+    if (child.photoBase64!.length < 100) return false;
+    try {
+      base64Decode(child.photoBase64!);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  List<Color> _rankColors(int rank) {
+    switch (rank) {
+      case 1:
+        return [const Color(0xFFFFD700), const Color(0xFFFFA000)];
+      case 2:
+        return [const Color(0xFFC0C0C0), const Color(0xFF9E9E9E)];
+      case 3:
+        return [const Color(0xFFCD7F32), const Color(0xFF8D6E63)];
+      default:
+        return [Colors.blueGrey, Colors.grey];
+    }
   }
 }
