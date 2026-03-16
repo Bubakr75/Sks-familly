@@ -309,6 +309,36 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updatePunishmentProgress(String punishmentId, int linesToAdd) async {
+    final idx = _punishments.indexWhere((p) => p.id == punishmentId);
+    if (idx == -1) return;
+    final p = _punishments[idx];
+    p.completedLines = (p.completedLines + linesToAdd).clamp(0, p.totalLines);
+    await _punishmentsBox.put(punishmentId, jsonEncode(p.toMap()));
+    if (_firestore.isConnected) await _firestore.savePunishment(p);
+    notifyListeners();
+  }
+
+  Future<void> addPhotoToPunishment(String punishmentId, String photoBase64) async {
+    final idx = _punishments.indexWhere((p) => p.id == punishmentId);
+    if (idx == -1) return;
+    _punishments[idx].photoUrls.add(photoBase64);
+    await _punishmentsBox.put(punishmentId, jsonEncode(_punishments[idx].toMap()));
+    if (_firestore.isConnected) await _firestore.savePunishment(_punishments[idx]);
+    notifyListeners();
+  }
+
+  Future<void> removePhotoFromPunishment(String punishmentId, int photoIndex) async {
+    final idx = _punishments.indexWhere((p) => p.id == punishmentId);
+    if (idx == -1) return;
+    if (photoIndex >= 0 && photoIndex < _punishments[idx].photoUrls.length) {
+      _punishments[idx].photoUrls.removeAt(photoIndex);
+      await _punishmentsBox.put(punishmentId, jsonEncode(_punishments[idx].toMap()));
+      if (_firestore.isConnected) await _firestore.savePunishment(_punishments[idx]);
+      notifyListeners();
+    }
+  }
+
   Future<void> incrementPunishmentLines(String pId) async {
     final idx = _punishments.indexWhere((p) => p.id == pId);
     if (idx != -1 && !_punishments[idx].isCompleted) {
