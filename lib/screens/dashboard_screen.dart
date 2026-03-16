@@ -11,7 +11,6 @@ import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import 'manage_children_screen.dart';
 import 'badges_screen.dart';
-
 import 'punishment_lines_screen.dart';
 import 'pin_verification_screen.dart';
 import 'notes_screen.dart';
@@ -46,9 +45,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     if (_isRefreshing) return;
     setState(() => _isRefreshing = true);
     _refreshController.repeat();
-    
     try {
-      // Force re-sync by disconnecting and reconnecting to Firestore
       if (provider.isSyncEnabled) {
         final code = await provider.getFamilyCode();
         if (code != null) {
@@ -57,10 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           await provider.joinFamily(code);
         }
       }
-    } catch (_) {
-      // Silently handle errors
-    }
-    
+    } catch (_) {}
     await Future.delayed(const Duration(milliseconds: 500));
     _refreshController.stop();
     _refreshController.reset();
@@ -68,13 +62,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       setState(() => _isRefreshing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 10),
-              Text('Donnees rafraichies !'),
-            ],
-          ),
+          content: const Row(children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 10),
+            Text('Donnees rafraichies !'),
+          ]),
           backgroundColor: const Color(0xFF00E676),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -109,10 +101,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   children: [
                     // === HEADER ===
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
                       child: Row(
                         children: [
-                          // Logo button with glow
                           InkWell(
                             borderRadius: BorderRadius.circular(14),
                             onTap: () => Scaffold.of(context).openDrawer(),
@@ -121,21 +112,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(colors: [primary, primary.withValues(alpha: 0.7)]),
                                 borderRadius: BorderRadius.circular(14),
-                                boxShadow: isDark
-                                    ? [BoxShadow(color: primary.withValues(alpha: 0.3), blurRadius: 12)]
-                                    : null,
+                                boxShadow: isDark ? [BoxShadow(color: primary.withValues(alpha: 0.3), blurRadius: 12)] : null,
                               ),
-                              child: const Text('SKS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
+                              child: const Text('SKS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1)),
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 NeonText(
                                   text: 'SKS Family',
-                                  fontSize: 22,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w800,
                                   color: isDark ? Colors.white : Colors.black87,
                                   glowIntensity: 0.2,
@@ -146,7 +135,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                           _buildLockButton(pin),
                           IconButton(
-                            icon: GlowIcon(icon: Icons.people_alt_rounded, color: primary),
+                            icon: GlowIcon(icon: Icons.people_alt_rounded, color: primary, size: 22),
+                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                            padding: EdgeInsets.zero,
                             onPressed: () => PinGuard.guardNavigation(context, const ManageChildrenScreen()),
                           ),
                           _buildRefreshButton(provider, primary, isDark),
@@ -181,9 +172,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             children: [
                               GlowIcon(icon: Icons.today_rounded, size: 18, color: const Color(0xFF00E5FF)),
                               const SizedBox(width: 8),
-                              Text(
-                                "${todayEntries.length} activites aujourd'hui (+${todayEntries.where((e) => e.isBonus).fold<int>(0, (s, e) => s + e.points)} pts)",
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF00E5FF) : Colors.teal),
+                              Flexible(
+                                child: Text(
+                                  "${todayEntries.length} activites aujourd'hui (+${todayEntries.where((e) => e.isBonus).fold<int>(0, (s, e) => s + e.points)} pts)",
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF00E5FF) : Colors.teal),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -206,7 +200,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             Navigator.push(context, MaterialPageRoute(builder: (_) => const BadgesScreen()));
                           }),
                           const SizedBox(width: 8),
-
                           _buildQuickAction(Icons.edit_note_rounded, 'Lignes', const Color(0xFFFF1744), isDark, () {
                             PinGuard.guardNavigation(context, const PunishmentLinesScreen());
                           }),
@@ -228,9 +221,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: primary.withValues(alpha: 0.1),
-                                  boxShadow: isDark
-                                      ? [BoxShadow(color: primary.withValues(alpha: 0.2), blurRadius: 24)]
-                                      : null,
+                                  boxShadow: isDark ? [BoxShadow(color: primary.withValues(alpha: 0.2), blurRadius: 24)] : null,
                                 ),
                                 child: const Center(child: Text('\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}', style: TextStyle(fontSize: 56))),
                               ),
@@ -299,7 +290,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                         child: Row(
                           children: [
-                    NeonText(text: 'Activite recente', fontSize: 18, color: Colors.white, glowIntensity: 0.15),
+                            NeonText(text: 'Activite recente', fontSize: 18, color: Colors.white, glowIntensity: 0.15),
                             const Spacer(),
                             TextButton(
                               onPressed: () => _showFullHistory(context, provider),
@@ -335,7 +326,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                    Text(entry.reason, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                                    Text(entry.reason, style: TextStyle(fontSize: 12, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
                                   ],
                                 ),
                               ),
@@ -363,8 +354,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   ],
                 ),
               ),
-
-              // Confetti overlay
               if (_showConfetti)
                 Positioned.fill(
                   child: IgnorePointer(
@@ -378,27 +367,26 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
-  // === HELPER WIDGETS ===
-
   Widget _buildModeIndicator(PinProvider pin) {
     if (!pin.isPinSet) {
-      return Text('Tableau de bord', style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500));
+      return Text('Tableau de bord', style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w500));
     }
     final isParent = pin.isParentMode;
     final color = isParent ? const Color(0xFF00E676) : Colors.orange;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      margin: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isParent ? Icons.lock_open : Icons.lock, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(isParent ? 'Mode parent' : 'Mode enfant', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+          Icon(isParent ? Icons.lock_open : Icons.lock, size: 10, color: color),
+          const SizedBox(width: 3),
+          Text(isParent ? 'Parent' : 'Enfant', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -408,13 +396,17 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     if (!pin.isPinSet) return const SizedBox.shrink();
     if (pin.isParentMode) {
       return IconButton(
-        icon: const GlowIcon(icon: Icons.lock_open_rounded, color: Color(0xFF00E676)),
+        icon: const GlowIcon(icon: Icons.lock_open_rounded, color: Color(0xFF00E676), size: 22),
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        padding: EdgeInsets.zero,
         tooltip: 'Verrouiller',
         onPressed: () => pin.lockParentMode(),
       );
     }
     return IconButton(
-      icon: const GlowIcon(icon: Icons.lock_rounded, color: Colors.orange),
+      icon: const GlowIcon(icon: Icons.lock_rounded, color: Colors.orange, size: 22),
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      padding: EdgeInsets.zero,
       tooltip: 'Deverrouiller',
       onPressed: () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => PinVerificationScreen(onVerified: () => Navigator.pop(context))));
@@ -432,8 +424,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             icon: GlowIcon(
               icon: Icons.refresh_rounded,
               color: _isRefreshing ? const Color(0xFF00E5FF) : primary,
-              size: 24,
+              size: 22,
             ),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            padding: EdgeInsets.zero,
             tooltip: 'Rafraichir',
             onPressed: _isRefreshing ? null : () => _refreshData(provider),
           ),
@@ -489,8 +483,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
-  // === DIALOGS ===
-
   void _quickAddPoints(BuildContext context, child, FamilyProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
@@ -539,9 +531,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             borderRadius: BorderRadius.circular(14),
             color: color.withValues(alpha: isDark ? 0.1 : 0.08),
             border: Border.all(color: color.withValues(alpha: isDark ? 0.4 : 0.3)),
-            boxShadow: isDark
-                ? [BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 8)]
-                : null,
+            boxShadow: isDark ? [BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 8)] : null,
           ),
           child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 18)),
         ),
@@ -578,9 +568,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       borderRadius: BorderRadius.circular(24),
                       child: Image.memory(
                         base64Decode(child.photoBase64),
-                        width: 90,
-                        height: 90,
+                        width: 100,
+                        height: 100,
                         fit: BoxFit.cover,
+                        gaplessPlayback: true,
                         errorBuilder: (_, __, ___) => _buildAvatarFallback(child, primary, isDark),
                       ),
                     )
@@ -614,8 +605,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             ),
             const SizedBox(height: 4),
             Text('${child.points}/${child.nextLevelPoints} pts - prochain niveau', style: TextStyle(fontSize: 12, color: Colors.grey[500]), textAlign: TextAlign.center),
-
-            // Notes button
             const SizedBox(height: 20),
             GlassCard(
               margin: EdgeInsets.zero,
@@ -623,12 +612,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               borderRadius: 16,
               onTap: () {
                 Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => NotesScreen(childId: child.id, childName: child.name),
-                  ),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (_) => NotesScreen(childId: child.id, childName: child.name)));
               },
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -662,7 +646,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 ),
               ),
             ),
-
             if (badges.isNotEmpty) ...[
               const SizedBox(height: 24),
               NeonText(text: 'Badges obtenus', fontSize: 16, color: Colors.white, glowIntensity: 0.2),
@@ -687,7 +670,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744),
                   size: 20,
                 ),
-                title: Text(h.reason, style: const TextStyle(fontSize: 13)),
+                title: Text(h.reason, style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: Text(
                   '${h.isBonus ? '+' : ''}${h.points}',
                   style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)),
@@ -702,8 +685,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   Widget _buildAvatarFallback(child, Color primary, bool isDark) {
     return Container(
-      width: 90,
-      height: 90,
+      width: 100,
+      height: 100,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [primary, primary.withValues(alpha: 0.5)]),
         borderRadius: BorderRadius.circular(24),
@@ -747,7 +730,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       ),
                     ),
                     title: Text(child?.name ?? 'Inconnu'),
-                    subtitle: Text(h.reason, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                    subtitle: Text(h.reason, style: TextStyle(fontSize: 13, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
                     trailing: Text(
                       '${h.isBonus ? '+' : ''}${h.points}',
                       style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)),
