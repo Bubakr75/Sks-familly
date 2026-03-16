@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 
 class AnimatedBackground extends StatefulWidget {
   final Widget child;
@@ -39,20 +41,23 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> with SingleTick
       return widget.child;
     }
 
+    final themeProv = context.watch<ThemeProvider>();
+    final bgColor = themeProv.backgroundColor;
+
+    // Crée un dégradé basé sur la couleur choisie
+    final hsl = HSLColor.fromColor(bgColor);
+    final lighter = hsl.withLightness((hsl.lightness + 0.03).clamp(0.0, 1.0)).toColor();
+    final darker = hsl.withLightness((hsl.lightness - 0.02).clamp(0.0, 1.0)).toColor();
+
     return Stack(
       children: [
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0A0E21),
-                Color(0xFF0D1B2A),
-                Color(0xFF0A1628),
-                Color(0xFF071020),
-              ],
-              stops: [0.0, 0.3, 0.7, 1.0],
+              colors: [bgColor, lighter, bgColor, darker],
+              stops: const [0.0, 0.3, 0.7, 1.0],
             ),
           ),
         ),
