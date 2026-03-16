@@ -6,8 +6,7 @@ import '../providers/theme_provider.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
-import 'pin_verification_screen.dart';
-import 'setup_pin_screen.dart';
+import '../widgets/neon_text.dart';
 import 'family_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -15,310 +14,384 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AnimatedBackground(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      body: Stack(
+        children: [
+          const AnimatedBackground(),
+          SafeArea(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    GlowIcon(icon: Icons.settings_rounded, color: primary, size: 26),
-                    const SizedBox(width: 10),
-                    NeonText(text: 'Reglages', fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, glowIntensity: 0.2),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Appearance
-                _GlassSectionTitle(title: 'Apparence', color: primary),
-                GlassCard(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  child: Consumer<ThemeProvider>(
-                    builder: (_, themeProvider, __) => Column(
-                      children: [
-                        _GlassSettingsTile(
-                          icon: themeProvider.isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                          iconColor: themeProvider.isDark ? const Color(0xFFFFD740) : Colors.orange,
-                          title: 'Theme sombre',
-                          subtitle: themeProvider.isDark ? 'Active' : 'Desactive',
-                          trailing: Switch(
-                            value: themeProvider.isDark,
-                            onChanged: (_) => themeProvider.toggle(),
-                          ),
-                        ),
-                        Divider(color: Colors.white.withValues(alpha: 0.06), height: 1, indent: 56),
-                        _GlassSettingsTile(
-                          icon: Icons.palette_rounded,
-                          iconColor: themeProvider.primaryColor,
-                          title: 'Couleur d\'accent',
-                          subtitle: 'Personnalisez le theme',
-                          trailing: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: themeProvider.primaryColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
-                              boxShadow: [BoxShadow(color: themeProvider.primaryColor.withValues(alpha: 0.4), blurRadius: 8)],
-                            ),
-                          ),
-                          onTap: () => _showColorPicker(context, themeProvider),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Family
-                _GlassSectionTitle(title: 'Famille', color: primary),
-                Consumer<FamilyProvider>(
-                  builder: (_, provider, __) => GlassCard(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FamilyScreen())),
-                    child: _GlassSettingsTile(
-                      icon: provider.isSyncEnabled ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-                      iconColor: provider.isSyncEnabled ? const Color(0xFF00E676) : Colors.grey,
-                      title: provider.isSyncEnabled ? 'Synchronisation active' : 'Mode local',
-                      subtitle: provider.isSyncEnabled
-                          ? 'Les donnees sont partagees en temps reel'
-                          : 'Activez pour partager avec votre conjoint(e)',
-                      trailing: Icon(Icons.chevron_right, color: Colors.grey[600], size: 20),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Security
-                _GlassSectionTitle(title: 'Securite', color: primary),
-                GlassCard(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  child: Consumer<PinProvider>(
-                    builder: (_, pinProvider, __) => Column(
-                      children: [
-                        _GlassSettingsTile(
-                          icon: pinProvider.isPinSet ? Icons.lock_rounded : Icons.lock_open_rounded,
-                          iconColor: pinProvider.isPinSet ? const Color(0xFF00E676) : Colors.orange,
-                          title: 'Code parental',
-                          subtitle: pinProvider.isPinSet
-                              ? (pinProvider.isParentMode ? 'Active - Mode parent' : 'Active - Mode enfant')
-                              : 'Desactive - Pas de protection',
-                          trailing: Icon(Icons.chevron_right, color: Colors.grey[600], size: 20),
-                          onTap: () {
-                            if (pinProvider.isPinSet) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PinVerificationScreen(
-                                    onVerified: () {
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => const SetupPinScreen()),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              );
-                            } else {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const SetupPinScreen()));
-                            }
-                          },
-                        ),
-                        if (pinProvider.isPinSet) ...[
-                          Divider(color: Colors.white.withValues(alpha: 0.06), height: 1, indent: 56),
-                          _GlassSettingsTile(
-                            icon: pinProvider.isParentMode ? Icons.shield_rounded : Icons.shield_outlined,
-                            iconColor: pinProvider.isParentMode ? const Color(0xFF00E676) : Colors.grey,
-                            title: pinProvider.isParentMode ? 'Mode parent actif' : 'Mode enfant actif',
-                            subtitle: pinProvider.isParentMode ? 'Touchez pour verrouiller' : 'Touchez pour deverrouiller',
-                            trailing: Switch(
-                              value: pinProvider.isParentMode,
-                              onChanged: (v) {
-                                if (v) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => PinVerificationScreen(onVerified: () => Navigator.pop(context)),
-                                    ),
-                                  );
-                                } else {
-                                  pinProvider.lockParentMode();
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Data
-                _GlassSectionTitle(title: 'Donnees', color: primary),
-                GlassCard(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  child: Consumer<FamilyProvider>(
-                    builder: (_, provider, __) => Column(
-                      children: [
-                        _GlassSettingsTile(
-                          icon: Icons.restart_alt_rounded,
-                          iconColor: Colors.orange,
-                          title: 'Reinitialiser les scores',
-                          subtitle: 'Remettre tous les scores a zero',
-                          onTap: () => PinGuard.guardAction(context, () => _confirmResetScores(context, provider)),
-                        ),
-                        Divider(color: Colors.white.withValues(alpha: 0.06), height: 1, indent: 56),
-                        _GlassSettingsTile(
-                          icon: Icons.delete_sweep_rounded,
-                          iconColor: const Color(0xFFFF1744),
-                          title: 'Effacer l\'historique',
-                          subtitle: 'Supprimer tout l\'historique d\'activites',
-                          onTap: () => PinGuard.guardAction(context, () => _confirmClearHistory(context, provider)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // About
-                _GlassSectionTitle(title: 'A propos', color: primary),
-                GlassCard(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  child: Column(
+                // ── App bar ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                  child: Row(
                     children: [
-                      _GlassSettingsTile(
-                        icon: Icons.info_rounded,
-                        iconColor: const Color(0xFF00E5FF),
-                        title: 'SKS Family',
-                        subtitle: 'Version 3.5.0 - Dark Premium',
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      Divider(color: Colors.white.withValues(alpha: 0.06), height: 1, indent: 56),
-                      Consumer<FamilyProvider>(
-                        builder: (_, p, __) => _GlassSettingsTile(
-                          icon: Icons.family_restroom_rounded,
-                          iconColor: const Color(0xFF7C4DFF),
-                          title: 'Ma famille',
-                          subtitle: '${p.children.length} enfants - ${p.history.length} activites',
-                        ),
+                      const Icon(Icons.settings, size: 22),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Réglages',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 8),
+                // ── Body ──
+                Expanded(
+                  child: Consumer3<ThemeProvider, PinProvider, FamilyProvider>(
+                    builder: (context, themeProv, pinProv, familyProv, _) {
+                      return ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        children: [
+                          // ═══════════ APPARENCE ═══════════
+                          const _GlassSectionTitle(icon: Icons.palette, title: 'Apparence'),
+                          const SizedBox(height: 8),
+
+                          // Dark/Light toggle
+                          _GlassSettingsTile(
+                            icon: themeProv.isDark ? Icons.dark_mode : Icons.light_mode,
+                            title: 'Mode sombre',
+                            trailing: Switch(
+                              value: themeProv.isDark,
+                              onChanged: (_) => themeProv.toggle(),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Accent color picker
+                          GlassCard(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.color_lens, color: themeProv.primaryColor, size: 20),
+                                      const SizedBox(width: 10),
+                                      const Text('Couleur d\'accent', style: TextStyle(fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: List.generate(ThemeProvider.accentColors.length, (i) {
+                                      final color = ThemeProvider.accentColors[i];
+                                      final selected = i == themeProv.colorIndex;
+                                      return GestureDetector(
+                                        onTap: () => themeProv.setColorIndex(i),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 300),
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: color,
+                                            shape: BoxShape.circle,
+                                            border: selected
+                                                ? Border.all(color: Colors.white, width: 3)
+                                                : null,
+                                            boxShadow: selected
+                                                ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 12)]
+                                                : [],
+                                          ),
+                                          child: selected
+                                              ? const Icon(Icons.check, color: Colors.white, size: 20)
+                                              : null,
+                                        ),
+                                      );
+                                    }),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Background color picker
+                          GlassCard(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.wallpaper, color: Colors.white70, size: 20),
+                                      SizedBox(width: 10),
+                                      Text('Fond d\'écran', style: TextStyle(fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: List.generate(ThemeProvider.backgroundColors.length, (i) {
+                                      final bg = ThemeProvider.backgroundColors[i];
+                                      final selected = i == themeProv.bgIndex;
+                                      return GestureDetector(
+                                        onTap: () => themeProv.setBgIndex(i),
+                                        child: Column(
+                                          children: [
+                                            AnimatedContainer(
+                                              duration: const Duration(milliseconds: 300),
+                                              width: 44,
+                                              height: 44,
+                                              decoration: BoxDecoration(
+                                                color: bg['color'] as Color,
+                                                shape: BoxShape.circle,
+                                                border: selected
+                                                    ? Border.all(color: themeProv.primaryColor, width: 3)
+                                                    : Border.all(color: Colors.white24, width: 1),
+                                                boxShadow: selected
+                                                    ? [BoxShadow(color: (bg['color'] as Color).withOpacity(0.5), blurRadius: 10)]
+                                                    : [],
+                                              ),
+                                              child: selected
+                                                  ? Icon(Icons.check, color: themeProv.primaryColor, size: 18)
+                                                  : null,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              bg['label'] as String,
+                                              style: const TextStyle(fontSize: 10, color: Colors.white60),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ═══════════ FAMILLE ═══════════
+                          const _GlassSectionTitle(icon: Icons.family_restroom, title: 'Famille'),
+                          const SizedBox(height: 8),
+                          _GlassSettingsTile(
+                            icon: Icons.cloud_sync,
+                            title: 'Synchronisation',
+                            subtitle: familyProv.isSynced ? 'Connecté' : 'Hors ligne',
+                            trailing: Icon(
+                              familyProv.isSynced ? Icons.cloud_done : Icons.cloud_off,
+                              color: familyProv.isSynced ? Colors.greenAccent : Colors.redAccent,
+                            ),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const FamilyScreen()),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ═══════════ SÉCURITÉ ═══════════
+                          const _GlassSectionTitle(icon: Icons.security, title: 'Sécurité'),
+                          const SizedBox(height: 8),
+                          _GlassSettingsTile(
+                            icon: Icons.lock,
+                            title: 'Code parental',
+                            subtitle: pinProv.hasPin ? 'Activé' : 'Non défini',
+                            trailing: Icon(
+                              pinProv.hasPin ? Icons.lock : Icons.lock_open,
+                              color: pinProv.hasPin ? Colors.greenAccent : Colors.orangeAccent,
+                            ),
+                            onTap: () => _showPinSetup(context, pinProv),
+                          ),
+                          const SizedBox(height: 8),
+                          _GlassSettingsTile(
+                            icon: pinProv.isParentMode ? Icons.admin_panel_settings : Icons.child_care,
+                            title: 'Mode actuel',
+                            subtitle: pinProv.isParentMode ? 'Mode parent' : 'Mode enfant',
+                            trailing: Switch(
+                              value: pinProv.isParentMode,
+                              onChanged: (val) {
+                                if (val) {
+                                  PinGuard.check(context, () {});
+                                } else {
+                                  pinProv.setParentMode(false);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ═══════════ DONNÉES ═══════════
+                          const _GlassSectionTitle(icon: Icons.storage, title: 'Données'),
+                          const SizedBox(height: 8),
+                          _GlassSettingsTile(
+                            icon: Icons.restart_alt,
+                            title: 'Réinitialiser les scores',
+                            subtitle: 'Remet tous les points à zéro',
+                            onTap: () => PinGuard.check(context, () => _confirmResetScores(context, familyProv)),
+                          ),
+                          const SizedBox(height: 8),
+                          _GlassSettingsTile(
+                            icon: Icons.delete_sweep,
+                            title: 'Effacer l\'historique',
+                            subtitle: 'Supprime tout l\'historique',
+                            onTap: () => PinGuard.check(context, () => _confirmClearHistory(context, familyProv)),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ═══════════ À PROPOS ═══════════
+                          const _GlassSectionTitle(icon: Icons.info_outline, title: 'À propos'),
+                          const SizedBox(height: 8),
+                          _GlassSettingsTile(
+                            icon: Icons.phone_android,
+                            title: 'SKS Family',
+                            subtitle: 'Version 1.0.0',
+                          ),
+                          const SizedBox(height: 8),
+                          _GlassSettingsTile(
+                            icon: Icons.people,
+                            title: 'Famille',
+                            subtitle: '${familyProv.children.length} enfant(s)',
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showColorPicker(BuildContext context, ThemeProvider themeProvider) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D1B2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const NeonText(text: 'Choisir une couleur', fontSize: 18, color: Colors.white),
-        content: Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          children: ThemeProvider.accentColors.asMap().entries.map((entry) {
-            final isSelected = themeProvider.colorIndex == entry.key;
-            return GestureDetector(
-              onTap: () {
-                themeProvider.setColorIndex(entry.key);
-                Navigator.pop(ctx);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: entry.value,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? Colors.white : Colors.transparent,
-                    width: 3,
-                  ),
-                  boxShadow: [
-                    BoxShadow(color: entry.value.withValues(alpha: isSelected ? 0.6 : 0.2), blurRadius: isSelected ? 16 : 6),
-                  ],
-                ),
-                child: isSelected
-                    ? const Icon(Icons.check, color: Colors.white, size: 24)
-                    : null,
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  void _confirmResetScores(BuildContext context, FamilyProvider provider) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D1B2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Reinitialiser', style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: const Text('Voulez-vous vraiment remettre tous les scores a zero ? Les badges seront aussi reinitialises.', style: TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-            onPressed: () {
-              provider.resetAllScores();
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Scores reinitialises'), backgroundColor: Colors.orange),
-              );
-            },
-            child: const Text('Reinitialiser'),
           ),
         ],
       ),
     );
   }
 
-  void _confirmClearHistory(BuildContext context, FamilyProvider provider) {
+  void _showPinSetup(BuildContext context, PinProvider pinProv) {
+    final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D1B2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Row(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Code parental', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF1744)),
-            const SizedBox(width: 8),
-            const Text('Effacer', style: TextStyle(color: Colors.white)),
+            Text(
+              pinProv.hasPin ? 'Modifier le code parental' : 'Créer un code parental',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 12),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                hintText: '• • • •',
+                hintStyle: const TextStyle(color: Colors.white30),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                counterText: '',
+              ),
+            ),
           ],
         ),
-        content: const Text('Voulez-vous vraiment supprimer tout l\'historique ?', style: TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF1744)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          if (pinProv.hasPin)
+            TextButton(
+              onPressed: () {
+                pinProv.removePin();
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Code supprimé')),
+                );
+              },
+              child: const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
+            ),
+          ElevatedButton(
             onPressed: () {
-              provider.clearHistory();
+              if (controller.text.length == 4) {
+                pinProv.setPin(controller.text);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Code enregistré !')),
+                );
+              }
+            },
+            child: const Text('Valider'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmResetScores(BuildContext context, FamilyProvider prov) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Réinitialiser ?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Tous les points seront remis à zéro. Cette action est irréversible.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              prov.resetAllScores();
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Historique efface'), backgroundColor: Color(0xFFFF1744)),
+                const SnackBar(content: Text('Scores réinitialisés')),
+              );
+            },
+            child: const Text('Réinitialiser'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmClearHistory(BuildContext context, FamilyProvider prov) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Effacer l\'historique ?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Tout l\'historique sera supprimé. Cette action est irréversible.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              prov.clearHistory();
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Historique effacé')),
               );
             },
             child: const Text('Effacer'),
@@ -329,70 +402,60 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
+// ── Section Title ──
 class _GlassSectionTitle extends StatelessWidget {
+  final IconData icon;
   final String title;
-  final Color color;
-  const _GlassSectionTitle({required this.title, required this.color});
+  const _GlassSectionTitle({required this.icon, required this.title});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
-      child: NeonText(text: title, fontSize: 13, fontWeight: FontWeight.w700, color: color, glowIntensity: 0.3),
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.white54),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white54,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
     );
   }
 }
 
+// ── Settings Tile ──
 class _GlassSettingsTile extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
 
   const _GlassSettingsTile({
     required this.icon,
-    required this.iconColor,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     this.trailing,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: iconColor.withValues(alpha: 0.2)),
-                boxShadow: [BoxShadow(color: iconColor.withValues(alpha: 0.12), blurRadius: 6)],
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 15)),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                ],
-              ),
-            ),
-            if (trailing != null) trailing!,
-          ],
-        ),
+    return GlassCard(
+      child: ListTile(
+        leading: Icon(icon, color: Colors.white70),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: subtitle != null
+            ? Text(subtitle!, style: const TextStyle(color: Colors.white60, fontSize: 12))
+            : null,
+        trailing: trailing,
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
     );
   }
