@@ -216,6 +216,7 @@ class _PunishmentCard extends StatelessWidget {
     final remaining = punishment.totalLines - punishment.completedLines;
     final usableImmunities = provider.getUsableImmunitiesForChild(punishment.childId);
     final hasUsableImmunity = usableImmunities.isNotEmpty && !punishment.isCompleted;
+    final totalImmunityLines = provider.getTotalAvailableImmunity(punishment.childId);
 
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
@@ -241,7 +242,7 @@ class _PunishmentCard extends StatelessWidget {
                   children: [
                     Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white)),
                     const SizedBox(height: 2),
-                    Text('"${punishment.text}"', style: TextStyle(fontSize: 12, color: Colors.grey[400], fontStyle: FontStyle.italic)),
+                    Text('"${punishment.text}"', style: TextStyle(fontSize: 12, color: Colors.grey[400], fontStyle: FontStyle.italic), maxLines: 2, overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
@@ -263,6 +264,15 @@ class _PunishmentCard extends StatelessWidget {
                 Text('Reste $remaining', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
             ],
           ),
+          // Indicateur immunité disponible
+          if (hasUsableImmunity && !punishment.isCompleted) ...[
+            const SizedBox(height: 4),
+            Row(children: [
+              const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 14),
+              const SizedBox(width: 4),
+              Text('$totalImmunityLines lignes d\'immunite disponibles', style: const TextStyle(color: Color(0xFF00E676), fontSize: 11, fontWeight: FontWeight.w600)),
+            ]),
+          ],
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
@@ -323,8 +333,8 @@ class _PunishmentCard extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFFFD740),
-                        side: BorderSide(color: const Color(0xFFFFD740).withValues(alpha: 0.3)),
+                        foregroundColor: const Color(0xFF00E676),
+                        side: BorderSide(color: const Color(0xFF00E676).withValues(alpha: 0.3)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 8),
                       ),
@@ -364,9 +374,7 @@ class _PunishmentCard extends StatelessWidget {
       onTap: () {
         final newCompleted = (punishment.completedLines + count).clamp(0, punishment.totalLines);
         final toAdd = newCompleted - punishment.completedLines;
-        if (toAdd > 0) {
-          provider.updatePunishmentProgress(punishment.id, toAdd);
-        }
+        if (toAdd > 0) provider.updatePunishmentProgress(punishment.id, toAdd);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -382,70 +390,33 @@ class _PunishmentCard extends StatelessWidget {
 
   void _addPhoto(BuildContext context) {
     if (kIsWeb) {
-      _showWebPhotoDialog(context);
+      _pickImage(context, ImageSource.gallery);
     } else {
-      _showPhotoSourceDialog(context);
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF162033),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Ajouter une preuve', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.camera_alt_rounded, color: Colors.blue)),
+                title: const Text('Camera', style: TextStyle(color: Colors.white)),
+                onTap: () { Navigator.pop(ctx); _pickImage(context, ImageSource.camera); },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.photo_library_rounded, color: Colors.purple)),
+                title: const Text('Galerie', style: TextStyle(color: Colors.white)),
+                onTap: () { Navigator.pop(ctx); _pickImage(context, ImageSource.gallery); },
+              ),
+            ],
+          ),
+        ),
+      );
     }
-  }
-
-  void _showWebPhotoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF162033),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Ajouter une preuve', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.photo_library_rounded, color: Colors.blue),
-              ),
-              title: const Text('Galerie', style: TextStyle(color: Colors.white)),
-              onTap: () { Navigator.pop(ctx); _pickImage(context, ImageSource.gallery); },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showPhotoSourceDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF162033),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Ajouter une preuve', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.camera_alt_rounded, color: Colors.blue),
-              ),
-              title: const Text('Camera', style: TextStyle(color: Colors.white)),
-              onTap: () { Navigator.pop(ctx); _pickImage(context, ImageSource.camera); },
-            ),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.photo_library_rounded, color: Colors.purple),
-              ),
-              title: const Text('Galerie', style: TextStyle(color: Colors.white)),
-              onTap: () { Navigator.pop(ctx); _pickImage(context, ImageSource.gallery); },
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _pickImage(BuildContext context, ImageSource source) async {
@@ -457,22 +428,14 @@ class _PunishmentCard extends StatelessWidget {
         final b64 = base64Encode(bytes);
         provider.addPhotoToPunishment(punishment.id, b64);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(children: [Icon(Icons.check_circle, color: Colors.white, size: 18), SizedBox(width: 8), Text('Preuve photo ajoutee')]),
-              backgroundColor: const Color(0xFF00E676),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Row(children: [Icon(Icons.check_circle, color: Colors.white, size: 18), SizedBox(width: 8), Text('Preuve photo ajoutee')]),
+            backgroundColor: const Color(0xFF00E676), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ));
         }
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
-        );
-      }
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red));
     }
   }
 
@@ -487,59 +450,35 @@ class _PunishmentCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.photo_library_rounded, color: Colors.blue, size: 22),
-                  const SizedBox(width: 8),
-                  const Expanded(child: Text('Preuves photos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
-                  IconButton(icon: const Icon(Icons.close, color: Colors.grey), onPressed: () => Navigator.pop(ctx)),
-                ],
-              ),
+              Row(children: [
+                const Icon(Icons.photo_library_rounded, color: Colors.blue, size: 22),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Preuves photos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
+                IconButton(icon: const Icon(Icons.close, color: Colors.grey), onPressed: () => Navigator.pop(ctx)),
+              ]),
               const SizedBox(height: 12),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
                 child: ListView.builder(
                   shrinkWrap: true,
                   itemCount: punishment.photoUrls.length,
-                  itemBuilder: (_, i) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: GestureDetector(
-                              onTap: () => _showFullPhoto(context, punishment.photoUrls[i]),
-                              child: Image.memory(
-                                base64Decode(punishment.photoUrls[i]),
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  height: 100,
-                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.grey[900]),
-                                  child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 4, right: 4,
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.pop(ctx);
-                                _confirmDeletePhoto(context, i);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), shape: BoxShape.circle),
-                                child: const Icon(Icons.delete_rounded, color: Color(0xFFFF1744), size: 18),
-                              ),
-                            ),
-                          ),
-                        ],
+                  itemBuilder: (_, i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Stack(children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: GestureDetector(
+                          onTap: () => _showFullPhoto(context, punishment.photoUrls[i]),
+                          child: Image.memory(base64Decode(punishment.photoUrls[i]), width: double.infinity, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(height: 100, decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.grey[900]), child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)))),
+                        ),
                       ),
-                    );
-                  },
+                      Positioned(top: 4, right: 4, child: GestureDetector(
+                        onTap: () { Navigator.pop(ctx); _confirmDeletePhoto(context, i); },
+                        child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), shape: BoxShape.circle), child: const Icon(Icons.delete_rounded, color: Color(0xFFFF1744), size: 18)),
+                      )),
+                    ]),
+                  ),
                 ),
               ),
             ],
@@ -550,50 +489,25 @@ class _PunishmentCard extends StatelessWidget {
   }
 
   void _showFullPhoto(BuildContext context, String photoB64) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.black,
-        insetPadding: const EdgeInsets.all(8),
-        child: Stack(
-          children: [
-            InteractiveViewer(
-              child: Image.memory(base64Decode(photoB64), fit: BoxFit.contain),
-            ),
-            Positioned(
-              top: 8, right: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    showDialog(context: context, builder: (ctx) => Dialog(
+      backgroundColor: Colors.black, insetPadding: const EdgeInsets.all(8),
+      child: Stack(children: [
+        InteractiveViewer(child: Image.memory(base64Decode(photoB64), fit: BoxFit.contain)),
+        Positioned(top: 8, right: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 28), onPressed: () => Navigator.pop(ctx))),
+      ]),
+    ));
   }
 
   void _confirmDeletePhoto(BuildContext context, int index) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF162033),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Supprimer la photo ?', style: TextStyle(color: Colors.white)),
-        content: const Text('Cette action est irreversible.', style: TextStyle(color: Colors.grey)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF1744)),
-            onPressed: () {
-              provider.removePhotoFromPunishment(punishment.id, index);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
-    );
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF162033), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Supprimer la photo ?', style: TextStyle(color: Colors.white)),
+      content: const Text('Cette action est irreversible.', style: TextStyle(color: Colors.grey)),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+        FilledButton(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF1744)), onPressed: () { provider.removePhotoFromPunishment(punishment.id, index); Navigator.pop(ctx); }, child: const Text('Supprimer')),
+      ],
+    ));
   }
 
   void _showUseImmunityDialog(BuildContext context, List<ImmunityLines> immunities) {
@@ -616,8 +530,8 @@ class _PunishmentCard extends StatelessWidget {
             title: Row(children: [
               Container(
                 width: 36, height: 36,
-                decoration: BoxDecoration(color: const Color(0xFFFFD740).withValues(alpha: 0.12), shape: BoxShape.circle, border: Border.all(color: const Color(0xFFFFD740).withValues(alpha: 0.3))),
-                child: const Icon(Icons.shield_rounded, color: Color(0xFFFFD740), size: 18),
+                decoration: BoxDecoration(color: const Color(0xFF00E676).withValues(alpha: 0.12), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.3))),
+                child: const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 18),
               ),
               const SizedBox(width: 10),
               const Expanded(child: Text('Utiliser immunite', style: TextStyle(color: Colors.white, fontSize: 16))),
@@ -629,11 +543,7 @@ class _PunishmentCard extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: const Color(0xFFFF6E40).withValues(alpha: 0.08),
-                      border: Border.all(color: const Color(0xFFFF6E40).withValues(alpha: 0.2)),
-                    ),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0xFFFF6E40).withValues(alpha: 0.08), border: Border.all(color: const Color(0xFFFF6E40).withValues(alpha: 0.2))),
                     child: Row(children: [
                       const Icon(Icons.edit_note_rounded, color: Color(0xFFFF6E40), size: 18),
                       const SizedBox(width: 8),
@@ -646,29 +556,25 @@ class _PunishmentCard extends StatelessWidget {
                   ...immunities.map((im) {
                     final isSelected = selectedImmunity?.id == im.id;
                     return GestureDetector(
-                      onTap: () => setState(() {
-                        selectedImmunity = im;
-                        linesCtrl.clear();
-                        linesToUse = 0;
-                      }),
+                      onTap: () => setState(() { selectedImmunity = im; linesCtrl.clear(); linesToUse = 0; }),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          color: isSelected ? const Color(0xFFFFD740).withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.03),
-                          border: Border.all(color: isSelected ? const Color(0xFFFFD740).withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.06)),
+                          color: isSelected ? const Color(0xFF00E676).withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.03),
+                          border: Border.all(color: isSelected ? const Color(0xFF00E676).withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.06)),
                         ),
                         child: Row(children: [
-                          Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? const Color(0xFFFFD740) : Colors.grey, size: 20),
+                          Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? const Color(0xFF00E676) : Colors.grey, size: 20),
                           const SizedBox(width: 8),
-                          Text(im.immunityEmoji, style: const TextStyle(fontSize: 18)),
+                          const Text('\u{1F6E1}', style: TextStyle(fontSize: 18)),
                           const SizedBox(width: 8),
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(im.immunityLabel, style: TextStyle(color: isSelected ? const Color(0xFFFFD740) : Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                            Text(im.reason, style: TextStyle(color: isSelected ? const Color(0xFF00E676) : Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
                             Text('${im.availableLines} lignes disponibles', style: TextStyle(color: Colors.grey[500], fontSize: 11)),
                             if (im.expiresAt != null)
-                              Text('Expire le ${im.expiresAt!.day}/${im.expiresAt!.month}/${im.expiresAt!.year}', style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+                              Text(im.expiresLabel, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
                           ])),
                         ]),
                       ),
@@ -683,35 +589,21 @@ class _PunishmentCard extends StatelessWidget {
                     style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
-                      hintText: 'Ex: 20',
-                      hintStyle: TextStyle(color: Colors.grey[700]),
-                      helperText: 'Max: $maxUsable lignes',
-                      helperStyle: TextStyle(color: Colors.grey[600], fontSize: 11),
+                      hintText: 'Ex: 20', hintStyle: TextStyle(color: Colors.grey[700]),
+                      helperText: 'Max: $maxUsable lignes', helperStyle: TextStyle(color: Colors.grey[600], fontSize: 11),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFFFD740))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF00E676))),
                     ),
-                    onChanged: (val) {
-                      setState(() {
-                        linesToUse = (int.tryParse(val) ?? 0).clamp(0, maxUsable);
-                      });
-                    },
+                    onChanged: (val) => setState(() { linesToUse = (int.tryParse(val) ?? 0).clamp(0, maxUsable); }),
                   ),
                   const SizedBox(height: 12),
                   if (linesToUse > 0)
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(colors: [const Color(0xFF00E676).withValues(alpha: 0.1), const Color(0xFFFFD740).withValues(alpha: 0.05)]),
-                        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.2)),
-                      ),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), gradient: LinearGradient(colors: [const Color(0xFF00E676).withValues(alpha: 0.1), const Color(0xFF00E676).withValues(alpha: 0.03)]), border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.2))),
                       child: Column(children: [
-                        Row(children: [
-                          const Icon(Icons.info_outline_rounded, color: Color(0xFF00E676), size: 16),
-                          const SizedBox(width: 8),
-                          const Expanded(child: Text('Resume :', style: TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.w600))),
-                        ]),
+                        Row(children: [const Icon(Icons.info_outline_rounded, color: Color(0xFF00E676), size: 16), const SizedBox(width: 8), const Expanded(child: Text('Resume :', style: TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.w600)))]),
                         const SizedBox(height: 8),
                         Text('$linesToUse lignes deduites de la punition', style: const TextStyle(color: Colors.white, fontSize: 13)),
                         const SizedBox(height: 4),
@@ -724,28 +616,15 @@ class _PunishmentCard extends StatelessWidget {
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Annuler', style: TextStyle(color: Colors.grey[500]))),
               FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: linesToUse > 0 ? const Color(0xFFFFD740) : Colors.grey[800],
-                  foregroundColor: Colors.black,
-                ),
-                onPressed: linesToUse > 0 && selectedImmunity != null
-                    ? () {
-                        provider.useImmunityOnPunishment(selectedImmunity!.id, punishment.id, linesToUse);
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(children: [
-                              const Text('\u{1F6E1}', style: TextStyle(fontSize: 20)),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text('$linesToUse lignes deduites grace a l\'immunite !')),
-                            ]),
-                            backgroundColor: const Color(0xFFFFD740),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                      }
-                    : null,
+                style: FilledButton.styleFrom(backgroundColor: linesToUse > 0 ? const Color(0xFF00E676) : Colors.grey[800], foregroundColor: Colors.black),
+                onPressed: linesToUse > 0 && selectedImmunity != null ? () {
+                  provider.useImmunityOnPunishment(selectedImmunity!.id, punishment.id, linesToUse);
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Row(children: [const Text('\u{1F6E1}', style: TextStyle(fontSize: 20)), const SizedBox(width: 8), Expanded(child: Text('$linesToUse lignes deduites !'))]),
+                    backgroundColor: const Color(0xFF00E676), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ));
+                } : null,
                 icon: const Icon(Icons.shield_rounded, size: 16),
                 label: Text(linesToUse > 0 ? 'Utiliser $linesToUse lignes' : 'Choisir un nombre'),
               ),
