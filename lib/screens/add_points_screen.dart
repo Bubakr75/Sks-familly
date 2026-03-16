@@ -16,7 +16,7 @@ class AddPointsScreen extends StatefulWidget {
 }
 
 class _AddPointsScreenState extends State<AddPointsScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   String? _selectedChildId;
   int _points = 5;
   bool _isBonus = true;
@@ -53,12 +53,23 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _submitAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 300));
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _submitAnim.stop();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _reasonController.dispose();
     _submitAnim.dispose();
     super.dispose();
@@ -249,6 +260,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ── Titre ──
                         Row(
                           children: [
                             GlowIcon(
@@ -272,6 +284,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                         const SizedBox(height: 20),
 
+                        // ── Sélection enfant (CORRIGÉ : plus de débordement) ──
                         NeonText(
                             text: 'Choisir un enfant',
                             fontSize: 14,
@@ -279,19 +292,22 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                             glowIntensity: 0.1),
                         const SizedBox(height: 10),
                         SizedBox(
-                          height: 88,
-                          child: ListView(
+                          height: 96,
+                          child: ListView.builder(
                             scrollDirection: Axis.horizontal,
-                            children: provider.children.map((c) {
+                            itemCount: provider.children.length,
+                            itemBuilder: (context, index) {
+                              final c = provider.children[index];
                               final isSelected = _selectedChildId == c.id;
                               return GestureDetector(
                                 onTap: () =>
                                     setState(() => _selectedChildId = c.id),
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 250),
+                                  width: 80,
                                   margin: const EdgeInsets.only(right: 12),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 10),
+                                      horizontal: 6, vertical: 10),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? primary.withValues(alpha: 0.15)
@@ -323,27 +339,34 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                           style:
                                               const TextStyle(fontSize: 28)),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        c.name,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.w500,
-                                          color: isSelected
-                                              ? primary
-                                              : Colors.white70,
+                                      SizedBox(
+                                        width: 68,
+                                        child: Text(
+                                          c.name,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.w500,
+                                            color: isSelected
+                                                ? primary
+                                                : Colors.white70,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                               );
-                            }).toList(),
+                            },
                           ),
                         ),
                         const SizedBox(height: 20),
 
+                        // ── Bonus / Pénalité ──
                         Row(
                           children: [
                             Expanded(
@@ -373,6 +396,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                         const SizedBox(height: 20),
 
+                        // ── Raisons rapides ──
                         NeonText(
                             text: 'Raison rapide',
                             fontSize: 14,
@@ -450,6 +474,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                         const SizedBox(height: 16),
 
+                        // ── Raison personnalisée ──
                         TextField(
                           controller: _reasonController,
                           style: const TextStyle(color: Colors.white),
@@ -464,6 +489,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                         const SizedBox(height: 24),
 
+                        // ── Photo preuve (pénalité uniquement) ──
                         if (!_isBonus) ...[
                           NeonText(
                             text: 'Photo preuve (optionnel)',
@@ -476,6 +502,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                           const SizedBox(height: 24),
                         ],
 
+                        // ── Nombre de points ──
                         NeonText(
                             text: 'Nombre de points',
                             fontSize: 14,
@@ -550,6 +577,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                         const SizedBox(height: 14),
 
+                        // ── Raccourcis points ──
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [1, 3, 5, 10, 20, 50].map((v) {
@@ -599,6 +627,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                         const SizedBox(height: 28),
 
+                        // ── Bouton valider ──
                         SizedBox(
                           width: double.infinity,
                           height: 56,
@@ -652,6 +681,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                   ),
                 ),
 
+                // ── Confettis ──
                 if (_showConfetti)
                   Positioned.fill(
                     child: IgnorePointer(
@@ -668,6 +698,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     );
   }
 
+  // ── Photo preuve ──
   Widget _buildProofPhotoSection(bool isDark) {
     if (_proofPhoto != null) {
       return GlassCard(
@@ -790,25 +821,26 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                   color: Color(0xFFFF1744), size: 22),
             ),
             const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ajouter une photo preuve',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFFF1744),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ajouter une photo preuve',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFFF1744),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Camera ou galerie',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'Camera ou galerie',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
             Icon(Icons.chevron_right_rounded,
                 color: Colors.grey[600], size: 24),
           ],
@@ -817,6 +849,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     );
   }
 
+  // ── Soumettre ──
   void _submitPoints(FamilyProvider provider) {
     final pts = _isBonus ? _points : -_points;
 
@@ -868,6 +901,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     });
   }
 
+  // ── Toggle Bonus/Pénalité ──
   Widget _buildToggle(
       String label, IconData icon, Color color, bool active, VoidCallback onTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -910,6 +944,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     );
   }
 
+  // ── Bouton +/- points ──
   Widget _buildPointButton(IconData icon, Color color, VoidCallback onTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
