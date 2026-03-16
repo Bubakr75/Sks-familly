@@ -6,7 +6,6 @@ import '../providers/theme_provider.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
-import '../widgets/neon_text.dart';
 import 'family_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -14,255 +13,251 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
-      body: Stack(
-        children: [
-          const AnimatedBackground(),
-          SafeArea(
-            child: Column(
-              children: [
-                // ── App bar ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const Icon(Icons.settings, size: 22),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Réglages',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
+      body: AnimatedBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ── App bar ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Icon(Icons.settings, size: 22),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Réglages',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                // ── Body ──
-                Expanded(
-                  child: Consumer3<ThemeProvider, PinProvider, FamilyProvider>(
-                    builder: (context, themeProv, pinProv, familyProv, _) {
-                      return ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        children: [
-                          // ═══════════ APPARENCE ═══════════
-                          const _GlassSectionTitle(icon: Icons.palette, title: 'Apparence'),
-                          const SizedBox(height: 8),
+              ),
+              const SizedBox(height: 8),
+              // ── Body ──
+              Expanded(
+                child: Consumer3<ThemeProvider, PinProvider, FamilyProvider>(
+                  builder: (context, themeProv, pinProv, familyProv, _) {
+                    return ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      children: [
+                        // ═══════════ APPARENCE ═══════════
+                        const _GlassSectionTitle(icon: Icons.palette, title: 'Apparence'),
+                        const SizedBox(height: 8),
 
-                          // Dark/Light toggle
-                          _GlassSettingsTile(
-                            icon: themeProv.isDark ? Icons.dark_mode : Icons.light_mode,
-                            title: 'Mode sombre',
-                            trailing: Switch(
-                              value: themeProv.isDark,
-                              onChanged: (_) => themeProv.toggle(),
-                            ),
+                        // Dark/Light toggle
+                        _GlassSettingsTile(
+                          icon: themeProv.isDark ? Icons.dark_mode : Icons.light_mode,
+                          title: 'Mode sombre',
+                          trailing: Switch(
+                            value: themeProv.isDark,
+                            onChanged: (_) => themeProv.toggle(),
                           ),
-                          const SizedBox(height: 8),
+                        ),
+                        const SizedBox(height: 8),
 
-                          // Accent color picker
-                          GlassCard(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.color_lens, color: themeProv.primaryColor, size: 20),
-                                      const SizedBox(width: 10),
-                                      const Text('Couleur d\'accent', style: TextStyle(fontWeight: FontWeight.w600)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Wrap(
-                                    spacing: 10,
-                                    runSpacing: 10,
-                                    children: List.generate(ThemeProvider.accentColors.length, (i) {
-                                      final color = ThemeProvider.accentColors[i];
-                                      final selected = i == themeProv.colorIndex;
-                                      return GestureDetector(
-                                        onTap: () => themeProv.setColorIndex(i),
-                                        child: AnimatedContainer(
-                                          duration: const Duration(milliseconds: 300),
-                                          width: 40,
-                                          height: 40,
-                                          decoration: BoxDecoration(
-                                            color: color,
-                                            shape: BoxShape.circle,
-                                            border: selected
-                                                ? Border.all(color: Colors.white, width: 3)
-                                                : null,
-                                            boxShadow: selected
-                                                ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 12)]
-                                                : [],
-                                          ),
-                                          child: selected
-                                              ? const Icon(Icons.check, color: Colors.white, size: 20)
+                        // Accent color picker
+                        GlassCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.color_lens, color: themeProv.primaryColor, size: 20),
+                                    const SizedBox(width: 10),
+                                    const Text('Couleur d\'accent', style: TextStyle(fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: List.generate(ThemeProvider.accentColors.length, (i) {
+                                    final color = ThemeProvider.accentColors[i];
+                                    final selected = i == themeProv.colorIndex;
+                                    return GestureDetector(
+                                      onTap: () => themeProv.setColorIndex(i),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: color,
+                                          shape: BoxShape.circle,
+                                          border: selected
+                                              ? Border.all(color: Colors.white, width: 3)
                                               : null,
+                                          boxShadow: selected
+                                              ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 12)]
+                                              : [],
                                         ),
-                                      );
-                                    }),
-                                  ),
-                                ],
-                              ),
+                                        child: selected
+                                            ? const Icon(Icons.check, color: Colors.white, size: 20)
+                                            : null,
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
+                        ),
+                        const SizedBox(height: 8),
 
-                          // Background color picker
-                          GlassCard(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Row(
-                                    children: [
-                                      Icon(Icons.wallpaper, color: Colors.white70, size: 20),
-                                      SizedBox(width: 10),
-                                      Text('Fond d\'écran', style: TextStyle(fontWeight: FontWeight.w600)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Wrap(
-                                    spacing: 10,
-                                    runSpacing: 10,
-                                    children: List.generate(ThemeProvider.backgroundColors.length, (i) {
-                                      final bg = ThemeProvider.backgroundColors[i];
-                                      final selected = i == themeProv.bgIndex;
-                                      return GestureDetector(
-                                        onTap: () => themeProv.setBgIndex(i),
-                                        child: Column(
-                                          children: [
-                                            AnimatedContainer(
-                                              duration: const Duration(milliseconds: 300),
-                                              width: 44,
-                                              height: 44,
-                                              decoration: BoxDecoration(
-                                                color: bg['color'] as Color,
-                                                shape: BoxShape.circle,
-                                                border: selected
-                                                    ? Border.all(color: themeProv.primaryColor, width: 3)
-                                                    : Border.all(color: Colors.white24, width: 1),
-                                                boxShadow: selected
-                                                    ? [BoxShadow(color: (bg['color'] as Color).withOpacity(0.5), blurRadius: 10)]
-                                                    : [],
-                                              ),
-                                              child: selected
-                                                  ? Icon(Icons.check, color: themeProv.primaryColor, size: 18)
-                                                  : null,
+                        // Background color picker
+                        GlassCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.wallpaper, color: Colors.white70, size: 20),
+                                    SizedBox(width: 10),
+                                    Text('Fond d\'écran', style: TextStyle(fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: List.generate(ThemeProvider.backgroundColors.length, (i) {
+                                    final bg = ThemeProvider.backgroundColors[i];
+                                    final selected = i == themeProv.bgIndex;
+                                    return GestureDetector(
+                                      onTap: () => themeProv.setBgIndex(i),
+                                      child: Column(
+                                        children: [
+                                          AnimatedContainer(
+                                            duration: const Duration(milliseconds: 300),
+                                            width: 44,
+                                            height: 44,
+                                            decoration: BoxDecoration(
+                                              color: bg['color'] as Color,
+                                              shape: BoxShape.circle,
+                                              border: selected
+                                                  ? Border.all(color: themeProv.primaryColor, width: 3)
+                                                  : Border.all(color: Colors.white24, width: 1),
+                                              boxShadow: selected
+                                                  ? [BoxShadow(color: (bg['color'] as Color).withOpacity(0.5), blurRadius: 10)]
+                                                  : [],
                                             ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              bg['label'] as String,
-                                              style: const TextStyle(fontSize: 10, color: Colors.white60),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                ],
-                              ),
+                                            child: selected
+                                                ? Icon(Icons.check, color: themeProv.primaryColor, size: 18)
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            bg['label'] as String,
+                                            style: const TextStyle(fontSize: 10, color: Colors.white60),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // ═══════════ FAMILLE ═══════════
-                          const _GlassSectionTitle(icon: Icons.family_restroom, title: 'Famille'),
-                          const SizedBox(height: 8),
-                          _GlassSettingsTile(
-                            icon: Icons.cloud_sync,
-                            title: 'Synchronisation',
-                            subtitle: familyProv.isSynced ? 'Connecté' : 'Hors ligne',
-                            trailing: Icon(
-                              familyProv.isSynced ? Icons.cloud_done : Icons.cloud_off,
-                              color: familyProv.isSynced ? Colors.greenAccent : Colors.redAccent,
-                            ),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const FamilyScreen()),
-                            ),
+                        // ═══════════ FAMILLE ═══════════
+                        const _GlassSectionTitle(icon: Icons.family_restroom, title: 'Famille'),
+                        const SizedBox(height: 8),
+                        _GlassSettingsTile(
+                          icon: Icons.cloud_sync,
+                          title: 'Synchronisation',
+                          subtitle: familyProv.familyId != null ? 'Connecté' : 'Hors ligne',
+                          trailing: Icon(
+                            familyProv.familyId != null ? Icons.cloud_done : Icons.cloud_off,
+                            color: familyProv.familyId != null ? Colors.greenAccent : Colors.redAccent,
                           ),
-                          const SizedBox(height: 16),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const FamilyScreen()),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // ═══════════ SÉCURITÉ ═══════════
-                          const _GlassSectionTitle(icon: Icons.security, title: 'Sécurité'),
-                          const SizedBox(height: 8),
-                          _GlassSettingsTile(
-                            icon: Icons.lock,
-                            title: 'Code parental',
-                            subtitle: pinProv.hasPin ? 'Activé' : 'Non défini',
-                            trailing: Icon(
-                              pinProv.hasPin ? Icons.lock : Icons.lock_open,
-                              color: pinProv.hasPin ? Colors.greenAccent : Colors.orangeAccent,
-                            ),
-                            onTap: () => _showPinSetup(context, pinProv),
+                        // ═══════════ SÉCURITÉ ═══════════
+                        const _GlassSectionTitle(icon: Icons.security, title: 'Sécurité'),
+                        const SizedBox(height: 8),
+                        _GlassSettingsTile(
+                          icon: Icons.lock,
+                          title: 'Code parental',
+                          subtitle: pinProv.isPinSet ? 'Activé' : 'Non défini',
+                          trailing: Icon(
+                            pinProv.isPinSet ? Icons.lock : Icons.lock_open,
+                            color: pinProv.isPinSet ? Colors.greenAccent : Colors.orangeAccent,
                           ),
-                          const SizedBox(height: 8),
-                          _GlassSettingsTile(
-                            icon: pinProv.isParentMode ? Icons.admin_panel_settings : Icons.child_care,
-                            title: 'Mode actuel',
-                            subtitle: pinProv.isParentMode ? 'Mode parent' : 'Mode enfant',
-                            trailing: Switch(
-                              value: pinProv.isParentMode,
-                              onChanged: (val) {
-                                if (val) {
-                                  PinGuard.check(context, () {});
-                                } else {
-                                  pinProv.setParentMode(false);
-                                }
-                              },
-                            ),
+                          onTap: () => _showPinSetup(context, pinProv),
+                        ),
+                        const SizedBox(height: 8),
+                        _GlassSettingsTile(
+                          icon: pinProv.isParentMode ? Icons.admin_panel_settings : Icons.child_care,
+                          title: 'Mode actuel',
+                          subtitle: pinProv.isParentMode ? 'Mode parent' : 'Mode enfant',
+                          trailing: Switch(
+                            value: pinProv.isParentMode,
+                            onChanged: (val) {
+                              if (val) {
+                                PinGuard.guardAction(context, () {});
+                              } else {
+                                pinProv.lockParentMode();
+                              }
+                            },
                           ),
-                          const SizedBox(height: 16),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // ═══════════ DONNÉES ═══════════
-                          const _GlassSectionTitle(icon: Icons.storage, title: 'Données'),
-                          const SizedBox(height: 8),
-                          _GlassSettingsTile(
-                            icon: Icons.restart_alt,
-                            title: 'Réinitialiser les scores',
-                            subtitle: 'Remet tous les points à zéro',
-                            onTap: () => PinGuard.check(context, () => _confirmResetScores(context, familyProv)),
-                          ),
-                          const SizedBox(height: 8),
-                          _GlassSettingsTile(
-                            icon: Icons.delete_sweep,
-                            title: 'Effacer l\'historique',
-                            subtitle: 'Supprime tout l\'historique',
-                            onTap: () => PinGuard.check(context, () => _confirmClearHistory(context, familyProv)),
-                          ),
-                          const SizedBox(height: 16),
+                        // ═══════════ DONNÉES ═══════════
+                        const _GlassSectionTitle(icon: Icons.storage, title: 'Données'),
+                        const SizedBox(height: 8),
+                        _GlassSettingsTile(
+                          icon: Icons.restart_alt,
+                          title: 'Réinitialiser les scores',
+                          subtitle: 'Remet tous les points à zéro',
+                          onTap: () => PinGuard.guardAction(context, () => _confirmResetScores(context, familyProv)),
+                        ),
+                        const SizedBox(height: 8),
+                        _GlassSettingsTile(
+                          icon: Icons.delete_sweep,
+                          title: 'Effacer l\'historique',
+                          subtitle: 'Supprime tout l\'historique',
+                          onTap: () => PinGuard.guardAction(context, () => _confirmClearHistory(context, familyProv)),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // ═══════════ À PROPOS ═══════════
-                          const _GlassSectionTitle(icon: Icons.info_outline, title: 'À propos'),
-                          const SizedBox(height: 8),
-                          _GlassSettingsTile(
-                            icon: Icons.phone_android,
-                            title: 'SKS Family',
-                            subtitle: 'Version 1.0.0',
-                          ),
-                          const SizedBox(height: 8),
-                          _GlassSettingsTile(
-                            icon: Icons.people,
-                            title: 'Famille',
-                            subtitle: '${familyProv.children.length} enfant(s)',
-                          ),
-                          const SizedBox(height: 32),
-                        ],
-                      );
-                    },
-                  ),
+                        // ═══════════ À PROPOS ═══════════
+                        const _GlassSectionTitle(icon: Icons.info_outline, title: 'À propos'),
+                        const SizedBox(height: 8),
+                        _GlassSettingsTile(
+                          icon: Icons.phone_android,
+                          title: 'SKS Family',
+                          subtitle: 'Version 1.0.0',
+                        ),
+                        const SizedBox(height: 8),
+                        _GlassSettingsTile(
+                          icon: Icons.people,
+                          title: 'Famille',
+                          subtitle: '${familyProv.children.length} enfant(s)',
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -279,7 +274,7 @@ class SettingsScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              pinProv.hasPin ? 'Modifier le code parental' : 'Créer un code parental',
+              pinProv.isPinSet ? 'Modifier le code parental' : 'Créer un code parental',
               style: const TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 16),
@@ -309,7 +304,7 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Annuler'),
           ),
-          if (pinProv.hasPin)
+          if (pinProv.isPinSet)
             TextButton(
               onPressed: () {
                 pinProv.removePin();
