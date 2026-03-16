@@ -53,7 +53,6 @@ class FamilyProvider extends ChangeNotifier {
     _immunitiesBox = await Hive.openBox('immunities');
     _notesBox = await Hive.openBox('notes');
     _loadLocalData();
-
     _firestore.onChildrenChanged = _onCloudChildrenChanged;
     _firestore.onHistoryChanged = _onCloudHistoryChanged;
     _firestore.onGoalsChanged = _onCloudGoalsChanged;
@@ -63,24 +62,12 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   void _loadLocalData() {
-    _children = _childrenBox.values
-        .map((e) => ChildModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
-        .toList();
-    _history = _historyBox.values
-        .map((e) => HistoryEntry.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
-        .toList();
-    _goals = _goalsBox.values
-        .map((e) => GoalModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
-        .toList();
-    _punishments = _punishmentsBox.values
-        .map((e) => PunishmentLines.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
-        .toList();
-    _immunities = _immunitiesBox.values
-        .map((e) => ImmunityLines.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
-        .toList();
-    _notes = _notesBox.values
-        .map((e) => NoteModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
-        .toList();
+    _children = _childrenBox.values.map((e) => ChildModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
+    _history = _historyBox.values.map((e) => HistoryEntry.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
+    _goals = _goalsBox.values.map((e) => GoalModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
+    _punishments = _punishmentsBox.values.map((e) => PunishmentLines.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
+    _immunities = _immunitiesBox.values.map((e) => ImmunityLines.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
+    _notes = _notesBox.values.map((e) => NoteModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
     _notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     _history.sort((a, b) => b.date.compareTo(a.date));
     notifyListeners();
@@ -100,9 +87,7 @@ class FamilyProvider extends ChangeNotifier {
           final key = '${child.id}_$badgeId';
           if (!_knownBadgeKeys.contains(key)) {
             final badge = BadgeModel.defaultBadges.where((b) => b.id == badgeId).firstOrNull;
-            if (badge != null) {
-              NotificationService.notifyBadge(child.name, badge.name);
-            }
+            if (badge != null) NotificationService.notifyBadge(child.name, badge.name);
           }
         }
       }
@@ -114,11 +99,7 @@ class FamilyProvider extends ChangeNotifier {
       }
     }
     _children = cloudChildren;
-    _childrenBox.clear().then((_) {
-      for (var c in _children) {
-        _childrenBox.put(c.id, jsonEncode(c.toMap()));
-      }
-    });
+    _childrenBox.clear().then((_) { for (var c in _children) _childrenBox.put(c.id, jsonEncode(c.toMap())); });
     notifyListeners();
   }
 
@@ -137,15 +118,9 @@ class FamilyProvider extends ChangeNotifier {
       }
     }
     _knownHistoryIds.clear();
-    for (final h in cloudHistory) {
-      _knownHistoryIds.add(h.id);
-    }
+    for (final h in cloudHistory) _knownHistoryIds.add(h.id);
     _history = cloudHistory;
-    _historyBox.clear().then((_) {
-      for (var h in _history) {
-        _historyBox.put(h.id, jsonEncode(h.toMap()));
-      }
-    });
+    _historyBox.clear().then((_) { for (var h in _history) _historyBox.put(h.id, jsonEncode(h.toMap())); });
     if (!_initialLoadDone) _initialLoadDone = true;
     notifyListeners();
   }
@@ -155,21 +130,14 @@ class FamilyProvider extends ChangeNotifier {
       for (final goal in cloudGoals) {
         if (goal.completed && !_knownGoalCompletions.contains(goal.id)) {
           final child = _children.where((c) => c.id == goal.childId).firstOrNull;
-          final childName = child?.name ?? 'Enfant';
-          NotificationService.notifyGoalCompleted(childName, goal.title);
+          NotificationService.notifyGoalCompleted(child?.name ?? 'Enfant', goal.title);
         }
       }
     }
     _knownGoalCompletions.clear();
-    for (final g in cloudGoals) {
-      if (g.completed) _knownGoalCompletions.add(g.id);
-    }
+    for (final g in cloudGoals) { if (g.completed) _knownGoalCompletions.add(g.id); }
     _goals = cloudGoals;
-    _goalsBox.clear().then((_) {
-      for (var g in _goals) {
-        _goalsBox.put(g.id, jsonEncode(g.toMap()));
-      }
-    });
+    _goalsBox.clear().then((_) { for (var g in _goals) _goalsBox.put(g.id, jsonEncode(g.toMap())); });
     notifyListeners();
   }
 
@@ -178,54 +146,34 @@ class FamilyProvider extends ChangeNotifier {
       for (final p in cloudPunishments) {
         if (!_knownPunishmentIds.contains(p.id)) {
           final child = _children.where((c) => c.id == p.childId).firstOrNull;
-          final childName = child?.name ?? 'Enfant';
-          NotificationService.notifyPunishment(childName, p.text, p.totalLines);
+          NotificationService.notifyPunishment(child?.name ?? 'Enfant', p.text, p.totalLines);
         } else {
           final oldProgress = _knownPunishmentProgress[p.id] ?? 0;
           if (p.completedLines > oldProgress) {
             final child = _children.where((c) => c.id == p.childId).firstOrNull;
-            final childName = child?.name ?? 'Enfant';
-            NotificationService.notifyPunishmentProgress(childName, p.completedLines, p.totalLines);
+            NotificationService.notifyPunishmentProgress(child?.name ?? 'Enfant', p.completedLines, p.totalLines);
           }
         }
       }
     }
     _knownPunishmentIds.clear();
     _knownPunishmentProgress.clear();
-    for (final p in cloudPunishments) {
-      _knownPunishmentIds.add(p.id);
-      _knownPunishmentProgress[p.id] = p.completedLines;
-    }
+    for (final p in cloudPunishments) { _knownPunishmentIds.add(p.id); _knownPunishmentProgress[p.id] = p.completedLines; }
     _punishments = cloudPunishments;
-    _punishmentsBox.clear().then((_) {
-      for (var p in _punishments) {
-        _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
-      }
-    });
+    _punishmentsBox.clear().then((_) { for (var p in _punishments) _punishmentsBox.put(p.id, jsonEncode(p.toMap())); });
     notifyListeners();
   }
 
   void _onCloudNotesChanged(List<NoteModel> cloudNotes) {
     _notes = cloudNotes;
-    _notesBox.clear().then((_) {
-      for (var n in _notes) {
-        _notesBox.put(n.id, jsonEncode(n.toMap()));
-      }
-    });
+    _notesBox.clear().then((_) { for (var n in _notes) _notesBox.put(n.id, jsonEncode(n.toMap())); });
     notifyListeners();
   }
 
   Future<String> createFamily({String? customCode}) async {
     final code = await _firestore.createFamily(customCode: customCode);
-    await _firestore.uploadLocalData(
-      children: _children,
-      history: _history,
-      goals: _goals,
-      punishments: _punishments,
-    );
-    if (_notes.isNotEmpty) {
-      await _firestore.uploadNotes(_notes);
-    }
+    await _firestore.uploadLocalData(children: _children, history: _history, goals: _goals, punishments: _punishments);
+    if (_notes.isNotEmpty) await _firestore.uploadNotes(_notes);
     notifyListeners();
     return code;
   }
@@ -236,14 +184,9 @@ class FamilyProvider extends ChangeNotifier {
     return success;
   }
 
-  Future<String?> getFamilyCode() async {
-    return _firestore.getFamilyCode();
-  }
+  Future<String?> getFamilyCode() async { return _firestore.getFamilyCode(); }
 
-  Future<void> disconnectFamily() async {
-    await _firestore.disconnectFamily();
-    notifyListeners();
-  }
+  Future<void> disconnectFamily() async { await _firestore.disconnectFamily(); notifyListeners(); }
 
   Future<void> addChild(String name, String avatar) async {
     final child = ChildModel(id: _uuid.v4(), name: name, avatar: avatar);
@@ -294,15 +237,7 @@ class FamilyProvider extends ChangeNotifier {
       _updateLevel(_children[idx]);
       _checkBadges(_children[idx]);
       await _childrenBox.put(childId, jsonEncode(_children[idx].toMap()));
-      final entry = HistoryEntry(
-        id: _uuid.v4(),
-        childId: childId,
-        points: points,
-        reason: reason,
-        category: category,
-        isBonus: isBonus,
-        proofPhotoBase64: proofPhotoBase64,
-      );
+      final entry = HistoryEntry(id: _uuid.v4(), childId: childId, points: points, reason: reason, category: category, isBonus: isBonus, proofPhotoBase64: proofPhotoBase64);
       _history.insert(0, entry);
       await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
       if (_firestore.isConnected) {
@@ -314,36 +249,22 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   void _updateLevel(ChildModel child) {
-    if (child.points >= 1000) {
-      child.level = 6;
-    } else if (child.points >= 500) {
-      child.level = 5;
-    } else if (child.points >= 200) {
-      child.level = 4;
-    } else if (child.points >= 100) {
-      child.level = 3;
-    } else if (child.points >= 50) {
-      child.level = 2;
-    } else {
-      child.level = 1;
-    }
+    if (child.points >= 1000) { child.level = 6; }
+    else if (child.points >= 500) { child.level = 5; }
+    else if (child.points >= 200) { child.level = 4; }
+    else if (child.points >= 100) { child.level = 3; }
+    else if (child.points >= 50) { child.level = 2; }
+    else { child.level = 1; }
   }
 
   void _checkBadges(ChildModel child) {
     for (final badge in BadgeModel.defaultBadges) {
-      if (child.points >= badge.requiredPoints && !child.badgeIds.contains(badge.id)) {
-        child.badgeIds.add(badge.id);
-      }
+      if (child.points >= badge.requiredPoints && !child.badgeIds.contains(badge.id)) child.badgeIds.add(badge.id);
     }
   }
 
   Future<void> resetAllScores() async {
-    for (var child in _children) {
-      child.points = 0;
-      child.level = 1;
-      child.badgeIds.clear();
-      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-    }
+    for (var child in _children) { child.points = 0; child.level = 1; child.badgeIds.clear(); await _childrenBox.put(child.id, jsonEncode(child.toMap())); }
     if (_firestore.isConnected) await _firestore.resetAllScores();
     notifyListeners();
   }
@@ -425,8 +346,8 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addImmunity(String childId, String text, int lines, String immunityType) async {
-    final im = ImmunityLines(id: _uuid.v4(), childId: childId, text: text, totalLines: lines, immunityType: immunityType);
+  Future<void> addImmunity(String childId, String text, int lines, String immunityType, {DateTime? expiresAt}) async {
+    final im = ImmunityLines(id: _uuid.v4(), childId: childId, text: text, totalLines: lines, immunityType: immunityType, expiresAt: expiresAt);
     _immunities.add(im);
     await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
     notifyListeners();
@@ -445,6 +366,28 @@ class FamilyProvider extends ChangeNotifier {
     _immunities.removeWhere((im) => im.id == imId);
     await _immunitiesBox.delete(imId);
     notifyListeners();
+  }
+
+  Future<void> useImmunityOnPunishment(String immunityId, String punishmentId, int linesToUse) async {
+    final imIdx = _immunities.indexWhere((im) => im.id == immunityId);
+    final pIdx = _punishments.indexWhere((p) => p.id == punishmentId);
+    if (imIdx == -1 || pIdx == -1) return;
+    final im = _immunities[imIdx];
+    final p = _punishments[pIdx];
+    if (!im.isUsable) return;
+    final remaining = p.totalLines - p.completedLines;
+    final actualUse = linesToUse.clamp(0, im.availableLines.clamp(0, remaining));
+    if (actualUse <= 0) return;
+    _immunities[imIdx].usedLines += actualUse;
+    _punishments[pIdx].completedLines += actualUse;
+    await _immunitiesBox.put(immunityId, jsonEncode(_immunities[imIdx].toMap()));
+    await _punishmentsBox.put(punishmentId, jsonEncode(_punishments[pIdx].toMap()));
+    if (_firestore.isConnected) await _firestore.savePunishment(_punishments[pIdx]);
+    notifyListeners();
+  }
+
+  List<ImmunityLines> getUsableImmunitiesForChild(String childId) {
+    return _immunities.where((im) => im.childId == childId && im.isUsable).toList();
   }
 
   List<ImmunityLines> getImmunitiesForChild(String childId) =>
@@ -495,27 +438,14 @@ class FamilyProvider extends ChangeNotifier {
     return childNotes;
   }
 
-  List<HistoryEntry> getHistoryForChild(String childId) =>
-      _history.where((h) => h.childId == childId).toList();
-
-  List<HistoryEntry> getHistoryForDate(DateTime date) =>
-      _history.where((h) => h.date.year == date.year && h.date.month == date.month && h.date.day == date.day).toList();
-
-  List<GoalModel> getGoalsForChild(String childId) =>
-      _goals.where((g) => g.childId == childId).toList();
-
-  List<PunishmentLines> getPunishmentsForChild(String childId) =>
-      _punishments.where((p) => p.childId == childId).toList();
-
-  List<BadgeModel> getBadgesForChild(ChildModel child) =>
-      BadgeModel.defaultBadges.where((b) => child.badgeIds.contains(b.id)).toList();
+  List<HistoryEntry> getHistoryForChild(String childId) => _history.where((h) => h.childId == childId).toList();
+  List<HistoryEntry> getHistoryForDate(DateTime date) => _history.where((h) => h.date.year == date.year && h.date.month == date.month && h.date.day == date.day).toList();
+  List<GoalModel> getGoalsForChild(String childId) => _goals.where((g) => g.childId == childId).toList();
+  List<PunishmentLines> getPunishmentsForChild(String childId) => _punishments.where((p) => p.childId == childId).toList();
+  List<BadgeModel> getBadgesForChild(ChildModel child) => BadgeModel.defaultBadges.where((b) => child.badgeIds.contains(b.id)).toList();
 
   ChildModel? getChild(String id) {
-    try {
-      return _children.firstWhere((c) => c.id == id);
-    } catch (_) {
-      return null;
-    }
+    try { return _children.firstWhere((c) => c.id == id); } catch (_) { return null; }
   }
 
   Map<String, int> getWeeklyStats(String childId) {
@@ -525,16 +455,9 @@ class FamilyProvider extends ChangeNotifier {
     final stats = <String, int>{};
     for (var i = 0; i < 7; i++) {
       final day = weekStart.add(Duration(days: i));
-      final dayHistory = _history.where((h) =>
-          h.childId == childId &&
-          h.date.year == day.year &&
-          h.date.month == day.month &&
-          h.date.day == day.day &&
-          h.isBonus);
+      final dayHistory = _history.where((h) => h.childId == childId && h.date.year == day.year && h.date.month == day.month && h.date.day == day.day && h.isBonus);
       int total = 0;
-      for (var h in dayHistory) {
-        total += h.points;
-      }
+      for (var h in dayHistory) total += h.points;
       stats[days[i]] = total;
     }
     return stats;
@@ -542,24 +465,14 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<void> _saveAllLocal() async {
     await _historyBox.clear();
-    for (var h in _history) {
-      await _historyBox.put(h.id, jsonEncode(h.toMap()));
-    }
+    for (var h in _history) await _historyBox.put(h.id, jsonEncode(h.toMap()));
     await _goalsBox.clear();
-    for (var g in _goals) {
-      await _goalsBox.put(g.id, jsonEncode(g.toMap()));
-    }
+    for (var g in _goals) await _goalsBox.put(g.id, jsonEncode(g.toMap()));
     await _punishmentsBox.clear();
-    for (var p in _punishments) {
-      await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
-    }
+    for (var p in _punishments) await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
     await _immunitiesBox.clear();
-    for (var im in _immunities) {
-      await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
-    }
+    for (var im in _immunities) await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
     await _notesBox.clear();
-    for (var n in _notes) {
-      await _notesBox.put(n.id, jsonEncode(n.toMap()));
-    }
+    for (var n in _notes) await _notesBox.put(n.id, jsonEncode(n.toMap()));
   }
 }
