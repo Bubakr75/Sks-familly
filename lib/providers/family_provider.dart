@@ -19,6 +19,7 @@ class FamilyProvider extends ChangeNotifier {
   List<PunishmentLines> _punishments = [];
   List<ImmunityLines> _immunities = [];
   List<NoteModel> _notes = [];
+  List<BadgeModel> _customBadges = [];
   final _uuid = const Uuid();
   final _firestore = FirestoreService();
 
@@ -28,6 +29,7 @@ class FamilyProvider extends ChangeNotifier {
   late Box _punishmentsBox;
   late Box _immunitiesBox;
   late Box _notesBox;
+  late Box _customBadgesBox;
 
   List<ChildModel> get children => _children;
   List<HistoryEntry> get history => _history;
@@ -38,6 +40,13 @@ class FamilyProvider extends ChangeNotifier {
 
   bool get isSyncEnabled => _firestore.isConnected;
   String? get familyId => _firestore.familyId;
+
+  List<BadgeModel> get allBadges {
+    final all = List<BadgeModel>.from(BadgeModel.defaultBadges);
+    all.addAll(_customBadges);
+    all.sort((a, b) => a.requiredPoints.compareTo(b.requiredPoints));
+    return all;
+  }
 
   List<ChildModel> get childrenSorted {
     final sorted = List<ChildModel>.from(_children);
@@ -52,6 +61,7 @@ class FamilyProvider extends ChangeNotifier {
     _punishmentsBox = await Hive.openBox('punishments');
     _immunitiesBox = await Hive.openBox('immunities');
     _notesBox = await Hive.openBox('notes');
+    _customBadgesBox = await Hive.openBox('customBadges');
     _loadLocalData();
     _firestore.onChildrenChanged = _onCloudChildrenChanged;
     _firestore.onHistoryChanged = _onCloudHistoryChanged;
@@ -68,6 +78,7 @@ class FamilyProvider extends ChangeNotifier {
     _punishments = _punishmentsBox.values.map((e) => PunishmentLines.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
     _immunities = _immunitiesBox.values.map((e) => ImmunityLines.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
     _notes = _notesBox.values.map((e) => NoteModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
+    _customBadges = _customBadgesBox.values.map((e) => BadgeModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
     _notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     _history.sort((a, b) => b.date.compareTo(a.date));
     notifyListeners();
@@ -86,7 +97,7 @@ class FamilyProvider extends ChangeNotifier {
         for (final badgeId in child.badgeIds) {
           final key = '${child.id}_$badgeId';
           if (!_knownBadgeKeys.contains(key)) {
-            final badge = BadgeModel.defaultBadges.where((b) => b.id == badgeId).firstOrNull;
+            final badge = allBadges.where((b) => b.id == badgeId).firstOrNull;
             if (badge != null) NotificationService.notifyBadge(child.name, badge.name);
           }
         }
@@ -185,9 +196,9 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<String?> getFamilyCode() async { return _firestore.getFamilyCode(); }
-
   Future<void> disconnectFamily() async { await _firestore.disconnectFamily(); notifyListeners(); }
 
+  // === CHILDREN ===
   Future<void> addChild(String name, String avatar) async {
     final child = ChildModel(id: _uuid.v4(), name: name, avatar: avatar);
     _children.add(child);
@@ -229,6 +240,7 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // === POINTS ===
   Future<void> addPoints(String childId, int points, String reason, String category, {bool isBonus = true, String? proofPhotoBase64}) async {
     final idx = _children.indexWhere((c) => c.id == childId);
     if (idx != -1) {
@@ -258,8 +270,10 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   void _checkBadges(ChildModel child) {
-    for (final badge in BadgeModel.defaultBadges) {
-      if (child.points >= badge.requiredPoints && !child.badgeIds.contains(badge.id)) child.badgeIds.add(badge.id);
+    for (final badge in allBadges) {
+      if (child.points >= badge.requiredPoints && !child.badgeIds.contains(badge.id)) {
+        child.badgeIds.add(badge.id);
+      }
     }
   }
 
@@ -276,6 +290,50 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // === CUSTOM BADGES (POUVOIRS) ===
+  Future<void> addCustomBadge(String name, String description, int requiredPoints, String powerType) async {
+    final badge = BadgeModel(
+      id: 'custom_${_uuid.v4()}',
+      name: name,
+      icon: powerType,
+      description: description,
+      requiredPoints: requiredPoints,
+      powerType: powerType,
+      isCustom: true,
+    );
+    _customBadges.add(badge);
+    await _customBadgesBox.put(badge.id, jsonEncode(badge.toMap()));
+    for (var child in _children) {
+      _checkBadges(child);
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+    }
+    notifyListeners();
+  }
+
+  Future<void> updateCustomBadge(String badgeId, String name, String description, int requiredPoints, String powerType) async {
+    final idx = _customBadges.indexWhere((b) => b.id == badgeId);
+    if (idx != -1) {
+      _customBadges[idx].name = name;
+      _customBadges[idx].description = description;
+      _customBadges[idx].requiredPoints = requiredPoints;
+      _customBadges[idx].powerType = powerType;
+      _customBadges[idx].icon = powerType;
+      await _customBadgesBox.put(badgeId, jsonEncode(_customBadges[idx].toMap()));
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeCustomBadge(String badgeId) async {
+    _customBadges.removeWhere((b) => b.id == badgeId);
+    await _customBadgesBox.delete(badgeId);
+    for (var child in _children) {
+      child.badgeIds.remove(badgeId);
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+    }
+    notifyListeners();
+  }
+
+  // === GOALS ===
   Future<void> addGoal(String childId, String title, int targetPoints) async {
     final goal = GoalModel(id: _uuid.v4(), childId: childId, title: title, targetPoints: targetPoints);
     _goals.add(goal);
@@ -301,6 +359,7 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // === PUNISHMENTS ===
   Future<void> addPunishment(String childId, String text, int lines) async {
     final p = PunishmentLines(id: _uuid.v4(), childId: childId, text: text, totalLines: lines);
     _punishments.add(p);
@@ -376,20 +435,12 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addImmunity(String childId, String text, int lines, String immunityType, {DateTime? expiresAt}) async {
-    final im = ImmunityLines(id: _uuid.v4(), childId: childId, text: text, totalLines: lines, immunityType: immunityType, expiresAt: expiresAt);
+  // === IMMUNITIES (stock de lignes gratuites) ===
+  Future<void> addImmunity(String childId, String reason, int lines, {DateTime? expiresAt}) async {
+    final im = ImmunityLines(id: _uuid.v4(), childId: childId, reason: reason, lines: lines, expiresAt: expiresAt);
     _immunities.add(im);
     await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
     notifyListeners();
-  }
-
-  Future<void> incrementImmunityLines(String imId) async {
-    final idx = _immunities.indexWhere((im) => im.id == imId);
-    if (idx != -1 && !_immunities[idx].isCompleted) {
-      _immunities[idx].completedLines++;
-      await _immunitiesBox.put(imId, jsonEncode(_immunities[idx].toMap()));
-      notifyListeners();
-    }
   }
 
   Future<void> removeImmunity(String imId) async {
@@ -416,6 +467,12 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  int getTotalAvailableImmunity(String childId) {
+    return _immunities
+        .where((im) => im.childId == childId && im.isUsable)
+        .fold<int>(0, (sum, im) => sum + im.availableLines);
+  }
+
   List<ImmunityLines> getUsableImmunitiesForChild(String childId) {
     return _immunities.where((im) => im.childId == childId && im.isUsable).toList();
   }
@@ -423,6 +480,7 @@ class FamilyProvider extends ChangeNotifier {
   List<ImmunityLines> getImmunitiesForChild(String childId) =>
       _immunities.where((im) => im.childId == childId).toList();
 
+  // === NOTES ===
   Future<void> addNote(String childId, String text, {String authorName = 'Parent'}) async {
     final note = NoteModel(id: _uuid.v4(), childId: childId, text: text, authorName: authorName);
     _notes.insert(0, note);
@@ -468,11 +526,14 @@ class FamilyProvider extends ChangeNotifier {
     return childNotes;
   }
 
+  // === QUERIES ===
   List<HistoryEntry> getHistoryForChild(String childId) => _history.where((h) => h.childId == childId).toList();
   List<HistoryEntry> getHistoryForDate(DateTime date) => _history.where((h) => h.date.year == date.year && h.date.month == date.month && h.date.day == date.day).toList();
   List<GoalModel> getGoalsForChild(String childId) => _goals.where((g) => g.childId == childId).toList();
   List<PunishmentLines> getPunishmentsForChild(String childId) => _punishments.where((p) => p.childId == childId).toList();
-  List<BadgeModel> getBadgesForChild(ChildModel child) => BadgeModel.defaultBadges.where((b) => child.badgeIds.contains(b.id)).toList();
+
+  List<BadgeModel> getBadgesForChild(ChildModel child) =>
+      allBadges.where((b) => child.badgeIds.contains(b.id)).toList();
 
   ChildModel? getChild(String id) {
     try { return _children.firstWhere((c) => c.id == id); } catch (_) { return null; }
