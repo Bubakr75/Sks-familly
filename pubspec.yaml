@@ -30,11 +30,8 @@ dependencies:
 
   # Animations avancees
   lottie: ^3.3.1
-  rive: ^0.13.22
+  rive: ^0.14.4
   sensors_plus: ^6.1.1
-
-  # Haptic feedback
-  vibration: ^2.0.0
 
 dev_dependencies:
   flutter_test:
