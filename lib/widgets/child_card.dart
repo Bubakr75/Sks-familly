@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/child_model.dart';
 import 'glass_card.dart';
 
@@ -9,6 +10,9 @@ class ChildCard extends StatefulWidget {
   final int rank;
   final VoidCallback? onTap;
   final VoidCallback? onAddPoints;
+  final VoidCallback? onRemovePoints;
+  final VoidCallback? onViewNotes;
+  final VoidCallback? onViewBadges;
 
   const ChildCard({
     super.key,
@@ -16,6 +20,9 @@ class ChildCard extends StatefulWidget {
     this.rank = 0,
     this.onTap,
     this.onAddPoints,
+    this.onRemovePoints,
+    this.onViewNotes,
+    this.onViewBadges,
   });
 
   @override
@@ -26,6 +33,14 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _borderController;
   late AnimationController _crownController;
+  late AnimationController _tiltController;
+  late AnimationController _pressController;
+
+  // Parallaxe 3D
+  double _rotateX = 0.0;
+  double _rotateY = 0.0;
+  bool _isPressed = false;
+  bool _showMenu = false;
 
   @override
   void initState() {
@@ -33,6 +48,8 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
     _borderController = AnimationController(vsync: this, duration: const Duration(milliseconds: 3000))..repeat();
     _crownController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+    _tiltController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    _pressController = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
   }
 
   @override
@@ -40,6 +57,8 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
     _pulseController.dispose();
     _borderController.dispose();
     _crownController.dispose();
+    _tiltController.dispose();
+    _pressController.dispose();
     super.dispose();
   }
 
@@ -62,6 +81,37 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
     return p != null && p.isNotEmpty && p.length > 100;
   }
 
+  void _onPanUpdate(DragUpdateDetails details) {
+    final size = context.size;
+    if (size == null) return;
+    setState(() {
+      _rotateY = ((details.localPosition.dx - size.width / 2) / size.width) * 0.15;
+      _rotateX = -((details.localPosition.dy - size.height / 2) / size.height) * 0.15;
+    });
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    setState(() {
+      _rotateX = 0;
+      _rotateY = 0;
+    });
+  }
+
+  void _onLongPress() {
+    HapticFeedback.heavyImpact();
+    setState(() => _showMenu = true);
+  }
+
+  void _hideMenu() {
+    setState(() => _showMenu = false);
+  }
+
+  void _onMenuAction(VoidCallback? action) {
+    HapticFeedback.lightImpact();
+    _hideMenu();
+    if (action != null) action();
+  }
+
   @override
   Widget build(BuildContext context) {
     final emoji = widget.child.avatar.isNotEmpty ? widget.child.avatar : '\u{1F466}';
@@ -80,64 +130,211 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
           final borderAngle = _borderController.value * 2 * pi;
 
           return GestureDetector(
-            onTap: widget.onTap,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                gradient: isTop3
-                    ? SweepGradient(
-                        center: Alignment.center,
-                        startAngle: borderAngle,
-                        endAngle: borderAngle + pi * 2,
-                        colors: [
-                          _rankPrimary,
-                          _rankPrimary.withValues(alpha: 0.3),
-                          _rankSecondary,
-                          _rankPrimary.withValues(alpha: 0.3),
-                          _rankPrimary,
-                        ],
-                      )
-                    : null,
-                boxShadow: isFirst && isDark
-                    ? [BoxShadow(color: _rankPrimary.withValues(alpha: 0.15 + pulseVal * 0.15), blurRadius: 20 + pulseVal * 10, spreadRadius: -2)]
-                    : isTop3 && isDark
-                        ? [BoxShadow(color: _rankPrimary.withValues(alpha: 0.12), blurRadius: 12, spreadRadius: -2)]
-                        : null,
-              ),
-              child: Container(
-                margin: EdgeInsets.all(isTop3 ? 2.0 : 0.0),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: isDark ? Colors.black.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.92),
-                  border: isTop3 ? null : Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.withValues(alpha: 0.15)),
-                ),
-                child: Row(
-                  children: [
-                    _buildAvatar(emoji, isDark, primary, pulseVal),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildNameRow(isDark, primary),
-                          const SizedBox(height: 10),
-                          _buildProgressBar(isDark, primary),
-                          const SizedBox(height: 8),
-                          _buildPointsRow(isDark, primary),
-                        ],
-                      ),
-                    ),
-                    if (widget.onAddPoints != null) ...[
-                      const SizedBox(width: 8),
-                      _buildAddButton(isDark, primary),
-                    ],
-                  ],
-                ),
+            onTap: _showMenu ? _hideMenu : widget.onTap,
+            onLongPress: _onLongPress,
+            onPanUpdate: _showMenu ? null : _onPanUpdate,
+            onPanEnd: _showMenu ? null : _onPanEnd,
+            child: AnimatedScale(
+              scale: _isPressed ? 0.97 : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: _rotateX),
+                duration: const Duration(milliseconds: 150),
+                builder: (context, rx, child) {
+                  return TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: _rotateY),
+                    duration: const Duration(milliseconds: 150),
+                    builder: (context, ry, child) {
+                      return Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, 0.001)
+                          ..rotateX(rx)
+                          ..rotateY(ry),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Carte principale
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(22),
+                                gradient: isTop3
+                                    ? SweepGradient(
+                                        center: Alignment.center,
+                                        startAngle: borderAngle,
+                                        endAngle: borderAngle + pi * 2,
+                                        colors: [
+                                          _rankPrimary,
+                                          _rankPrimary.withValues(alpha: 0.3),
+                                          _rankSecondary,
+                                          _rankPrimary.withValues(alpha: 0.3),
+                                          _rankPrimary,
+                                        ],
+                                      )
+                                    : null,
+                                boxShadow: isFirst && isDark
+                                    ? [BoxShadow(color: _rankPrimary.withValues(alpha: 0.15 + pulseVal * 0.15), blurRadius: 20 + pulseVal * 10, spreadRadius: -2)]
+                                    : isTop3 && isDark
+                                        ? [BoxShadow(color: _rankPrimary.withValues(alpha: 0.12), blurRadius: 12, spreadRadius: -2)]
+                                        : null,
+                              ),
+                              child: Container(
+                                margin: EdgeInsets.all(isTop3 ? 2.0 : 0.0),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  color: isDark ? Colors.black.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.92),
+                                  border: isTop3 ? null : Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.withValues(alpha: 0.15)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    _buildAvatar(emoji, isDark, primary, pulseVal),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          _buildNameRow(isDark, primary),
+                                          const SizedBox(height: 10),
+                                          _buildProgressBar(isDark, primary),
+                                          const SizedBox(height: 8),
+                                          _buildPointsRow(isDark, primary),
+                                        ],
+                                      ),
+                                    ),
+                                    if (widget.onAddPoints != null && !_showMenu) ...[
+                                      const SizedBox(width: 8),
+                                      _buildAddButton(isDark, primary),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Reflet holographique 3D
+                            if (isDark && (_rotateX != 0 || _rotateY != 0))
+                              Positioned.fill(
+                                child: Container(
+                                  margin: EdgeInsets.all(isTop3 ? 2.0 : 0.0),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    gradient: LinearGradient(
+                                      begin: Alignment(-_rotateY * 10, -_rotateX * 10),
+                                      end: Alignment(_rotateY * 10, _rotateX * 10),
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.0),
+                                        Colors.white.withValues(alpha: 0.06),
+                                        Colors.white.withValues(alpha: 0.0),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                            // Menu contextuel
+                            if (_showMenu)
+                              Positioned(
+                                top: -60,
+                                left: 0,
+                                right: 0,
+                                child: TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.elasticOut,
+                                  builder: (context, value, child) {
+                                    return Transform.scale(
+                                      scale: value,
+                                      child: child,
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                      color: isDark ? const Color(0xFF1A1A2E).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
+                                      border: Border.all(color: primary.withValues(alpha: 0.3)),
+                                      boxShadow: [
+                                        BoxShadow(color: primary.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: -2),
+                                        BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        _buildMenuButton(
+                                          icon: Icons.add_circle_rounded,
+                                          label: 'Bonus',
+                                          color: const Color(0xFF00E676),
+                                          onTap: () => _onMenuAction(widget.onAddPoints),
+                                        ),
+                                        _buildMenuButton(
+                                          icon: Icons.remove_circle_rounded,
+                                          label: 'Retirer',
+                                          color: const Color(0xFFFF1744),
+                                          onTap: () => _onMenuAction(widget.onRemovePoints),
+                                        ),
+                                        _buildMenuButton(
+                                          icon: Icons.sticky_note_2_rounded,
+                                          label: 'Notes',
+                                          color: const Color(0xFFFFD740),
+                                          onTap: () => _onMenuAction(widget.onViewNotes),
+                                        ),
+                                        _buildMenuButton(
+                                          icon: Icons.emoji_events_rounded,
+                                          label: 'Badges',
+                                          color: const Color(0xFF448AFF),
+                                          onTap: () => _onMenuAction(widget.onViewBadges),
+                                        ),
+                                        _buildMenuButton(
+                                          icon: Icons.person_rounded,
+                                          label: 'Profil',
+                                          color: primary,
+                                          onTap: () => _onMenuAction(widget.onTap),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildMenuButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.15),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8)],
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        ],
       ),
     );
   }
