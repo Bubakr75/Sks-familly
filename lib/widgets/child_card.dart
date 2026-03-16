@@ -30,35 +30,37 @@ class ChildCard extends StatefulWidget {
 }
 
 class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late AnimationController _borderController;
-  late AnimationController _crownController;
-  late AnimationController _tiltController;
-  late AnimationController _pressController;
+  // Seulement 1 controller pour le 1er, 1 pour le border top3, 1 pour la couronne du 1er
+  AnimationController? _pulseController;
+  AnimationController? _borderController;
+  AnimationController? _crownController;
 
   // Parallaxe 3D
   double _rotateX = 0.0;
   double _rotateY = 0.0;
-  bool _isPressed = false;
   bool _showMenu = false;
+
+  bool get _isFirst => widget.rank == 0;
+  bool get _isTop3 => widget.rank < 3;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
-    _borderController = AnimationController(vsync: this, duration: const Duration(milliseconds: 3000))..repeat();
-    _crownController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
-    _tiltController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
-    _pressController = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
+    // On ne crée les animations lourdes QUE pour le top 3
+    if (_isFirst) {
+      _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
+      _crownController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+    }
+    if (_isTop3) {
+      _borderController = AnimationController(vsync: this, duration: const Duration(milliseconds: 3000))..repeat();
+    }
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
-    _borderController.dispose();
-    _crownController.dispose();
-    _tiltController.dispose();
-    _pressController.dispose();
+    _pulseController?.dispose();
+    _borderController?.dispose();
+    _crownController?.dispose();
     super.dispose();
   }
 
@@ -118,194 +120,185 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
-    final isTop3 = widget.rank < 3;
-    final isFirst = widget.rank == 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_pulseController, _borderController]),
-        builder: (context, _) {
-          final pulseVal = _pulseController.value;
-          final borderAngle = _borderController.value * 2 * pi;
+    // Pour les cartes hors top 3, pas d'AnimatedBuilder = pas de rebuild chaque frame
+    if (!_isTop3) {
+      return RepaintBoundary(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+          child: _buildInteractiveCard(emoji, isDark, primary, 0.0, 0.0),
+        ),
+      );
+    }
 
-          return GestureDetector(
-            onTap: _showMenu ? _hideMenu : widget.onTap,
-            onLongPress: _onLongPress,
-            onPanUpdate: _showMenu ? null : _onPanUpdate,
-            onPanEnd: _showMenu ? null : _onPanEnd,
-            child: AnimatedScale(
-              scale: _isPressed ? 0.97 : 1.0,
-              duration: const Duration(milliseconds: 150),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: _rotateX),
-                duration: const Duration(milliseconds: 150),
-                builder: (context, rx, child) {
-                  return TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: _rotateY),
-                    duration: const Duration(milliseconds: 150),
-                    builder: (context, ry, child) {
-                      return Transform(
-                        alignment: Alignment.center,
-                        transform: Matrix4.identity()
-                          ..setEntry(3, 2, 0.001)
-                          ..rotateX(rx)
-                          ..rotateY(ry),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            // Carte principale
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(22),
-                                gradient: isTop3
-                                    ? SweepGradient(
-                                        center: Alignment.center,
-                                        startAngle: borderAngle,
-                                        endAngle: borderAngle + pi * 2,
-                                        colors: [
-                                          _rankPrimary,
-                                          _rankPrimary.withValues(alpha: 0.3),
-                                          _rankSecondary,
-                                          _rankPrimary.withValues(alpha: 0.3),
-                                          _rankPrimary,
-                                        ],
-                                      )
-                                    : null,
-                                boxShadow: isFirst && isDark
-                                    ? [BoxShadow(color: _rankPrimary.withValues(alpha: 0.15 + pulseVal * 0.15), blurRadius: 20 + pulseVal * 10, spreadRadius: -2)]
-                                    : isTop3 && isDark
-                                        ? [BoxShadow(color: _rankPrimary.withValues(alpha: 0.12), blurRadius: 12, spreadRadius: -2)]
-                                        : null,
-                              ),
-                              child: Container(
-                                margin: EdgeInsets.all(isTop3 ? 2.0 : 0.0),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(20),
-                                  color: isDark ? Colors.black.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.92),
-                                  border: isTop3 ? null : Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.withValues(alpha: 0.15)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    _buildAvatar(emoji, isDark, primary, pulseVal),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          _buildNameRow(isDark, primary),
-                                          const SizedBox(height: 10),
-                                          _buildProgressBar(isDark, primary),
-                                          const SizedBox(height: 8),
-                                          _buildPointsRow(isDark, primary),
-                                        ],
-                                      ),
-                                    ),
-                                    if (widget.onAddPoints != null && !_showMenu) ...[
-                                      const SizedBox(width: 8),
-                                      _buildAddButton(isDark, primary),
-                                    ],
-                                  ],
-                                ),
+    // Top 3 seulement : animations
+    final listenables = <Listenable>[];
+    if (_pulseController != null) listenables.add(_pulseController!);
+    if (_borderController != null) listenables.add(_borderController!);
+
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        child: AnimatedBuilder(
+          animation: Listenable.merge(listenables),
+          builder: (context, _) {
+            final pulseVal = _pulseController?.value ?? 0.0;
+            final borderAngle = (_borderController?.value ?? 0.0) * 2 * pi;
+            return _buildInteractiveCard(emoji, isDark, primary, pulseVal, borderAngle);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInteractiveCard(String emoji, bool isDark, Color primary, double pulseVal, double borderAngle) {
+    return GestureDetector(
+      onTap: _showMenu ? _hideMenu : widget.onTap,
+      onLongPress: _onLongPress,
+      onPanUpdate: _showMenu ? null : _onPanUpdate,
+      onPanEnd: _showMenu ? null : _onPanEnd,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: _rotateX),
+        duration: const Duration(milliseconds: 150),
+        builder: (context, rx, _) {
+          return TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: _rotateY),
+            duration: const Duration(milliseconds: 150),
+            builder: (context, ry, _) {
+              return Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateX(rx)
+                  ..rotateY(ry),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _buildMainCard(emoji, isDark, primary, pulseVal, borderAngle),
+                    // Reflet holographique seulement pendant le drag
+                    if (isDark && (_rotateX != 0 || _rotateY != 0))
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Container(
+                            margin: EdgeInsets.all(_isTop3 ? 2.0 : 0.0),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              gradient: LinearGradient(
+                                begin: Alignment(-_rotateY * 10, -_rotateX * 10),
+                                end: Alignment(_rotateY * 10, _rotateX * 10),
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.0),
+                                  Colors.white.withValues(alpha: 0.06),
+                                  Colors.white.withValues(alpha: 0.0),
+                                ],
                               ),
                             ),
-
-                            // Reflet holographique 3D
-                            if (isDark && (_rotateX != 0 || _rotateY != 0))
-                              Positioned.fill(
-                                child: Container(
-                                  margin: EdgeInsets.all(isTop3 ? 2.0 : 0.0),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    gradient: LinearGradient(
-                                      begin: Alignment(-_rotateY * 10, -_rotateX * 10),
-                                      end: Alignment(_rotateY * 10, _rotateX * 10),
-                                      colors: [
-                                        Colors.white.withValues(alpha: 0.0),
-                                        Colors.white.withValues(alpha: 0.06),
-                                        Colors.white.withValues(alpha: 0.0),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                            // Menu contextuel
-                            if (_showMenu)
-                              Positioned(
-                                top: -60,
-                                left: 0,
-                                right: 0,
-                                child: TweenAnimationBuilder<double>(
-                                  tween: Tween(begin: 0.0, end: 1.0),
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.elasticOut,
-                                  builder: (context, value, child) {
-                                    return Transform.scale(
-                                      scale: value,
-                                      child: child,
-                                    );
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      color: isDark ? const Color(0xFF1A1A2E).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
-                                      border: Border.all(color: primary.withValues(alpha: 0.3)),
-                                      boxShadow: [
-                                        BoxShadow(color: primary.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: -2),
-                                        BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        _buildMenuButton(
-                                          icon: Icons.add_circle_rounded,
-                                          label: 'Bonus',
-                                          color: const Color(0xFF00E676),
-                                          onTap: () => _onMenuAction(widget.onAddPoints),
-                                        ),
-                                        _buildMenuButton(
-                                          icon: Icons.remove_circle_rounded,
-                                          label: 'Retirer',
-                                          color: const Color(0xFFFF1744),
-                                          onTap: () => _onMenuAction(widget.onRemovePoints),
-                                        ),
-                                        _buildMenuButton(
-                                          icon: Icons.sticky_note_2_rounded,
-                                          label: 'Notes',
-                                          color: const Color(0xFFFFD740),
-                                          onTap: () => _onMenuAction(widget.onViewNotes),
-                                        ),
-                                        _buildMenuButton(
-                                          icon: Icons.emoji_events_rounded,
-                                          label: 'Badges',
-                                          color: const Color(0xFF448AFF),
-                                          onTap: () => _onMenuAction(widget.onViewBadges),
-                                        ),
-                                        _buildMenuButton(
-                                          icon: Icons.person_rounded,
-                                          label: 'Profil',
-                                          color: primary,
-                                          onTap: () => _onMenuAction(widget.onTap),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
+                      ),
+                    if (_showMenu) _buildContextMenu(isDark, primary),
+                  ],
+                ),
+              );
+            },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildMainCard(String emoji, bool isDark, Color primary, double pulseVal, double borderAngle) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: _isTop3
+            ? SweepGradient(
+                center: Alignment.center,
+                startAngle: borderAngle,
+                endAngle: borderAngle + pi * 2,
+                colors: [
+                  _rankPrimary,
+                  _rankPrimary.withValues(alpha: 0.3),
+                  _rankSecondary,
+                  _rankPrimary.withValues(alpha: 0.3),
+                  _rankPrimary,
+                ],
+              )
+            : null,
+        boxShadow: _isFirst && isDark
+            ? [BoxShadow(color: _rankPrimary.withValues(alpha: 0.15 + pulseVal * 0.15), blurRadius: 20 + pulseVal * 10, spreadRadius: -2)]
+            : _isTop3 && isDark
+                ? [BoxShadow(color: _rankPrimary.withValues(alpha: 0.12), blurRadius: 12, spreadRadius: -2)]
+                : null,
+      ),
+      child: Container(
+        margin: EdgeInsets.all(_isTop3 ? 2.0 : 0.0),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: isDark ? Colors.black.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.92),
+          border: _isTop3 ? null : Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            _buildAvatar(emoji, isDark, primary, pulseVal),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildNameRow(isDark, primary),
+                  const SizedBox(height: 10),
+                  _buildProgressBar(isDark, primary),
+                  const SizedBox(height: 8),
+                  _buildPointsRow(isDark, primary),
+                ],
+              ),
+            ),
+            if (widget.onAddPoints != null && !_showMenu) ...[
+              const SizedBox(width: 8),
+              _buildAddButton(isDark, primary),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContextMenu(bool isDark, Color primary) {
+    return Positioned(
+      top: -60,
+      left: 0,
+      right: 0,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.elasticOut,
+        builder: (context, value, child) {
+          return Transform.scale(scale: value, child: child);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: isDark ? const Color(0xFF1A1A2E).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
+            border: Border.all(color: primary.withValues(alpha: 0.3)),
+            boxShadow: [
+              BoxShadow(color: primary.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: -2),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildMenuButton(icon: Icons.add_circle_rounded, label: 'Bonus', color: const Color(0xFF00E676), onTap: () => _onMenuAction(widget.onAddPoints)),
+              _buildMenuButton(icon: Icons.remove_circle_rounded, label: 'Retirer', color: const Color(0xFFFF1744), onTap: () => _onMenuAction(widget.onRemovePoints)),
+              _buildMenuButton(icon: Icons.sticky_note_2_rounded, label: 'Notes', color: const Color(0xFFFFD740), onTap: () => _onMenuAction(widget.onViewNotes)),
+              _buildMenuButton(icon: Icons.emoji_events_rounded, label: 'Badges', color: const Color(0xFF448AFF), onTap: () => _onMenuAction(widget.onViewBadges)),
+              _buildMenuButton(icon: Icons.person_rounded, label: 'Profil', color: primary, onTap: () => _onMenuAction(widget.onTap)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -340,13 +333,10 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
   }
 
   Widget _buildAvatar(String emoji, bool isDark, Color primary, double pulseVal) {
-    final isFirst = widget.rank == 0;
-    final isTop3 = widget.rank < 3;
-
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        if (isFirst && isDark)
+        if (_isFirst && isDark)
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -363,15 +353,15 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: isTop3
+              colors: _isTop3
                   ? [_rankPrimary.withValues(alpha: 0.5), _rankSecondary.withValues(alpha: 0.3)]
                   : isDark
                       ? [primary.withValues(alpha: 0.3), primary.withValues(alpha: 0.1)]
                       : [primary.withValues(alpha: 0.15), primary.withValues(alpha: 0.05)],
             ),
             border: Border.all(
-              color: isTop3 ? _rankPrimary.withValues(alpha: 0.6) : primary.withValues(alpha: 0.2),
-              width: isTop3 ? 2.5 : 1.5,
+              color: _isTop3 ? _rankPrimary.withValues(alpha: 0.6) : primary.withValues(alpha: 0.2),
+              width: _isTop3 ? 2.5 : 1.5,
             ),
           ),
           child: ClipOval(
@@ -387,11 +377,11 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
                 : Center(child: Text(emoji, style: const TextStyle(fontSize: 30))),
           ),
         ),
-        if (isFirst)
+        if (_isFirst && _crownController != null)
           AnimatedBuilder(
-            animation: _crownController,
+            animation: _crownController!,
             builder: (_, __) {
-              final bounce = sin(_crownController.value * pi) * 3;
+              final bounce = sin(_crownController!.value * pi) * 3;
               return Positioned(
                 top: -14 + bounce,
                 left: 0,
@@ -426,17 +416,16 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
   }
 
   Widget _buildNameRow(bool isDark, Color primary) {
-    final isTop3 = widget.rank < 3;
     return Row(
       children: [
         Expanded(
           child: Text(
             widget.child.name,
             style: TextStyle(
-              fontSize: isTop3 ? 18 : 16,
+              fontSize: _isTop3 ? 18 : 16,
               fontWeight: FontWeight.w800,
               color: isDark ? Colors.white : Colors.black87,
-              shadows: isTop3 && isDark ? [Shadow(color: _rankPrimary.withValues(alpha: 0.3), blurRadius: 8)] : null,
+              shadows: _isTop3 && isDark ? [Shadow(color: _rankPrimary.withValues(alpha: 0.3), blurRadius: 8)] : null,
             ),
           ),
         ),
@@ -445,20 +434,20 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             gradient: LinearGradient(
-              colors: isTop3
+              colors: _isTop3
                   ? [_rankPrimary.withValues(alpha: 0.2), _rankSecondary.withValues(alpha: 0.1)]
                   : [primary.withValues(alpha: 0.12), primary.withValues(alpha: 0.06)],
             ),
             border: Border.all(
-              color: isTop3 ? _rankPrimary.withValues(alpha: 0.3) : primary.withValues(alpha: 0.2),
+              color: _isTop3 ? _rankPrimary.withValues(alpha: 0.3) : primary.withValues(alpha: 0.2),
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_getLevelIcon(), size: 12, color: isTop3 ? _rankPrimary : primary),
+              Icon(_getLevelIcon(), size: 12, color: _isTop3 ? _rankPrimary : primary),
               const SizedBox(width: 4),
-              Text(widget.child.levelTitle, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isTop3 ? _rankPrimary : primary)),
+              Text(widget.child.levelTitle, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _isTop3 ? _rankPrimary : primary)),
             ],
           ),
         ),
@@ -468,18 +457,14 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
 
   IconData _getLevelIcon() {
     switch (widget.child.levelTitle) {
-      case 'Champion':
-        return Icons.military_tech_rounded;
-      case 'Expert':
-        return Icons.workspace_premium_rounded;
-      default:
-        return Icons.stars_rounded;
+      case 'Champion': return Icons.military_tech_rounded;
+      case 'Expert': return Icons.workspace_premium_rounded;
+      default: return Icons.stars_rounded;
     }
   }
 
   Widget _buildProgressBar(bool isDark, Color primary) {
     final progress = widget.child.levelProgress.clamp(0.0, 1.0);
-    final isTop3 = widget.rank < 3;
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),
       child: Stack(
@@ -497,9 +482,9 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
               height: 8,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(5),
-                gradient: LinearGradient(colors: isTop3 ? [_rankSecondary, _rankPrimary] : [primary.withValues(alpha: 0.7), primary]),
+                gradient: LinearGradient(colors: _isTop3 ? [_rankSecondary, _rankPrimary] : [primary.withValues(alpha: 0.7), primary]),
                 boxShadow: isDark
-                    ? [BoxShadow(color: (isTop3 ? _rankPrimary : primary).withValues(alpha: 0.5), blurRadius: 8, offset: const Offset(0, 1))]
+                    ? [BoxShadow(color: (_isTop3 ? _rankPrimary : primary).withValues(alpha: 0.5), blurRadius: 8, offset: const Offset(0, 1))]
                     : null,
               ),
             ),
@@ -510,8 +495,7 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
   }
 
   Widget _buildPointsRow(bool isDark, Color primary) {
-    final isTop3 = widget.rank < 3;
-    final pointColor = isTop3 ? _rankPrimary : primary;
+    final pointColor = _isTop3 ? _rankPrimary : primary;
     final pts = widget.child.points;
     final nextPts = widget.child.nextLevelPoints;
     final badgeCount = widget.child.badgeIds.length;
