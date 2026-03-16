@@ -9,117 +9,344 @@ import '../widgets/animated_background.dart';
 class ImmunityLinesScreen extends StatelessWidget {
   const ImmunityLinesScreen({super.key});
 
-  static const _shieldColor = Color(0xFF00E676);
-  static const _goldColor = Color(0xFFFFD740);
-
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0A0E21),
-        appBar: AppBar(
-          title: NeonText(text: 'Lignes d\'immunite', fontSize: 18, color: Colors.white),
-          backgroundColor: Colors.transparent,
-          bottom: TabBar(
-            indicatorColor: _shieldColor,
-            indicatorWeight: 3,
-            labelColor: _shieldColor,
-            unselectedLabelColor: Colors.grey[600],
-            tabs: const [
-              Tab(icon: Icon(Icons.shield_outlined), text: 'En cours'),
-              Tab(icon: Icon(Icons.verified_rounded), text: 'Terminees'),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0E21),
+      appBar: AppBar(
+        title: const NeonText(text: 'Lignes d\'immunite', fontSize: 18, color: Colors.white),
+        backgroundColor: Colors.transparent,
+      ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.3), blurRadius: 16)],
         ),
-        floatingActionButton: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: _shieldColor.withValues(alpha: 0.3), blurRadius: 16)],
-          ),
-          child: FloatingActionButton.extended(
-            heroTag: 'add_immunity',
-            backgroundColor: _shieldColor,
-            foregroundColor: Colors.black,
-            onPressed: () => PinGuard.guardAction(context, () => _showAddImmunity(context)),
-            icon: const Icon(Icons.shield_rounded),
-            label: const Text('Attribuer', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
+        child: FloatingActionButton.extended(
+          heroTag: 'add_immunity',
+          backgroundColor: const Color(0xFF00E676),
+          foregroundColor: Colors.black,
+          onPressed: () => PinGuard.guardAction(context, () => _showAddImmunity(context)),
+          icon: const Icon(Icons.shield_rounded),
+          label: const Text('Donner des immunites', style: TextStyle(fontWeight: FontWeight.w700)),
         ),
-        body: Consumer<FamilyProvider>(
-          builder: (context, provider, _) {
-            final active = provider.immunities.where((im) => !im.isCompleted).toList();
-            final completed = provider.immunities.where((im) => im.isCompleted).toList();
-
+      ),
+      body: Consumer<FamilyProvider>(
+        builder: (context, provider, _) {
+          if (provider.children.isEmpty) {
             return AnimatedBackground(
-              child: TabBarView(
-                children: [
-                  active.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GlowIcon(icon: Icons.shield_outlined, size: 64, color: Colors.grey[600]),
-                              const SizedBox(height: 16),
-                              Text('Aucune immunite en cours', style: TextStyle(fontSize: 18, color: Colors.grey[500])),
-                              const SizedBox(height: 8),
-                              Text('Attribuez une immunite a un enfant', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                          itemCount: active.length,
-                          itemBuilder: (_, i) => _ImmunityCard(immunity: active[i], provider: provider, showActions: true),
-                        ),
-                  completed.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GlowIcon(icon: Icons.verified_rounded, size: 64, color: Colors.grey[600]),
-                              const SizedBox(height: 16),
-                              Text('Aucune immunite terminee', style: TextStyle(fontSize: 18, color: Colors.grey[500])),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                          itemCount: completed.length,
-                          itemBuilder: (_, i) => _ImmunityCard(immunity: completed[i], provider: provider, showActions: false),
-                        ),
-                ],
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GlowIcon(icon: Icons.people_outline, size: 64, color: Colors.grey[600]),
+                    const SizedBox(height: 16),
+                    Text('Ajoutez des enfants d\'abord', style: TextStyle(fontSize: 18, color: Colors.grey[500])),
+                  ],
+                ),
               ),
             );
-          },
+          }
+
+          return AnimatedBackground(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              children: [
+                // Resume par enfant
+                ...provider.children.map((child) {
+                  final totalAvailable = provider.getTotalAvailableImmunity(child.id);
+                  final allImmunities = provider.getImmunitiesForChild(child.id);
+                  final usable = allImmunities.where((im) => im.isUsable).toList();
+                  final used = allImmunities.where((im) => im.isFullyUsed).toList();
+                  final expired = allImmunities.where((im) => im.isExpired && !im.isFullyUsed).toList();
+
+                  return GlassCard(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    glowColor: totalAvailable > 0 ? const Color(0xFF00E676) : Colors.grey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header enfant
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                gradient: LinearGradient(colors: [
+                                  const Color(0xFF00E676).withValues(alpha: totalAvailable > 0 ? 0.2 : 0.05),
+                                  const Color(0xFF00E676).withValues(alpha: totalAvailable > 0 ? 0.1 : 0.02),
+                                ]),
+                                border: Border.all(color: const Color(0xFF00E676).withValues(alpha: totalAvailable > 0 ? 0.3 : 0.1)),
+                              ),
+                              child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 24))),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                                  const SizedBox(height: 2),
+                                  Text('${child.points} pts', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            // Stock total
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                gradient: LinearGradient(colors: [
+                                  const Color(0xFF00E676).withValues(alpha: totalAvailable > 0 ? 0.15 : 0.05),
+                                  const Color(0xFF00E676).withValues(alpha: totalAvailable > 0 ? 0.08 : 0.02),
+                                ]),
+                                border: Border.all(color: const Color(0xFF00E676).withValues(alpha: totalAvailable > 0 ? 0.3 : 0.1)),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 20),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '$totalAvailable',
+                                    style: TextStyle(
+                                      color: totalAvailable > 0 ? const Color(0xFF00E676) : Colors.grey,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  Text('lignes', style: TextStyle(color: Colors.grey[600], fontSize: 9)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        if (allImmunities.isEmpty) ...[
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Text(
+                              'Aucune immunite pour le moment',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                            ),
+                          ),
+                        ],
+
+                        // Immunites actives
+                        if (usable.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Row(children: [
+                            Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF00E676))),
+                            const SizedBox(width: 6),
+                            Text('Disponibles', style: TextStyle(color: Colors.grey[400], fontSize: 12, fontWeight: FontWeight.w600)),
+                          ]),
+                          const SizedBox(height: 8),
+                          ...usable.map((im) => _immunityTile(context, im, provider, isActive: true)),
+                        ],
+
+                        // Immunites utilisees
+                        if (used.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Row(children: [
+                            Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey[600])),
+                            const SizedBox(width: 6),
+                            Text('Utilisees', style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w600)),
+                          ]),
+                          const SizedBox(height: 8),
+                          ...used.map((im) => _immunityTile(context, im, provider, isActive: false)),
+                        ],
+
+                        // Immunites expirees
+                        if (expired.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Row(children: [
+                            Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.orange[600])),
+                            const SizedBox(width: 6),
+                            Text('Expirees', style: TextStyle(color: Colors.orange[600], fontSize: 12, fontWeight: FontWeight.w600)),
+                          ]),
+                          const SizedBox(height: 8),
+                          ...expired.map((im) => _immunityTile(context, im, provider, isActive: false)),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+
+                // Explication
+                const SizedBox(height: 16),
+                GlassCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.info_outline_rounded, color: Color(0xFF00E5FF), size: 18),
+                        const SizedBox(width: 8),
+                        const NeonText(text: 'Comment ca marche ?', fontSize: 14, color: Colors.white),
+                      ]),
+                      const SizedBox(height: 10),
+                      Text(
+                        '\u{1F6E1} Les lignes d\'immunite sont un stock de lignes gratuites.\n\n'
+                        '\u{2728} Quand un enfant a des lignes de punition a faire, il peut utiliser ses lignes d\'immunite pour en faire moins.\n\n'
+                        '\u{1F4CB} Exemple : 100 lignes de punition - 20 lignes d\'immunite = 80 lignes a faire.\n\n'
+                        '\u{1F381} Vous pouvez donner des lignes d\'immunite pour recompenser le bon comportement.',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _immunityTile(BuildContext context, ImmunityLines im, FamilyProvider provider, {required bool isActive}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: isActive
+            ? const Color(0xFF00E676).withValues(alpha: 0.06)
+            : Colors.white.withValues(alpha: 0.02),
+        border: Border.all(
+          color: isActive
+              ? const Color(0xFF00E676).withValues(alpha: 0.15)
+              : Colors.white.withValues(alpha: 0.05),
         ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: isActive
+                  ? const Color(0xFF00E676).withValues(alpha: 0.12)
+                  : Colors.grey.withValues(alpha: 0.08),
+            ),
+            child: Center(
+              child: Text(
+                '\u{1F6E1}',
+                style: TextStyle(fontSize: 18, color: isActive ? null : Colors.grey),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  im.reason,
+                  style: TextStyle(
+                    color: isActive ? Colors.white : Colors.grey[600],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      im.statusLabel,
+                      style: TextStyle(
+                        color: isActive ? const Color(0xFF00E676) : Colors.grey[600],
+                        fontSize: 11,
+                      ),
+                    ),
+                    if (im.expiresAt != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        im.expiresLabel,
+                        style: TextStyle(
+                          color: im.isExpired ? Colors.orange : Colors.grey[600],
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                Text(
+                  'Donne le ${im.createdAt.day}/${im.createdAt.month}/${im.createdAt.year}',
+                  style: TextStyle(color: Colors.grey[700], fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          if (isActive)
+            Text(
+              '${im.availableLines}',
+              style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.w900, fontSize: 20),
+            )
+          else
+            Text(
+              '${im.usedLines}/${im.lines}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          if (isActive) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _confirmDelete(context, im.id, provider),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFFFF1744).withValues(alpha: 0.08),
+                ),
+                child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF1744), size: 16),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, String imId, FamilyProvider provider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF162033),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Supprimer cette immunite ?', style: TextStyle(color: Colors.white)),
+        content: const Text('Les lignes disponibles seront perdues.', style: TextStyle(color: Colors.grey)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF1744)),
+            onPressed: () {
+              provider.removeImmunity(imId);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Supprimer'),
+          ),
+        ],
       ),
     );
   }
 
   void _showAddImmunity(BuildContext context) {
     final provider = context.read<FamilyProvider>();
-    final textCtrl = TextEditingController(text: 'Je suis dispense(e) de cette tache grace a mon immunite.');
-    final linesCtrl = TextEditingController(text: '10');
+    final linesCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
     String? selectedChildId = provider.children.isNotEmpty ? provider.children.first.id : null;
-    String selectedType = 'custom';
-    int expirationDays = 0;
-    final presets = [5, 10, 20, 50, 100];
+    bool hasExpiry = false;
+    int expiryDays = 7;
 
-    final immunityTypes = [
-      {'value': 'corvee', 'label': 'Corvee', 'emoji': '\u{1F9F9}'},
-      {'value': 'punition', 'label': 'Punition', 'emoji': '\u{1F6E1}'},
-      {'value': 'devoir', 'label': 'Devoir', 'emoji': '\u{1F4DA}'},
-      {'value': 'custom', 'label': 'Speciale', 'emoji': '\u{2B50}'},
-    ];
-
-    final expirationOptions = [
-      {'days': 0, 'label': 'Pas de limite'},
-      {'days': 1, 'label': '1 jour'},
-      {'days': 3, 'label': '3 jours'},
-      {'days': 7, 'label': '1 semaine'},
-      {'days': 14, 'label': '2 semaines'},
-      {'days': 30, 'label': '1 mois'},
+    final presetReasons = [
+      {'reason': 'Bon comportement', 'lines': 10},
+      {'reason': 'Bonne note a l\'ecole', 'lines': 20},
+      {'reason': 'A aide a la maison', 'lines': 15},
+      {'reason': 'Recompense speciale', 'lines': 30},
+      {'reason': 'Sage toute la semaine', 'lines': 25},
+      {'reason': 'A range sa chambre', 'lines': 10},
     ];
 
     showModalBottomSheet(
@@ -139,329 +366,155 @@ class ImmunityLinesScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 Row(children: [
                   Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(color: _shieldColor.withValues(alpha: 0.12), shape: BoxShape.circle, border: Border.all(color: _shieldColor.withValues(alpha: 0.3))),
-                    child: const Icon(Icons.shield_rounded, color: _shieldColor),
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.3)),
+                    ),
+                    child: const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 20),
                   ),
                   const SizedBox(width: 12),
-                  const NeonText(text: 'Attribuer une immunite', fontSize: 18, color: Colors.white),
+                  const NeonText(text: 'Donner des immunites', fontSize: 18, color: Colors.white),
                 ]),
                 const SizedBox(height: 20),
 
+                // Enfant
                 DropdownButtonFormField<String>(
                   value: selectedChildId,
                   dropdownColor: const Color(0xFF162033),
                   style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(labelText: 'Enfant', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                  items: provider.children.map((c) => DropdownMenuItem(value: c.id, child: Text('${c.avatar.isEmpty ? "\u{1F466}" : c.avatar} ${c.name}'))).toList(),
+                  decoration: InputDecoration(
+                    labelText: 'Enfant',
+                    labelStyle: TextStyle(color: Colors.grey[500]),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  ),
+                  items: provider.children.map((c) => DropdownMenuItem(value: c.id, child: Text('\u{1F466} ${c.name}'))).toList(),
                   onChanged: (v) => setState(() => selectedChildId = v),
                 ),
                 const SizedBox(height: 16),
 
-                const Text('Type d\'immunite', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8, runSpacing: 8,
-                  children: immunityTypes.map((type) {
-                    final isSelected = selectedType == type['value'];
-                    return GestureDetector(
-                      onTap: () => setState(() => selectedType = type['value'] as String),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: isSelected ? _shieldColor.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
-                          border: Border.all(color: isSelected ? _shieldColor.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08)),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text(type['emoji'] as String, style: const TextStyle(fontSize: 18)),
-                          const SizedBox(width: 6),
-                          Text(type['label'] as String, style: TextStyle(color: isSelected ? _shieldColor : Colors.grey[500], fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500)),
-                        ]),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-
+                // Raison
                 TextField(
-                  controller: textCtrl,
-                  maxLines: 3,
+                  controller: reasonCtrl,
                   style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(labelText: 'Texte a copier', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                  decoration: InputDecoration(
+                    labelText: 'Raison',
+                    labelStyle: TextStyle(color: Colors.grey[500]),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Presets
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: presetReasons.map((p) => GestureDetector(
+                    onTap: () => setState(() {
+                      reasonCtrl.text = p['reason'] as String;
+                      linesCtrl.text = '${p['lines']}';
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white.withValues(alpha: 0.04),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Text('${p['reason']} (${p['lines']})', style: TextStyle(color: Colors.grey[400], fontSize: 11)),
+                    ),
+                  )).toList(),
                 ),
                 const SizedBox(height: 16),
 
-                const Text('Nombre de lignes', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8, runSpacing: 8,
-                  children: presets.map((n) {
-                    final isSelected = linesCtrl.text == n.toString();
-                    return GestureDetector(
-                      onTap: () => setState(() => linesCtrl.text = n.toString()),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: isSelected ? _shieldColor.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
-                          border: Border.all(color: isSelected ? _shieldColor.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08)),
-                        ),
-                        child: Text('$n', style: TextStyle(color: isSelected ? _shieldColor : Colors.grey[500], fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500)),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 12),
+                // Nombre de lignes
                 TextField(
                   controller: linesCtrl,
                   keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _shieldColor),
-                  decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), labelText: 'Nombre exact', suffixText: 'lignes'),
-                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: 'Nombre de lignes d\'immunite',
+                    labelStyle: TextStyle(color: Colors.grey[500]),
+                    suffixText: 'lignes',
+                    suffixStyle: TextStyle(color: Colors.grey[600]),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  ),
                 ),
                 const SizedBox(height: 16),
 
-                const Text('Date d\'expiration', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8, runSpacing: 8,
-                  children: expirationOptions.map((opt) {
-                    final isSelected = expirationDays == opt['days'];
-                    return GestureDetector(
-                      onTap: () => setState(() => expirationDays = opt['days'] as int),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: isSelected ? _goldColor.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
-                          border: Border.all(color: isSelected ? _goldColor.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08)),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.timer_outlined, size: 14, color: isSelected ? _goldColor : Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Text(opt['label'] as String, style: TextStyle(color: isSelected ? _goldColor : Colors.grey[500], fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, fontSize: 12)),
-                        ]),
+                // Expiration
+                Row(
+                  children: [
+                    Switch(
+                      value: hasExpiry,
+                      activeColor: const Color(0xFF00E676),
+                      onChanged: (v) => setState(() => hasExpiry = v),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        hasExpiry ? 'Expire dans $expiryDays jours' : 'Pas d\'expiration',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                  ],
                 ),
+                if (hasExpiry)
+                  Slider(
+                    value: expiryDays.toDouble(),
+                    min: 1,
+                    max: 90,
+                    divisions: 89,
+                    activeColor: const Color(0xFF00E676),
+                    label: '$expiryDays jours',
+                    onChanged: (v) => setState(() => expiryDays = v.round()),
+                  ),
                 const SizedBox(height: 20),
 
+                // Bouton valider
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: _shieldColor, foregroundColor: Colors.black),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF00E676),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
                     onPressed: () {
                       final lines = int.tryParse(linesCtrl.text) ?? 0;
-                      if (textCtrl.text.trim().isNotEmpty && selectedChildId != null && lines > 0 && lines <= 1000) {
-                        final expires = expirationDays > 0 ? DateTime.now().add(Duration(days: expirationDays)) : null;
-                        provider.addImmunity(selectedChildId!, textCtrl.text.trim(), lines, selectedType, expiresAt: expires);
+                      if (selectedChildId != null && reasonCtrl.text.isNotEmpty && lines > 0) {
+                        final expiry = hasExpiry ? DateTime.now().add(Duration(days: expiryDays)) : null;
+                        provider.addImmunity(selectedChildId!, reasonCtrl.text, lines, expiresAt: expiry);
                         Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(children: [
+                              const Text('\u{1F6E1}', style: TextStyle(fontSize: 20)),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text('$lines lignes d\'immunite donnees !')),
+                            ]),
+                            backgroundColor: const Color(0xFF00E676),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
                       }
                     },
                     icon: const Icon(Icons.shield_rounded),
-                    label: Text('Attribuer ${linesCtrl.text.isNotEmpty ? "${linesCtrl.text} lignes" : ""}'),
+                    label: const Text('Donner les immunites', style: TextStyle(fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ImmunityCard extends StatelessWidget {
-  final ImmunityLines immunity;
-  final FamilyProvider provider;
-  final bool showActions;
-  const _ImmunityCard({required this.immunity, required this.provider, required this.showActions});
-
-  static const _shieldColor = Color(0xFF00E676);
-
-  @override
-  Widget build(BuildContext context) {
-    final child = provider.getChild(immunity.childId);
-    final im = immunity;
-    final progressColor = im.isCompleted ? const Color(0xFFFFD740) : _shieldColor;
-    final isExpired = im.isExpired;
-
-    return GlassCard(
-      margin: const EdgeInsets.only(bottom: 10),
-      glowColor: isExpired ? Colors.grey : (im.isCompleted ? const Color(0xFFFFD740) : _shieldColor),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Text(child?.avatar ?? '\u{1F466}', style: const TextStyle(fontSize: 24)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                Text('${im.completedLines} / ${im.totalLines} lignes', style: TextStyle(color: progressColor, fontSize: 13, fontWeight: FontWeight.w500)),
-              ]),
-            ),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isExpired ? Colors.grey.withValues(alpha: 0.12) : (im.isCompleted ? const Color(0xFFFFD740).withValues(alpha: 0.12) : _shieldColor.withValues(alpha: 0.12)),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isExpired ? Colors.grey.withValues(alpha: 0.3) : (im.isCompleted ? const Color(0xFFFFD740).withValues(alpha: 0.3) : _shieldColor.withValues(alpha: 0.3))),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(im.immunityEmoji, style: const TextStyle(fontSize: 12)),
-                  const SizedBox(width: 4),
-                  Text(
-                    isExpired ? 'Expiree' : (im.isCompleted ? 'Active (${im.availableLines} dispo)' : im.immunityLabel),
-                    style: TextStyle(color: isExpired ? Colors.grey : (im.isCompleted ? const Color(0xFFFFD740) : _shieldColor), fontWeight: FontWeight.bold, fontSize: 11),
-                  ),
-                ]),
-              ),
-              if (im.expiresAt != null) ...[
-                const SizedBox(height: 4),
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.timer_outlined, size: 12, color: isExpired ? Colors.red : Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Text(im.expiresLabel, style: TextStyle(fontSize: 10, color: isExpired ? Colors.red : Colors.grey[500])),
-                ]),
-              ],
-            ]),
-            if (showActions && !im.isCompleted)
-              IconButton(
-                icon: const Icon(Icons.delete_rounded, color: Color(0xFFFF1744), size: 22),
-                onPressed: () => PinGuard.guardAction(context, () => provider.removeImmunity(im.id)),
-              ),
-          ]),
-          const SizedBox(height: 12),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: progressColor.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: progressColor.withValues(alpha: 0.15)),
-            ),
-            child: Text('"${im.text}"', style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 14, color: Colors.white70)),
-          ),
-          const SizedBox(height: 12),
-
-          Row(children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Stack(children: [
-                  LinearProgressIndicator(value: im.progress, minHeight: 10, backgroundColor: Colors.white.withValues(alpha: 0.06), valueColor: AlwaysStoppedAnimation(progressColor)),
-                  Positioned.fill(
-                    child: FractionallySizedBox(
-                      widthFactor: im.progress.clamp(0.0, 1.0),
-                      alignment: Alignment.centerLeft,
-                      child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), boxShadow: [BoxShadow(color: progressColor.withValues(alpha: 0.4), blurRadius: 6)])),
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-            const SizedBox(width: 12),
-            NeonText(text: '${(im.progress * 100).toInt()}%', fontSize: 14, color: progressColor, glowIntensity: 0.3),
-          ]),
-
-          if (showActions && !im.isCompleted) ...[
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(foregroundColor: _shieldColor, side: const BorderSide(color: _shieldColor), padding: const EdgeInsets.symmetric(vertical: 12)),
-                  onPressed: () => provider.incrementImmunityLines(im.id),
-                  icon: const Icon(Icons.check, size: 18),
-                  label: Text('Ligne ${im.completedLines + 1} faite'),
-                ),
-              ),
-              if (im.totalLines > 10) ...[
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(foregroundColor: _shieldColor, side: const BorderSide(color: _shieldColor), padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12)),
-                  onPressed: () => _addMultipleLines(context, im),
-                  child: const Text('+5'),
-                ),
-              ],
-            ]),
-          ],
-
-          if (im.isCompleted && !isExpired) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(colors: [const Color(0xFFFFD740).withValues(alpha: 0.08), _shieldColor.withValues(alpha: 0.08)]),
-                border: Border.all(color: const Color(0xFFFFD740).withValues(alpha: 0.2)),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.verified_rounded, color: Color(0xFFFFD740), size: 20),
-                const SizedBox(width: 8),
-                Text('Immunite active ! ${im.availableLines} lignes disponibles', style: const TextStyle(color: Color(0xFFFFD740), fontWeight: FontWeight.w700, fontSize: 13)),
-              ]),
-            ),
-          ],
-
-          if (isExpired && im.isCompleted) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.red.withValues(alpha: 0.08),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-              ),
-              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.timer_off_rounded, color: Colors.red, size: 20),
-                SizedBox(width: 8),
-                Text('Immunite expiree', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700, fontSize: 13)),
-              ]),
-            ),
-          ],
-
-          const SizedBox(height: 8),
-          Text('Attribue le ${im.createdAt.day}/${im.createdAt.month}/${im.createdAt.year}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-        ],
-      ),
-    );
-  }
-
-  void _addMultipleLines(BuildContext context, ImmunityLines im) {
-    final remaining = im.totalLines - im.completedLines;
-    final options = [5, 10, 20, 50].where((n) => n <= remaining).toList();
-    if (options.isEmpty) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D1B2A),
-        title: const NeonText(text: 'Ajouter plusieurs lignes', fontSize: 18, color: Colors.white),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Lignes restantes: $remaining', style: const TextStyle(color: Colors.white70)),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: options.map((n) => FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _shieldColor, foregroundColor: Colors.black),
-              onPressed: () { for (var i = 0; i < n; i++) provider.incrementImmunityLines(im.id); Navigator.pop(ctx); },
-              child: Text('+$n lignes'),
-            )).toList(),
-          ),
-        ]),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Annuler', style: TextStyle(color: Colors.grey[400])))],
       ),
     );
   }
