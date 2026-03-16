@@ -1,457 +1,145 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/family_provider.dart';
-import '../providers/pin_provider.dart';
-import '../providers/theme_provider.dart';
-import '../utils/pin_guard.dart';
-import '../widgets/glass_card.dart';
-import '../widgets/animated_background.dart';
-import 'family_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+class AnimatedBackground extends StatefulWidget {
+  final Widget child;
+  final bool showParticles;
+  const AnimatedBackground({super.key, required this.child, this.showParticles = true});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: AnimatedBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              // ── App bar ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Icon(Icons.settings, size: 22),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Réglages',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // ── Body ──
-              Expanded(
-                child: Consumer3<ThemeProvider, PinProvider, FamilyProvider>(
-                  builder: (context, themeProv, pinProv, familyProv, _) {
-                    return ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      children: [
-                        // ═══════════ APPARENCE ═══════════
-                        const _GlassSectionTitle(icon: Icons.palette, title: 'Apparence'),
-                        const SizedBox(height: 8),
-
-                        // Dark/Light toggle
-                        _GlassSettingsTile(
-                          icon: themeProv.isDark ? Icons.dark_mode : Icons.light_mode,
-                          title: 'Mode sombre',
-                          trailing: Switch(
-                            value: themeProv.isDark,
-                            onChanged: (_) => themeProv.toggle(),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Accent color picker
-                        GlassCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.color_lens, color: themeProv.primaryColor, size: 20),
-                                    const SizedBox(width: 10),
-                                    const Text('Couleur d\'accent', style: TextStyle(fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: List.generate(ThemeProvider.accentColors.length, (i) {
-                                    final color = ThemeProvider.accentColors[i];
-                                    final selected = i == themeProv.colorIndex;
-                                    return GestureDetector(
-                                      onTap: () => themeProv.setColorIndex(i),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 300),
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: color,
-                                          shape: BoxShape.circle,
-                                          border: selected
-                                              ? Border.all(color: Colors.white, width: 3)
-                                              : null,
-                                          boxShadow: selected
-                                              ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 12)]
-                                              : [],
-                                        ),
-                                        child: selected
-                                            ? const Icon(Icons.check, color: Colors.white, size: 20)
-                                            : null,
-                                      ),
-                                    );
-                                  }),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Background color picker
-                        GlassCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
-                                  children: [
-                                    Icon(Icons.wallpaper, color: Colors.white70, size: 20),
-                                    SizedBox(width: 10),
-                                    Text('Fond d\'écran', style: TextStyle(fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: List.generate(ThemeProvider.backgroundColors.length, (i) {
-                                    final bg = ThemeProvider.backgroundColors[i];
-                                    final selected = i == themeProv.bgIndex;
-                                    return GestureDetector(
-                                      onTap: () => themeProv.setBgIndex(i),
-                                      child: Column(
-                                        children: [
-                                          AnimatedContainer(
-                                            duration: const Duration(milliseconds: 300),
-                                            width: 44,
-                                            height: 44,
-                                            decoration: BoxDecoration(
-                                              color: bg['color'] as Color,
-                                              shape: BoxShape.circle,
-                                              border: selected
-                                                  ? Border.all(color: themeProv.primaryColor, width: 3)
-                                                  : Border.all(color: Colors.white24, width: 1),
-                                              boxShadow: selected
-                                                  ? [BoxShadow(color: (bg['color'] as Color).withOpacity(0.5), blurRadius: 10)]
-                                                  : [],
-                                            ),
-                                            child: selected
-                                                ? Icon(Icons.check, color: themeProv.primaryColor, size: 18)
-                                                : null,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            bg['label'] as String,
-                                            style: const TextStyle(fontSize: 10, color: Colors.white60),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // ═══════════ FAMILLE ═══════════
-                        const _GlassSectionTitle(icon: Icons.family_restroom, title: 'Famille'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.cloud_sync,
-                          title: 'Synchronisation',
-                          subtitle: familyProv.familyId != null ? 'Connecté' : 'Hors ligne',
-                          trailing: Icon(
-                            familyProv.familyId != null ? Icons.cloud_done : Icons.cloud_off,
-                            color: familyProv.familyId != null ? Colors.greenAccent : Colors.redAccent,
-                          ),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const FamilyScreen()),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // ═══════════ SÉCURITÉ ═══════════
-                        const _GlassSectionTitle(icon: Icons.security, title: 'Sécurité'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.lock,
-                          title: 'Code parental',
-                          subtitle: pinProv.isPinSet ? 'Activé' : 'Non défini',
-                          trailing: Icon(
-                            pinProv.isPinSet ? Icons.lock : Icons.lock_open,
-                            color: pinProv.isPinSet ? Colors.greenAccent : Colors.orangeAccent,
-                          ),
-                          onTap: () => _showPinSetup(context, pinProv),
-                        ),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: pinProv.isParentMode ? Icons.admin_panel_settings : Icons.child_care,
-                          title: 'Mode actuel',
-                          subtitle: pinProv.isParentMode ? 'Mode parent' : 'Mode enfant',
-                          trailing: Switch(
-                            value: pinProv.isParentMode,
-                            onChanged: (val) {
-                              if (val) {
-                                PinGuard.guardAction(context, () {});
-                              } else {
-                                pinProv.lockParentMode();
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // ═══════════ DONNÉES ═══════════
-                        const _GlassSectionTitle(icon: Icons.storage, title: 'Données'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.restart_alt,
-                          title: 'Réinitialiser les scores',
-                          subtitle: 'Remet tous les points à zéro',
-                          onTap: () => PinGuard.guardAction(context, () => _confirmResetScores(context, familyProv)),
-                        ),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.delete_sweep,
-                          title: 'Effacer l\'historique',
-                          subtitle: 'Supprime tout l\'historique',
-                          onTap: () => PinGuard.guardAction(context, () => _confirmClearHistory(context, familyProv)),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // ═══════════ À PROPOS ═══════════
-                        const _GlassSectionTitle(icon: Icons.info_outline, title: 'À propos'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.phone_android,
-                          title: 'SKS Family',
-                          subtitle: 'Version 1.0.0',
-                        ),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.people,
-                          title: 'Famille',
-                          subtitle: '${familyProv.children.length} enfant(s)',
-                        ),
-                        const SizedBox(height: 32),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showPinSetup(BuildContext context, PinProvider pinProv) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Code parental', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              pinProv.isPinSet ? 'Modifier le code parental' : 'Créer un code parental',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 12),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                hintText: '• • • •',
-                hintStyle: const TextStyle(color: Colors.white30),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                counterText: '',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          if (pinProv.isPinSet)
-            TextButton(
-              onPressed: () {
-                pinProv.removePin();
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code supprimé')),
-                );
-              },
-              child: const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
-            ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.length == 4) {
-                pinProv.setPin(controller.text);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code enregistré !')),
-                );
-              }
-            },
-            child: const Text('Valider'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmResetScores(BuildContext context, FamilyProvider prov) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Réinitialiser ?', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Tous les points seront remis à zéro. Cette action est irréversible.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              prov.resetAllScores();
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Scores réinitialisés')),
-              );
-            },
-            child: const Text('Réinitialiser'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmClearHistory(BuildContext context, FamilyProvider prov) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Effacer l\'historique ?', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Tout l\'historique sera supprimé. Cette action est irréversible.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              prov.clearHistory();
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Historique effacé')),
-              );
-            },
-            child: const Text('Effacer'),
-          ),
-        ],
-      ),
-    );
-  }
+  State<AnimatedBackground> createState() => _AnimatedBackgroundState();
 }
 
-// ── Section Title ──
-class _GlassSectionTitle extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  const _GlassSectionTitle({required this.icon, required this.title});
+class _AnimatedBackgroundState extends State<AnimatedBackground> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late List<_Particle> _particles;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 20),
+    )..repeat();
+    _particles = List.generate(25, (_) => _Particle());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (!isDark) {
+      return widget.child;
+    }
+
+    return Stack(
       children: [
-        Icon(icon, size: 18, color: Colors.white54),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.white54,
-            letterSpacing: 1.2,
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF0A0E21),
+                Color(0xFF0D1B2A),
+                Color(0xFF0A1628),
+                Color(0xFF071020),
+              ],
+              stops: [0.0, 0.3, 0.7, 1.0],
+            ),
           ),
         ),
+        if (widget.showParticles)
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              return CustomPaint(
+                painter: _ParticlePainter(
+                  particles: _particles,
+                  progress: _controller.value,
+                  glowColor: theme.colorScheme.primary,
+                ),
+                size: Size.infinite,
+              );
+            },
+          ),
+        Positioned(
+          top: -100,
+          left: -50,
+          child: Container(
+            width: 300,
+            height: 300,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  theme.colorScheme.primary.withValues(alpha: 0.06),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+        widget.child,
       ],
     );
   }
 }
 
-// ── Settings Tile ──
-class _GlassSettingsTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
+class _Particle {
+  final double x;
+  final double y;
+  final double size;
+  final double speed;
+  final double opacity;
+  final double phase;
 
-  const _GlassSettingsTile({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
+  _Particle()
+      : x = Random().nextDouble(),
+        y = Random().nextDouble(),
+        size = Random().nextDouble() * 3 + 1,
+        speed = Random().nextDouble() * 0.5 + 0.2,
+        opacity = Random().nextDouble() * 0.3 + 0.05,
+        phase = Random().nextDouble() * 2 * pi;
+}
+
+class _ParticlePainter extends CustomPainter {
+  final List<_Particle> particles;
+  final double progress;
+  final Color glowColor;
+
+  _ParticlePainter({
+    required this.particles,
+    required this.progress,
+    required this.glowColor,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      child: ListTile(
-        leading: Icon(icon, color: Colors.white70),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: subtitle != null
-            ? Text(subtitle!, style: const TextStyle(color: Colors.white60, fontSize: 12))
-            : null,
-        trailing: trailing,
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    for (final p in particles) {
+      final yPos = (p.y + progress * p.speed) % 1.0;
+      final xPos = p.x + sin(progress * 2 * pi + p.phase) * 0.02;
+      final opacity = p.opacity * (0.5 + 0.5 * sin(progress * 2 * pi * p.speed + p.phase));
+
+      final paint = Paint()
+        ..color = glowColor.withValues(alpha: opacity.clamp(0.0, 1.0))
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, p.size * 2);
+
+      canvas.drawCircle(
+        Offset(xPos * size.width, yPos * size.height),
+        p.size,
+        paint,
+      );
+    }
   }
+
+  @override
+  bool shouldRepaint(covariant _ParticlePainter oldDelegate) => true;
 }
