@@ -267,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     subtitle: '${provider.punishments.where((p) => !p.isCompleted).length} en cours',
                     onTap: () { Navigator.pop(context); PinGuard.guardNavigation(context, const PunishmentLinesScreen()); }),
                   _DrawerItem(icon: Icons.shield_rounded, label: 'Lignes d\'immunite', color: const Color(0xFF00E676),
-                    subtitle: '${provider.immunities.where((im) => !im.isCompleted).length} en cours',
+                    subtitle: '${provider.immunities.where((im) => im.isUsable).length} disponibles',
                     onTap: () { Navigator.pop(context); PinGuard.guardNavigation(context, const ImmunityLinesScreen()); }),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: Divider(color: Colors.white.withValues(alpha: 0.06))),
                   _DrawerItem(icon: Icons.people_alt_rounded, label: 'Gerer les enfants', color: const Color(0xFF00E5FF),
