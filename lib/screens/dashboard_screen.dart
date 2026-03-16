@@ -99,7 +99,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // === HEADER ===
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
                       child: Row(
@@ -144,8 +143,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         ],
                       ),
                     ),
-
-                    // === STATS ROW ===
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -159,8 +156,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ],
                         ),
                       ),
-
-                    // === TODAY ACTIVITY ===
                     if (todayEntries.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -183,21 +178,17 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                         ),
                       ),
-
-                    // === PODIUM ===
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
                         child: PodiumWidget(children: provider.children),
                       ),
-
-                    // === QUICK ACTIONS ===
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Row(
                         children: [
                           _buildQuickAction(Icons.emoji_events_rounded, 'Badges', const Color(0xFFFFD700), isDark, () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const BadgesScreen()));
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => BadgesScreen()));
                           }),
                           const SizedBox(width: 8),
                           _buildQuickAction(Icons.edit_note_rounded, 'Lignes', const Color(0xFFFF1744), isDark, () {
@@ -206,8 +197,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         ],
                       ),
                     ),
-
-                    // === EMPTY STATE ===
                     if (provider.children.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 60),
@@ -239,8 +228,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                         ),
                       ),
-
-                    // === CHILDREN LIST ===
                     if (provider.children.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -283,8 +270,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         );
                       }),
                     ],
-
-                    // === RECENT HISTORY ===
                     if (provider.history.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
