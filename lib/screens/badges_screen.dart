@@ -30,7 +30,6 @@ class BadgesScreen extends StatelessWidget {
               return CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  // App Bar
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -52,8 +51,16 @@ class BadgesScreen extends StatelessWidget {
                           const SizedBox(width: 14),
                           GlowIcon(icon: Icons.emoji_events_rounded, color: const Color(0xFFFFD700), size: 26),
                           const SizedBox(width: 10),
-                          NeonText(text: 'Badges & Recompenses', fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, glowIntensity: 0.2),
-                          const Spacer(),
+                          Flexible(
+                            child: NeonText(
+                              text: 'Badges & Recompenses',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              glowIntensity: 0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () => _showBadgeInfo(context),
                             child: Container(
@@ -76,7 +83,6 @@ class BadgesScreen extends StatelessWidget {
                       child: Center(child: NeonText(text: 'Ajoutez des enfants pour voir les badges', fontSize: 16, color: Colors.grey)),
                     )
                   else ...[
-                    // All badges grid
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
@@ -111,22 +117,24 @@ class BadgesScreen extends StatelessWidget {
                                   border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.15)),
                                   boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.05), blurRadius: 8)],
                                 ),
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(8),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(_badgeEmojis[badge.icon] ?? '\u{2B50}', style: const TextStyle(fontSize: 32)),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      badge.name,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                    Text(_badgeEmojis[badge.icon] ?? '\u{2B50}', style: const TextStyle(fontSize: 30)),
                                     const SizedBox(height: 4),
+                                    Flexible(
+                                      child: Text(
+                                        badge.name,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFFFD700).withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
@@ -134,7 +142,7 @@ class BadgesScreen extends StatelessWidget {
                                       ),
                                       child: Text(
                                         '${badge.requiredPoints} pts',
-                                        style: const TextStyle(fontSize: 10, color: Color(0xFFFFD700), fontWeight: FontWeight.w700),
+                                        style: const TextStyle(fontSize: 9, color: Color(0xFFFFD700), fontWeight: FontWeight.w700),
                                       ),
                                     ),
                                   ],
@@ -146,14 +154,13 @@ class BadgesScreen extends StatelessWidget {
                         ),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
-                          childAspectRatio: 0.75,
+                          childAspectRatio: 0.8,
                           crossAxisSpacing: 10,
                           mainAxisSpacing: 10,
                         ),
                       ),
                     ),
 
-                    // Per child badges
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
@@ -313,7 +320,7 @@ class BadgesScreen extends StatelessWidget {
           children: [
             const GlowIcon(icon: Icons.emoji_events_rounded, color: Color(0xFFFFD700)),
             const SizedBox(width: 8),
-            const NeonText(text: 'Systeme de badges', fontSize: 18, color: Colors.white),
+            const Flexible(child: NeonText(text: 'Systeme de badges', fontSize: 18, color: Colors.white)),
           ],
         ),
         content: SingleChildScrollView(
