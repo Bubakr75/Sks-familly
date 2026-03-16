@@ -1,437 +1,442 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
-import '../providers/pin_provider.dart';
-import '../providers/theme_provider.dart';
+import '../models/badge_model.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
-import 'family_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+class BadgesScreen extends StatelessWidget {
+  const BadgesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => PinGuard.guardAction(context, () => _showAddBadgeDialog(context)),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       body: AnimatedBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Icon(Icons.settings, size: 22),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Réglages',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Consumer3<ThemeProvider, PinProvider, FamilyProvider>(
-                  builder: (context, themeProv, pinProv, familyProv, _) {
-                    return ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Consumer<FamilyProvider>(
+          builder: (context, provider, _) {
+            final allBadges = [...BadgeModel.defaultBadges, ...provider.customBadges];
+            final children = provider.children;
+
+            return SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                    child: Row(
                       children: [
-                        const _GlassSectionTitle(icon: Icons.palette, title: 'Apparence'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: themeProv.isDark ? Icons.dark_mode : Icons.light_mode,
-                          title: 'Mode sombre',
-                          trailing: Switch(
-                            value: themeProv.isDark,
-                            onChanged: (_) => themeProv.toggle(),
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const Text('\u{26A1}', style: TextStyle(fontSize: 22)),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Pouvoirs',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        GlassCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
+                        IconButton(
+                          icon: const Icon(Icons.info_outline, size: 20),
+                          onPressed: () => _showBadgeInfo(context, allBadges),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: children.isEmpty
+                        ? const Center(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.color_lens, color: themeProv.primaryColor, size: 20),
-                                    const SizedBox(width: 10),
-                                    const Text('Couleur d\'accent', style: TextStyle(fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: List.generate(ThemeProvider.accentColors.length, (i) {
-                                    final color = ThemeProvider.accentColors[i];
-                                    final selected = i == themeProv.colorIndex;
-                                    return GestureDetector(
-                                      onTap: () => themeProv.setColorIndex(i),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 300),
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: color,
-                                          shape: BoxShape.circle,
-                                          border: selected
-                                              ? Border.all(color: Colors.white, width: 3)
-                                              : null,
-                                          boxShadow: selected
-                                              ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 12)]
-                                              : [],
-                                        ),
-                                        child: selected
-                                            ? const Icon(Icons.check, color: Colors.white, size: 20)
-                                            : null,
-                                      ),
-                                    );
-                                  }),
-                                ),
+                                Text('\u{1F476}', style: TextStyle(fontSize: 48)),
+                                SizedBox(height: 12),
+                                Text('Ajoutez des enfants pour commencer',
+                                    style: TextStyle(color: Colors.white60)),
                               ],
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        GlassCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
-                                  children: [
-                                    Icon(Icons.wallpaper, color: Colors.white70, size: 20),
-                                    SizedBox(width: 10),
-                                    Text('Fond d\'écran', style: TextStyle(fontWeight: FontWeight.w600)),
-                                  ],
+                          )
+                        : ListView(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            children: [
+                              const Text(
+                                'Tous les pouvoirs',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white70),
+                              ),
+                              const SizedBox(height: 8),
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  childAspectRatio: 0.85,
+                                  crossAxisSpacing: 8,
+                                  mainAxisSpacing: 8,
                                 ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: List.generate(ThemeProvider.backgroundColors.length, (i) {
-                                    final bg = ThemeProvider.backgroundColors[i];
-                                    final selected = i == themeProv.bgIndex;
-                                    return GestureDetector(
-                                      onTap: () => themeProv.setBgIndex(i),
-                                      child: Column(
-                                        children: [
-                                          AnimatedContainer(
-                                            duration: const Duration(milliseconds: 300),
-                                            width: 44,
-                                            height: 44,
-                                            decoration: BoxDecoration(
-                                              color: bg['color'] as Color,
-                                              shape: BoxShape.circle,
-                                              border: selected
-                                                  ? Border.all(color: themeProv.primaryColor, width: 3)
-                                                  : Border.all(color: Colors.white24, width: 1),
-                                              boxShadow: selected
-                                                  ? [BoxShadow(color: (bg['color'] as Color).withOpacity(0.5), blurRadius: 10)]
-                                                  : [],
+                                itemCount: allBadges.length,
+                                itemBuilder: (context, index) {
+                                  final badge = allBadges[index];
+                                  return GestureDetector(
+                                    onLongPress: badge.isCustom
+                                        ? () => PinGuard.guardAction(context, () => _showEditBadgeDialog(context, provider, badge))
+                                        : null,
+                                    child: GlassCard(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(badge.powerEmoji, style: const TextStyle(fontSize: 28)),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              badge.name,
+                                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                            child: selected
-                                                ? Icon(Icons.check, color: themeProv.primaryColor, size: 18)
-                                                : null,
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${badge.requiredPoints} pts',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Theme.of(context).colorScheme.primary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            if (badge.isCustom)
+                                              const Text(
+                                                'personnalise',
+                                                style: TextStyle(fontSize: 8, color: Colors.white38),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              const Text(
+                                'Progression par enfant',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white70),
+                              ),
+                              const SizedBox(height: 8),
+                              ...children.map((child) {
+                                final earned = allBadges.where((b) => child.points >= b.requiredPoints).toList();
+                                final progress = allBadges.isEmpty ? 0.0 : earned.length / allBadges.length;
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: GlassCard(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 18,
+                                                backgroundColor: Colors.white12,
+                                                child: Text(child.avatar, style: const TextStyle(fontSize: 18)),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      child.name,
+                                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                                    ),
+                                                    Text(
+                                                      '${earned.length}/${allBadges.length} pouvoirs - ${child.points} pts',
+                                                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            bg['label'] as String,
-                                            style: const TextStyle(fontSize: 10, color: Colors.white60),
+                                          const SizedBox(height: 10),
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(6),
+                                            child: LinearProgressIndicator(
+                                              value: progress,
+                                              backgroundColor: Colors.white12,
+                                              minHeight: 6,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Wrap(
+                                            spacing: 6,
+                                            runSpacing: 6,
+                                            children: allBadges.map((badge) {
+                                              final unlocked = child.points >= badge.requiredPoints;
+                                              return Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: unlocked ? Colors.green.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: unlocked ? Colors.greenAccent.withOpacity(0.5) : Colors.white12,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(badge.powerEmoji, style: const TextStyle(fontSize: 14)),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      badge.name,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        color: unlocked ? Colors.greenAccent : Colors.white38,
+                                                      ),
+                                                    ),
+                                                    if (unlocked) ...[
+                                                      const SizedBox(width: 4),
+                                                      const Icon(Icons.check_circle, size: 12, color: Colors.greenAccent),
+                                                    ],
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
                                           ),
                                         ],
                                       ),
-                                    );
-                                  }),
-                                ),
-                              ],
-                            ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                              const SizedBox(height: 80),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        const _GlassSectionTitle(icon: Icons.family_restroom, title: 'Famille'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.cloud_sync,
-                          title: 'Synchronisation',
-                          subtitle: familyProv.familyId != null ? 'Connecté' : 'Hors ligne',
-                          trailing: Icon(
-                            familyProv.familyId != null ? Icons.cloud_done : Icons.cloud_off,
-                            color: familyProv.familyId != null ? Colors.greenAccent : Colors.redAccent,
-                          ),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const FamilyScreen()),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const _GlassSectionTitle(icon: Icons.security, title: 'Sécurité'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.lock,
-                          title: 'Code parental',
-                          subtitle: pinProv.isPinSet ? 'Activé' : 'Non défini',
-                          trailing: Icon(
-                            pinProv.isPinSet ? Icons.lock : Icons.lock_open,
-                            color: pinProv.isPinSet ? Colors.greenAccent : Colors.orangeAccent,
-                          ),
-                          onTap: () => _showPinSetup(context, pinProv),
-                        ),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: pinProv.isParentMode ? Icons.admin_panel_settings : Icons.child_care,
-                          title: 'Mode actuel',
-                          subtitle: pinProv.isParentMode ? 'Mode parent' : 'Mode enfant',
-                          trailing: Switch(
-                            value: pinProv.isParentMode,
-                            onChanged: (val) {
-                              if (val) {
-                                PinGuard.guardAction(context, () {});
-                              } else {
-                                pinProv.lockParentMode();
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const _GlassSectionTitle(icon: Icons.storage, title: 'Données'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.restart_alt,
-                          title: 'Réinitialiser les scores',
-                          subtitle: 'Remet tous les points à zéro',
-                          onTap: () => PinGuard.guardAction(context, () => _confirmResetScores(context, familyProv)),
-                        ),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.delete_sweep,
-                          title: 'Effacer l\'historique',
-                          subtitle: 'Supprime tout l\'historique',
-                          onTap: () => PinGuard.guardAction(context, () => _confirmClearHistory(context, familyProv)),
-                        ),
-                        const SizedBox(height: 16),
-                        const _GlassSectionTitle(icon: Icons.info_outline, title: 'À propos'),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.phone_android,
-                          title: 'SKS Family',
-                          subtitle: 'Version 1.0.0',
-                        ),
-                        const SizedBox(height: 8),
-                        _GlassSettingsTile(
-                          icon: Icons.people,
-                          title: 'Famille',
-                          subtitle: '${familyProv.children.length} enfant(s)',
-                        ),
-                        const SizedBox(height: 32),
-                      ],
-                    );
-                  },
-                ),
+                  ),
+                ],
               ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showBadgeInfo(BuildContext context, List<BadgeModel> badges) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Text('\u{26A1}', style: TextStyle(fontSize: 22)),
+            SizedBox(width: 8),
+            Text('Systeme de pouvoirs', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Text(
+                'Les enfants debloquent des pouvoirs en accumulant des points. Chaque pouvoir donne un privilege special !',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              ...badges.map((b) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Text(b.powerEmoji, style: const TextStyle(fontSize: 20)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(b.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text(b.description, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                        Text('${b.requiredPoints} pts',
+                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  )),
             ],
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Compris !'),
+          ),
+        ],
       ),
     );
   }
 
-  void _showPinSetup(BuildContext context, PinProvider pinProv) {
-    final controller = TextEditingController();
+  void _showAddBadgeDialog(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final pointsCtrl = TextEditingController(text: '50');
+    String selectedPower = 'custom';
+
+    final powerOptions = [
+      {'type': 'tv', 'emoji': '\u{1F4FA}', 'label': 'Tele'},
+      {'type': 'no_chores', 'emoji': '\u{1F9F9}', 'label': 'Corvees'},
+      {'type': 'dessert', 'emoji': '\u{1F370}', 'label': 'Dessert'},
+      {'type': 'late_bed', 'emoji': '\u{1F319}', 'label': 'Coucher'},
+      {'type': 'game', 'emoji': '\u{1F3AE}', 'label': 'Jeu'},
+      {'type': 'outing', 'emoji': '\u{1F3E0}', 'label': 'Sortie'},
+      {'type': 'custom', 'emoji': '\u{26A1}', 'label': 'Autre'},
+    ];
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Code parental', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              pinProv.isPinSet ? 'Modifier le code parental' : 'Créer un code parental',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 12),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                hintText: '• • • •',
-                hintStyle: const TextStyle(color: Colors.white30),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Nouveau pouvoir', style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: powerOptions.map((opt) {
+                    final selected = selectedPower == opt['type'];
+                    return GestureDetector(
+                      onTap: () => setState(() => selectedPower = opt['type'] as String),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: selected ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: selected ? Border.all(color: Theme.of(context).colorScheme.primary) : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Text(opt['emoji'] as String, style: const TextStyle(fontSize: 20)),
+                            Text(opt['label'] as String, style: const TextStyle(fontSize: 9, color: Colors.white60)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
-                counterText: '',
-              ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Nom du pouvoir',
+                    labelStyle: const TextStyle(color: Colors.white60),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    labelStyle: const TextStyle(color: Colors.white60),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: pointsCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Points requis',
+                    labelStyle: const TextStyle(color: Colors.white60),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameCtrl.text.isNotEmpty) {
+                  final provider = context.read<FamilyProvider>();
+                  provider.addCustomBadge(
+                    nameCtrl.text,
+                    descCtrl.text,
+                    int.tryParse(pointsCtrl.text) ?? 50,
+                    selectedPower,
+                  );
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Pouvoir "${nameCtrl.text}" cree !')),
+                  );
+                }
+              },
+              child: const Text('Creer'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          if (pinProv.isPinSet)
-            TextButton(
-              onPressed: () {
-                pinProv.removePin();
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code supprimé')),
-                );
-              },
-              child: const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
-            ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.length == 4) {
-                pinProv.setPin(controller.text);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code enregistré !')),
-                );
-              }
-            },
-            child: const Text('Valider'),
-          ),
-        ],
       ),
     );
   }
 
-  void _confirmResetScores(BuildContext context, FamilyProvider prov) {
+  void _showEditBadgeDialog(BuildContext context, FamilyProvider provider, BadgeModel badge) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Réinitialiser ?', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Tous les points seront remis à zéro. Cette action est irréversible.',
-          style: TextStyle(color: Colors.white70),
+        title: Row(
+          children: [
+            Text(badge.powerEmoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(badge.name, style: const TextStyle(color: Colors.white, fontSize: 16))),
+          ],
         ),
+        content: Text(badge.description, style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
+            child: const Text('Fermer'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              prov.resetAllScores();
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Scores réinitialisés')),
-              );
-            },
-            child: const Text('Réinitialiser'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmClearHistory(BuildContext context, FamilyProvider prov) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Effacer l\'historique ?', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Tout l\'historique sera supprimé. Cette action est irréversible.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () {
-              prov.clearHistory();
+              provider.removeCustomBadge(badge.id);
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Historique effacé')),
+                SnackBar(content: Text('Pouvoir "${badge.name}" supprime')),
               );
             },
-            child: const Text('Effacer'),
+            child: const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _GlassSectionTitle extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  const _GlassSectionTitle({required this.icon, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: Colors.white54),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.white54,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GlassSettingsTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  const _GlassSettingsTile({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      child: ListTile(
-        leading: Icon(icon, color: Colors.white70),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: subtitle != null
-            ? Text(subtitle!, style: const TextStyle(color: Colors.white60, fontSize: 12))
-            : null,
-        trailing: trailing,
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
     );
   }
