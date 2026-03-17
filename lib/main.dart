@@ -20,6 +20,14 @@ void main() async {
   await Hive.initFlutter();
   await initializeDateFormatting('fr_FR', null);
 
+  // Initialize local notifications
+  try {
+    await NotificationService.init();
+    if (kDebugMode) debugPrint('NotificationService initialized OK');
+  } catch (e) {
+    if (kDebugMode) debugPrint('NotificationService init error: $e');
+  }
+
   bool firebaseReady = false;
   for (int attempt = 1; attempt <= 3; attempt++) {
     try {
