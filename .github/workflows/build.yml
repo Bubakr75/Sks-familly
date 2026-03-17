@@ -30,38 +30,48 @@ jobs:
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
 
-      - name: Enable core library desugaring
+      - name: Show and patch build.gradle.kts
         run: |
-          cat > /tmp/fix_gradle.py << 'EOF'
-          import re
-
+          echo "=== ORIGINAL build.gradle.kts ==="
+          cat -n android/app/build.gradle.kts
+          echo "=== END ORIGINAL ==="
+          
+          cat > /tmp/fix_gradle.py << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
-              content = f.read()
+              lines = f.readlines()
 
-          # Add isCoreLibraryDesugaringEnabled in compileOptions
-          content = content.replace(
-              'compileOptions {',
-              'compileOptions {\n        isCoreLibraryDesugaringEnabled = true'
-          )
+          new_lines = []
+          in_android = False
+          compile_options_done = False
+          dependencies_found = False
 
-          # Add coreLibraryDesugaring dependency at the end of dependencies block
-          # Find the last closing brace of dependencies
-          dep_pattern = r'(dependencies\s*\{)'
-          match = re.search(dep_pattern, content)
-          if match:
-              # Find the position after "dependencies {"
-              start = match.end()
-              # Insert the dependency right after the opening brace
-              content = content[:start] + '\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' + content[start:]
+          for i, line in enumerate(lines):
+              new_lines.append(line)
+              
+              # Add isCoreLibraryDesugaringEnabled after compileOptions {
+              if 'compileOptions' in line and '{' in line and not compile_options_done:
+                  new_lines.append('        isCoreLibraryDesugaringEnabled = true\n')
+                  compile_options_done = True
+              
+              # Add coreLibraryDesugaring after the last dependencies {
+              if line.strip().startswith('dependencies') and '{' in line:
+                  dependencies_found = True
+                  dep_line_index = len(new_lines)
+
+          # Insert coreLibraryDesugaring right after the last dependencies {
+          if dependencies_found and dep_line_index:
+              new_lines.insert(dep_line_index, '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n')
 
           with open('android/app/build.gradle.kts', 'w') as f:
-              f.write(content)
+              f.writelines(new_lines)
 
-          print("build.gradle.kts patched successfully")
-          EOF
+          print("Patch applied successfully")
+          PYEOF
           python3 /tmp/fix_gradle.py
-          echo "--- Patched build.gradle.kts ---"
-          cat android/app/build.gradle.kts
+          
+          echo "=== PATCHED build.gradle.kts ==="
+          cat -n android/app/build.gradle.kts
+          echo "=== END PATCHED ==="
 
       - name: Get dependencies
         run: flutter pub get
