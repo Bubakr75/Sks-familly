@@ -1,5 +1,12 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/family_provider.dart';
+import '../providers/pin_provider.dart';
+import '../models/child_model.dart';
+import 'child_dashboard_screen.dart';
+import 'pin_verification_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   final VoidCallback onEnter;
@@ -20,12 +27,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
-    
+
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
-    
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -60,6 +67,195 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
     _pulseController.dispose();
     _particleController.dispose();
     super.dispose();
+  }
+
+  void _enterAsParent() {
+    final pin = context.read<PinProvider>();
+    if (pin.isPinSet) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PinVerificationScreen(
+            onVerified: () {
+              Navigator.pop(context);
+              widget.onEnter();
+            },
+          ),
+        ),
+      );
+    } else {
+      widget.onEnter();
+    }
+  }
+
+  void _enterAsChild() {
+    final provider = context.read<FamilyProvider>();
+    if (provider.children.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Aucun enfant enregistre. Connectez-vous en tant que parent d\'abord.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+    _showChildPicker();
+  }
+
+  void _showChildPicker() {
+    final provider = context.read<FamilyProvider>();
+    final primary = Theme.of(context).colorScheme.primary;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141833),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[700],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Qui es-tu ?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Choisis ton profil',
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            ...provider.children.map((child) => _buildChildPickerItem(child, primary, ctx)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChildPickerItem(ChildModel child, Color primary, BuildContext ctx) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () {
+            Navigator.pop(ctx);
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => ChildDashboardScreen(childId: child.id),
+                transitionsBuilder: (_, anim, __, page) {
+                  return FadeTransition(
+                    opacity: CurvedAnimation(parent: anim, curve: Curves.easeIn),
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.05),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                      child: page,
+                    ),
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 400),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              color: primary.withValues(alpha: 0.06),
+              border: Border.all(color: primary.withValues(alpha: 0.15)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [primary, primary.withValues(alpha: 0.5)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primary.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        spreadRadius: -2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: child.hasPhoto
+                        ? Image.memory(
+                            base64Decode(child.photoBase64!),
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(
+                                child.avatar.isEmpty ? '\u{1F466}' : child.avatar,
+                                style: const TextStyle(fontSize: 28),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              child.avatar.isEmpty ? '\u{1F466}' : child.avatar,
+                              style: const TextStyle(fontSize: 28),
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        child.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Niveau ${child.level} - ${child.points} pts',
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.grey[600]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -272,9 +468,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                       ),
                     ),
 
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 50),
 
-                    // Enter button
+                    // Parent button
                     ScaleTransition(
                       scale: _buttonScale,
                       child: AnimatedBuilder(
@@ -297,7 +493,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                         },
                         child: SizedBox(
                           width: double.infinity,
-                          height: 60,
+                          height: 58,
                           child: FilledButton(
                             style: FilledButton.styleFrom(
                               backgroundColor: const Color(0xFF6C63FF),
@@ -307,22 +503,58 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                               ),
                               elevation: 0,
                             ),
-                            onPressed: widget.onEnter,
+                            onPressed: _enterAsParent,
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                Icon(Icons.lock_open_rounded, size: 20),
+                                SizedBox(width: 10),
                                 Text(
-                                  'ENTRER',
+                                  'MODE PARENT',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w800,
-                                    letterSpacing: 4,
+                                    letterSpacing: 3,
                                   ),
                                 ),
-                                SizedBox(width: 12),
-                                Icon(Icons.arrow_forward_rounded, size: 22),
                               ],
                             ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Child button
+                    ScaleTransition(
+                      scale: _buttonScale,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 58,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF00E5FF),
+                            side: const BorderSide(color: Color(0xFF00E5FF), width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                          onPressed: _enterAsChild,
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.child_care_rounded, size: 20),
+                              SizedBox(width: 10),
+                              Text(
+                                'MODE ENFANT',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 3,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -334,7 +566,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                     FadeTransition(
                       opacity: _fadeIn,
                       child: Text(
-                        'v4.2.0',
+                        'v4.5.0',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.2),
                           fontSize: 12,
@@ -355,11 +587,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
   }
 }
 
-// Custom particle painter for background effect
 class _ParticlePainter extends CustomPainter {
   final double progress;
   final Color color;
-  
+
   _ParticlePainter({required this.progress, required this.color});
 
   @override
