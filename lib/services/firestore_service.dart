@@ -29,6 +29,10 @@ class FirestoreService {
   StreamSubscription? _punishmentsSub;
   StreamSubscription? _notesSub;
 
+  // Keepalive timer
+  Timer? _keepAliveTimer;
+  DateTime _lastDataReceived = DateTime.now();
+
   void Function(List<ChildModel>, List<Map<String, dynamic>>)? onChildrenChanged;
   void Function(List<HistoryEntry>, List<Map<String, dynamic>>)? onHistoryChanged;
   void Function(List<GoalModel>, List<Map<String, dynamic>>)? onGoalsChanged;
@@ -48,6 +52,7 @@ class FirestoreService {
 
       if (_familyId != null) {
         _startListening();
+        _startKeepAlive();
       }
     } catch (e) {
       if (kDebugMode) debugPrint('FirestoreService init error: $e');
@@ -96,6 +101,7 @@ class FirestoreService {
     await prefs.setString('family_id', _familyId!);
     await prefs.setString('family_code', code);
     _startListening();
+    _startKeepAlive();
     return code;
   }
 
@@ -123,6 +129,7 @@ class FirestoreService {
       await prefs.setString('family_id', _familyId!);
       await prefs.setString('family_code', cleanCode);
       _startListening();
+      _startKeepAlive();
       return true;
     } catch (e) {
       if (kDebugMode) debugPrint('joinFamily ERROR: $e');
@@ -137,6 +144,7 @@ class FirestoreService {
 
   Future<void> disconnectFamily() async {
     _stopListening();
+    _stopKeepAlive();
     _familyId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('family_id');
@@ -148,7 +156,58 @@ class FirestoreService {
     if (kDebugMode) debugPrint('FirestoreService: reconnecting listeners...');
     _stopListening();
     _startListening();
+    _lastDataReceived = DateTime.now();
   }
+
+  // ===== KEEP ALIVE =====
+
+  void _startKeepAlive() {
+    _stopKeepAlive();
+    _lastDataReceived = DateTime.now();
+    _keepAliveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _checkConnection();
+    });
+    if (kDebugMode) debugPrint('KeepAlive timer started (every 15s)');
+  }
+
+  void _stopKeepAlive() {
+    _keepAliveTimer?.cancel();
+    _keepAliveTimer = null;
+  }
+
+  void _checkConnection() {
+    if (_familyId == null) return;
+
+    final secondsSinceLastData = DateTime.now().difference(_lastDataReceived).inSeconds;
+
+    if (kDebugMode) {
+      debugPrint('KeepAlive check: ${secondsSinceLastData}s since last data');
+    }
+
+    // If no data received in 45 seconds, reconnect
+    if (secondsSinceLastData > 45) {
+      if (kDebugMode) debugPrint('KeepAlive: No data for 45s, reconnecting...');
+      reconnect();
+    }
+
+    // Also do a manual read to keep the connection alive
+    _db
+        .collection('families')
+        .doc(_familyId)
+        .get()
+        .then((_) {
+      if (kDebugMode) debugPrint('KeepAlive ping OK');
+    }).catchError((e) {
+      if (kDebugMode) debugPrint('KeepAlive ping failed: $e, reconnecting...');
+      reconnect();
+    });
+  }
+
+  void _markDataReceived() {
+    _lastDataReceived = DateTime.now();
+  }
+
+  // ===== REAL-TIME LISTENERS =====
 
   void _startListening() {
     if (_familyId == null) return;
@@ -159,6 +218,7 @@ class FirestoreService {
         .collection('children')
         .snapshots()
         .listen((snapshot) {
+      _markDataReceived();
       final children = <ChildModel>[];
       final rawList = <Map<String, dynamic>>[];
       for (final doc in snapshot.docs) {
@@ -170,6 +230,7 @@ class FirestoreService {
       onChildrenChanged?.call(children, rawList);
     }, onError: (e) {
       if (kDebugMode) debugPrint('Children listener error: $e');
+      Future.delayed(const Duration(seconds: 5), () => reconnect());
     });
 
     _historySub = _db
@@ -178,6 +239,7 @@ class FirestoreService {
         .collection('history')
         .snapshots()
         .listen((snapshot) {
+      _markDataReceived();
       final history = <HistoryEntry>[];
       final rawList = <Map<String, dynamic>>[];
       for (final doc in snapshot.docs) {
@@ -190,6 +252,7 @@ class FirestoreService {
       onHistoryChanged?.call(history, rawList);
     }, onError: (e) {
       if (kDebugMode) debugPrint('History listener error: $e');
+      Future.delayed(const Duration(seconds: 5), () => reconnect());
     });
 
     _goalsSub = _db
@@ -198,6 +261,7 @@ class FirestoreService {
         .collection('goals')
         .snapshots()
         .listen((snapshot) {
+      _markDataReceived();
       final goals = <GoalModel>[];
       final rawList = <Map<String, dynamic>>[];
       for (final doc in snapshot.docs) {
@@ -209,6 +273,7 @@ class FirestoreService {
       onGoalsChanged?.call(goals, rawList);
     }, onError: (e) {
       if (kDebugMode) debugPrint('Goals listener error: $e');
+      Future.delayed(const Duration(seconds: 5), () => reconnect());
     });
 
     _punishmentsSub = _db
@@ -217,6 +282,7 @@ class FirestoreService {
         .collection('punishments')
         .snapshots()
         .listen((snapshot) {
+      _markDataReceived();
       final punishments = <PunishmentLines>[];
       final rawList = <Map<String, dynamic>>[];
       for (final doc in snapshot.docs) {
@@ -228,6 +294,7 @@ class FirestoreService {
       onPunishmentsChanged?.call(punishments, rawList);
     }, onError: (e) {
       if (kDebugMode) debugPrint('Punishments listener error: $e');
+      Future.delayed(const Duration(seconds: 5), () => reconnect());
     });
 
     _notesSub = _db
@@ -236,6 +303,7 @@ class FirestoreService {
         .collection('notes')
         .snapshots()
         .listen((snapshot) {
+      _markDataReceived();
       final notes = snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
@@ -245,7 +313,10 @@ class FirestoreService {
       onNotesChanged?.call(notes);
     }, onError: (e) {
       if (kDebugMode) debugPrint('Notes listener error: $e');
+      Future.delayed(const Duration(seconds: 5), () => reconnect());
     });
+
+    if (kDebugMode) debugPrint('All Firestore listeners started');
   }
 
   void _stopListening() {
@@ -260,6 +331,8 @@ class FirestoreService {
     _punishmentsSub = null;
     _notesSub = null;
   }
+
+  // ===== WRITE OPERATIONS =====
 
   Future<void> saveChild(ChildModel child) async {
     if (_familyId == null) return;
