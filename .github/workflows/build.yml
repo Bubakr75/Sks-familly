@@ -32,8 +32,36 @@ jobs:
 
       - name: Enable core library desugaring
         run: |
-          sed -i 's/compileOptions {/compileOptions {\n        isCoreLibraryDesugaringEnabled = true/' android/app/build.gradle.kts
-          sed -i 's/dependencies {/dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")/' android/app/build.gradle.kts
+          cat > /tmp/fix_gradle.py << 'EOF'
+          import re
+
+          with open('android/app/build.gradle.kts', 'r') as f:
+              content = f.read()
+
+          # Add isCoreLibraryDesugaringEnabled in compileOptions
+          content = content.replace(
+              'compileOptions {',
+              'compileOptions {\n        isCoreLibraryDesugaringEnabled = true'
+          )
+
+          # Add coreLibraryDesugaring dependency at the end of dependencies block
+          # Find the last closing brace of dependencies
+          dep_pattern = r'(dependencies\s*\{)'
+          match = re.search(dep_pattern, content)
+          if match:
+              # Find the position after "dependencies {"
+              start = match.end()
+              # Insert the dependency right after the opening brace
+              content = content[:start] + '\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' + content[start:]
+
+          with open('android/app/build.gradle.kts', 'w') as f:
+              f.write(content)
+
+          print("build.gradle.kts patched successfully")
+          EOF
+          python3 /tmp/fix_gradle.py
+          echo "--- Patched build.gradle.kts ---"
+          cat android/app/build.gradle.kts
 
       - name: Get dependencies
         run: flutter pub get
