@@ -36,13 +36,11 @@ jobs:
           with open('android/app/build.gradle.kts', 'r') as f:
               content = f.read()
 
-          # Add isCoreLibraryDesugaringEnabled in compileOptions
           content = content.replace(
               'compileOptions {',
               'compileOptions {\n        isCoreLibraryDesugaringEnabled = true'
           )
 
-          # Add dependencies block with coreLibraryDesugaring at the end
           content += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
 
           with open('android/app/build.gradle.kts', 'w') as f:
@@ -51,9 +49,77 @@ jobs:
           print("Patch applied successfully")
           PYEOF
           python3 /tmp/fix_gradle.py
-          echo "=== PATCHED build.gradle.kts ==="
-          cat -n android/app/build.gradle.kts
-          echo "=== END ==="
+
+      - name: Generate keystore
+        run: |
+          keytool -genkey -v \
+            -keystore /tmp/upload-keystore.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias ${{ secrets.KEY_ALIAS }} \
+            -storepass ${{ secrets.STORE_PASSWORD }} \
+            -keypass ${{ secrets.KEY_PASSWORD }} \
+            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
+
+      - name: Configure signing
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=/tmp/upload-keystore.jks
+          EOF
+
+          cat > /tmp/fix_signing.py << 'PYEOF'
+          with open('android/app/build.gradle.kts', 'r') as f:
+              content = f.read()
+
+          # Add key.properties loading after plugins block
+          key_properties_code = """
+          import java.util.Properties
+          import java.io.FileInputStream
+
+          val keystoreProperties = Properties()
+          val keystorePropertiesFile = rootProject.file("key.properties")
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+          }
+          """
+
+          # Insert after plugins block
+          content = content.replace(
+              'android {',
+              key_properties_code + '\nandroid {'
+          )
+
+          # Add signingConfigs before buildTypes
+          signing_config = """
+              signingConfigs {
+                  create("release") {
+                      keyAlias = keystoreProperties["keyAlias"] as String?
+                      keyPassword = keystoreProperties["keyPassword"] as String?
+                      storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+                      storePassword = keystoreProperties["storePassword"] as String?
+                  }
+              }
+          """
+
+          content = content.replace(
+              '    buildTypes {',
+              signing_config + '\n    buildTypes {'
+          )
+
+          # Use release signing config
+          content = content.replace(
+              'signingConfig = signingConfigs.getByName("debug")',
+              'signingConfig = signingConfigs.getByName("release")'
+          )
+
+          with open('android/app/build.gradle.kts', 'w') as f:
+              f.write(content)
+
+          print("Signing config applied successfully")
+          PYEOF
+          python3 /tmp/fix_signing.py
 
       - name: Get dependencies
         run: flutter pub get
@@ -61,11 +127,11 @@ jobs:
       - name: Generate app icons
         run: dart run flutter_launcher_icons
 
-      - name: Build APK
-        run: flutter build apk --debug --no-tree-shake-icons
+      - name: Build Release APK
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: family-score-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
