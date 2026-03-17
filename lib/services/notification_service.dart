@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Service de notifications in-app pour afficher les changements en temps réel
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -8,8 +8,77 @@ class NotificationService {
 
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-  /// Affiche une notification en haut de l'écran
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+
+  static bool _initialized = false;
+
+  /// Initialize local notifications (call once at app start)
+  static Future<void> init() async {
+    if (_initialized) return;
+
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+
+    await _localNotifications.initialize(initSettings);
+
+    // Create notification channel for Android
+    const androidChannel = AndroidNotificationChannel(
+      'sks_family_channel',
+      'SKS Family',
+      description: 'Notifications de synchronisation familiale',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(androidChannel);
+
+    _initialized = true;
+  }
+
+  /// Show a real Android notification in the status bar
+  static Future<void> _showLocalNotification({
+    required String title,
+    required String body,
+    required int id,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'sks_family_channel',
+      'SKS Family',
+      channelDescription: 'Notifications de synchronisation familiale',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const details = NotificationDetails(android: androidDetails);
+
+    await _localNotifications.show(id, title, body, details);
+  }
+
+  /// Show both in-app overlay AND Android notification
   static void show({
+    required String title,
+    required String message,
+    required NotificationType type,
+  }) {
+    // Show Android notification in status bar
+    _showLocalNotification(
+      title: title,
+      body: message,
+      id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    );
+
+    // Also show in-app overlay if context is available
+    _showOverlay(title: title, message: message, type: type);
+  }
+
+  static void _showOverlay({
     required String title,
     required String message,
     required NotificationType type,
@@ -25,21 +94,19 @@ class NotificationService {
         title: title,
         message: message,
         type: type,
-        onDismiss: () => entry.remove(),
+        onDismiss: () {
+          try { entry.remove(); } catch (_) {}
+        },
       ),
     );
 
     overlay.insert(entry);
 
-    // Auto-dismiss after 4 seconds
     Future.delayed(const Duration(seconds: 4), () {
-      try {
-        entry.remove();
-      } catch (_) {}
+      try { entry.remove(); } catch (_) {}
     });
   }
 
-  /// Notification pour un bonus ajouté
   static void notifyBonus(String childName, int points, String reason) {
     show(
       title: 'Bonus pour $childName',
@@ -48,16 +115,14 @@ class NotificationService {
     );
   }
 
-  /// Notification pour une pénalité
   static void notifyPenalty(String childName, int points, String reason) {
     show(
-      title: 'Pénalité pour $childName',
+      title: 'Penalite pour $childName',
       message: '$points pts - $reason',
       type: NotificationType.penalty,
     );
   }
 
-  /// Notification pour une ligne de punition assignée
   static void notifyPunishment(String childName, String text, int lines) {
     show(
       title: 'Punition pour $childName',
@@ -66,16 +131,14 @@ class NotificationService {
     );
   }
 
-  /// Notification pour une ligne de punition complétée
   static void notifyPunishmentProgress(String childName, int completed, int total) {
     show(
-      title: 'Progrès de $childName',
-      message: '$completed/$total lignes complétées',
+      title: 'Progres de $childName',
+      message: '$completed/$total lignes completees',
       type: NotificationType.progress,
     );
   }
 
-  /// Notification pour un badge gagné
   static void notifyBadge(String childName, String badgeName) {
     show(
       title: 'Nouveau badge !',
@@ -84,11 +147,10 @@ class NotificationService {
     );
   }
 
-  /// Notification pour un objectif complété
   static void notifyGoalCompleted(String childName, String goalTitle) {
     show(
       title: 'Objectif atteint !',
-      message: '$childName a complété "$goalTitle"',
+      message: '$childName a complete "$goalTitle"',
       type: NotificationType.goal,
     );
   }
@@ -140,7 +202,6 @@ class _NotificationOverlayState extends State<_NotificationOverlay>
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
     _controller.forward();
 
-    // Start dismiss animation after 3.5 seconds
     Future.delayed(const Duration(milliseconds: 3500), () {
       if (mounted) {
         _controller.reverse().then((_) {
