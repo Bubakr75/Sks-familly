@@ -56,7 +56,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF0f0c29), Color(0xFF302b63), Color(0xFF24243e)],
+                colors: [
+                  Color(0xFF0f0c29),
+                  Color(0xFF302b63),
+                  Color(0xFF24243e),
+                ],
               ),
             ),
             child: Stack(
@@ -101,7 +105,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // Lundi a vendredi uniquement
   List<Map<String, dynamic>> _getWeekNotes(FamilyProvider provider) {
     final now = DateTime.now();
     final monday = now.subtract(Duration(days: now.weekday - 1));
@@ -117,7 +120,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           h.date.month == day.month &&
           h.date.day == day.day).toList();
 
-      final bool isToday = day.year == now.year && day.month == now.month && day.day == now.day;
+      final bool isToday = day.year == now.year &&
+          day.month == now.month &&
+          day.day == now.day;
       final bool isFuture = day.isAfter(now);
 
       if (dayHistory.isNotEmpty) {
@@ -160,7 +165,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 onPressed: () => Navigator.pop(context),
               ),
               const Spacer(),
-              Text('Mode Enfant', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
+              Text(
+                'Mode Enfant',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 14,
+                ),
+              ),
               const Spacer(),
               const SizedBox(width: 48),
             ],
@@ -171,48 +182,94 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             height: 100,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.5), width: 3),
-              boxShadow: [BoxShadow(color: Colors.amber.withValues(alpha: 0.3), blurRadius: 20)],
+              border: Border.all(
+                color: Colors.amber.withValues(alpha: 0.5),
+                width: 3,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                ),
+              ],
             ),
             child: ClipOval(
               child: child.hasPhoto
-                  ? Image.memory(base64Decode(child.photoBase64), fit: BoxFit.cover, width: 100, height: 100,
-                      gaplessPlayback: true, errorBuilder: (_, __, ___) => _avatarFallback(child))
+                  ? Image.memory(
+                      base64Decode(child.photoBase64),
+                      fit: BoxFit.cover,
+                      width: 100,
+                      height: 100,
+                      gaplessPlayback: true,
+                      errorBuilder: (_, __, ___) => _avatarFallback(child),
+                    )
                   : _avatarFallback(child),
             ),
           ),
           const SizedBox(height: 12),
-          Text(child.name, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(
+            child.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.amber.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: Colors.amber.withValues(alpha: 0.3),
+              ),
             ),
-            child: Text(child.levelTitle, style: TextStyle(color: Colors.amber.shade300, fontSize: 14, fontWeight: FontWeight.w600)),
+            child: Text(
+              child.levelTitle,
+              style: TextStyle(
+                color: Colors.amber.shade300,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildStatBadge(Icons.star, '${child.points}', 'Points', Colors.amber),
+              _buildStatBadge(
+                Icons.star,
+                '${child.points}',
+                'Points',
+                Colors.amber,
+              ),
               const SizedBox(width: 20),
-              _buildStatBadge(Icons.trending_up, child.levelTitle, 'Niveau', Colors.greenAccent),
+              _buildStatBadge(
+                Icons.trending_up,
+                child.levelTitle,
+                'Niveau',
+                Colors.greenAccent,
+              ),
               const SizedBox(width: 20),
-              _buildStatBadge(Icons.emoji_events, '${child.badgeIds.length}', 'Badges', Colors.purpleAccent),
+              _buildStatBadge(
+                Icons.emoji_events,
+                '${child.badgeIds.length}',
+                'Badges',
+                Colors.purpleAccent,
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          // Barre de progression
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: child.levelProgress,
               minHeight: 8,
               backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.amber.shade400),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Colors.amber.shade400,
+              ),
             ),
           ),
           const SizedBox(height: 4),
@@ -221,7 +278,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ? '\u{1F381} Niveau MAX atteint ! Cadeau debloque !'
                 : '${child.points} / ${child.nextLevelPoints} points pour le prochain niveau',
             style: TextStyle(
-              color: child.isMaxLevel ? Colors.amber.shade300 : Colors.white.withValues(alpha: 0.5),
+              color: child.isMaxLevel
+                  ? Colors.amber.shade300
+                  : Colors.white.withValues(alpha: 0.5),
               fontSize: 12,
               fontWeight: child.isMaxLevel ? FontWeight.w700 : FontWeight.w400,
             ),
@@ -233,11 +292,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   Widget _avatarFallback(ChildModel child) {
     return Container(
-      width: 100, height: 100,
+      width: 100,
+      height: 100,
       color: Colors.white.withValues(alpha: 0.2),
       child: Center(
         child: Text(
-          child.avatar.isNotEmpty ? child.avatar : child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+          child.avatar.isNotEmpty
+              ? child.avatar
+              : child.name.isNotEmpty
+                  ? child.name[0].toUpperCase()
+                  : '?',
           style: const TextStyle(fontSize: 45),
         ),
       ),
@@ -245,7 +309,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   Widget _buildWeekNotes(List<Map<String, dynamic>> notes) {
-    // Filtrer pour n'afficher que les jours avec notes
     final notesWithGrades = notes.where((n) => n['hasNote'] == true).toList();
     if (notesWithGrades.isEmpty) return const SizedBox.shrink();
 
@@ -255,7 +318,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF448AFF).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFF448AFF).withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,11 +329,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             children: [
               Icon(Icons.school_rounded, color: Color(0xFF448AFF), size: 18),
               SizedBox(width: 8),
-              Text('Notes de la semaine', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+              Text(
+                'Notes de la semaine',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          // Afficher tous les 5 jours (avec ou sans note)
           Row(
             children: notes.map((n) {
               final hasNote = n['hasNote'] as bool;
@@ -278,10 +349,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
               Color color = Colors.grey;
               if (hasNote && grade != null) {
-                if (grade >= 16) color = const Color(0xFF00E676);
-                else if (grade >= 12) color = const Color(0xFF448AFF);
-                else if (grade >= 10) color = Colors.orange;
-                else color = const Color(0xFFFF1744);
+                if (grade >= 16) {
+                  color = const Color(0xFF00E676);
+                } else if (grade >= 12) {
+                  color = const Color(0xFF448AFF);
+                } else if (grade >= 10) {
+                  color = Colors.orange;
+                } else {
+                  color = const Color(0xFFFF1744);
+                }
               }
 
               return Expanded(
@@ -295,48 +371,95 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         : isToday
                             ? const Color(0xFF448AFF).withValues(alpha: 0.1)
                             : Colors.white.withValues(alpha: 0.05),
-                    border: isToday ? Border.all(color: const Color(0xFF448AFF).withValues(alpha: 0.5), width: 1.5) : null,
+                    border: isToday
+                        ? Border.all(
+                            color: const Color(0xFF448AFF).withValues(alpha: 0.5),
+                            width: 1.5,
+                          )
+                        : null,
                   ),
                   child: Column(
                     children: [
                       Text(
                         (n['day'] as String).substring(0, 3),
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       if (hasNote && grade != null) ...[
                         Text(
-                          '${grade.toStringAsFixed(grade == grade.roundToDouble() ? 0 : 1)}',
-                          style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900),
+                          grade.toStringAsFixed(
+                            grade == grade.roundToDouble() ? 0 : 1,
+                          ),
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                        Text('/20', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 9)),
+                        Text(
+                          '/20',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            fontSize: 9,
+                          ),
+                        ),
                       ] else if (isFuture)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Text('-', style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.15))),
+                          child: Text(
+                            '-',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withValues(alpha: 0.15),
+                            ),
+                          ),
                         )
                       else if (isToday)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Container(
-                            width: 10, height: 10,
-                            decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF448AFF).withValues(alpha: 0.5)),
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF448AFF).withValues(alpha: 0.5),
+                            ),
                           ),
                         )
                       else
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Text('-', style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.2))),
+                          child: Text(
+                            '-',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withValues(alpha: 0.2),
+                            ),
+                          ),
                         ),
                       if (isToday && hasNote)
                         Container(
                           margin: const EdgeInsets.only(top: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text('Auj.', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700)),
+                          child: const Text(
+                            'Auj.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -349,17 +472,38 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Widget _buildStatBadge(IconData icon, String value, String label, Color color) {
+  Widget _buildStatBadge(
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+          ),
           child: Icon(icon, color: color, size: 24),
         ),
         const SizedBox(height: 6),
-        Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 11,
+          ),
+        ),
       ],
     );
   }
@@ -373,12 +517,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       ),
       child: TabBar(
         controller: _tabController,
-        indicator: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+        indicator: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white54,
         labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         dividerHeight: 0,
-        tabs: const [Tab(text: 'Resume'), Tab(text: 'Badges'), Tab(text: 'Historique'), Tab(text: 'Punitions')],
+        tabs: const [
+          Tab(text: 'Resume'),
+          Tab(text: 'Badges'),
+          Tab(text: 'Historique'),
+          Tab(text: 'Punitions'),
+        ],
       ),
     );
   }
@@ -386,8 +538,478 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Widget _buildOverviewTab(ChildModel child, List<HistoryEntry> history) {
     final recentHistory = history.take(10).toList();
 
-    // Calcul des stats de la semaine
     final now = DateTime.now();
     final monday = now.subtract(Duration(days: now.weekday - 1));
-    final weekHistory = history.where((h) =>
-        h.date
+    final mondayStart = DateTime(monday.year, monday.month, monday.day);
+    final weekHistory = history.where((h) => h.date.isAfter(mondayStart)).toList();
+    final weekPoints = weekHistory.fold<int>(0, (s, h) => s + h.points);
+    final weekBonus = weekHistory
+        .where((h) => h.isBonus)
+        .fold<int>(0, (s, h) => s + h.points);
+    final weekPenalties = weekHistory
+        .where((h) => !h.isBonus)
+        .fold<int>(0, (s, h) => s + h.points.abs());
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Cette semaine',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _miniStat(
+                      'Total',
+                      '${weekPoints >= 0 ? '+' : ''}$weekPoints',
+                      weekPoints >= 0 ? Colors.greenAccent : Colors.redAccent,
+                    ),
+                  ),
+                  Expanded(
+                    child: _miniStat('Bonus', '+$weekBonus', Colors.greenAccent),
+                  ),
+                  Expanded(
+                    child: _miniStat(
+                      'Penalites',
+                      '-$weekPenalties',
+                      Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildGlassCard(
+          title: 'Dernieres activites',
+          child: recentHistory.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Text(
+                      'Aucune activite recente',
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: recentHistory
+                      .map((h) => _buildHistoryTile(h))
+                      .toList(),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBadgesTab(ChildModel child, FamilyProvider provider) {
+    final allBadges = provider.allBadges;
+    if (allBadges.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.emoji_events_outlined, color: Colors.white24, size: 64),
+            SizedBox(height: 16),
+            Text(
+              'Pas de badges disponibles',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (child.badgeIds.isNotEmpty) ...[
+          const Text(
+            '\u{1F3C6} Badges obtenus',
+            style: TextStyle(
+              color: Colors.amber,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...allBadges
+              .where((b) => child.badgeIds.contains(b.id))
+              .map((b) => Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.amber.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          b.powerEmoji,
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                b.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              Text(
+                                b.description,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.amber,
+                          size: 24,
+                        ),
+                      ],
+                    ),
+                  )),
+          const SizedBox(height: 20),
+        ],
+        const Text(
+          '\u{1F512} A debloquer',
+          style: TextStyle(
+            color: Colors.white54,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...allBadges
+            .where((b) => !child.badgeIds.contains(b.id))
+            .map((b) {
+          final progress = (child.points / b.requiredPoints).clamp(0.0, 1.0);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Opacity(
+                  opacity: 0.4,
+                  child: Text(
+                    b.powerEmoji,
+                    style: const TextStyle(fontSize: 28),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        b.name,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        b.description,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 6,
+                          backgroundColor:
+                              Colors.white.withValues(alpha: 0.08),
+                          valueColor: AlwaysStoppedAnimation(
+                            Colors.amber.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${child.points}/${b.requiredPoints} pts',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.lock_outline,
+                  color: Colors.white.withValues(alpha: 0.2),
+                  size: 20,
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildHistoryTab(List<HistoryEntry> history) {
+    if (history.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history, color: Colors.white24, size: 64),
+            SizedBox(height: 16),
+            Text(
+              'Aucun historique',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: history.length,
+      itemBuilder: (context, index) => _buildHistoryTile(history[index]),
+    );
+  }
+
+  Widget _buildPunishmentsTab(List<dynamic> punishments) {
+    if (punishments.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.check_circle_outline,
+              color: Colors.greenAccent,
+              size: 64,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Aucune punition en cours',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Bravo, continue comme ca !',
+              style: TextStyle(color: Colors.greenAccent, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: punishments.length,
+      itemBuilder: (context, index) {
+        final p = punishments[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.redAccent,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.reason ?? 'Punition',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (p.description != null && p.description!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          p.description!,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHistoryTile(HistoryEntry entry) {
+    final isPositive = entry.points >= 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (isPositive ? Colors.greenAccent : Colors.redAccent)
+                  .withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isPositive ? Icons.add : Icons.remove,
+              color: isPositive ? Colors.greenAccent : Colors.redAccent,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.reason,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  _formatDate(entry.date),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${isPositive ? '+' : ''}${entry.points}',
+            style: TextStyle(
+              color: isPositive ? Colors.greenAccent : Colors.redAccent,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlassCard({required String title, required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inMinutes < 1) return "A l'instant";
+    if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
+    if (diff.inDays < 7) {
+      return 'Il y a ${diff.inDays} jour${diff.inDays > 1 ? 's' : ''}';
+    }
+    return '${date.day}/${date.month}/${date.year}';
+  }
+}
