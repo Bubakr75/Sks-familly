@@ -796,9 +796,6 @@ class FamilyProvider extends ChangeNotifier {
     try { return _tribunalCases.firstWhere((TribunalCase t) => t.id == caseId); } catch (_) { return null; }
   }
   
-    await _tribunalBox.put(caseId, jsonEncode(_tribunalCases[idx].toMap()));
-    notifyListeners();
-  
   // === QUERIES ===
   List<HistoryEntry> getHistoryForChild(String childId) => _history.where((h) => h.childId == childId).toList();
   List<HistoryEntry> getHistoryForDate(DateTime date) => _history.where((h) => h.date.year == date.year && h.date.month == date.month && h.date.day == date.day).toList();
