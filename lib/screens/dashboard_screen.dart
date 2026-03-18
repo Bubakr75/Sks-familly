@@ -77,7 +77,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     }
   }
 
-  // Notes de la semaine : lundi a vendredi uniquement
   List<Map<String, dynamic>> _getWeekNotesForChild(String childId, FamilyProvider provider) {
     final now = DateTime.now();
     final monday = now.subtract(Duration(days: now.weekday - 1));
@@ -429,8 +428,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     const SizedBox(height: 2),
                     if (hasNote && grade != null)
                       Text(
-                        '${grade.toStringAsFixed(grade == grade.roundToDouble() ? 0 : 1)}',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: noteColor),
+                        '${grade.toStringAsFixed(grade == grade.roundToDouble() ? 0 : 1)}/20',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: noteColor),
                       )
                     else if (isFuture == true)
                       Text('-', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.15)))
@@ -601,7 +600,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
-  // --- Points rapides : nouveau bareme ---
   void _quickAddPoints(BuildContext context, child, FamilyProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
