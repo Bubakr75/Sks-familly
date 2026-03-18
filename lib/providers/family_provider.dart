@@ -9,6 +9,7 @@ import '../models/badge_model.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
 import '../models/note_model.dart';
+import '../models/tribunal_model.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 
@@ -20,6 +21,7 @@ class FamilyProvider extends ChangeNotifier {
   List<ImmunityLines> _immunities = [];
   List<NoteModel> _notes = [];
   List<BadgeModel> _customBadges = [];
+  List<TribunalCase> _tribunalCases = [];
   final _uuid = const Uuid();
   final _firestore = FirestoreService();
 
@@ -30,6 +32,7 @@ class FamilyProvider extends ChangeNotifier {
   late Box _immunitiesBox;
   late Box _notesBox;
   late Box _customBadgesBox;
+  late Box _tribunalBox;
 
   List<ChildModel> get children => _children;
   List<HistoryEntry> get history => _history;
@@ -38,8 +41,37 @@ class FamilyProvider extends ChangeNotifier {
   List<ImmunityLines> get immunities => _immunities;
   List<NoteModel> get notes => _notes;
   List<BadgeModel> get customBadges => _customBadges;
+  List<TribunalCase> get tribunalCases => _tribunalCases;
   bool get isSyncEnabled => _firestore.isConnected;
   String? get familyId => _firestore.familyId;
+
+  // Tribunal queries
+  List<TribunalCase> get activeTribunalCases =>
+      _tribunalCases.where((t) => !t.isClosed).toList()
+        ..sort((a, b) => b.filedDate.compareTo(a.filedDate));
+
+  List<TribunalCase> get closedTribunalCases =>
+      _tribunalCases.where((t) => t.isClosed).toList()
+        ..sort((a, b) => b.filedDate.compareTo(a.filedDate));
+
+  List<TribunalCase> getTribunalCasesForChild(String childId) =>
+      _tribunalCases.where((t) =>
+          t.plaintiffId == childId ||
+          t.accusedId == childId ||
+          t.participants.any((p) => p.childId == childId)).toList()
+        ..sort((a, b) => b.filedDate.compareTo(a.filedDate));
+
+  int getTribunalWins(String childId) =>
+      _tribunalCases.where((t) =>
+          t.status == TribunalStatus.verdict &&
+          ((t.plaintiffId == childId && t.verdict == TribunalVerdict.guilty) ||
+           (t.accusedId == childId && t.verdict == TribunalVerdict.innocent))).length;
+
+  int getTribunalLosses(String childId) =>
+      _tribunalCases.where((t) =>
+          t.status == TribunalStatus.verdict &&
+          ((t.plaintiffId == childId && t.verdict == TribunalVerdict.innocent) ||
+           (t.accusedId == childId && t.verdict == TribunalVerdict.guilty))).length;
 
   List<BadgeModel> get allBadges {
     final all = List<BadgeModel>.from(BadgeModel.defaultBadges);
@@ -62,6 +94,7 @@ class FamilyProvider extends ChangeNotifier {
     _immunitiesBox = await Hive.openBox('immunities');
     _notesBox = await Hive.openBox('notes');
     _customBadgesBox = await Hive.openBox('customBadges');
+    _tribunalBox = await Hive.openBox('tribunal');
     _loadLocalData();
 
     _firestore.onChildrenChanged = _onCloudChildrenChanged;
@@ -73,7 +106,6 @@ class FamilyProvider extends ChangeNotifier {
     await _firestore.init();
   }
 
-  /// Called from main.dart when app resumes from background
   void reconnectFirestore() {
     _firestore.reconnect();
   }
@@ -86,8 +118,10 @@ class FamilyProvider extends ChangeNotifier {
     _immunities = _immunitiesBox.values.map((e) => ImmunityLines.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
     _notes = _notesBox.values.map((e) => NoteModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
     _customBadges = _customBadgesBox.values.map((e) => BadgeModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
+    _tribunalCases = _tribunalBox.values.map((e) => TribunalCase.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
     _notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     _history.sort((a, b) => b.date.compareTo(a.date));
+    _tribunalCases.sort((a, b) => b.filedDate.compareTo(a.filedDate));
     notifyListeners();
   }
 
@@ -295,11 +329,11 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   void _updateLevel(ChildModel child) {
-    if (child.points >= 1000) { child.level = 6; }
-    else if (child.points >= 500) { child.level = 5; }
-    else if (child.points >= 200) { child.level = 4; }
-    else if (child.points >= 100) { child.level = 3; }
-    else if (child.points >= 50) { child.level = 2; }
+    if (child.points >= 300) { child.level = 6; }
+    else if (child.points >= 220) { child.level = 5; }
+    else if (child.points >= 150) { child.level = 4; }
+    else if (child.points >= 90) { child.level = 3; }
+    else if (child.points >= 40) { child.level = 2; }
     else { child.level = 1; }
   }
 
@@ -564,6 +598,191 @@ class FamilyProvider extends ChangeNotifier {
     return childNotes;
   }
 
+  // === TRIBUNAL ===
+  Future<TribunalCase> fileTribunalCase({
+    required String title,
+    required String description,
+    required String plaintiffId,
+    required String accusedId,
+    String? prosecutionLawyerId,
+    String? defenseLawyerId,
+    List<String>? witnessIds,
+    DateTime? scheduledDate,
+  }) async {
+    final tribunalCase = TribunalCase(
+      id: _uuid.v4(),
+      title: title,
+      description: description,
+      plaintiffId: plaintiffId,
+      accusedId: accusedId,
+      status: scheduledDate != null ? TribunalStatus.scheduled : TribunalStatus.filed,
+      scheduledDate: scheduledDate,
+    );
+
+    // Ajouter les participants
+    tribunalCase.participants.add(TribunalParticipant(childId: plaintiffId, role: TribunalRole.plaintiff));
+    tribunalCase.participants.add(TribunalParticipant(childId: accusedId, role: TribunalRole.accused));
+
+    if (prosecutionLawyerId != null) {
+      tribunalCase.participants.add(TribunalParticipant(childId: prosecutionLawyerId, role: TribunalRole.prosecutionLawyer));
+    }
+    if (defenseLawyerId != null) {
+      tribunalCase.participants.add(TribunalParticipant(childId: defenseLawyerId, role: TribunalRole.defenseLawyer));
+    }
+    if (witnessIds != null) {
+      for (final wId in witnessIds) {
+        tribunalCase.participants.add(TribunalParticipant(childId: wId, role: TribunalRole.witness));
+      }
+    }
+
+    _tribunalCases.insert(0, tribunalCase);
+    await _tribunalBox.put(tribunalCase.id, jsonEncode(tribunalCase.toMap()));
+    notifyListeners();
+    return tribunalCase;
+  }
+
+  Future<void> scheduleTribunalHearing(String caseId, DateTime date) async {
+    final idx = _tribunalCases.indexWhere((t) => t.id == caseId);
+    if (idx == -1) return;
+    _tribunalCases[idx].scheduledDate = date;
+    _tribunalCases[idx].status = TribunalStatus.scheduled;
+    await _tribunalBox.put(caseId, jsonEncode(_tribunalCases[idx].toMap()));
+    notifyListeners();
+  }
+
+  Future<void> startTribunalHearing(String caseId) async {
+    final idx = _tribunalCases.indexWhere((t) => t.id == caseId);
+    if (idx == -1) return;
+    _tribunalCases[idx].status = TribunalStatus.inProgress;
+    await _tribunalBox.put(caseId, jsonEncode(_tribunalCases[idx].toMap()));
+    notifyListeners();
+  }
+
+  Future<void> startTribunalDeliberation(String caseId) async {
+    final idx = _tribunalCases.indexWhere((t) => t.id == caseId);
+    if (idx == -1) return;
+    _tribunalCases[idx].status = TribunalStatus.deliberation;
+    await _tribunalBox.put(caseId, jsonEncode(_tribunalCases[idx].toMap()));
+    notifyListeners();
+  }
+
+  Future<void> addTestimony(String caseId, String childId, String testimony) async {
+    final idx = _tribunalCases.indexWhere((t) => t.id == caseId);
+    if (idx == -1) return;
+    final pIdx = _tribunalCases[idx].participants.indexWhere((p) => p.childId == childId);
+    if (pIdx != -1) {
+      _tribunalCases[idx].participants[pIdx].testimony = testimony;
+      await _tribunalBox.put(caseId, jsonEncode(_tribunalCases[idx].toMap()));
+      notifyListeners();
+    }
+  }
+
+  Future<void> renderVerdict({
+    required String caseId,
+    required TribunalVerdict verdict,
+    required String reason,
+    required int plaintiffPoints,
+    required int accusedPoints,
+    Map<String, int>? lawyerPoints,
+    Map<String, bool>? witnessVerified,
+    Map<String, int>? witnessPoints,
+  }) async {
+    final idx = _tribunalCases.indexWhere((t) => t.id == caseId);
+    if (idx == -1) return;
+
+    final tc = _tribunalCases[idx];
+    tc.status = TribunalStatus.verdict;
+    tc.verdict = verdict;
+    tc.verdictReason = reason;
+    tc.verdictDate = DateTime.now();
+    tc.plaintiffPoints = plaintiffPoints;
+    tc.accusedPoints = accusedPoints;
+
+    // Appliquer points au plaignant
+    if (plaintiffPoints != 0) {
+      await addPoints(
+        tc.plaintiffId,
+        plaintiffPoints,
+        'Tribunal: ${tc.title} - ${verdict == TribunalVerdict.guilty ? "Plainte validee" : verdict == TribunalVerdict.innocent ? "Plainte rejetee" : "Classe sans suite"}',
+        'tribunal',
+        isBonus: plaintiffPoints > 0,
+      );
+    }
+
+    // Appliquer points a l accuse
+    if (accusedPoints != 0) {
+      await addPoints(
+        tc.accusedId,
+        accusedPoints,
+        'Tribunal: ${tc.title} - ${verdict == TribunalVerdict.guilty ? "Reconnu coupable" : verdict == TribunalVerdict.innocent ? "Declare innocent" : "Classe sans suite"}',
+        'tribunal',
+        isBonus: accusedPoints > 0,
+      );
+    }
+
+    // Appliquer points aux avocats
+    if (lawyerPoints != null) {
+      for (final entry in lawyerPoints.entries) {
+        if (entry.value != 0) {
+          final participant = tc.participants.where((p) => p.childId == entry.key).firstOrNull;
+          final roleLabel = participant?.role == TribunalRole.prosecutionLawyer ? 'Avocat accusation' : 'Avocat defense';
+          participant?.pointsAwarded = entry.value;
+          await addPoints(
+            entry.key,
+            entry.value,
+            'Tribunal: ${tc.title} - $roleLabel',
+            'tribunal',
+            isBonus: entry.value > 0,
+          );
+        }
+      }
+    }
+
+    // Verifier et appliquer points aux temoins
+    if (witnessVerified != null && witnessPoints != null) {
+      for (final entry in witnessVerified.entries) {
+        final wIdx = tc.participants.indexWhere((p) => p.childId == entry.key && p.role == TribunalRole.witness);
+        if (wIdx != -1) {
+          tc.participants[wIdx].testimonyVerified = entry.value;
+          final pts = witnessPoints[entry.key] ?? 0;
+          tc.participants[wIdx].pointsAwarded = pts;
+          if (pts != 0) {
+            await addPoints(
+              entry.key,
+              pts,
+              'Tribunal: ${tc.title} - ${entry.value ? "Bon temoignage" : "Faux temoignage"}',
+              'tribunal',
+              isBonus: pts > 0,
+            );
+          }
+        }
+      }
+    }
+
+    await _tribunalBox.put(caseId, jsonEncode(tc.toMap()));
+    notifyListeners();
+  }
+
+  Future<void> dismissTribunalCase(String caseId) async {
+    final idx = _tribunalCases.indexWhere((t) => t.id == caseId);
+    if (idx == -1) return;
+    _tribunalCases[idx].status = TribunalStatus.closed;
+    _tribunalCases[idx].verdict = TribunalVerdict.dismissed;
+    _tribunalCases[idx].verdictDate = DateTime.now();
+    await _tribunalBox.put(caseId, jsonEncode(_tribunalCases[idx].toMap()));
+    notifyListeners();
+  }
+
+  Future<void> removeTribunalCase(String caseId) async {
+    _tribunalCases.removeWhere((t) => t.id == caseId);
+    await _tribunalBox.delete(caseId);
+    notifyListeners();
+  }
+
+  TribunalCase? getTribunalCase(String caseId) {
+    try { return _tribunalCases.firstWhere((t) => t.id == caseId); } catch (_) { return null; }
+  }
+
   // === QUERIES ===
   List<HistoryEntry> getHistoryForChild(String childId) => _history.where((h) => h.childId == childId).toList();
   List<HistoryEntry> getHistoryForDate(DateTime date) => _history.where((h) => h.date.year == date.year && h.date.month == date.month && h.date.day == date.day).toList();
@@ -603,5 +822,7 @@ class FamilyProvider extends ChangeNotifier {
     for (var im in _immunities) await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
     await _notesBox.clear();
     for (var n in _notes) await _notesBox.put(n.id, jsonEncode(n.toMap()));
+    await _tribunalBox.clear();
+    for (var t in _tribunalCases) await _tribunalBox.put(t.id, jsonEncode(t.toMap()));
   }
 }
