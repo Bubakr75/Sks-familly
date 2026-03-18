@@ -1,0 +1,399 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/family_provider.dart';
+import '../models/child_model.dart';
+import '../models/tribunal_model.dart';
+import '../utils/pin_guard.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/animated_background.dart';
+
+class TribunalScreen extends StatefulWidget {
+  const TribunalScreen({super.key});
+  @override
+  State<TribunalScreen> createState() => _TribunalScreenState();
+}
+
+class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  static const _courtBrown = Color(0xFF5D4037);
+  static const _courtGold = Color(0xFFFFD740);
+  static const _courtRed = Color(0xFFFF1744);
+  static const _courtGreen = Color(0xFF00E676);
+  static const _courtBlue = Color(0xFF448AFF);
+  static const _courtPurple = Color(0xFF7C4DFF);
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0E21),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('\u{2696}', style: TextStyle(fontSize: 24)),
+            SizedBox(width: 8),
+            Text('Tribunal Familial', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20)),
+          ],
+        ),
+        centerTitle: true,
+      ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: _courtRed.withValues(alpha: 0.3), blurRadius: 16)],
+        ),
+        child: FloatingActionButton.extended(
+          heroTag: 'file_complaint',
+          backgroundColor: _courtRed,
+          onPressed: () => PinGuard.guardAction(context, () => _showFileComplaint(context)),
+          icon: const Icon(Icons.gavel_rounded),
+          label: const Text('Deposer une plainte', style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+      ),
+      body: Consumer<FamilyProvider>(
+        builder: (context, provider, _) {
+          return AnimatedBackground(
+            child: Column(
+              children: [
+                // Stats du tribunal
+                _buildTribunalStats(provider),
+                // Onglets
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: _courtBrown.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white54,
+                    dividerHeight: 0,
+                    tabs: [
+                      Tab(
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Text('\u{1F4CB}', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
+                          Text('En cours (${provider.activeTribunalCases.length})', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                      Tab(
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Text('\u{1F4C1}', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
+                          Text('Archives (${provider.closedTribunalCases.length})', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildActiveCases(provider),
+                      _buildClosedCases(provider),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTribunalStats(FamilyProvider provider) {
+    final total = provider.tribunalCases.length;
+    final active = provider.activeTribunalCases.length;
+    final verdicts = provider.closedTribunalCases.length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          _statCard('\u{2696}', '$total', 'Total', _courtGold),
+          const SizedBox(width: 8),
+          _statCard('\u{1F525}', '$active', 'En cours', _courtRed),
+          const SizedBox(width: 8),
+          _statCard('\u{1F528}', '$verdicts', 'Juges', _courtGreen),
+        ],
+      ),
+    );
+  }
+
+  Widget _statCard(String emoji, String value, String label, Color color) {
+    return Expanded(
+      child: GlassCard(
+        margin: EdgeInsets.zero,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        borderRadius: 14,
+        child: Column(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 4),
+            Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 20)),
+            Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveCases(FamilyProvider provider) {
+    final cases = provider.activeTribunalCases;
+    if (cases.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('\u{2696}', style: TextStyle(fontSize: 64)),
+            const SizedBox(height: 16),
+            const Text('Aucune affaire en cours', style: TextStyle(color: Colors.white54, fontSize: 16)),
+            const SizedBox(height: 8),
+            Text('La paix regne dans la famille !', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 14)),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      itemCount: cases.length,
+      itemBuilder: (context, index) => _buildCaseCard(cases[index], provider),
+    );
+  }
+
+  Widget _buildClosedCases(FamilyProvider provider) {
+    final cases = provider.closedTribunalCases;
+    if (cases.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('\u{1F4C1}', style: TextStyle(fontSize: 64)),
+            SizedBox(height: 16),
+            Text('Aucune archive', style: TextStyle(color: Colors.white54, fontSize: 16)),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      itemCount: cases.length,
+      itemBuilder: (context, index) => _buildCaseCard(cases[index], provider),
+    );
+  }
+
+  Widget _buildCaseCard(TribunalCase tc, FamilyProvider provider) {
+    final plaintiff = provider.getChild(tc.plaintiffId);
+    final accused = provider.getChild(tc.accusedId);
+
+    return GestureDetector(
+      onTap: () => _showCaseDetail(context, tc, provider),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              _courtBrown.withValues(alpha: 0.15),
+              tc.statusColor.withValues(alpha: 0.08),
+            ],
+          ),
+          border: Border.all(color: tc.statusColor.withValues(alpha: 0.3)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header avec statut
+              Row(
+                children: [
+                  Text(tc.statusEmoji, style: const TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tc.title,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: tc.statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: tc.statusColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      tc.statusLabel,
+                      style: TextStyle(color: tc.statusColor, fontSize: 10, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // VS
+              Row(
+                children: [
+                  Expanded(child: _buildPartyChip(plaintiff, 'Plaignant', _courtBlue)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _courtRed.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _courtRed.withValues(alpha: 0.3)),
+                      ),
+                      child: const Text('VS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
+                    ),
+                  ),
+                  Expanded(child: _buildPartyChip(accused, 'Accuse', _courtRed)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Description
+              Text(
+                tc.description,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              // Footer
+              Row(
+                children: [
+                  Icon(Icons.calendar_today_rounded, size: 12, color: Colors.white.withValues(alpha: 0.4)),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatDate(tc.filedDate),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
+                  ),
+                  if (tc.scheduledDate != null) ...[
+                    const SizedBox(width: 12),
+                    Icon(Icons.access_time_rounded, size: 12, color: _courtGold.withValues(alpha: 0.7)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Audience: ${_formatDateTime(tc.scheduledDate!)}',
+                      style: TextStyle(color: _courtGold.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                  const Spacer(),
+                  if (tc.participants.length > 2)
+                    Row(
+                      children: [
+                        Icon(Icons.people_rounded, size: 12, color: Colors.white.withValues(alpha: 0.4)),
+                        const SizedBox(width: 4),
+                        Text('${tc.participants.length}', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
+                      ],
+                    ),
+                ],
+              ),
+              // Verdict si rendu
+              if (tc.verdict != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: tc.verdict == TribunalVerdict.guilty
+                        ? _courtRed.withValues(alpha: 0.1)
+                        : tc.verdict == TribunalVerdict.innocent
+                            ? _courtGreen.withValues(alpha: 0.1)
+                            : Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(tc.verdictEmoji, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Verdict: ${tc.verdictLabel}',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                            if (tc.verdictReason != null)
+                              Text(
+                                tc.verdictReason!,
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPartyChip(ChildModel? child, String role, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          if (child != null && child.hasPhoto)
+            ClipOval(
+              child: Image.memory(base64Decode(child.photoBase64), width: 32, height: 32, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _avatarText(child)),
+            )
+          else
+            _avatarText(child),
+          const SizedBox(height: 4),
+          Text(
+            child?.name ?? 'Inconnu',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(role, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatarText(ChildModel? child) {
+    return Container(
+      width: 32, height: 32,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.15)),
+      child: Center(
+        child: Text
