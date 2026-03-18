@@ -1,4 +1,4 @@
-import 'dart:convert';
+I import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -109,22 +109,36 @@ class FamilyProvider extends ChangeNotifier {
   void reconnectFirestore() {
     _firestore.reconnect();
   }
-
-  void _loadLocalData() {
-    _children = _childrenBox.values.map((e) => ChildModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
-    _history = _historyBox.values.map((e) => HistoryEntry.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
-    _goals = _goalsBox.values.map((e) => GoalModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
-    _punishments = _punishmentsBox.values.map((e) => PunishmentLines.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
-    _immunities = _immunitiesBox.values.map((e) => ImmunityLines.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
-    _notes = _notesBox.values.map((e) => NoteModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
-    _customBadges = _customBadgesBox.values.map((e) => BadgeModel.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
-    _tribunalCases = _tribunalBox.values.map((e) => TribunalCase.fromMap(Map<String, dynamic>.from(jsonDecode(e)))).toList();
+    void _loadLocalData() {
+    _children = _childrenBox.values
+        .map<ChildModel>((e) => ChildModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
+    _history = _historyBox.values
+        .map<HistoryEntry>((e) => HistoryEntry.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
+    _goals = _goalsBox.values
+        .map<GoalModel>((e) => GoalModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
+    _punishments = _punishmentsBox.values
+        .map<PunishmentLines>((e) => PunishmentLines.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
+    _immunities = _immunitiesBox.values
+        .map<ImmunityLines>((e) => ImmunityLines.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
+    _notes = _notesBox.values
+        .map<NoteModel>((e) => NoteModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
+    _customBadges = _customBadgesBox.values
+        .map<BadgeModel>((e) => BadgeModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
+    _tribunalCases = _tribunalBox.values
+        .map<TribunalCase>((e) => TribunalCase.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
     _notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     _history.sort((a, b) => b.date.compareTo(a.date));
     _tribunalCases.sort((a, b) => b.filedDate.compareTo(a.filedDate));
     notifyListeners();
   }
-
   final Set<String> _knownHistoryIds = {};
   final Set<String> _knownPunishmentIds = {};
   final Map<String, int> _knownPunishmentProgress = {};
