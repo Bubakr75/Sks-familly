@@ -18,6 +18,7 @@ import '../screens/school_notes_screen.dart';
 import '../screens/manage_children_screen.dart';
 import '../screens/family_screen.dart';
 import '../screens/notes_screen.dart';
+import '../screens/tribunal_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -196,6 +197,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildDrawer(BuildContext context, FamilyProvider provider, PinProvider pin, Color primary) {
+    final activeTribunals = provider.activeTribunalCases.length;
+
     return Drawer(
       backgroundColor: const Color(0xFF0D1B2A),
       child: SafeArea(
@@ -263,6 +266,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     subtitle: '${provider.history.where((h) => h.category == 'school_note').length} notes',
                     onTap: () { Navigator.pop(context); PinGuard.guardNavigation(context, SchoolNotesScreen()); }),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: Divider(color: Colors.white.withValues(alpha: 0.06))),
+                  _DrawerItem(icon: Icons.gavel_rounded, label: 'Tribunal', color: const Color(0xFF5D4037),
+                    subtitle: activeTribunals > 0 ? '$activeTribunals affaire${activeTribunals > 1 ? 's' : ''} en cours' : 'Aucune affaire',
+                    onTap: () { Navigator.pop(context); Navigator.push(context, _glassRoute(const TribunalScreen())); }),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: Divider(color: Colors.white.withValues(alpha: 0.06))),
                   _DrawerItem(icon: Icons.edit_note_rounded, label: 'Lignes de punition', color: const Color(0xFFFF1744),
                     subtitle: '${provider.punishments.where((p) => !p.isCompleted).length} en cours',
                     onTap: () { Navigator.pop(context); PinGuard.guardNavigation(context, PunishmentLinesScreen()); }),
@@ -287,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-            Container(padding: const EdgeInsets.all(16), child: Text('SKS Family v4.4.0', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
+            Container(padding: const EdgeInsets.all(16), child: Text('SKS Family v4.5.0', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
           ],
         ),
       ),
