@@ -776,9 +776,8 @@ class FamilyProvider extends ChangeNotifier {
     await _tribunalBox.put(caseId, jsonEncode(tc.toMap()));
     notifyListeners();
   }
-
   Future<void> dismissTribunalCase(String caseId) async {
-    final idx = _tribunalCases.indexWhere((t) => t.id == caseId);
+    final idx = _tribunalCases.indexWhere((TribunalCase t) => t.id == caseId);
     if (idx == -1) return;
     _tribunalCases[idx].status = TribunalStatus.closed;
     _tribunalCases[idx].verdict = TribunalVerdict.dismissed;
@@ -788,15 +787,18 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<void> removeTribunalCase(String caseId) async {
-    _tribunalCases.removeWhere((t) => t.id == caseId);
+    _tribunalCases.removeWhere((TribunalCase t) => t.id == caseId);
     await _tribunalBox.delete(caseId);
     notifyListeners();
   }
 
   TribunalCase? getTribunalCase(String caseId) {
-    try { return _tribunalCases.firstWhere((t) => t.id == caseId); } catch (_) { return null; }
+    try { return _tribunalCases.firstWhere((TribunalCase t) => t.id == caseId); } catch (_) { return null; }
   }
-
+  
+    await _tribunalBox.put(caseId, jsonEncode(_tribunalCases[idx].toMap()));
+    notifyListeners();
+  
   // === QUERIES ===
   List<HistoryEntry> getHistoryForChild(String childId) => _history.where((h) => h.childId == childId).toList();
   List<HistoryEntry> getHistoryForDate(DateTime date) => _history.where((h) => h.date.year == date.year && h.date.month == date.month && h.date.day == date.day).toList();
