@@ -14,6 +14,7 @@ import 'badges_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'pin_verification_screen.dart';
 import 'notes_screen.dart';
+import 'child_dashboard_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -76,6 +77,41 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     }
   }
 
+  // Recuperer les notes de la semaine pour un enfant
+  List<Map<String, dynamic>> _getWeekNotesForChild(String childId, FamilyProvider provider) {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    final List<Map<String, dynamic>> notes = [];
+
+    for (int i = 0; i < 7; i++) {
+      final day = DateTime(monday.year, monday.month, monday.day + i);
+      final dayHistory = provider.history.where((h) =>
+          h.childId == childId &&
+          h.category == 'school_note' &&
+          h.date.year == day.year &&
+          h.date.month == day.month &&
+          h.date.day == day.day).toList();
+
+      final bool isToday = day.year == now.year && day.month == now.month && day.day == now.day;
+      final bool isFuture = day.isAfter(now);
+
+      if (dayHistory.isNotEmpty) {
+        final reason = dayHistory.last.reason;
+        final match = RegExp(r'Note: ([\d.]+)/20').firstMatch(reason);
+        if (match != null) {
+          final grade = double.tryParse(match.group(1)!);
+          if (grade != null) {
+            notes.add({'day': dayNames[i], 'grade': grade, 'isToday': isToday, 'hasNote': true});
+            continue;
+          }
+        }
+      }
+      notes.add({'day': dayNames[i], 'grade': null, 'isToday': isToday, 'hasNote': false, 'isFuture': isFuture});
+    }
+    return notes;
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
@@ -121,13 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                NeonText(
-                                  text: 'SKS Family',
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: isDark ? Colors.white : Colors.black87,
-                                  glowIntensity: 0.2,
-                                ),
+                                NeonText(text: 'SKS Family', fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87, glowIntensity: 0.2),
                                 _buildModeIndicator(pin),
                               ],
                             ),
@@ -194,6 +224,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           _buildQuickAction(Icons.edit_note_rounded, 'Lignes', const Color(0xFFFF1744), isDark, () {
                             PinGuard.guardNavigation(context, const PunishmentLinesScreen());
                           }),
+                          const SizedBox(width: 8),
+                          _buildQuickAction(Icons.child_care_rounded, 'Mode Enfant', const Color(0xFF7C4DFF), isDark, () {
+                            _showChildModePicker(context, provider);
+                          }),
                         ],
                       ),
                     ),
@@ -205,8 +239,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                width: 120,
-                                height: 120,
+                                width: 120, height: 120,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: primary.withValues(alpha: 0.1),
@@ -246,6 +279,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       ...List.generate(provider.children.length, (index) {
                         final sorted = provider.childrenSorted;
                         final child = sorted[index];
+                        final weekNotes = _getWeekNotesForChild(child.id, provider);
+                        final hasAnyNote = weekNotes.any((n) => n['hasNote'] == true);
                         return TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0.0, end: 1.0),
                           duration: Duration(milliseconds: 400 + index * 100),
@@ -254,18 +289,28 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             opacity: v.clamp(0.0, 1.0),
                             child: Transform.translate(offset: Offset(0, 30 * (1 - v)), child: w),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 0),
-                            child: ChildCard(
-                              child: child,
-                              rank: index,
-                              onTap: () => _showChildDetail(context, child, provider),
-                              onAddPoints: () {
-                                PinGuard.guardAction(context, () {
-                                  _quickAddPoints(context, child, provider);
-                                });
-                              },
-                            ),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 0),
+                                child: ChildCard(
+                                  child: child,
+                                  rank: index,
+                                  onTap: () => _showChildDetail(context, child, provider),
+                                  onAddPoints: () {
+                                    PinGuard.guardAction(context, () {
+                                      _quickAddPoints(context, child, provider);
+                                    });
+                                  },
+                                ),
+                              ),
+                              // Notes de la semaine sous chaque enfant
+                              if (hasAnyNote)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                                  child: _buildWeekNotesBar(weekNotes, child.name),
+                                ),
+                            ],
                           ),
                         );
                       }),
@@ -291,13 +336,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           child: Row(
                             children: [
                               Container(
-                                width: 36,
-                                height: 36,
+                                width: 36, height: 36,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: entry.isBonus
-                                      ? const Color(0xFF00E676).withValues(alpha: 0.15)
-                                      : const Color(0xFFFF1744).withValues(alpha: 0.15),
+                                  color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15),
                                 ),
                                 child: Icon(
                                   entry.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
@@ -319,16 +361,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(8),
-                                  color: entry.isBonus
-                                      ? const Color(0xFF00E676).withValues(alpha: 0.12)
-                                      : const Color(0xFFFF1744).withValues(alpha: 0.12),
+                                  color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12),
                                 ),
                                 child: Text(
                                   '${entry.isBonus ? '+' : ''}${entry.points}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744),
-                                  ),
+                                  style: TextStyle(fontWeight: FontWeight.w800, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)),
                                 ),
                               ),
                             ],
@@ -347,6 +384,113 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeekNotesBar(List<Map<String, dynamic>> notes, String childName) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF448AFF).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF448AFF).withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.school_rounded, color: Color(0xFF448AFF), size: 14),
+          const SizedBox(width: 6),
+          ...notes.map((n) {
+            final hasNote = n['hasNote'] as bool;
+            final isToday = n['isToday'] as bool;
+            final isFuture = n['isFuture'] ?? false;
+            final grade = n['grade'] as double?;
+
+            Color noteColor = Colors.grey;
+            if (hasNote && grade != null) {
+              if (grade >= 16) noteColor = const Color(0xFF00E676);
+              else if (grade >= 12) noteColor = const Color(0xFF448AFF);
+              else if (grade >= 10) noteColor = Colors.orange;
+              else noteColor = const Color(0xFFFF1744);
+            }
+
+            return Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: isToday && hasNote ? noteColor.withValues(alpha: 0.15) : Colors.transparent,
+                  border: isToday ? Border.all(color: const Color(0xFF448AFF).withValues(alpha: 0.4), width: 1) : null,
+                ),
+                child: Column(
+                  children: [
+                    Text(n['day'] as String, style: TextStyle(fontSize: 8, color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    if (hasNote && grade != null)
+                      Text(
+                        '${grade.toStringAsFixed(grade == grade.roundToDouble() ? 0 : 1)}',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: noteColor),
+                      )
+                    else if (isFuture == true)
+                      Text('-', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.15)))
+                    else if (isToday)
+                      Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF448AFF).withValues(alpha: 0.5)),
+                      )
+                    else
+                      Text('-', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.2))),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  void _showChildModePicker(BuildContext context, FamilyProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141833),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(height: 16),
+            ...provider.children.map((child) => ListTile(
+              leading: Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.3)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: child.hasPhoto
+                      ? Image.memory(base64Decode(child.photoBase64), fit: BoxFit.cover, width: 44, height: 44)
+                      : Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22))),
+                ),
+              ),
+              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              subtitle: Text('${child.points} pts - ${child.levelTitle}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right, color: Color(0xFF7C4DFF)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ChildDashboardScreen(childId: child.id)));
+              },
+            )),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );
@@ -406,11 +550,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         return Transform.rotate(
           angle: _refreshController.value * 2 * 3.14159,
           child: IconButton(
-            icon: GlowIcon(
-              icon: Icons.refresh_rounded,
-              color: _isRefreshing ? const Color(0xFF00E5FF) : primary,
-              size: 22,
-            ),
+            icon: GlowIcon(icon: Icons.refresh_rounded, color: _isRefreshing ? const Color(0xFF00E5FF) : primary, size: 22),
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             padding: EdgeInsets.zero,
             tooltip: 'Rafraichir',
@@ -433,13 +573,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           children: [
             GlowIcon(icon: icon, size: 16, color: color),
             const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            Flexible(child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color), overflow: TextOverflow.ellipsis)),
           ],
         ),
       ),
@@ -484,9 +618,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             NeonText(text: 'Points pour ${child.name}', fontSize: 18, color: Colors.white, glowIntensity: 0.2),
             const SizedBox(height: 20),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.center,
+              spacing: 10, runSpacing: 10, alignment: WrapAlignment.center,
               children: [
                 _pointChip('+1', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 1, 'Bonus +1', 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
                 _pointChip('+5', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 5, 'Bon comportement', 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
@@ -537,10 +669,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       backgroundColor: isDark ? const Color(0xFF141833) : null,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        minChildSize: 0.4,
-        maxChildSize: 0.92,
-        expand: false,
+        initialChildSize: 0.75, minChildSize: 0.4, maxChildSize: 0.92, expand: false,
         builder: (_, sc) => ListView(
           controller: sc,
           padding: const EdgeInsets.all(24),
@@ -551,14 +680,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               child: child.hasPhoto
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(24),
-                      child: Image.memory(
-                        base64Decode(child.photoBase64),
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                        errorBuilder: (_, __, ___) => _buildAvatarFallback(child, primary, isDark),
-                      ),
+                      child: Image.memory(base64Decode(child.photoBase64), width: 100, height: 100, fit: BoxFit.cover, gaplessPlayback: true,
+                        errorBuilder: (_, __, ___) => _buildAvatarFallback(child, primary, isDark)),
                     )
                   : _buildAvatarFallback(child, primary, isDark),
             ),
@@ -568,33 +691,51 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: primary.withValues(alpha: 0.3)),
-                ),
+                decoration: BoxDecoration(color: primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8), border: Border.all(color: primary.withValues(alpha: 0.3))),
                 child: Text('Niveau ${child.level} - ${child.levelTitle}', style: TextStyle(color: primary, fontWeight: FontWeight.w600)),
               ),
             ),
             const SizedBox(height: 12),
             Center(child: NeonText(text: '${child.points} points', fontSize: 36, color: primary)),
             const SizedBox(height: 16),
+            // Bouton mode enfant
+            GlassCard(
+              margin: EdgeInsets.zero,
+              padding: EdgeInsets.zero,
+              borderRadius: 16,
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ChildDashboardScreen(childId: child.id)));
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: const Color(0xFF7C4DFF).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.3))),
+                      child: const Icon(Icons.child_care_rounded, color: Color(0xFF7C4DFF), size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Voir la fiche enfant', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
+                      Text('Mode enfant avec stats personnalisees', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ])),
+                    const Icon(Icons.chevron_right_rounded, color: Color(0xFF7C4DFF)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: child.levelProgress,
-                minHeight: 12,
-                backgroundColor: Colors.white.withValues(alpha: 0.08),
-                valueColor: AlwaysStoppedAnimation(primary),
-              ),
+              child: LinearProgressIndicator(value: child.levelProgress, minHeight: 12, backgroundColor: Colors.white.withValues(alpha: 0.08), valueColor: AlwaysStoppedAnimation(primary)),
             ),
             const SizedBox(height: 4),
             Text('${child.points}/${child.nextLevelPoints} pts - prochain niveau', style: TextStyle(fontSize: 12, color: Colors.grey[500]), textAlign: TextAlign.center),
             const SizedBox(height: 20),
             GlassCard(
-              margin: EdgeInsets.zero,
-              padding: EdgeInsets.zero,
-              borderRadius: 16,
+              margin: EdgeInsets.zero, padding: EdgeInsets.zero, borderRadius: 16,
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => NotesScreen(childId: child.id, childName: child.name)));
@@ -604,28 +745,15 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 child: Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFD740).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFFFD740).withValues(alpha: 0.3)),
-                      ),
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: const Color(0xFFFFD740).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFFD740).withValues(alpha: 0.3))),
                       child: const Icon(Icons.sticky_note_2_rounded, color: Color(0xFFFFD740), size: 22),
                     ),
                     const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Notes', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
-                          Text(
-                            notes.isEmpty ? 'Aucune note' : '${notes.length} note${notes.length > 1 ? 's' : ''}',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                          ),
-                        ],
-                      ),
-                    ),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Notes', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
+                      Text(notes.isEmpty ? 'Aucune note' : '${notes.length} note${notes.length > 1 ? 's' : ''}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                    ])),
                     Icon(Icons.chevron_right_rounded, color: Colors.grey[600]),
                   ],
                 ),
@@ -635,31 +763,16 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               const SizedBox(height: 24),
               NeonText(text: 'Badges obtenus', fontSize: 16, color: Colors.white, glowIntensity: 0.2),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: badges.map((b) => Chip(
-                  avatar: const Icon(Icons.emoji_events_rounded, size: 18, color: Colors.amber),
-                  label: Text(b.name, style: const TextStyle(fontSize: 12)),
-                )).toList(),
-              ),
+              Wrap(spacing: 8, runSpacing: 8, children: badges.map((b) => Chip(avatar: const Icon(Icons.emoji_events_rounded, size: 18, color: Colors.amber), label: Text(b.name, style: const TextStyle(fontSize: 12)))).toList()),
             ],
             if (history.isNotEmpty) ...[
               const SizedBox(height: 24),
               NeonText(text: 'Dernieres activites', fontSize: 16, color: Colors.white, glowIntensity: 0.2),
               ...history.take(10).map((h) => ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  h.isBonus ? Icons.add_circle_rounded : Icons.remove_circle_rounded,
-                  color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744),
-                  size: 20,
-                ),
+                dense: true, contentPadding: EdgeInsets.zero,
+                leading: Icon(h.isBonus ? Icons.add_circle_rounded : Icons.remove_circle_rounded, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 20),
                 title: Text(h.reason, style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: Text(
-                  '${h.isBonus ? '+' : ''}${h.points}',
-                  style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)),
-                ),
+                trailing: Text('${h.isBonus ? '+' : ''}${h.points}', style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
               )),
             ],
           ],
@@ -670,8 +783,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   Widget _buildAvatarFallback(child, Color primary, bool isDark) {
     return Container(
-      width: 100,
-      height: 100,
+      width: 100, height: 100,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [primary, primary.withValues(alpha: 0.5)]),
         borderRadius: BorderRadius.circular(24),
@@ -684,13 +796,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   void _showFullHistory(BuildContext context, FamilyProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
+      context: context, isScrollControlled: true,
       backgroundColor: isDark ? const Color(0xFF141833) : null,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        expand: false,
+        initialChildSize: 0.8, expand: false,
         builder: (_, sc) => Column(
           children: [
             const SizedBox(height: 12),
@@ -700,26 +810,18 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
-                controller: sc,
-                itemCount: provider.history.length,
+                controller: sc, itemCount: provider.history.length,
                 itemBuilder: (_, i) {
                   final h = provider.history[i];
                   final child = provider.getChild(h.childId);
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15),
-                      child: Icon(
-                        h.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-                        color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744),
-                        size: 20,
-                      ),
+                      child: Icon(h.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 20),
                     ),
                     title: Text(child?.name ?? 'Inconnu'),
                     subtitle: Text(h.reason, style: TextStyle(fontSize: 13, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    trailing: Text(
-                      '${h.isBonus ? '+' : ''}${h.points}',
-                      style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)),
-                    ),
+                    trailing: Text('${h.isBonus ? '+' : ''}${h.points}', style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
                   );
                 },
               ),
