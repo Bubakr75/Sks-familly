@@ -23,30 +23,41 @@ class ChildModel {
   bool get hasPhoto => photoBase64.isNotEmpty;
 
   String get levelTitle {
-    if (points >= 1000) return 'Champion';
-    if (points >= 500) return 'Expert';
-    if (points >= 200) return 'Confirme';
-    if (points >= 100) return 'Apprenti';
-    if (points >= 50) return 'Debutant';
-    return 'Novice';
+    if (points >= 300) return 'Niveau MAX';
+    if (points >= 220) return 'Niveau 5';
+    if (points >= 150) return 'Niveau 4';
+    if (points >= 90) return 'Niveau 3';
+    if (points >= 40) return 'Niveau 2';
+    return 'Niveau 1';
   }
 
+  bool get isMaxLevel => points >= 300;
+
   double get levelProgress {
-    if (points >= 1000) return 1.0;
-    if (points >= 500) return (points - 500) / 500;
-    if (points >= 200) return (points - 200) / 300;
-    if (points >= 100) return (points - 100) / 100;
-    if (points >= 50) return (points - 50) / 50;
-    return points / 50;
+    if (points >= 300) return 1.0;
+    if (points >= 220) return (points - 220) / 80;
+    if (points >= 150) return (points - 150) / 70;
+    if (points >= 90) return (points - 90) / 60;
+    if (points >= 40) return (points - 40) / 50;
+    return points / 40;
   }
 
   int get nextLevelPoints {
-    if (points >= 1000) return 1000;
-    if (points >= 500) return 1000;
-    if (points >= 200) return 500;
-    if (points >= 100) return 200;
-    if (points >= 50) return 100;
-    return 50;
+    if (points >= 300) return 300;
+    if (points >= 220) return 300;
+    if (points >= 150) return 220;
+    if (points >= 90) return 150;
+    if (points >= 40) return 90;
+    return 40;
+  }
+
+  int get currentLevelNumber {
+    if (points >= 300) return 6;
+    if (points >= 220) return 5;
+    if (points >= 150) return 4;
+    if (points >= 90) return 3;
+    if (points >= 40) return 2;
+    return 1;
   }
 
   Map<String, dynamic> toMap() => {
