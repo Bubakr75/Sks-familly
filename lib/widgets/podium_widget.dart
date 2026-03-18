@@ -1,73 +1,17 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/child_model.dart';
 import 'glass_card.dart';
 
-class PodiumWidget extends StatefulWidget {
+class PodiumWidget extends StatelessWidget {
   final List<ChildModel> children;
   const PodiumWidget({super.key, required this.children});
 
   @override
-  State<PodiumWidget> createState() => _PodiumWidgetState();
-}
-
-class _PodiumWidgetState extends State<PodiumWidget>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
-  late AnimationController _shimmerCtrl;
-  late AnimationController _pulseCtrl;
-  late AnimationController _crownCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-
-    _shimmerCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
-
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    _crownCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden) {
-      _shimmerCtrl.stop();
-      _pulseCtrl.stop();
-      _crownCtrl.stop();
-    } else if (state == AppLifecycleState.resumed) {
-      _shimmerCtrl.repeat();
-      _pulseCtrl.repeat(reverse: true);
-      _crownCtrl.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _shimmerCtrl.dispose();
-    _pulseCtrl.dispose();
-    _crownCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.children.isEmpty) return const SizedBox.shrink();
+    if (children.isEmpty) return const SizedBox.shrink();
 
-    final sorted = List<ChildModel>.from(widget.children)
+    final sorted = List<ChildModel>.from(children)
       ..sort((a, b) => b.points.compareTo(a.points));
     final top = sorted.take(3).toList();
     final theme = Theme.of(context);
@@ -79,19 +23,10 @@ class _PodiumWidgetState extends State<PodiumWidget>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedBuilder(
-                animation: _crownCtrl,
-                builder: (context, child) {
-                  final bounce = sin(_crownCtrl.value * pi) * 4;
-                  return Transform.translate(
-                    offset: Offset(0, -bounce),
-                    child: const Text('👑', style: TextStyle(fontSize: 24)),
-                  );
-                },
-              ),
+              const Text('\u{1F451}', style: TextStyle(fontSize: 24)),
               const SizedBox(width: 8),
               Text(
-                'Podium',
+                'Classement',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.primary,
@@ -100,144 +35,116 @@ class _PodiumWidgetState extends State<PodiumWidget>
             ],
           ),
           const SizedBox(height: 16),
-          if (top.length >= 3)
-            _buildThreePodium(top, theme)
-          else if (top.length == 2)
-            _buildTwoPodium(top, theme)
-          else
-            _buildOnePodium(top.first, theme),
+          ...List.generate(top.length, (i) => _buildRankRow(top[i], i + 1, theme)),
         ],
       ),
     );
   }
 
-  Widget _buildThreePodium(List<ChildModel> top, ThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(child: _podiumPlace(top[1], 2, theme, 100)),
-        Expanded(child: _podiumPlace(top[0], 1, theme, 130)),
-        Expanded(child: _podiumPlace(top[2], 3, theme, 80)),
-      ],
-    );
-  }
-
-  Widget _buildTwoPodium(List<ChildModel> top, ThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(child: _podiumPlace(top[0], 1, theme, 130)),
-        const SizedBox(width: 16),
-        Expanded(child: _podiumPlace(top[1], 2, theme, 100)),
-      ],
-    );
-  }
-
-  Widget _buildOnePodium(ChildModel child, ThemeData theme) {
-    return _podiumPlace(child, 1, theme, 130);
-  }
-
-  Widget _podiumPlace(ChildModel child, int rank, ThemeData theme, double height) {
+  Widget _buildRankRow(ChildModel child, int rank, ThemeData theme) {
     final colors = _rankColors(rank);
     final primaryColor = colors[0];
-    final secondaryColor = colors[1];
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (rank == 1)
-          AnimatedBuilder(
-            animation: _crownCtrl,
-            builder: (context, _) {
-              final bounce = sin(_crownCtrl.value * pi) * 3;
-              return Transform.translate(
-                offset: Offset(0, -bounce),
-                child: const Text('👑', style: TextStyle(fontSize: 28)),
-              );
-            },
-          ),
-        const SizedBox(height: 4),
-        AnimatedBuilder(
-          animation: _pulseCtrl,
-          builder: (context, child) {
-            final scale = rank == 1 ? 1.0 + _pulseCtrl.value * 0.05 : 1.0;
-            return Transform.scale(
-              scale: scale,
-              child: child,
-            );
-          },
-          child: _buildAvatar(child, rank, primaryColor, secondaryColor),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          child.name,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: primaryColor,
-          ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-        Text(
-          '${child.points} pts',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: secondaryColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        AnimatedBuilder(
-          animation: _shimmerCtrl,
-          builder: (context, _) {
-            return Container(
-              height: height,
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    primaryColor.withValues(alpha: 0.8),
-                    secondaryColor.withValues(alpha: 0.4),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: primaryColor.withValues(alpha: isDark ? 0.08 : 0.06),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          // Rang
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [primaryColor, colors[1]],
               ),
-              child: Center(
-                child: Text(
-                  '$rank',
+              boxShadow: [
+                BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 6),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                '$rank',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Avatar
+          _buildAvatar(child, primaryColor),
+          const SizedBox(width: 12),
+          // Nom + niveau
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  child.name,
                   style: TextStyle(
-                    fontSize: rank == 1 ? 36 : 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  child.levelTitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: primaryColor,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+              ],
+            ),
+          ),
+          // Points
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: primaryColor.withValues(alpha: 0.12),
+              border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              '${child.points} pts',
+              style: TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
               ),
-            );
-          },
-        ),
-      ],
+            ),
+          ),
+          // Medaille emoji
+          const SizedBox(width: 8),
+          Text(
+            rank == 1 ? '\u{1F947}' : rank == 2 ? '\u{1F948}' : '\u{1F949}',
+            style: const TextStyle(fontSize: 22),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildAvatar(ChildModel child, int rank, Color primary, Color secondary) {
-    final size = rank == 1 ? 64.0 : 52.0;
+  Widget _buildAvatar(ChildModel child, Color borderColor) {
+    const size = 42.0;
 
     Widget avatarContent;
     if (_hasValidPhoto(child)) {
       avatarContent = ClipOval(
         child: Image.memory(
-          base64Decode(child.photoBase64!),
+          base64Decode(child.photoBase64),
           width: size,
           height: size,
           fit: BoxFit.cover,
@@ -250,17 +157,11 @@ class _PodiumWidgetState extends State<PodiumWidget>
     }
 
     return Container(
-      width: size + 6,
-      height: size + 6,
+      width: size + 4,
+      height: size + 4,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: primary, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: primary.withValues(alpha: 0.4),
-            blurRadius: 12,
-          ),
-        ],
+        border: Border.all(color: borderColor, width: 2),
       ),
       child: ClipOval(child: avatarContent),
     );
@@ -276,7 +177,7 @@ class _PodiumWidgetState extends State<PodiumWidget>
       ),
       child: Center(
         child: Text(
-          child.avatar.isNotEmpty ? child.avatar : '👤',
+          child.avatar.isNotEmpty ? child.avatar : '\u{1F464}',
           style: TextStyle(fontSize: size * 0.5),
         ),
       ),
@@ -284,10 +185,10 @@ class _PodiumWidgetState extends State<PodiumWidget>
   }
 
   bool _hasValidPhoto(ChildModel child) {
-    if (child.photoBase64 == null || child.photoBase64!.isEmpty) return false;
-    if (child.photoBase64!.length < 100) return false;
+    if (child.photoBase64.isEmpty) return false;
+    if (child.photoBase64.length < 100) return false;
     try {
-      base64Decode(child.photoBase64!);
+      base64Decode(child.photoBase64);
       return true;
     } catch (_) {
       return false;
