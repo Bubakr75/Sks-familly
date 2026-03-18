@@ -268,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: Divider(color: Colors.white.withValues(alpha: 0.06))),
                   _DrawerItem(icon: Icons.gavel_rounded, label: 'Tribunal', color: const Color(0xFF5D4037),
                     subtitle: activeTribunals > 0 ? '$activeTribunals affaire${activeTribunals > 1 ? 's' : ''} en cours' : 'Aucune affaire',
-                    onTap: () { Navigator.pop(context); Navigator.push(context, _glassRoute(const TribunalScreen())); }),
+                    onTap: () { Navigator.pop(context); Navigator.push(context, _glassRoute(TribunalScreen())); }),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: Divider(color: Colors.white.withValues(alpha: 0.06))),
                   _DrawerItem(icon: Icons.edit_note_rounded, label: 'Lignes de punition', color: const Color(0xFFFF1744),
                     subtitle: '${provider.punishments.where((p) => !p.isCompleted).length} en cours',
