@@ -51,16 +51,74 @@ class BadgeModel {
       case 'home': return '\u{1F3E0}';
       case 'emoji_events': return '\u{1F3C6}';
       case 'military_tech': return '\u{1F396}';
+      case 'gift': return '\u{1F381}';
       default: return '\u{26A1}';
     }
   }
 
   static List<BadgeModel> defaultBadges = [
-    BadgeModel(id: 'power_tv', name: 'Maitre de la tele', icon: 'tv', description: 'Choisis les dessins animes et films de la journee', requiredPoints: 50, powerType: 'tv'),
-    BadgeModel(id: 'power_no_chores', name: 'Pas de corvees', icon: 'no_chores', description: 'Pas de taches menageres pour la journee', requiredPoints: 80, powerType: 'no_chores'),
-    BadgeModel(id: 'power_dessert', name: 'Super Dessert', icon: 'dessert', description: 'Choisis le dessert de ton choix', requiredPoints: 30, powerType: 'dessert'),
-    BadgeModel(id: 'power_late_bed', name: 'Couche-tard', icon: 'late_bed', description: 'Se coucher 30 minutes plus tard', requiredPoints: 60, powerType: 'late_bed'),
-    BadgeModel(id: 'power_game', name: 'Roi du jeu', icon: 'game', description: '30 minutes de jeu video en bonus', requiredPoints: 100, powerType: 'game'),
-    BadgeModel(id: 'power_outing', name: 'Sortie speciale', icon: 'outing', description: 'Choisis une sortie en famille', requiredPoints: 150, powerType: 'outing'),
+    // ~3 jours de bon comportement
+    BadgeModel(
+      id: 'power_dessert',
+      name: 'Super Dessert',
+      icon: 'dessert',
+      description: 'Choisis le dessert de ton choix',
+      requiredPoints: 25,
+      powerType: 'dessert',
+    ),
+    // ~1 semaine
+    BadgeModel(
+      id: 'power_tv',
+      name: 'Maitre de la tele',
+      icon: 'tv',
+      description: 'Choisis les dessins animes et films de la journee',
+      requiredPoints: 50,
+      powerType: 'tv',
+    ),
+    // ~10 jours
+    BadgeModel(
+      id: 'power_late_bed',
+      name: 'Couche-tard',
+      icon: 'late_bed',
+      description: 'Se coucher 30 minutes plus tard',
+      requiredPoints: 80,
+      powerType: 'late_bed',
+    ),
+    // ~2 semaines
+    BadgeModel(
+      id: 'power_game',
+      name: 'Roi du jeu',
+      icon: 'game',
+      description: '30 minutes de jeu video en bonus',
+      requiredPoints: 120,
+      powerType: 'game',
+    ),
+    // ~3 semaines
+    BadgeModel(
+      id: 'power_no_chores',
+      name: 'Pas de corvees',
+      icon: 'no_chores',
+      description: 'Pas de taches menageres pour la journee',
+      requiredPoints: 180,
+      powerType: 'no_chores',
+    ),
+    // ~3-4 semaines
+    BadgeModel(
+      id: 'power_outing',
+      name: 'Sortie speciale',
+      icon: 'outing',
+      description: 'Choisis une sortie en famille',
+      requiredPoints: 250,
+      powerType: 'outing',
+    ),
+    // Niveau MAX = cadeau
+    BadgeModel(
+      id: 'power_gift',
+      name: 'Cadeau surprise',
+      icon: 'gift',
+      description: 'Bravo ! Tu as atteint le niveau MAX et tu gagnes un cadeau !',
+      requiredPoints: 300,
+      powerType: 'gift',
+    ),
   ];
 }
