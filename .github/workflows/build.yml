@@ -14,24 +14,6 @@ jobs:
           flutter-version: '3.41.4'
           channel: 'stable'
 
-      - name: Create permanent keystore
-        run: |
-          keytool -genkey -v \
-            -keystore android/release-key.jks \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -alias release \
-            -storepass "SKS2026" \
-            -keypass "SKS2026" \
-            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
-
-      - name: Commit keystore to repo
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add android/release-key.jks
-          git commit -m "Update release keystore" || true
-          git push || true
-
       - name: Backup custom files
         run: |
           cp android/app/google-service.json /tmp/google-services.json 2>/dev/null || true
