@@ -13,7 +13,7 @@ class AnimatedBackground extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     if (!isDark) {
-      return widget.child;
+     return child;
     }
 
     final themeProv = context.watch<ThemeProvider>();
