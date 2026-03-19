@@ -14,6 +14,24 @@ jobs:
           flutter-version: '3.41.4'
           channel: 'stable'
 
+      - name: Create permanent keystore
+        run: |
+          keytool -genkey -v \
+            -keystore android/release-key.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias release \
+            -storepass "SKS2026" \
+            -keypass "SKS2026" \
+            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
+
+      - name: Commit keystore to repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add android/release-key.jks
+          git commit -m "Update release keystore" || true
+          git push || true
+
       - name: Backup custom files
         run: |
           cp android/app/google-service.json /tmp/google-services.json 2>/dev/null || true
@@ -21,6 +39,7 @@ jobs:
           cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
           cp android/app/proguard-rules.pro /tmp/proguard-rules.pro 2>/dev/null || true
           cp android/gradle.properties /tmp/gradle.properties 2>/dev/null || true
+          cp android/release-key.jks /tmp/release-key.jks
 
       - name: Regenerate Android folder
         run: |
@@ -49,20 +68,14 @@ jobs:
           PYEOF
           python3 /tmp/fix_gradle.py
 
-      - name: Generate keystore and configure signing
+      - name: Restore keystore and configure signing
         run: |
-          keytool -genkey -v \
-            -keystore android/release-key.jks \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -alias "${{ secrets.KEY_ALIAS }}" \
-            -storepass "${{ secrets.STORE_PASSWORD }}" \
-            -keypass "${{ secrets.KEY_PASSWORD }}" \
-            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
+          cp /tmp/release-key.jks android/release-key.jks
 
-          cat > android/key.properties << EOF
-          storePassword=${{ secrets.STORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
+          cat > android/key.properties << 'EOF'
+          storePassword=SKS2026
+          keyPassword=SKS2026
+          keyAlias=release
           storeFile=../release-key.jks
           EOF
 
