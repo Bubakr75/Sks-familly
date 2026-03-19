@@ -22,6 +22,7 @@ jobs:
           cp android/app/proguard-rules.pro /tmp/proguard-rules.pro 2>/dev/null || true
           cp android/gradle.properties /tmp/gradle.properties 2>/dev/null || true
           cp android/key.properties /tmp/key.properties 2>/dev/null || true
+          cp android/release-key.jks /tmp/release-key.jks
 
       - name: Regenerate Android folder
         run: |
@@ -50,30 +51,21 @@ jobs:
           PYEOF
           python3 /tmp/fix_gradle.py
 
-      - name: Generate keystore
-        run: |
-          keytool -genkey -v \
-            -keystore /tmp/upload-keystore.jks \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -alias ${{ secrets.KEY_ALIAS }} \
-            -storepass ${{ secrets.STORE_PASSWORD }} \
-            -keypass ${{ secrets.KEY_PASSWORD }} \
-            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
-
       - name: Configure signing
         run: |
+          cp /tmp/release-key.jks android/release-key.jks
+
           cat > android/key.properties << EOF
           storePassword=${{ secrets.STORE_PASSWORD }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
           keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=/tmp/upload-keystore.jks
+          storeFile=../release-key.jks
           EOF
 
           cat > /tmp/fix_signing.py << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
               content = f.read()
 
-          # Add key.properties loading after plugins block
           key_properties_code = """
           import java.util.Properties
           import java.io.FileInputStream
@@ -85,13 +77,11 @@ jobs:
           }
           """
 
-          # Insert after plugins block
           content = content.replace(
               'android {',
               key_properties_code + '\nandroid {'
           )
 
-          # Add signingConfigs before buildTypes
           signing_config = """
               signingConfigs {
                   create("release") {
@@ -108,7 +98,6 @@ jobs:
               signing_config + '\n    buildTypes {'
           )
 
-          # Use release signing config
           content = content.replace(
               'signingConfig = signingConfigs.getByName("debug")',
               'signingConfig = signingConfigs.getByName("release")'
