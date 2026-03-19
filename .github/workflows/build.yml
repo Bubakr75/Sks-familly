@@ -14,6 +14,25 @@ jobs:
           flutter-version: '3.41.4'
           channel: 'stable'
 
+      - name: Create permanent keystore
+        run: |
+          rm -f android/release-key.jks
+          keytool -genkey -v \
+            -keystore android/release-key.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias release \
+            -storepass "SKS2026" \
+            -keypass "SKS2026" \
+            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
+
+      - name: Commit keystore to repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add android/release-key.jks
+          git commit -m "Update release keystore with correct password" || true
+          git push || true
+
       - name: Backup custom files
         run: |
           cp android/app/google-service.json /tmp/google-services.json 2>/dev/null || true
@@ -35,17 +54,13 @@ jobs:
           cat > /tmp/fix_gradle.py << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
               content = f.read()
-
           content = content.replace(
               'compileOptions {',
               'compileOptions {\n        isCoreLibraryDesugaringEnabled = true'
           )
-
           content += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
-
           with open('android/app/build.gradle.kts', 'w') as f:
               f.write(content)
-
           print("Patch applied successfully")
           PYEOF
           python3 /tmp/fix_gradle.py
@@ -57,27 +72,19 @@ jobs:
           echo "keyPassword=SKS2026" >> android/key.properties
           echo "keyAlias=release" >> android/key.properties
           echo "storeFile=../release-key.jks" >> android/key.properties
-
           cat > /tmp/fix_signing.py << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
               content = f.read()
-
           key_properties_code = """
           import java.util.Properties
           import java.io.FileInputStream
-
           val keystoreProperties = Properties()
           val keystorePropertiesFile = rootProject.file("key.properties")
           if (keystorePropertiesFile.exists()) {
               keystoreProperties.load(FileInputStream(keystorePropertiesFile))
           }
           """
-
-          content = content.replace(
-              'android {',
-              key_properties_code + '\nandroid {'
-          )
-
+          content = content.replace('android {', key_properties_code + '\nandroid {')
           signing_config = """
               signingConfigs {
                   create("release") {
@@ -88,20 +95,10 @@ jobs:
                   }
               }
           """
-
-          content = content.replace(
-              '    buildTypes {',
-              signing_config + '\n    buildTypes {'
-          )
-
-          content = content.replace(
-              'signingConfig = signingConfigs.getByName("debug")',
-              'signingConfig = signingConfigs.getByName("release")'
-          )
-
+          content = content.replace('    buildTypes {', signing_config + '\n    buildTypes {')
+          content = content.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("release")')
           with open('android/app/build.gradle.kts', 'w') as f:
               f.write(content)
-
           print("Signing config applied successfully")
           PYEOF
           python3 /tmp/fix_signing.py
