@@ -21,8 +21,6 @@ jobs:
           cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
           cp android/app/proguard-rules.pro /tmp/proguard-rules.pro 2>/dev/null || true
           cp android/gradle.properties /tmp/gradle.properties 2>/dev/null || true
-          cp android/key.properties /tmp/key.properties 2>/dev/null || true
-          cp android/release-key.jks /tmp/release-key.jks
 
       - name: Regenerate Android folder
         run: |
@@ -51,9 +49,15 @@ jobs:
           PYEOF
           python3 /tmp/fix_gradle.py
 
-      - name: Configure signing
+      - name: Generate keystore and configure signing
         run: |
-          cp /tmp/release-key.jks android/release-key.jks
+          keytool -genkey -v \
+            -keystore android/release-key.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias "${{ secrets.KEY_ALIAS }}" \
+            -storepass "${{ secrets.STORE_PASSWORD }}" \
+            -keypass "${{ secrets.KEY_PASSWORD }}" \
+            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
 
           cat > android/key.properties << EOF
           storePassword=${{ secrets.STORE_PASSWORD }}
