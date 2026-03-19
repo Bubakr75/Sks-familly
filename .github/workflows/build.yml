@@ -14,6 +14,25 @@ jobs:
           flutter-version: '3.41.4'
           channel: 'stable'
 
+      - name: Create permanent keystore
+        run: |
+          rm -f android/release-key.jks
+          keytool -genkey -v \
+            -keystore android/release-key.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias release \
+            -storepass "SKS2026" \
+            -keypass "SKS2026" \
+            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
+
+      - name: Commit keystore to repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add android/release-key.jks
+          git commit -m "Update release keystore" || true
+          git push || true
+
       - name: Backup custom files
         run: |
           cp android/app/google-service.json /tmp/google-services.json 2>/dev/null || true
@@ -53,13 +72,10 @@ jobs:
       - name: Restore keystore and configure signing
         run: |
           cp /tmp/release-key.jks android/release-key.jks
-
-          cat > android/key.properties << 'EOF'
-          storePassword=SKS2026
-          keyPassword=SKS2026
-          keyAlias=release
-          storeFile=../release-key.jks
-          EOF
+          echo "storePassword=SKS2026" > android/key.properties
+          echo "keyPassword=SKS2026" >> android/key.properties
+          echo "keyAlias=release" >> android/key.properties
+          echo "storeFile=../release-key.jks" >> android/key.properties
 
           cat > /tmp/fix_signing.py << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
