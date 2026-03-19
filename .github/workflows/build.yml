@@ -21,7 +21,6 @@ jobs:
           cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
           cp android/app/proguard-rules.pro /tmp/proguard-rules.pro 2>/dev/null || true
           cp android/gradle.properties /tmp/gradle.properties 2>/dev/null || true
-          cp android/release-key.jks /tmp/release-key.jks
 
       - name: Regenerate Android folder
         run: |
@@ -29,6 +28,16 @@ jobs:
           flutter create --platforms android --org com.familyscore --project-name family_score .
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
+
+      - name: Generate keystore
+        run: |
+          keytool -genkey -v \
+            -keystore android/release-key.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias release \
+            -storepass "SKS2026" \
+            -keypass "SKS2026" \
+            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
 
       - name: Enable core library desugaring
         run: |
@@ -46,9 +55,8 @@ jobs:
           PYEOF
           python3 /tmp/fix_gradle.py
 
-      - name: Restore keystore and configure signing
+      - name: Configure signing
         run: |
-          cp /tmp/release-key.jks android/release-key.jks
           echo "storePassword=SKS2026" > android/key.properties
           echo "keyPassword=SKS2026" >> android/key.properties
           echo "keyAlias=release" >> android/key.properties
