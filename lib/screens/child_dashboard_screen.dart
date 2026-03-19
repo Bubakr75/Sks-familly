@@ -749,4 +749,309 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               ),
             ),
             child: Row(
-              children
+              children: [
+                Opacity(
+                  opacity: 0.4,
+                  child: Text(
+                    b.powerEmoji,
+                    style: const TextStyle(fontSize: 28),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        b.name,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        b.description,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 6,
+                          backgroundColor:
+                              Colors.white.withValues(alpha: 0.08),
+                          valueColor: AlwaysStoppedAnimation(
+                            Colors.amber.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${child.points}/${b.requiredPoints} pts',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.lock_outline,
+                  color: Colors.white.withValues(alpha: 0.2),
+                  size: 20,
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildHistoryTab(List<HistoryEntry> history) {
+    if (history.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history, color: Colors.white24, size: 64),
+            SizedBox(height: 16),
+            Text(
+              'Aucun historique',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: history.length,
+      itemBuilder: (context, index) => _buildHistoryTile(history[index]),
+    );
+  }
+
+  Widget _buildPunishmentsTab(List<PunishmentLines> punishments) {
+    final activePunishments = punishments.where((p) => !p.isCompleted).toList();
+
+    if (activePunishments.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.check_circle_outline,
+              color: Colors.greenAccent,
+              size: 64,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Aucune punition en cours',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Bravo, continue comme ca !',
+              style: TextStyle(color: Colors.greenAccent, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: activePunishments.length,
+      itemBuilder: (context, index) {
+        final p = activePunishments[index];
+        final progress = p.totalLines > 0
+            ? (p.completedLines / p.totalLines).clamp(0.0, 1.0)
+            : 0.0;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.edit_note_rounded,
+                    color: Colors.redAccent,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${p.completedLines} / ${p.totalLines} lignes',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${(progress * 100).toInt()}%',
+                    style: TextStyle(
+                      color: progress > 0.5 ? Colors.orange : Colors.redAccent,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  valueColor: AlwaysStoppedAnimation(
+                    progress > 0.7
+                        ? Colors.greenAccent
+                        : progress > 0.4
+                            ? Colors.orange
+                            : Colors.redAccent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHistoryTile(HistoryEntry entry) {
+    final isPositive = entry.isBonus;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (isPositive ? Colors.greenAccent : Colors.redAccent)
+                  .withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+              color: isPositive ? Colors.greenAccent : Colors.redAccent,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.reason,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  _formatDate(entry.date),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: (isPositive ? Colors.greenAccent : Colors.redAccent)
+                  .withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${isPositive ? '+' : '-'}${entry.points}',
+              style: TextStyle(
+                color: isPositive ? Colors.greenAccent : Colors.redAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlassCard({required String title, required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inMinutes < 1) return "A l'instant";
+    if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
+    if (diff.inDays < 7) {
+      return 'Il y a ${diff.inDays} jour${diff.inDays > 1 ? 's' : ''}';
+    }
+    return '${date.day}/${date.month}/${date.year}';
+  }
+}
