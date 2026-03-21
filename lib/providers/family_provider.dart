@@ -8,6 +8,7 @@ import '../models/history_entry.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
 import '../models/tribunal_model.dart';
+import '../models/badge_model.dart';
 import '../services/firestore_sync_service.dart';
 
 class FamilyProvider extends ChangeNotifier {
@@ -24,6 +25,7 @@ class FamilyProvider extends ChangeNotifier {
   late Box _punishmentLinesBox;
   late Box _immunityLinesBox;
   late Box _tribunalBox;
+  late Box _customBadgesBox;
 
   // ===== STATE =====
   List<ChildModel> _children = [];
@@ -35,6 +37,7 @@ class FamilyProvider extends ChangeNotifier {
   List<PunishmentLines> _punishmentLines = [];
   List<ImmunityLines> _immunityLines = [];
   List<TribunalCase> _tribunalCases = [];
+  List<BadgeModel> _customBadges = [];
 
   String? _familyCode;
   bool _isSyncEnabled = false;
@@ -49,6 +52,7 @@ class FamilyProvider extends ChangeNotifier {
   List<PunishmentLines> get punishments => _punishmentLines;
   List<ImmunityLines> get immunities => _immunityLines;
   List<TribunalCase> get tribunalCases => _tribunalCases;
+  List<BadgeModel> get customBadges => _customBadges;
   bool get isSyncEnabled => _isSyncEnabled;
 
   List<TribunalCase> get activeTribunalCases =>
@@ -68,6 +72,7 @@ class FamilyProvider extends ChangeNotifier {
     _punishmentLinesBox = await Hive.openBox('punishmentLines');
     _immunityLinesBox = await Hive.openBox('immunityLines');
     _tribunalBox = await Hive.openBox('tribunal');
+    _customBadgesBox = await Hive.openBox('customBadges');
 
     _loadLocal();
 
@@ -143,22 +148,41 @@ class FamilyProvider extends ChangeNotifier {
     _tribunalCases = _tribunalBox.values
         .map((e) => TribunalCase.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
         .toList();
+    _customBadges = _customBadgesBox.values
+        .map((e) => BadgeModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
   }
 
   // ===== FAMILY CODE =====
-  Future<void> joinFamily(String code) async {
-    await _firestore.joinFamily(code);
-    _familyCode = code;
-    _isSyncEnabled = true;
-    notifyListeners();
+  Future<String?> getFamilyCode() async {
+    return _familyCode;
   }
 
-  Future<String> createFamily() async {
-    final code = await _firestore.createFamily();
+  Future<String> createFamily({String? customCode}) async {
+    final code = await _firestore.createFamily(customCode: customCode);
     _familyCode = code;
     _isSyncEnabled = true;
     notifyListeners();
     return code;
+  }
+
+  Future<bool> joinFamily(String code) async {
+    try {
+      await _firestore.joinFamily(code);
+      _familyCode = code;
+      _isSyncEnabled = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> disconnectFamily() async {
+    await _firestore.disconnect();
+    _familyCode = null;
+    _isSyncEnabled = false;
+    notifyListeners();
   }
 
   // ===== CHILDREN =====
@@ -170,20 +194,47 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addChild(ChildModel child) async {
+  // Signature avec 2 args positionnels: addChild(name, avatar) — appelée par manage_children_screen
+  Future<void> addChild(String name, String avatar) async {
+    final child = ChildModel(
+      id: _uuid.v4(),
+      name: name,
+      avatar: avatar,
+    );
     _children.add(child);
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) await _firestore.saveChild(child);
     notifyListeners();
   }
 
-  Future<void> updateChild(ChildModel child) async {
+  // Signature avec 3 args positionnels: updateChild(id, name, avatar) — appelée par manage_children_screen
+  Future<void> updateChild(String childId, String name, String avatar) async {
+    final index = _children.indexWhere((c) => c.id == childId);
+    if (index != -1) {
+      _children[index].name = name;
+      _children[index].avatar = avatar;
+      await _childrenBox.put(childId, jsonEncode(_children[index].toMap()));
+      if (_firestore.isConnected) await _firestore.saveChild(_children[index]);
+      notifyListeners();
+    }
+  }
+
+  // Mettre à jour l'objet ChildModel directement (utilisé en interne)
+  Future<void> _saveChild(ChildModel child) async {
     final index = _children.indexWhere((c) => c.id == child.id);
     if (index != -1) {
       _children[index] = child;
-      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-      if (_firestore.isConnected) await _firestore.saveChild(child);
-      notifyListeners();
+    }
+    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+    if (_firestore.isConnected) await _firestore.saveChild(child);
+    notifyListeners();
+  }
+
+  Future<void> updateChildPhoto(String childId, String photoBase64) async {
+    final child = getChild(childId);
+    if (child != null) {
+      child.photoBase64 = photoBase64;
+      await _saveChild(child);
     }
   }
 
@@ -409,8 +460,30 @@ class FamilyProvider extends ChangeNotifier {
     final child = getChild(childId);
     if (child != null && !child.badgeIds.contains(badgeId)) {
       child.badgeIds.add(badgeId);
-      await updateChild(child);
+      await _saveChild(child);
     }
+  }
+
+  // ===== CUSTOM BADGES =====
+  Future<void> addCustomBadge(String name, String description, int requiredPoints, String powerType) async {
+    final badge = BadgeModel(
+      id: _uuid.v4(),
+      name: name,
+      icon: powerType,
+      description: description,
+      requiredPoints: requiredPoints,
+      powerType: powerType,
+      isCustom: true,
+    );
+    _customBadges.add(badge);
+    await _customBadgesBox.put(badge.id, jsonEncode(badge.toMap()));
+    notifyListeners();
+  }
+
+  Future<void> removeCustomBadge(String badgeId) async {
+    _customBadges.removeWhere((b) => b.id == badgeId);
+    await _customBadgesBox.delete(badgeId);
+    notifyListeners();
   }
 
   // ===== GOALS =====
@@ -576,7 +649,6 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // ===== NOTES (commentaires texte) =====
-  // Signature: addNote(childId, text) — appelée par notes_screen.dart
   Future<void> addNote(String childId, String text) async {
     final note = NoteModel(
       id: _uuid.v4(),
@@ -589,7 +661,6 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Signature: updateNote(noteId, newText) — appelée par notes_screen.dart
   Future<void> updateNote(String noteId, String newText) async {
     final index = _notes.indexWhere((n) => n.id == noteId);
     if (index != -1) {
@@ -726,17 +797,14 @@ class FamilyProvider extends ChangeNotifier {
     tc.plaintiffPoints = plaintiffPoints;
     tc.accusedPoints = accusedPoints;
 
-    // Appliquer les points au plaignant
     await addPoints(tc.plaintiffId, plaintiffPoints,
-        '\u{2696} Tribunal "${ tc.title}" - ${verdict == TribunalVerdict.guilty ? "Plainte acceptee" : "Plainte rejetee"}',
+        '\u{2696} Tribunal "${tc.title}" - ${verdict == TribunalVerdict.guilty ? "Plainte acceptee" : "Plainte rejetee"}',
         category: 'tribunal', isBonus: plaintiffPoints > 0);
 
-    // Appliquer les points à l'accusé
     await addPoints(tc.accusedId, accusedPoints,
         '\u{2696} Tribunal "${tc.title}" - ${verdict == TribunalVerdict.guilty ? "Reconnu coupable" : "Declare innocent"}',
         category: 'tribunal', isBonus: accusedPoints > 0);
 
-    // Appliquer les points aux avocats
     if (lawyerPoints != null) {
       for (final entry in lawyerPoints.entries) {
         if (entry.value != 0) {
@@ -752,7 +820,6 @@ class FamilyProvider extends ChangeNotifier {
       }
     }
 
-    // Appliquer les points aux témoins
     if (witnessVerified != null && witnessPoints != null) {
       for (final w in tc.witnesses) {
         final verified = witnessVerified[w.childId] ?? true;
@@ -858,6 +925,9 @@ class FamilyProvider extends ChangeNotifier {
     }
     for (var t in _tribunalCases) {
       await _tribunalBox.put(t.id, jsonEncode(t.toMap()));
+    }
+    for (var b in _customBadges) {
+      await _customBadgesBox.put(b.id, jsonEncode(b.toMap()));
     }
   }
 }
