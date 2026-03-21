@@ -111,6 +111,49 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return notes;
   }
 
+  static int _getScreenMinutesForGrade(double grade) {
+    if (grade >= 18) return 45;
+    if (grade >= 16) return 35;
+    if (grade >= 14) return 25;
+    if (grade >= 12) return 20;
+    if (grade >= 10) return 15;
+    if (grade >= 8) return 5;
+    return 0;
+  }
+
+  int _getScreenTimeForChild(String childId, FamilyProvider provider) {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    int totalMinutes = 0;
+
+    for (int i = 0; i < 5; i++) {
+      final day = DateTime(monday.year, monday.month, monday.day + i);
+      final dayHistory = provider.history.where((h) =>
+          h.childId == childId &&
+          h.category == 'school_note' &&
+          h.date.year == day.year &&
+          h.date.month == day.month &&
+          h.date.day == day.day).toList();
+
+      if (dayHistory.isNotEmpty) {
+        final reason = dayHistory.last.reason;
+        final match = RegExp(r'Note: ([\d.]+)/20').firstMatch(reason);
+        if (match != null) {
+          final grade = double.tryParse(match.group(1)!);
+          if (grade != null) totalMinutes += _getScreenMinutesForGrade(grade);
+        }
+      }
+    }
+    return totalMinutes.clamp(0, 360);
+  }
+
+  String _formatMinutes(int minutes) {
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h == 0) return '${m}min';
+    if (m == 0) return '${h}h';
+    return '${h}h${m.toString().padLeft(2, '0')}';
+  }
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
@@ -224,7 +267,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             PinGuard.guardNavigation(context, const PunishmentLinesScreen());
                           }),
                           const SizedBox(width: 8),
-                          _buildQuickAction(Icons.child_care_rounded, 'Mode Enfant', const Color(0xFF7C4DFF), isDark, () {
+                          _buildQuickAction(Icons.tv_rounded, 'Ecran', const Color(0xFF7C4DFF), isDark, () {
+                            _showScreenTimeSummary(context, provider);
+                          }),
+                          const SizedBox(width: 8),
+                          _buildQuickAction(Icons.child_care_rounded, 'Enfant', const Color(0xFF00E676), isDark, () {
                             _showChildModePicker(context, provider);
                           }),
                         ],
@@ -280,6 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         final child = sorted[index];
                         final weekNotes = _getWeekNotesForChild(child.id, provider);
                         final hasAnyNote = weekNotes.any((n) => n['hasNote'] == true);
+                        final screenMin = _getScreenTimeForChild(child.id, provider);
                         return TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0.0, end: 1.0),
                           duration: Duration(milliseconds: 400 + index * 100),
@@ -303,10 +351,18 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                   },
                                 ),
                               ),
-                              if (hasAnyNote)
+                              if (hasAnyNote || screenMin > 0)
                                 Padding(
-                                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                                  child: _buildWeekNotesBar(weekNotes, child.name),
+                                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                                  child: Column(
+                                    children: [
+                                      if (hasAnyNote) _buildWeekNotesBar(weekNotes, child.name),
+                                      if (screenMin > 0) ...[
+                                        const SizedBox(height: 4),
+                                        _buildScreenTimeMini(child.name, screenMin),
+                                      ],
+                                    ],
+                                  ),
                                 ),
                             ],
                           ),
@@ -387,6 +443,140 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  Widget _buildScreenTimeMini(String childName, int minutes) {
+    final progress = (minutes / 360).clamp(0.0, 1.0);
+    Color barColor;
+    if (progress >= 0.8) barColor = const Color(0xFF00E676);
+    else if (progress >= 0.5) barColor = Colors.orange;
+    else barColor = const Color(0xFFFF1744);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF7C4DFF).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.tv_rounded, color: Color(0xFFB388FF), size: 14),
+          const SizedBox(width: 6),
+          Text('Week-end: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+          Text(_formatMinutes(minutes), style: TextStyle(color: barColor, fontWeight: FontWeight.w800, fontSize: 12)),
+          Text(' / 6h', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 5,
+                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                valueColor: AlwaysStoppedAnimation(barColor),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  void _showScreenTimeSummary(BuildContext context, FamilyProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF141833) : null,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.tv_rounded, color: Color(0xFFB388FF), size: 24),
+                SizedBox(width: 10),
+                Text('Temps d\'ecran - Week-end', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if (provider.children.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('Aucun enfant', style: TextStyle(color: Colors.white60)),
+              )
+            else
+              ...provider.children.map((child) {
+                final minutes = _getScreenTimeForChild(child.id, provider);
+                final satMin = minutes > 180 ? 180 : minutes;
+                final sunMin = minutes > 180 ? (minutes - 180).clamp(0, 180) : 0;
+                final progress = (minutes / 360).clamp(0.0, 1.0);
+                Color barColor;
+                if (progress >= 0.8) barColor = const Color(0xFF00E676);
+                else if (progress >= 0.5) barColor = Colors.orange;
+                else barColor = const Color(0xFFFF1744);
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.25)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (child.hasPhoto)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.memory(base64Decode(child.photoBase64), width: 36, height: 36, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFF7C4DFF).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
+                                  child: Center(child: Text(child.avatar.isEmpty ? child.name[0] : child.avatar, style: const TextStyle(fontSize: 18))))),
+                            )
+                          else
+                            Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFF7C4DFF).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
+                              child: Center(child: Text(child.avatar.isEmpty ? child.name[0] : child.avatar, style: const TextStyle(fontSize: 18)))),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15))),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(color: barColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: barColor.withValues(alpha: 0.4))),
+                            child: Text(_formatMinutes(minutes), style: TextStyle(color: barColor, fontWeight: FontWeight.w900, fontSize: 14)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(value: progress, minHeight: 6, backgroundColor: Colors.white.withValues(alpha: 0.08), valueColor: AlwaysStoppedAnimation(barColor)),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text('\u{1F4C5} Sam: ${_formatMinutes(satMin)}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+                          const SizedBox(width: 16),
+                          Text('\u{1F31E} Dim: ${_formatMinutes(sunMin)}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+                          const Spacer(),
+                          Text('/ 6h max', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWeekNotesBar(List<Map<String, dynamic>> notes, String childName) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -454,41 +644,49 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF141833),
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 16),
-            const Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-            const SizedBox(height: 16),
-            ...provider.children.map((child) => ListTile(
-              leading: Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.3)),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: child.hasPhoto
-                      ? Image.memory(base64Decode(child.photoBase64), fit: BoxFit.cover, width: 44, height: 44)
-                      : Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5, minChildSize: 0.3, maxChildSize: 0.85, expand: false,
+        builder: (_, scrollController) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              const Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: provider.children.map((child) => ListTile(
+                    leading: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C4DFF).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: child.hasPhoto
+                            ? Image.memory(base64Decode(child.photoBase64), fit: BoxFit.cover, width: 44, height: 44)
+                            : Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22))),
+                      ),
+                    ),
+                    title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    subtitle: Text('${child.points} pts - ${child.levelTitle}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                    trailing: const Icon(Icons.chevron_right, color: Color(0xFF7C4DFF)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => ChildDashboardScreen(childId: child.id)));
+                    },
+                  )).toList(),
                 ),
               ),
-              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              subtitle: Text('${child.points} pts - ${child.levelTitle}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-              trailing: const Icon(Icons.chevron_right, color: Color(0xFF7C4DFF)),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => ChildDashboardScreen(childId: child.id)));
-              },
-            )),
-            const SizedBox(height: 16),
-          ],
+            ],
+          ),
         ),
       ),
     );
