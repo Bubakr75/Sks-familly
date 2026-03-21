@@ -5,6 +5,8 @@ import 'package:uuid/uuid.dart';
 import '../models/child_model.dart';
 import '../models/note_model.dart';
 import '../models/history_entry.dart';
+import '../models/punishment_lines.dart';
+import '../models/immunity_lines.dart';
 import '../services/firestore_sync_service.dart';
 
 class FamilyProvider extends ChangeNotifier {
@@ -21,17 +23,21 @@ class FamilyProvider extends ChangeNotifier {
   late Box _tribunalBox;
   late Box _badgesBox;
   late Box _parentBonusBox;
+  late Box _punishmentLinesBox;
+  late Box _immunityLinesBox;
 
   // ===== STATE =====
   List<ChildModel> _children = [];
   List<HistoryEntry> _history = [];
   List<Map<String, dynamic>> _goals = [];
-  List<Map<String, dynamic>> _punishments = [];
-  List<Map<String, dynamic>> _immunities = [];
+  List<Map<String, dynamic>> _punishmentsMap = [];
+  List<Map<String, dynamic>> _immunitiesMap = [];
   List<NoteModel> _notes = [];
   List<Map<String, dynamic>> _tribunalCases = [];
   List<String> _unlockedBadges = [];
   Map<String, int> _parentBonusMinutes = {};
+  List<PunishmentLines> _punishmentLines = [];
+  List<ImmunityLines> _immunityLines = [];
 
   String? _familyCode;
 
@@ -39,12 +45,12 @@ class FamilyProvider extends ChangeNotifier {
   List<ChildModel> get children => _children;
   List<HistoryEntry> get history => _history;
   List<Map<String, dynamic>> get goals => _goals;
-  List<Map<String, dynamic>> get punishments => _punishments;
-  List<Map<String, dynamic>> get immunities => _immunities;
   List<NoteModel> get notes => _notes;
   List<Map<String, dynamic>> get tribunalCases => _tribunalCases;
   List<String> get unlockedBadges => _unlockedBadges;
   String? get familyCode => _familyCode;
+  List<PunishmentLines> get punishments => _punishmentLines;
+  List<ImmunityLines> get immunities => _immunityLines;
 
   // ===== INIT =====
   Future<void> init() async {
@@ -57,6 +63,8 @@ class FamilyProvider extends ChangeNotifier {
     _tribunalBox = await Hive.openBox('tribunal');
     _badgesBox = await Hive.openBox('badges');
     _parentBonusBox = await Hive.openBox('parentBonus');
+    _punishmentLinesBox = await Hive.openBox('punishmentLines');
+    _immunityLinesBox = await Hive.openBox('immunityLines');
 
     _loadLocal();
 
@@ -78,12 +86,12 @@ class FamilyProvider extends ChangeNotifier {
         notifyListeners();
       },
       onPunishmentsUpdated: (list) {
-        _punishments = list;
+        _punishmentsMap = list;
         _saveAllLocal();
         notifyListeners();
       },
       onImmunitiesUpdated: (list) {
-        _immunities = list;
+        _immunitiesMap = list;
         _saveAllLocal();
         notifyListeners();
       },
@@ -113,10 +121,10 @@ class FamilyProvider extends ChangeNotifier {
     _goals = _goalsBox.values
         .map((e) => Map<String, dynamic>.from(jsonDecode(e)))
         .toList();
-    _punishments = _punishmentsBox.values
+    _punishmentsMap = _punishmentsBox.values
         .map((e) => Map<String, dynamic>.from(jsonDecode(e)))
         .toList();
-    _immunities = _immunitiesBox.values
+    _immunitiesMap = _immunitiesBox.values
         .map((e) => Map<String, dynamic>.from(jsonDecode(e)))
         .toList();
     _notes = _notesBox.values
@@ -127,10 +135,16 @@ class FamilyProvider extends ChangeNotifier {
         .toList();
     _unlockedBadges = _badgesBox.values.map((e) => e.toString()).toList();
 
-    // Load parent bonus
     for (var key in _parentBonusBox.keys) {
       _parentBonusMinutes[key.toString()] = _parentBonusBox.get(key) ?? 0;
     }
+
+    _punishmentLines = _punishmentLinesBox.values
+        .map((e) => PunishmentLines.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
+    _immunityLines = _immunityLinesBox.values
+        .map((e) => ImmunityLines.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
+        .toList();
   }
 
   // ===== FAMILY CODE =====
@@ -212,7 +226,6 @@ class FamilyProvider extends ChangeNotifier {
 
   // ===== SCREEN TIME CALCULATION =====
 
-  /// Récupère les notes "school_note" d'un enfant pour une semaine donnée (lun-ven)
   List<HistoryEntry> getSchoolNotesForWeek(String childId, DateTime weekStart) {
     final monday = weekStart.subtract(Duration(days: weekStart.weekday - 1));
     final mondayStart = DateTime(monday.year, monday.month, monday.day);
@@ -226,11 +239,10 @@ class FamilyProvider extends ChangeNotifier {
     }).toList();
   }
 
-  /// Moyenne des notes scolaires de la semaine (sur 20)
   double getWeeklySchoolAverage(String childId, {DateTime? referenceDate}) {
     final ref = referenceDate ?? DateTime.now();
     final notes = getSchoolNotesForWeek(childId, ref);
-    if (notes.isEmpty) return -1; // pas de note
+    if (notes.isEmpty) return -1;
     double sum = 0;
     for (var n in notes) {
       sum += n.points;
@@ -238,7 +250,6 @@ class FamilyProvider extends ChangeNotifier {
     return sum / notes.length;
   }
 
-  /// Récupère toutes les entrées de comportement de la semaine (bonus, pénalités, etc. sauf school_note)
   List<HistoryEntry> getBehaviorEntriesForWeek(String childId, DateTime weekStart) {
     final monday = weekStart.subtract(Duration(days: weekStart.weekday - 1));
     final mondayStart = DateTime(monday.year, monday.month, monday.day);
@@ -248,16 +259,16 @@ class FamilyProvider extends ChangeNotifier {
       return h.childId == childId &&
           h.category != 'school_note' &&
           h.category != 'screentime' &&
+          h.category != 'saturday_rating' &&
           h.date.isAfter(mondayStart.subtract(const Duration(seconds: 1))) &&
           h.date.isBefore(fridayEnd.add(const Duration(seconds: 1)));
     }).toList();
   }
 
-  /// Note de comportement de la semaine sur 20 (basée sur bonus/pénalités)
   double getWeeklyBehaviorScore(String childId, {DateTime? referenceDate}) {
     final ref = referenceDate ?? DateTime.now();
     final entries = getBehaviorEntriesForWeek(childId, ref);
-    if (entries.isEmpty) return 10; // note par défaut si rien
+    if (entries.isEmpty) return 10;
 
     int totalBonus = 0;
     int totalPenalty = 0;
@@ -269,52 +280,42 @@ class FamilyProvider extends ChangeNotifier {
       }
     }
 
-    // Base 10/20, +1 par tranche de 5 pts bonus, -1 par tranche de 5 pts pénalité
     double score = 10 + (totalBonus / 5) - (totalPenalty / 5);
-    return score.clamp(0, 20);
+    return score.clamp(0, 20).toDouble();
   }
 
-  /// Note globale de la semaine (combinée) sur 20
-  /// 50% notes scolaires + 50% comportement
-  /// Si pas de notes scolaires, 100% comportement
   double getWeeklyGlobalScore(String childId, {DateTime? referenceDate}) {
     final ref = referenceDate ?? DateTime.now();
     final schoolAvg = getWeeklySchoolAverage(childId, referenceDate: ref);
     final behaviorScore = getWeeklyBehaviorScore(childId, referenceDate: ref);
 
     if (schoolAvg < 0) {
-      // Pas de notes scolaires cette semaine : 100% comportement
       return behaviorScore;
     }
 
-    // 50% notes scolaires + 50% comportement
     return (schoolAvg * 0.5) + (behaviorScore * 0.5);
   }
 
-  /// Convertit une note globale sur 20 en minutes d'écran (max 180 = 3h)
   int _scoreToMinutes(double score) {
-    if (score >= 18) return 180; // 3h
-    if (score >= 16) return 150; // 2h30
-    if (score >= 14) return 120; // 2h
-    if (score >= 12) return 90;  // 1h30
-    if (score >= 10) return 60;  // 1h
-    if (score >= 8) return 30;   // 30min
+    if (score >= 18) return 180;
+    if (score >= 16) return 150;
+    if (score >= 14) return 120;
+    if (score >= 12) return 90;
+    if (score >= 10) return 60;
+    if (score >= 8) return 30;
     return 0;
   }
 
-  /// Temps d'écran du SAMEDI en minutes (basé sur lun-ven)
   int getSaturdayMinutes(String childId, {DateTime? referenceDate}) {
     final ref = referenceDate ?? DateTime.now();
     final globalScore = getWeeklyGlobalScore(childId, referenceDate: ref);
     final base = _scoreToMinutes(globalScore);
     final bonus = _parentBonusMinutes[childId] ?? 0;
-    return (base + bonus).clamp(0, 360); // max 6h avec bonus
+    return (base + bonus).clamp(0, 360);
   }
 
-  /// Récupère la note de comportement du samedi (catégorie 'saturday_rating')
   double getSaturdayBehaviorRating(String childId, {DateTime? referenceDate}) {
     final ref = referenceDate ?? DateTime.now();
-    // Trouver le samedi de cette semaine
     final daysUntilSaturday = DateTime.saturday - ref.weekday;
     final saturday = ref.add(Duration(days: daysUntilSaturday >= 0 ? daysUntilSaturday : daysUntilSaturday + 7));
     final saturdayStart = DateTime(saturday.year, saturday.month, saturday.day);
@@ -327,18 +328,15 @@ class FamilyProvider extends ChangeNotifier {
           h.date.isBefore(saturdayEnd.add(const Duration(seconds: 1)));
     }).toList();
 
-    if (ratings.isEmpty) return -1; // pas encore noté
-    // Prendre la dernière note
+    if (ratings.isEmpty) return -1;
     ratings.sort((a, b) => b.date.compareTo(a.date));
     return ratings.first.points.toDouble();
   }
 
-  /// Temps d'écran du DIMANCHE en minutes (basé sur comportement du samedi)
   int getSundayMinutes(String childId, {DateTime? referenceDate}) {
     final ref = referenceDate ?? DateTime.now();
     final saturdayRating = getSaturdayBehaviorRating(childId, referenceDate: ref);
     if (saturdayRating < 0) {
-      // Pas encore de note samedi : utiliser la même note que samedi par défaut
       return getSaturdayMinutes(childId, referenceDate: ref);
     }
     final base = _scoreToMinutes(saturdayRating);
@@ -346,12 +344,10 @@ class FamilyProvider extends ChangeNotifier {
     return (base + bonus).clamp(0, 360);
   }
 
-  /// Note globale affichée (sur 20)
   double getGlobalScoreDisplay(String childId) {
     return getWeeklyGlobalScore(childId);
   }
 
-  /// Temps d'écran total du week-end
   int getTotalWeekendMinutes(String childId) {
     return getSaturdayMinutes(childId) + getSundayMinutes(childId);
   }
@@ -389,7 +385,6 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Noter le comportement du samedi (pour calculer le dimanche)
   Future<void> rateSaturdayBehavior(String childId, int rating) async {
     final now = DateTime.now();
     final entry = HistoryEntry(
@@ -454,58 +449,140 @@ class FamilyProvider extends ChangeNotifier {
   List<Map<String, dynamic>> getGoalsForChild(String childId) =>
       _goals.where((g) => g['childId'] == childId).toList();
 
-  // ===== PUNISHMENTS =====
-  Future<void> addPunishment(Map<String, dynamic> punishment) async {
-    _punishments.add(punishment);
-    await _punishmentsBox.put(punishment['id'], jsonEncode(punishment));
-    if (_firestore.isConnected) await _firestore.savePunishment(punishment);
+  // ===== PUNISHMENT LINES =====
+  Future<void> addPunishment(String childId, String text, int totalLines) async {
+    final punishment = PunishmentLines(
+      id: _uuid.v4(),
+      childId: childId,
+      text: text,
+      totalLines: totalLines,
+    );
+    _punishmentLines.add(punishment);
+    await _punishmentLinesBox.put(punishment.id, jsonEncode(punishment.toMap()));
+    if (_firestore.isConnected) await _firestore.savePunishment(punishment.toMap());
     notifyListeners();
   }
 
-  Future<void> updatePunishment(Map<String, dynamic> punishment) async {
-    final index = _punishments.indexWhere((p) => p['id'] == punishment['id']);
+  Future<void> updatePunishmentProgress(String punishmentId, int additionalLines) async {
+    final index = _punishmentLines.indexWhere((p) => p.id == punishmentId);
     if (index != -1) {
-      _punishments[index] = punishment;
-      await _punishmentsBox.put(punishment['id'], jsonEncode(punishment));
-      if (_firestore.isConnected) await _firestore.savePunishment(punishment);
+      final p = _punishmentLines[index];
+      p.completedLines = (p.completedLines + additionalLines).clamp(0, p.totalLines);
+      await _punishmentLinesBox.put(p.id, jsonEncode(p.toMap()));
+      if (_firestore.isConnected) await _firestore.savePunishment(p.toMap());
       notifyListeners();
     }
   }
 
+  Future<void> addPhotoToPunishment(String punishmentId, String photoBase64) async {
+    final index = _punishmentLines.indexWhere((p) => p.id == punishmentId);
+    if (index != -1) {
+      final p = _punishmentLines[index];
+      p.photoUrls.add(photoBase64);
+      await _punishmentLinesBox.put(p.id, jsonEncode(p.toMap()));
+      if (_firestore.isConnected) await _firestore.savePunishment(p.toMap());
+      notifyListeners();
+    }
+  }
+
+  Future<void> removePhotoFromPunishment(String punishmentId, int photoIndex) async {
+    final index = _punishmentLines.indexWhere((p) => p.id == punishmentId);
+    if (index != -1) {
+      final p = _punishmentLines[index];
+      if (photoIndex >= 0 && photoIndex < p.photoUrls.length) {
+        p.photoUrls.removeAt(photoIndex);
+        await _punishmentLinesBox.put(p.id, jsonEncode(p.toMap()));
+        if (_firestore.isConnected) await _firestore.savePunishment(p.toMap());
+        notifyListeners();
+      }
+    }
+  }
+
   Future<void> removePunishment(String id) async {
-    _punishments.removeWhere((p) => p['id'] == id);
-    await _punishmentsBox.delete(id);
+    _punishmentLines.removeWhere((p) => p.id == id);
+    await _punishmentLinesBox.delete(id);
     if (_firestore.isConnected) await _firestore.deletePunishment(id);
     notifyListeners();
   }
 
-  List<Map<String, dynamic>> getPunishmentsForChild(String childId) =>
-      _punishments.where((p) => p['childId'] == childId).toList();
+  List<PunishmentLines> getPunishmentsForChild(String childId) =>
+      _punishmentLines.where((p) => p.childId == childId).toList();
 
-  // ===== IMMUNITIES =====
-  Future<void> addImmunity(Map<String, dynamic> immunity) async {
-    _immunities.add(immunity);
-    await _immunitiesBox.put(immunity['id'], jsonEncode(immunity));
-    if (_firestore.isConnected) await _firestore.saveImmunity(immunity);
+  // ===== IMMUNITY LINES =====
+  Future<void> addImmunity(String childId, String reason, int lines, {DateTime? expiresAt}) async {
+    final immunity = ImmunityLines(
+      id: _uuid.v4(),
+      childId: childId,
+      reason: reason,
+      lines: lines,
+      expiresAt: expiresAt,
+    );
+    _immunityLines.add(immunity);
+    await _immunityLinesBox.put(immunity.id, jsonEncode(immunity.toMap()));
+    if (_firestore.isConnected) await _firestore.saveImmunity(immunity.toMap());
     notifyListeners();
   }
 
   Future<void> removeImmunity(String id) async {
-    _immunities.removeWhere((i) => i['id'] == id);
-    await _immunitiesBox.delete(id);
+    _immunityLines.removeWhere((i) => i.id == id);
+    await _immunityLinesBox.delete(id);
     if (_firestore.isConnected) await _firestore.deleteImmunity(id);
     notifyListeners();
   }
 
-  List<Map<String, dynamic>> getImmunitiesForChild(String childId) =>
-      _immunities.where((i) => i['childId'] == childId).toList();
+  List<ImmunityLines> getImmunitiesForChild(String childId) =>
+      _immunityLines.where((i) => i.childId == childId).toList();
+
+  List<ImmunityLines> getUsableImmunitiesForChild(String childId) =>
+      _immunityLines.where((i) => i.childId == childId && i.isUsable).toList();
+
+  int getTotalAvailableImmunity(String childId) {
+    return getUsableImmunitiesForChild(childId)
+        .fold(0, (sum, im) => sum + im.availableLines);
+  }
+
+  Future<void> useImmunityOnPunishment(String immunityId, String punishmentId, int linesToUse) async {
+    final imIndex = _immunityLines.indexWhere((i) => i.id == immunityId);
+    final pIndex = _punishmentLines.indexWhere((p) => p.id == punishmentId);
+
+    if (imIndex != -1 && pIndex != -1) {
+      final im = _immunityLines[imIndex];
+      final p = _punishmentLines[pIndex];
+
+      final actualLines = linesToUse.clamp(0, im.availableLines);
+      final remaining = p.totalLines - p.completedLines;
+      final toApply = actualLines.clamp(0, remaining);
+
+      im.usedLines += toApply;
+      p.completedLines = (p.completedLines + toApply).clamp(0, p.totalLines);
+
+      await _immunityLinesBox.put(im.id, jsonEncode(im.toMap()));
+      await _punishmentLinesBox.put(p.id, jsonEncode(p.toMap()));
+
+      if (_firestore.isConnected) {
+        await _firestore.saveImmunity(im.toMap());
+        await _firestore.savePunishment(p.toMap());
+      }
+
+      final entry = HistoryEntry(
+        id: _uuid.v4(),
+        childId: p.childId,
+        points: 0,
+        reason: '\u{1F6E1} Immunite utilisee : $toApply lignes deduites de "${p.text}"',
+        category: 'immunity_used',
+        isBonus: true,
+      );
+      _history.insert(0, entry);
+      await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
+      if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
+
+      notifyListeners();
+    }
+  }
 
   bool hasActiveImmunity(String childId, String type) {
-    final now = DateTime.now();
-    return _immunities.any((i) =>
-        i['childId'] == childId &&
-        i['type'] == type &&
-        DateTime.parse(i['expiresAt']).isAfter(now));
+    return _immunityLines.any((i) =>
+        i.childId == childId && i.isUsable);
   }
 
   // ===== NOTES (commentaires texte) =====
@@ -591,7 +668,8 @@ class FamilyProvider extends ChangeNotifier {
             h.date.isAfter(mondayStart) &&
             h.category != 'school_note' &&
             h.category != 'screentime' &&
-            h.category != 'saturday_rating')
+            h.category != 'saturday_rating' &&
+            h.category != 'immunity_used')
         .fold(0, (sum, h) => sum + h.points);
   }
 
@@ -615,10 +693,10 @@ class FamilyProvider extends ChangeNotifier {
     for (var goal in _goals) {
       await _goalsBox.put(goal['id'], jsonEncode(goal));
     }
-    for (var p in _punishments) {
+    for (var p in _punishmentsMap) {
       await _punishmentsBox.put(p['id'], jsonEncode(p));
     }
-    for (var i in _immunities) {
+    for (var i in _immunitiesMap) {
       await _immunitiesBox.put(i['id'], jsonEncode(i));
     }
     for (var n in _notes) {
@@ -626,6 +704,12 @@ class FamilyProvider extends ChangeNotifier {
     }
     for (var t in _tribunalCases) {
       await _tribunalBox.put(t['id'], jsonEncode(t));
+    }
+    for (var p in _punishmentLines) {
+      await _punishmentLinesBox.put(p.id, jsonEncode(p.toMap()));
+    }
+    for (var i in _immunityLines) {
+      await _immunityLinesBox.put(i.id, jsonEncode(i.toMap()));
     }
   }
 }
