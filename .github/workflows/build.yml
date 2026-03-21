@@ -3,6 +3,9 @@ name: Build Flutter APK
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -106,3 +109,13 @@ jobs:
         with:
           name: family-score-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v4.2.${{ github.run_number }}
+          name: "Family Score v4.2.${{ github.run_number }}"
+          body: "Mise a jour automatique - Build #${{ github.run_number }}"
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
