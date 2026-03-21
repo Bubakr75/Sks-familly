@@ -158,14 +158,13 @@ class FirestoreService {
     _lastDataReceived = DateTime.now();
   }
 
-  // ===== FORCE REFRESH - Relit tout depuis Firestore =====
+  // ===== FORCE REFRESH =====
 
   Future<void> forceRefresh() async {
     if (_familyId == null) return;
     if (kDebugMode) debugPrint('FirestoreService: force refresh all data...');
 
     try {
-      // Children
       final childrenSnap = await _db
           .collection('families').doc(_familyId).collection('children')
           .get(const GetOptions(source: Source.server));
@@ -179,7 +178,6 @@ class FirestoreService {
       }
       onChildrenChanged?.call(children, childrenRaw);
 
-      // History
       final historySnap = await _db
           .collection('families').doc(_familyId).collection('history')
           .get(const GetOptions(source: Source.server));
@@ -194,7 +192,6 @@ class FirestoreService {
       history.sort((a, b) => b.date.compareTo(a.date));
       onHistoryChanged?.call(history, historyRaw);
 
-      // Goals
       final goalsSnap = await _db
           .collection('families').doc(_familyId).collection('goals')
           .get(const GetOptions(source: Source.server));
@@ -208,7 +205,6 @@ class FirestoreService {
       }
       onGoalsChanged?.call(goals, goalsRaw);
 
-      // Punishments
       final punishmentsSnap = await _db
           .collection('families').doc(_familyId).collection('punishments')
           .get(const GetOptions(source: Source.server));
@@ -222,7 +218,6 @@ class FirestoreService {
       }
       onPunishmentsChanged?.call(punishments, punishmentsRaw);
 
-      // Notes
       final notesSnap = await _db
           .collection('families').doc(_familyId).collection('notes')
           .get(const GetOptions(source: Source.server));
@@ -293,9 +288,7 @@ class FirestoreService {
     if (_familyId == null) return;
 
     _childrenSub = _db
-        .collection('families')
-        .doc(_familyId)
-        .collection('children')
+        .collection('families').doc(_familyId).collection('children')
         .snapshots()
         .listen((snapshot) {
       _markDataReceived();
@@ -314,9 +307,7 @@ class FirestoreService {
     });
 
     _historySub = _db
-        .collection('families')
-        .doc(_familyId)
-        .collection('history')
+        .collection('families').doc(_familyId).collection('history')
         .snapshots()
         .listen((snapshot) {
       _markDataReceived();
@@ -336,9 +327,7 @@ class FirestoreService {
     });
 
     _goalsSub = _db
-        .collection('families')
-        .doc(_familyId)
-        .collection('goals')
+        .collection('families').doc(_familyId).collection('goals')
         .snapshots()
         .listen((snapshot) {
       _markDataReceived();
@@ -357,9 +346,7 @@ class FirestoreService {
     });
 
     _punishmentsSub = _db
-        .collection('families')
-        .doc(_familyId)
-        .collection('punishments')
+        .collection('families').doc(_familyId).collection('punishments')
         .snapshots()
         .listen((snapshot) {
       _markDataReceived();
@@ -378,9 +365,7 @@ class FirestoreService {
     });
 
     _notesSub = _db
-        .collection('families')
-        .doc(_familyId)
-        .collection('notes')
+        .collection('families').doc(_familyId).collection('notes')
         .snapshots()
         .listen((snapshot) {
       _markDataReceived();
