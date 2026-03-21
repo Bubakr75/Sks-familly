@@ -76,6 +76,12 @@ void main() async {
 
   try {
     await familyProvider.init();
+      // Schedule daily reminder at 7pm
+  try {
+    await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
+  } catch (e) {
+    if (kDebugMode) debugPrint('Schedule reminder error: $e');
+  }
   } catch (e) {
     if (kDebugMode) debugPrint('FamilyProvider init error: $e');
   }
