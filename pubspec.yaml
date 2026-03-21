@@ -36,7 +36,12 @@ dependencies:
   # Local notifications
   flutter_local_notifications: ^18.0.1
   timezone: ^0.10.0
-    
+
+  # Auto update
+  package_info_plus: ^8.0.0
+  open_filex: ^4.5.0
+  http: ^1.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
