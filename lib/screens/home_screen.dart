@@ -264,7 +264,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     onTap: () { Navigator.pop(context); Navigator.push(context, _glassRoute(BadgesScreen())); }),
                   _DrawerItem(icon: Icons.school_rounded, label: 'Notes scolaires', color: const Color(0xFF448AFF),
                     subtitle: '${provider.history.where((h) => h.category == 'school_note').length} notes',
-                    onTap: () { Navigator.pop(context); PinGuard.guardNavigation(context, SchoolNotesScreen()); }),
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (provider.children.isNotEmpty) {
+                        _showSchoolNotesChildPicker(context, provider);
+                      }
+                    }),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: Divider(color: Colors.white.withValues(alpha: 0.06))),
                   _DrawerItem(icon: Icons.gavel_rounded, label: 'Tribunal', color: const Color(0xFF5D4037),
                     subtitle: activeTribunals > 0 ? '$activeTribunals affaire${activeTribunals > 1 ? 's' : ''} en cours' : 'Aucune affaire',
@@ -294,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-            Container(padding: const EdgeInsets.all(16), child: Text('SKS Family v4.5.0', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
+            Container(padding: const EdgeInsets.all(16), child: Text('SKS Family v4.8.0', style: TextStyle(color: Colors.grey[700], fontSize: 12))),
           ],
         ),
       ),
@@ -315,6 +320,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
       },
       transitionDuration: const Duration(milliseconds: 350),
+    );
+  }
+
+  void _showSchoolNotesChildPicker(BuildContext context, FamilyProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141833),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
+            const SizedBox(height: 16),
+            ...provider.children.map((child) => ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22))),
+              ),
+              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SchoolNotesScreen(childId: child.id)));
+              },
+            )),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 
