@@ -29,7 +29,6 @@ class FirestoreService {
   StreamSubscription? _punishmentsSub;
   StreamSubscription? _notesSub;
 
-  // Keepalive timer
   Timer? _keepAliveTimer;
   DateTime _lastDataReceived = DateTime.now();
 
@@ -159,6 +158,89 @@ class FirestoreService {
     _lastDataReceived = DateTime.now();
   }
 
+  // ===== FORCE REFRESH - Relit tout depuis Firestore =====
+
+  Future<void> forceRefresh() async {
+    if (_familyId == null) return;
+    if (kDebugMode) debugPrint('FirestoreService: force refresh all data...');
+
+    try {
+      // Children
+      final childrenSnap = await _db
+          .collection('families').doc(_familyId).collection('children')
+          .get(const GetOptions(source: Source.server));
+      final children = <ChildModel>[];
+      final childrenRaw = <Map<String, dynamic>>[];
+      for (final doc in childrenSnap.docs) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        children.add(ChildModel.fromMap(data));
+        childrenRaw.add(Map<String, dynamic>.from(data));
+      }
+      onChildrenChanged?.call(children, childrenRaw);
+
+      // History
+      final historySnap = await _db
+          .collection('families').doc(_familyId).collection('history')
+          .get(const GetOptions(source: Source.server));
+      final history = <HistoryEntry>[];
+      final historyRaw = <Map<String, dynamic>>[];
+      for (final doc in historySnap.docs) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        history.add(HistoryEntry.fromMap(data));
+        historyRaw.add(Map<String, dynamic>.from(data));
+      }
+      history.sort((a, b) => b.date.compareTo(a.date));
+      onHistoryChanged?.call(history, historyRaw);
+
+      // Goals
+      final goalsSnap = await _db
+          .collection('families').doc(_familyId).collection('goals')
+          .get(const GetOptions(source: Source.server));
+      final goals = <GoalModel>[];
+      final goalsRaw = <Map<String, dynamic>>[];
+      for (final doc in goalsSnap.docs) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        goals.add(GoalModel.fromMap(data));
+        goalsRaw.add(Map<String, dynamic>.from(data));
+      }
+      onGoalsChanged?.call(goals, goalsRaw);
+
+      // Punishments
+      final punishmentsSnap = await _db
+          .collection('families').doc(_familyId).collection('punishments')
+          .get(const GetOptions(source: Source.server));
+      final punishments = <PunishmentLines>[];
+      final punishmentsRaw = <Map<String, dynamic>>[];
+      for (final doc in punishmentsSnap.docs) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        punishments.add(PunishmentLines.fromMap(data));
+        punishmentsRaw.add(Map<String, dynamic>.from(data));
+      }
+      onPunishmentsChanged?.call(punishments, punishmentsRaw);
+
+      // Notes
+      final notesSnap = await _db
+          .collection('families').doc(_familyId).collection('notes')
+          .get(const GetOptions(source: Source.server));
+      final notes = notesSnap.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return NoteModel.fromMap(data);
+      }).toList();
+      notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      onNotesChanged?.call(notes);
+
+      _markDataReceived();
+      if (kDebugMode) debugPrint('Force refresh completed successfully');
+    } catch (e) {
+      if (kDebugMode) debugPrint('Force refresh error: $e');
+      reconnect();
+    }
+  }
   // ===== KEEP ALIVE =====
 
   void _startKeepAlive() {
@@ -184,13 +266,11 @@ class FirestoreService {
       debugPrint('KeepAlive check: ${secondsSinceLastData}s since last data');
     }
 
-    // If no data received in 45 seconds, reconnect
     if (secondsSinceLastData > 45) {
       if (kDebugMode) debugPrint('KeepAlive: No data for 45s, reconnecting...');
       reconnect();
     }
 
-    // Also do a manual read to keep the connection alive
     _db
         .collection('families')
         .doc(_familyId)
