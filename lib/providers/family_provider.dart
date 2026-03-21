@@ -45,7 +45,6 @@ class FamilyProvider extends ChangeNotifier {
   bool get isSyncEnabled => _firestore.isConnected;
   String? get familyId => _firestore.familyId;
 
-  // Tribunal queries
   List<TribunalCase> get activeTribunalCases =>
       _tribunalCases.where((t) => !t.isClosed).toList()
         ..sort((a, b) => b.filedDate.compareTo(a.filedDate));
@@ -109,7 +108,14 @@ class FamilyProvider extends ChangeNotifier {
   void reconnectFirestore() {
     _firestore.reconnect();
   }
-    void _loadLocalData() {
+
+  Future<void> forceRefreshFromCloud() async {
+    if (_firestore.isConnected) {
+      await _firestore.forceRefresh();
+    }
+  }
+
+  void _loadLocalData() {
     _children = _childrenBox.values
         .map<ChildModel>((e) => ChildModel.fromMap(Map<String, dynamic>.from(jsonDecode(e))))
         .toList();
@@ -139,6 +145,7 @@ class FamilyProvider extends ChangeNotifier {
     _tribunalCases.sort((a, b) => b.filedDate.compareTo(a.filedDate));
     notifyListeners();
   }
+
   final Set<String> _knownHistoryIds = {};
   final Set<String> _knownPunishmentIds = {};
   final Map<String, int> _knownPunishmentProgress = {};
@@ -278,7 +285,6 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<String?> getFamilyCode() async { return _firestore.getFamilyCode(); }
   Future<void> disconnectFamily() async { await _firestore.disconnectFamily(); notifyListeners(); }
-
   // === CHILDREN ===
   Future<void> addChild(String name, String avatar) async {
     final child = ChildModel(id: _uuid.v4(), name: name, avatar: avatar);
@@ -565,7 +571,6 @@ class FamilyProvider extends ChangeNotifier {
 
   List<ImmunityLines> getImmunitiesForChild(String childId) =>
       _immunities.where((im) => im.childId == childId).toList();
-
   // === NOTES ===
   Future<void> addNote(String childId, String text, {String authorName = 'Parent'}) async {
     final note = NoteModel(id: _uuid.v4(), childId: childId, text: text, authorName: authorName);
@@ -633,7 +638,6 @@ class FamilyProvider extends ChangeNotifier {
       scheduledDate: scheduledDate,
     );
 
-    // Ajouter les participants
     tribunalCase.participants.add(TribunalParticipant(childId: plaintiffId, role: TribunalRole.plaintiff));
     tribunalCase.participants.add(TribunalParticipant(childId: accusedId, role: TribunalRole.accused));
 
@@ -712,47 +716,29 @@ class FamilyProvider extends ChangeNotifier {
     tc.plaintiffPoints = plaintiffPoints;
     tc.accusedPoints = accusedPoints;
 
-    // Appliquer points au plaignant
     if (plaintiffPoints != 0) {
-      await addPoints(
-        tc.plaintiffId,
-        plaintiffPoints,
+      await addPoints(tc.plaintiffId, plaintiffPoints,
         'Tribunal: ${tc.title} - ${verdict == TribunalVerdict.guilty ? "Plainte validee" : verdict == TribunalVerdict.innocent ? "Plainte rejetee" : "Classe sans suite"}',
-        'tribunal',
-        isBonus: plaintiffPoints > 0,
-      );
+        'tribunal', isBonus: plaintiffPoints > 0);
     }
 
-    // Appliquer points a l accuse
     if (accusedPoints != 0) {
-      await addPoints(
-        tc.accusedId,
-        accusedPoints,
+      await addPoints(tc.accusedId, accusedPoints,
         'Tribunal: ${tc.title} - ${verdict == TribunalVerdict.guilty ? "Reconnu coupable" : verdict == TribunalVerdict.innocent ? "Declare innocent" : "Classe sans suite"}',
-        'tribunal',
-        isBonus: accusedPoints > 0,
-      );
+        'tribunal', isBonus: accusedPoints > 0);
     }
 
-    // Appliquer points aux avocats
     if (lawyerPoints != null) {
       for (final entry in lawyerPoints.entries) {
         if (entry.value != 0) {
           final participant = tc.participants.where((p) => p.childId == entry.key).firstOrNull;
           final roleLabel = participant?.role == TribunalRole.prosecutionLawyer ? 'Avocat accusation' : 'Avocat defense';
           participant?.pointsAwarded = entry.value;
-          await addPoints(
-            entry.key,
-            entry.value,
-            'Tribunal: ${tc.title} - $roleLabel',
-            'tribunal',
-            isBonus: entry.value > 0,
-          );
+          await addPoints(entry.key, entry.value, 'Tribunal: ${tc.title} - $roleLabel', 'tribunal', isBonus: entry.value > 0);
         }
       }
     }
 
-    // Verifier et appliquer points aux temoins
     if (witnessVerified != null && witnessPoints != null) {
       for (final entry in witnessVerified.entries) {
         final wIdx = tc.participants.indexWhere((p) => p.childId == entry.key && p.role == TribunalRole.witness);
@@ -761,13 +747,7 @@ class FamilyProvider extends ChangeNotifier {
           final pts = witnessPoints[entry.key] ?? 0;
           tc.participants[wIdx].pointsAwarded = pts;
           if (pts != 0) {
-            await addPoints(
-              entry.key,
-              pts,
-              'Tribunal: ${tc.title} - ${entry.value ? "Bon temoignage" : "Faux temoignage"}',
-              'tribunal',
-              isBonus: pts > 0,
-            );
+            await addPoints(entry.key, pts, 'Tribunal: ${tc.title} - ${entry.value ? "Bon temoignage" : "Faux temoignage"}', 'tribunal', isBonus: pts > 0);
           }
         }
       }
@@ -776,6 +756,7 @@ class FamilyProvider extends ChangeNotifier {
     await _tribunalBox.put(caseId, jsonEncode(tc.toMap()));
     notifyListeners();
   }
+
   Future<void> dismissTribunalCase(String caseId) async {
     final idx = _tribunalCases.indexWhere((TribunalCase t) => t.id == caseId);
     if (idx == -1) return;
@@ -795,7 +776,7 @@ class FamilyProvider extends ChangeNotifier {
   TribunalCase? getTribunalCase(String caseId) {
     try { return _tribunalCases.firstWhere((TribunalCase t) => t.id == caseId); } catch (_) { return null; }
   }
-  
+
   // === QUERIES ===
   List<HistoryEntry> getHistoryForChild(String childId) => _history.where((h) => h.childId == childId).toList();
   List<HistoryEntry> getHistoryForDate(DateTime date) => _history.where((h) => h.date.year == date.year && h.date.month == date.month && h.date.day == date.day).toList();
