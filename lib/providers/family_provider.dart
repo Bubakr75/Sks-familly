@@ -49,6 +49,7 @@ class FamilyProvider extends ChangeNotifier {
   List<NoteModel> get notes => _notes;
   List<String> get unlockedBadges => _unlockedBadges;
   String? get familyCode => _familyCode;
+  String? get familyId => _familyCode;
   List<PunishmentLines> get punishments => _punishmentLines;
   List<ImmunityLines> get immunities => _immunityLines;
   List<TribunalCase> get tribunalCases => _tribunalCases;
@@ -194,7 +195,6 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
-  // Signature avec 2 args positionnels: addChild(name, avatar) — appelée par manage_children_screen
   Future<void> addChild(String name, String avatar) async {
     final child = ChildModel(
       id: _uuid.v4(),
@@ -207,7 +207,6 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Signature avec 3 args positionnels: updateChild(id, name, avatar) — appelée par manage_children_screen
   Future<void> updateChild(String childId, String name, String avatar) async {
     final index = _children.indexWhere((c) => c.id == childId);
     if (index != -1) {
@@ -219,7 +218,6 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
-  // Mettre à jour l'objet ChildModel directement (utilisé en interne)
   Future<void> _saveChild(ChildModel child) async {
     final index = _children.indexWhere((c) => c.id == child.id);
     if (index != -1) {
@@ -867,6 +865,23 @@ class FamilyProvider extends ChangeNotifier {
 
   List<TribunalCase> getTribunalForChild(String childId) =>
       _tribunalCases.where((t) => t.plaintiffId == childId || t.accusedId == childId).toList();
+
+  // ===== RESET / CLEAR =====
+  Future<void> resetAllScores() async {
+    for (var child in _children) {
+      child.points = 0;
+      child.badgeIds.clear();
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      if (_firestore.isConnected) await _firestore.saveChild(child);
+    }
+    notifyListeners();
+  }
+
+  Future<void> clearHistory() async {
+    _history.clear();
+    await _historyBox.clear();
+    notifyListeners();
+  }
 
   // ===== QUERIES =====
   List<HistoryEntry> getHistoryForChild(String childId) =>
