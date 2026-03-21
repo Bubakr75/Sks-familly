@@ -71,10 +71,11 @@ class NotificationService {
           icon: '@mipmap/ic_launcher',
         ),
       ),
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
+  }
 
   static Future<void> scheduleFridayScreenTime({
     required Map<String, String> childrenScreenTime,
@@ -104,10 +105,11 @@ class NotificationService {
           styleInformation: BigTextStyleInformation(''),
         ),
       ),
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );
+  }
 
   static Future<void> cancelDailyReminder() async {
     await _localNotifications.cancel(1001);
