@@ -16,7 +16,6 @@ class ChildDashboardScreen extends StatefulWidget {
 class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _parentBonusMinutes = 0;
 
   @override
   void initState() {
@@ -28,70 +27,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  static int _getScreenMinutesForGrade(double grade) {
-    if (grade >= 18) return 45;
-    if (grade >= 16) return 35;
-    if (grade >= 14) return 25;
-    if (grade >= 12) return 20;
-    if (grade >= 10) return 15;
-    if (grade >= 8) return 5;
-    return 0;
-  }
-
-  Map<String, dynamic> _calculateScreenTime(FamilyProvider provider) {
-    final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    int totalMinutes = 0;
-    final List<Map<String, dynamic>> dailyBreakdown = [];
-    final dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
-
-    for (int i = 0; i < 5; i++) {
-      final day = DateTime(monday.year, monday.month, monday.day + i);
-      final dayHistory = provider.history.where((h) =>
-          h.childId == widget.childId &&
-          h.category == 'school_note' &&
-          h.date.year == day.year &&
-          h.date.month == day.month &&
-          h.date.day == day.day).toList();
-
-      int dayMinutes = 0;
-      double? grade;
-
-      if (dayHistory.isNotEmpty) {
-        final reason = dayHistory.last.reason;
-        final match = RegExp(r'Note: ([\d.]+)/20').firstMatch(reason);
-        if (match != null) {
-          grade = double.tryParse(match.group(1)!);
-          if (grade != null) dayMinutes = _getScreenMinutesForGrade(grade);
-        }
-      }
-
-      totalMinutes += dayMinutes;
-      dailyBreakdown.add({
-        'day': dayNames[i],
-        'grade': grade,
-        'minutes': dayMinutes,
-        'hasNote': grade != null,
-      });
-    }
-
-    totalMinutes += _parentBonusMinutes;
-    const maxWeekendTotal = 360;
-    totalMinutes = totalMinutes.clamp(0, maxWeekendTotal);
-
-    final saturdayMinutes = totalMinutes > 180 ? 180 : totalMinutes;
-    final sundayMinutes = totalMinutes > 180 ? (totalMinutes - 180).clamp(0, 180) : 0;
-
-    return {
-      'totalMinutes': totalMinutes,
-      'saturdayMinutes': saturdayMinutes,
-      'sundayMinutes': sundayMinutes,
-      'maxMinutes': maxWeekendTotal,
-      'breakdown': dailyBreakdown,
-      'parentBonus': _parentBonusMinutes,
-    };
   }
 
   String _formatMinutes(int minutes) {
@@ -117,8 +52,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         final punishments = provider.punishments
             .where((p) => p.childId == widget.childId)
             .toList();
-        final weekNotes = _getWeekNotes(provider);
-        final screenTime = _calculateScreenTime(provider);
 
         return Scaffold(
           backgroundColor: const Color(0xFF0A0E21),
@@ -154,9 +87,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   headerSliverBuilder: (context, innerBoxIsScrolled) {
                     return [
                       SliverToBoxAdapter(child: _buildCompactHeader(child)),
-                      if (weekNotes.isNotEmpty)
-                        SliverToBoxAdapter(child: _buildWeekNotes(weekNotes)),
-                      SliverToBoxAdapter(child: _buildScreenTimeCard(screenTime, provider)),
+                      SliverToBoxAdapter(child: _buildScreenTimeCard(provider, child)),
                       SliverToBoxAdapter(child: _buildTabBar()),
                     ];
                   },
@@ -177,19 +108,41 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       },
     );
   }
-  Widget _buildScreenTimeCard(Map<String, dynamic> screenTime, FamilyProvider provider) {
-    final total = screenTime['totalMinutes'] as int;
-    final satMin = screenTime['saturdayMinutes'] as int;
-    final sunMin = screenTime['sundayMinutes'] as int;
-    final maxMin = screenTime['maxMinutes'] as int;
-    final breakdown = screenTime['breakdown'] as List<Map<String, dynamic>>;
-    final bonus = screenTime['parentBonus'] as int;
+
+  // ===== SCREEN TIME CARD (basé sur les points + bonus parent) =====
+  Widget _buildScreenTimeCard(FamilyProvider provider, ChildModel child) {
+    final base = provider.getBaseScreenTimeMinutes(widget.childId);
+    final bonus = provider.getParentBonusMinutes(widget.childId);
+    final total = provider.getTotalScreenTimeMinutes(widget.childId);
+    final satMin = provider.getSaturdayMinutes(widget.childId);
+    final sunMin = provider.getSundayMinutes(widget.childId);
+    const maxMin = 720;
     final progress = maxMin > 0 ? (total / maxMin).clamp(0.0, 1.0) : 0.0;
 
     Color barColor;
-    if (progress >= 0.8) barColor = const Color(0xFF00E676);
-    else if (progress >= 0.5) barColor = Colors.orange;
-    else barColor = const Color(0xFFFF1744);
+    if (progress >= 0.5) {
+      barColor = const Color(0xFF00E676);
+    } else if (progress >= 0.25) {
+      barColor = Colors.orange;
+    } else {
+      barColor = const Color(0xFFFF1744);
+    }
+
+    // Déterminer le palier actuel
+    String palierText;
+    if (child.points >= 300) {
+      palierText = '300+ pts = 6h de base';
+    } else if (child.points >= 220) {
+      palierText = '220+ pts = 4h de base';
+    } else if (child.points >= 150) {
+      palierText = '150+ pts = 2h de base';
+    } else if (child.points >= 90) {
+      palierText = '90+ pts = 1h de base';
+    } else if (child.points >= 40) {
+      palierText = '40+ pts = 30min de base';
+    } else {
+      palierText = 'Moins de 40 pts = 0min';
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -202,6 +155,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
               Container(
@@ -215,7 +169,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               const SizedBox(width: 10),
               const Expanded(
                 child: Text('Temps d\'ecran week-end',
-                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -225,11 +179,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   border: Border.all(color: barColor.withValues(alpha: 0.5)),
                 ),
                 child: Text(_formatMinutes(total),
-                  style: TextStyle(color: barColor, fontWeight: FontWeight.w900, fontSize: 16)),
+                    style: TextStyle(color: barColor, fontWeight: FontWeight.w900, fontSize: 16)),
               ),
             ],
           ),
           const SizedBox(height: 14),
+
+          // Barre de progression
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
@@ -240,9 +196,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 6),
-          Text('${_formatMinutes(total)} / ${_formatMinutes(maxMin)} maximum',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+          Text(palierText,
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
           const SizedBox(height: 14),
+
+          // Samedi / Dimanche
           Row(
             children: [
               Expanded(child: _screenTimeDayBox('\u{1F4C5} Samedi', satMin, const Color(0xFF448AFF))),
@@ -251,6 +209,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ],
           ),
           const SizedBox(height: 12),
+
+          // Détail
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -261,74 +221,183 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Detail par jour :', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text('Detail :', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                ...breakdown.map((d) {
-                  final hasNote = d['hasNote'] as bool;
-                  final grade = d['grade'] as double?;
-                  final min = d['minutes'] as int;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Row(
-                      children: [
-                        SizedBox(width: 70, child: Text(d['day'] as String,
-                          style: const TextStyle(color: Colors.white60, fontSize: 12))),
-                        if (hasNote && grade != null) ...[
-                          Text('${grade.toStringAsFixed(grade == grade.roundToDouble() ? 0 : 1)}/20',
-                            style: TextStyle(color: _gradeColor(grade), fontSize: 12, fontWeight: FontWeight.w700)),
-                          const SizedBox(width: 10),
-                          const Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white30),
-                          const SizedBox(width: 10),
-                          Text('+${min}min', style: const TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.w700)),
-                        ] else
-                          const Text('Pas de note', style: TextStyle(color: Colors.white30, fontSize: 12)),
-                      ],
-                    ),
-                  );
-                }),
-                if (bonus != 0) ...[
-                  const SizedBox(height: 6),
-                  Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const SizedBox(width: 70, child: Text('Parent', style: TextStyle(color: Colors.white60, fontSize: 12))),
-                      Text('${bonus >= 0 ? '+' : ''}${bonus}min',
-                        style: TextStyle(
-                          color: bonus >= 0 ? const Color(0xFF00E676) : const Color(0xFFFF1744),
-                          fontSize: 12, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                ],
+                _detailRow('Points', '${child.points} pts', Colors.amber),
+                _detailRow('Temps de base', _formatMinutes(base), const Color(0xFF448AFF)),
+                if (bonus != 0)
+                  _detailRow('Bonus parent', '${bonus >= 0 ? '+' : ''}${_formatMinutes(bonus.abs())}',
+                      bonus >= 0 ? const Color(0xFF00E676) : const Color(0xFFFF1744)),
+                const SizedBox(height: 4),
+                Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+                const SizedBox(height: 4),
+                _detailRow('Total week-end', _formatMinutes(total), barColor, bold: true),
               ],
             ),
           ),
           const SizedBox(height: 12),
+
+          // Boutons ajustement
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _adjustButton(Icons.remove, const Color(0xFFFF1744), () {
-                setState(() => _parentBonusMinutes -= 15);
+                provider.addScreenTimeBonus(widget.childId, -15, 'Ajustement parent');
               }),
-              const SizedBox(width: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  bonus == 0 ? 'Ajuster le temps' : '${bonus >= 0 ? '+' : ''}${bonus}min',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () => _showBonusDialog(context, provider),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.5)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.school_rounded, color: Color(0xFFB388FF), size: 16),
+                      SizedBox(width: 6),
+                      Text('Bonne note', style: TextStyle(color: Color(0xFFB388FF), fontSize: 12, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               _adjustButton(Icons.add, const Color(0xFF00E676), () {
-                setState(() => _parentBonusMinutes += 15);
+                provider.addScreenTimeBonus(widget.childId, 15, 'Ajustement parent');
               }),
             ],
           ),
+          const SizedBox(height: 8),
+
+          // Bouton reset
+          if (bonus != 0)
+            Center(
+              child: GestureDetector(
+                onTap: () => provider.resetScreenTimeBonus(widget.childId),
+                child: Text('Reinitialiser le bonus (${bonus >= 0 ? '+' : ''}${bonus}min)',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11, decoration: TextDecoration.underline)),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, Color color, {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+          Text(value, style: TextStyle(color: color, fontSize: 12, fontWeight: bold ? FontWeight.w900 : FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  // ===== DIALOG BONNE NOTE =====
+  void _showBonusDialog(BuildContext context, FamilyProvider provider) {
+    int selectedMinutes = 30;
+    final reasonController = TextEditingController();
+    final options = [15, 30, 45, 60, 90, 120];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.school_rounded, color: Color(0xFFB388FF), size: 24),
+              SizedBox(width: 8),
+              Text('Bonus bonne note', style: TextStyle(color: Colors.white, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Temps a ajouter :', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: options.map((min) {
+                  final isSelected = selectedMinutes == min;
+                  return GestureDetector(
+                    onTap: () => setDialogState(() => selectedMinutes = min),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF7C4DFF).withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFF7C4DFF) : Colors.white.withValues(alpha: 0.15),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Text(
+                        _formatMinutes(min),
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white60,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text('Raison (optionnel) :', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: reasonController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Ex: 18/20 en maths',
+                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.08),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Annuler', style: TextStyle(color: Colors.white.withValues(alpha: 0.6))),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final reason = reasonController.text.trim().isEmpty
+                    ? 'Bonne note a l\'ecole'
+                    : reasonController.text.trim();
+                provider.addScreenTimeBonus(widget.childId, selectedMinutes, reason);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('+${_formatMinutes(selectedMinutes)} de temps d\'ecran ajoute !'),
+                    backgroundColor: const Color(0xFF00E676),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C4DFF),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text('+${_formatMinutes(selectedMinutes)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -347,7 +416,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           const SizedBox(height: 6),
           Text(_formatMinutes(minutes), style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
           const SizedBox(height: 2),
-          Text('/ 3h max', style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 10)),
+          Text('/ 6h max', style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 10)),
         ],
       ),
     );
@@ -368,43 +437,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Color _gradeColor(double grade) {
-    if (grade >= 16) return const Color(0xFF00E676);
-    if (grade >= 12) return const Color(0xFF448AFF);
-    if (grade >= 10) return Colors.orange;
-    return const Color(0xFFFF1744);
-  }
-
-  List<Map<String, dynamic>> _getWeekNotes(FamilyProvider provider) {
-    final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
-    final List<Map<String, dynamic>> notes = [];
-    for (int i = 0; i < 5; i++) {
-      final day = DateTime(monday.year, monday.month, monday.day + i);
-      final dayHistory = provider.history.where((h) =>
-          h.childId == widget.childId &&
-          h.category == 'school_note' &&
-          h.date.year == day.year &&
-          h.date.month == day.month &&
-          h.date.day == day.day).toList();
-      final bool isToday = day.year == now.year && day.month == now.month && day.day == now.day;
-      final bool isFuture = day.isAfter(now);
-      if (dayHistory.isNotEmpty) {
-        final reason = dayHistory.last.reason;
-        final match = RegExp(r'Note: ([\d.]+)/20').firstMatch(reason);
-        if (match != null) {
-          final grade = double.tryParse(match.group(1)!);
-          if (grade != null) {
-            notes.add({'day': dayNames[i], 'grade': grade, 'isToday': isToday, 'hasNote': true, 'isFuture': false});
-            continue;
-          }
-        }
-      }
-      notes.add({'day': dayNames[i], 'grade': null, 'isToday': isToday, 'hasNote': false, 'isFuture': isFuture});
-    }
-    return notes;
-  }
+  // ===== HEADER =====
   Widget _buildCompactHeader(ChildModel child) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -477,63 +510,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         style: TextStyle(fontSize: size * 0.45))));
   }
 
-  Widget _buildWeekNotes(List<Map<String, dynamic>> notes) {
-    final notesWithGrades = notes.where((n) => n['hasNote'] == true).toList();
-    if (notesWithGrades.isEmpty) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF448AFF).withValues(alpha: 0.4)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.school_rounded, color: Color(0xFF64B5F6), size: 16), SizedBox(width: 6),
-          Text('Notes de la semaine', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-        ]),
-        const SizedBox(height: 8),
-        Row(children: notes.map((n) {
-          final hasNote = n['hasNote'] as bool;
-          final isToday = n['isToday'] as bool;
-          final isFuture = n['isFuture'] as bool;
-          final grade = n['grade'] as double?;
-          Color color = Colors.grey;
-          if (hasNote && grade != null) {
-            if (grade >= 16) color = const Color(0xFF00E676);
-            else if (grade >= 12) color = const Color(0xFF448AFF);
-            else if (grade >= 10) color = Colors.orange;
-            else color = const Color(0xFFFF1744);
-          }
-          return Expanded(child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2), padding: const EdgeInsets.symmetric(vertical: 6),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8),
-              color: isToday && hasNote ? color.withValues(alpha: 0.25) : isToday ? const Color(0xFF448AFF).withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.06),
-              border: isToday ? Border.all(color: const Color(0xFF448AFF).withValues(alpha: 0.6), width: 1.5) : null),
-            child: Column(children: [
-              Text((n['day'] as String).substring(0, 3), style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 9, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 3),
-              if (hasNote && grade != null) ...[
-                Text(grade.toStringAsFixed(grade == grade.roundToDouble() ? 0 : 1),
-                  style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w900)),
-                Text('/20', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 8)),
-              ] else if (isFuture)
-                Padding(padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Text('-', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.2))))
-              else if (isToday)
-                Padding(padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF448AFF).withValues(alpha: 0.6))))
-              else
-                Padding(padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Text('-', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.25)))),
-            ]),
-          ));
-        }).toList()),
-      ]),
-    );
-  }
-
+  // ===== TAB BAR =====
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -549,6 +526,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
+  // ===== OVERVIEW TAB =====
   Widget _buildOverviewTab(ChildModel child, List<HistoryEntry> history) {
     final recentHistory = history.take(10).toList();
     final now = DateTime.now();
@@ -590,6 +568,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     ]);
   }
 
+  // ===== BADGES TAB =====
   Widget _buildBadgesTab(ChildModel child, FamilyProvider provider) {
     final allBadges = provider.allBadges;
     if (allBadges.isEmpty) {
@@ -597,137 +576,4 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         Icon(Icons.emoji_events_outlined, color: Colors.white30, size: 64), SizedBox(height: 16),
         Text('Pas de badges disponibles', style: TextStyle(color: Colors.white60, fontSize: 16))]));
     }
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      if (child.badgeIds.isNotEmpty) ...[
-        const Text('\u{1F3C6} Badges obtenus', style: TextStyle(color: Colors.amber, fontSize: 15, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        ...allBadges.where((b) => child.badgeIds.contains(b.id)).map((b) => Container(
-          margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.amber.withValues(alpha: 0.35))),
-          child: Row(children: [
-            Text(b.powerEmoji, style: const TextStyle(fontSize: 26)), const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(b.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-              Text(b.description, style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 11))])),
-            const Icon(Icons.check_circle, color: Colors.amber, size: 22)]))),
-        const SizedBox(height: 16),
-      ],
-      const Text('\u{1F512} A debloquer', style: TextStyle(color: Colors.white60, fontSize: 15, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 8),
-      ...allBadges.where((b) => !child.badgeIds.contains(b.id)).map((b) {
-        final progress = (child.points / b.requiredPoints).clamp(0.0, 1.0);
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          ),
-          child: Row(children: [
-            Opacity(opacity: 0.4, child: Text(b.powerEmoji, style: const TextStyle(fontSize: 26))), const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(b.name, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontWeight: FontWeight.w700, fontSize: 14)),
-              Text(b.description, style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
-              const SizedBox(height: 5),
-              ClipRRect(borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(value: progress, minHeight: 5,
-                  backgroundColor: Colors.white.withValues(alpha: 0.1), valueColor: AlwaysStoppedAnimation(Colors.amber.withValues(alpha: 0.7)))),
-              const SizedBox(height: 3),
-              Text('${child.points}/${b.requiredPoints} pts', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 9))])),
-            Icon(Icons.lock_outline, color: Colors.white.withValues(alpha: 0.25), size: 18)]));
-      }),
-    ]);
-  }
-
-  Widget _buildHistoryTab(List<HistoryEntry> history) {
-    if (history.isEmpty) {
-      return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.history, color: Colors.white30, size: 64), SizedBox(height: 16),
-        Text('Aucun historique', style: TextStyle(color: Colors.white60, fontSize: 16))]));
-    }
-    return ListView.builder(padding: const EdgeInsets.all(16), itemCount: history.length,
-      itemBuilder: (context, index) => _buildHistoryTile(history[index]));
-  }
-
-  Widget _buildPunishmentsTab(List<PunishmentLines> punishments) {
-    final active = punishments.where((p) => !p.isCompleted).toList();
-    if (active.isEmpty) {
-      return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 64), SizedBox(height: 16),
-        Text('Aucune punition en cours', style: TextStyle(color: Colors.white60, fontSize: 16)),
-        SizedBox(height: 8), Text('Bravo, continue comme ca !', style: TextStyle(color: Colors.greenAccent, fontSize: 14))]));
-    }
-    return ListView.builder(padding: const EdgeInsets.all(16), itemCount: active.length,
-      itemBuilder: (context, index) {
-        final p = active[index];
-        final progress = p.totalLines > 0 ? (p.completedLines / p.totalLines).clamp(0.0, 1.0) : 0.0;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.red.withValues(alpha: 0.35)),
-          ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const Icon(Icons.edit_note_rounded, color: Colors.redAccent, size: 24), const SizedBox(width: 10),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(p.text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                const SizedBox(height: 3),
-                Text('${p.completedLines} / ${p.totalLines} lignes', style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12))])),
-              Text('${(progress * 100).toInt()}%', style: TextStyle(color: progress > 0.5 ? Colors.orange : Colors.redAccent, fontWeight: FontWeight.w800, fontSize: 15))]),
-            const SizedBox(height: 8),
-            ClipRRect(borderRadius: BorderRadius.circular(5),
-              child: LinearProgressIndicator(value: progress, minHeight: 6,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                valueColor: AlwaysStoppedAnimation(progress > 0.7 ? Colors.greenAccent : progress > 0.4 ? Colors.orange : Colors.redAccent)))]));
-      });
-  }
-
-  Widget _buildHistoryTile(HistoryEntry entry) {
-    final isPositive = entry.isBonus;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10)),
-      child: Row(children: [
-        Container(padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: (isPositive ? Colors.greenAccent : Colors.redAccent).withValues(alpha: 0.2), shape: BoxShape.circle),
-          child: Icon(isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-            color: isPositive ? Colors.greenAccent : Colors.redAccent, size: 16)),
-        const SizedBox(width: 10),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(entry.reason, style: const TextStyle(color: Colors.white, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
-          Text(_formatDate(entry.date), style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 10))])),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(color: (isPositive ? Colors.greenAccent : Colors.redAccent).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-          child: Text('${isPositive ? '+' : '-'}${entry.points}',
-            style: TextStyle(color: isPositive ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)))]));
-  }
-
-  Widget _buildGlassCard({required String title, required Widget child}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-          child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold))),
-        child,
-      ]),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inMinutes < 1) return "A l'instant";
-    if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
-    if (diff.inDays < 7) return 'Il y a ${diff.inDays} jour${diff.inDays > 1 ? 's' : ''}';
-    return '${date.day}/${date.month}/${date.year}';
-  }
-}
+    return ListView(padding: const EdgeInsets.all
