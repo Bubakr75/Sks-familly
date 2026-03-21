@@ -12,6 +12,7 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/notification_service.dart';
+import 'services/update_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
@@ -20,7 +21,6 @@ void main() async {
   await Hive.initFlutter();
   await initializeDateFormatting('fr_FR', null);
 
-  // Initialize local notifications
   try {
     await NotificationService.init();
     if (kDebugMode) debugPrint('NotificationService initialized OK');
@@ -76,12 +76,11 @@ void main() async {
 
   try {
     await familyProvider.init();
-      // Schedule daily reminder at 7pm
-  try {
-    await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
-  } catch (e) {
-    if (kDebugMode) debugPrint('Schedule reminder error: $e');
-  }
+    try {
+      await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
+    } catch (e) {
+      if (kDebugMode) debugPrint('Schedule reminder error: $e');
+    }
   } catch (e) {
     if (kDebugMode) debugPrint('FamilyProvider init error: $e');
   }
@@ -150,8 +149,21 @@ class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver
   }
 }
 
-class _WelcomeWrapper extends StatelessWidget {
+class _WelcomeWrapper extends StatefulWidget {
   const _WelcomeWrapper();
+
+  @override
+  State<_WelcomeWrapper> createState() => _WelcomeWrapperState();
+}
+
+class _WelcomeWrapperState extends State<_WelcomeWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.checkForUpdate(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
