@@ -9,6 +9,7 @@ import '../models/badge_model.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
 import '../models/tribunal_model.dart';
+import '../models/trade_model.dart';
 import '../services/firestore_service.dart';
 
 class FamilyProvider extends ChangeNotifier {
@@ -24,6 +25,7 @@ class FamilyProvider extends ChangeNotifier {
   late Box _badgesBox;
   late Box _metaBox;
   late Box _screenTimeBox;
+  late Box _tradesBox;
 
   List<ChildModel> _children = [];
   List<HistoryEntry> _history = [];
@@ -33,6 +35,7 @@ class FamilyProvider extends ChangeNotifier {
   List<ImmunityLines> _immunities = [];
   List<TribunalCase> _tribunalCases = [];
   List<BadgeModel> _customBadges = [];
+  List<TradeModel> _trades = [];
 
   String? _familyCode;
 
@@ -47,6 +50,7 @@ class FamilyProvider extends ChangeNotifier {
   List<ImmunityLines> get immunities => _immunities;
   List<TribunalCase> get tribunalCases => _tribunalCases;
   List<BadgeModel> get customBadges => _customBadges;
+  List<TradeModel> get trades => _trades;
   String? get familyCode => _familyCode;
   String? get familyId => _familyCode;
   bool get isSyncEnabled => _firestore.isConnected;
@@ -76,6 +80,7 @@ class FamilyProvider extends ChangeNotifier {
     _badgesBox = await Hive.openBox('custom_badges');
     _metaBox = await Hive.openBox('meta');
     _screenTimeBox = await Hive.openBox('screen_time');
+    _tradesBox = await Hive.openBox('trades');
 
     _loadLocal();
 
@@ -116,6 +121,9 @@ class FamilyProvider extends ChangeNotifier {
         .toList();
     _customBadges = _badgesBox.values
         .map((v) => BadgeModel.fromMap(Map<String, dynamic>.from(jsonDecode(v))))
+        .toList();
+    _trades = _tradesBox.values
+        .map((v) => TradeModel.fromMap(Map<String, dynamic>.from(jsonDecode(v))))
         .toList();
   }
 
@@ -248,6 +256,7 @@ class FamilyProvider extends ChangeNotifier {
     _notes.removeWhere((n) => n.childId == id);
     _punishments.removeWhere((p) => p.childId == id);
     _immunities.removeWhere((im) => im.childId == id);
+    _trades.removeWhere((t) => t.fromChildId == id || t.toChildId == id);
     await _saveAllLocal();
     if (_firestore.isConnected) await _firestore.deleteChild(id);
     notifyListeners();
@@ -649,7 +658,7 @@ class FamilyProvider extends ChangeNotifier {
   List<HistoryEntry> _getWeekSchoolNotes(String childId) {
     return _getWeekHistory(childId).where((h) => h.category == 'school_note').toList();
   }
-    // ══════════════════════════════════════
+  // ══════════════════════════════════════
   //  TRIBUNAL
   // ══════════════════════════════════════
   Future<void> addTribunalCase(TribunalCase tc) async {
@@ -771,7 +780,6 @@ class FamilyProvider extends ChangeNotifier {
       tc.plaintiffPoints = plaintiffPoints;
       tc.accusedPoints = accusedPoints;
 
-      // Apply points
       if (plaintiffPoints != 0) {
         await addPoints(tc.plaintiffId, plaintiffPoints.abs(), '⚖️ Tribunal: $reason',
             category: 'tribunal', isBonus: plaintiffPoints > 0);
@@ -781,7 +789,6 @@ class FamilyProvider extends ChangeNotifier {
             category: 'tribunal', isBonus: accusedPoints > 0);
       }
 
-      // Lawyer points
       if (lawyerPoints != null) {
         for (final entry in lawyerPoints.entries) {
           if (entry.value != 0) {
@@ -794,7 +801,6 @@ class FamilyProvider extends ChangeNotifier {
         }
       }
 
-      // Witness points
       if (witnessVerified != null) {
         for (final entry in witnessVerified.entries) {
           final wParticipant = tc.participants.where((p) => p.childId == entry.key && p.role == TribunalRole.witness);
@@ -817,6 +823,119 @@ class FamilyProvider extends ChangeNotifier {
       }
 
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  // ══════════════════════════════════════
+  //  TRADES (ÉCHANGES D'IMMUNITÉ)
+  // ══════════════════════════════════════
+  List<TradeModel> getTradesForChild(String childId) {
+    return _trades.where((t) => t.fromChildId == childId || t.toChildId == childId).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  List<TradeModel> getActiveTradesForChild(String childId) {
+    return _trades.where((t) => t.isActive && (t.fromChildId == childId || t.toChildId == childId)).toList();
+  }
+
+  List<TradeModel> getPendingTradesForChild(String childId) {
+    return _trades.where((t) => t.isPending && t.toChildId == childId).toList();
+  }
+
+  Future<void> createTrade(String fromChildId, String toChildId, int lines, String serviceDescription) async {
+    final totalAvailable = getTotalAvailableImmunity(fromChildId);
+    if (lines <= 0 || lines > totalAvailable) return;
+    if (fromChildId == toChildId) return;
+
+    final trade = TradeModel(
+      id: 'trade_${DateTime.now().millisecondsSinceEpoch}',
+      fromChildId: fromChildId,
+      toChildId: toChildId,
+      immunityLines: lines,
+      serviceDescription: serviceDescription,
+    );
+
+    _trades.add(trade);
+    await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+    notifyListeners();
+  }
+
+  Future<void> acceptTrade(String tradeId) async {
+    try {
+      final trade = _trades.firstWhere((t) => t.id == tradeId);
+      if (!trade.isPending) return;
+
+      trade.status = 'accepted';
+      trade.acceptedAt = DateTime.now();
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> markServiceDone(String tradeId) async {
+    try {
+      final trade = _trades.firstWhere((t) => t.id == tradeId);
+      if (!trade.isAccepted) return;
+
+      trade.status = 'service_done';
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> completeTrade(String tradeId, {String? parentNote}) async {
+    try {
+      final trade = _trades.firstWhere((t) => t.id == tradeId);
+      if (!trade.isServiceDone) return;
+
+      // Retirer les lignes d'immunité du fromChild
+      int remaining = trade.immunityLines;
+      final fromImmunities = getImmunitiesForChild(trade.fromChildId)
+          .where((im) => im.isUsable)
+          .toList();
+
+      for (final im in fromImmunities) {
+        if (remaining <= 0) break;
+        final canUse = im.availableLines.clamp(0, remaining);
+        im.usedLines += canUse;
+        remaining -= canUse;
+        await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
+      }
+
+      // Donner les lignes au toChild
+      await addImmunity(
+        trade.toChildId,
+        'Echange: ${trade.serviceDescription}',
+        trade.immunityLines,
+      );
+
+      trade.status = 'completed';
+      trade.completedAt = DateTime.now();
+      trade.parentValidatorNote = parentNote;
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> rejectTrade(String tradeId) async {
+    try {
+      final trade = _trades.firstWhere((t) => t.id == tradeId);
+      if (!trade.isPending) return;
+
+      trade.status = 'rejected';
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> cancelTrade(String tradeId) async {
+    try {
+      final trade = _trades.firstWhere((t) => t.id == tradeId);
+      if (trade.isCompleted || trade.isRejected || trade.isCancelled) return;
+
+      trade.status = 'cancelled';
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
       notifyListeners();
     } catch (_) {}
   }
@@ -899,5 +1018,7 @@ class FamilyProvider extends ChangeNotifier {
     for (final tc in _tribunalCases) await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
     await _badgesBox.clear();
     for (final b in _customBadges) await _badgesBox.put(b.id, jsonEncode(b.toMap()));
+    await _tradesBox.clear();
+    for (final t in _trades) await _tradesBox.put(t.id, jsonEncode(t.toMap()));
   }
 }
