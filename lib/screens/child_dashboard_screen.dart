@@ -5,6 +5,7 @@ import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../models/history_entry.dart';
 import 'school_notes_screen.dart';
+import 'trade_screen.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
   final String childId;
@@ -77,6 +78,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   // ===== TAB PROFIL =====
   Widget _buildProfileTab(ChildModel child, FamilyProvider provider) {
+    final availableImmunity = provider.getTotalAvailableImmunity(widget.childId);
+    final pendingTrades = provider.getPendingTradesForChild(widget.childId);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -133,7 +137,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ));
               },
               icon: const Icon(Icons.school, color: Colors.black),
-              label: const Text('📝 Notes & Temps d\'écran', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              label: const Text('\u{1F4DD} Notes & Temps d\'ecran', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -143,14 +147,54 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
           const SizedBox(height: 12),
 
+          // Bouton Échanges d'immunité
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => TradeScreen(childId: widget.childId),
+                ));
+              },
+              icon: const Icon(Icons.swap_horiz_rounded, color: Colors.black),
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('\u{1F91D} Echanges d\'immunite', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  if (pendingTrades.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('${pendingTrades.length}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ],
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00E676),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          if (availableImmunity > 0) ...[
+            const SizedBox(height: 4),
+            Text('$availableImmunity lignes d\'immunite disponibles', style: const TextStyle(color: Color(0xFF00E676), fontSize: 12)),
+          ],
+          const SizedBox(height: 12),
+
           // Stats rapides
           _buildGlassCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('📊 Stats de la semaine', style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('\u{1F4CA} Stats de la semaine', style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                _buildStatRow('Points cette semaine', '${provider.getWeeklyPoints(widget.childId)}'),
+                _buildStatRow('Points cette semaine', '${provider.getWeeklyPoints(widget.childId).length}'),
                 _buildStatRow('Note globale', '${provider.getWeeklyGlobalScore(widget.childId).toStringAsFixed(1)}/20'),
                 _buildStatRow('Samedi', _formatMinutes(provider.getSaturdayMinutes(widget.childId))),
                 _buildStatRow('Dimanche', _formatMinutes(provider.getSundayMinutes(widget.childId))),
@@ -176,11 +220,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Temps d'écran principal
           _buildGlassCard(
             child: Column(
               children: [
-                const Text('📺 Temps d\'écran', style: TextStyle(color: Colors.amber, fontSize: 20, fontWeight: FontWeight.bold)),
+                const Text('\u{1F4FA} Temps d\'ecran', style: TextStyle(color: Colors.amber, fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -199,30 +242,28 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
           const SizedBox(height: 16),
 
-          // Détails du calcul
           _buildGlassCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('📊 Détails du calcul', style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('\u{1F4CA} Details du calcul', style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 _buildStatRow('Note globale semaine', '${globalScore.toStringAsFixed(1)}/20'),
                 _buildStatRow('Moy. scolaire', schoolAvg >= 0 ? '${schoolAvg.toStringAsFixed(1)}/20' : 'Aucune note'),
                 _buildStatRow('Score comportement', '${behaviorScore.toStringAsFixed(1)}/20'),
                 _buildStatRow('Bonus parent', bonus != 0 ? '${bonus > 0 ? "+" : ""}${bonus}min' : 'Aucun'),
                 if (satRating >= 0)
-                  _buildStatRow('Note samedi (→dim)', '${satRating.toStringAsFixed(0)}/20'),
+                  _buildStatRow('Note samedi (\u{2192}dim)', '${satRating.toStringAsFixed(0)}/20'),
               ],
             ),
           ),
           const SizedBox(height: 16),
 
-          // Boutons bonus
           _buildGlassCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('🎁 Bonus / Ajustement', style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('\u{1F381} Bonus / Ajustement', style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -239,7 +280,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   child: ElevatedButton.icon(
                     onPressed: () => _showCustomBonusDialog(context, provider),
                     icon: const Icon(Icons.star, color: Colors.black, size: 18),
-                    label: const Text('Bonne note / Bonus personnalisé',
+                    label: const Text('Bonne note / Bonus personnalise',
                         style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
@@ -253,7 +294,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     onPressed: () async {
                       await provider.resetScreenTimeBonus(widget.childId);
                     },
-                    child: const Text('Réinitialiser les bonus', style: TextStyle(color: Colors.red, fontSize: 12)),
+                    child: const Text('Reinitialiser les bonus', style: TextStyle(color: Colors.red, fontSize: 12)),
                   ),
                 ),
               ],
@@ -261,13 +302,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
           const SizedBox(height: 16),
 
-          // Bouton noter le samedi
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _showSaturdayRatingDialog(context, provider),
               icon: const Icon(Icons.edit_note, color: Colors.black),
-              label: const Text('Noter le comportement du samedi (→ dimanche)',
+              label: const Text('Noter le comportement du samedi (\u{2192} dimanche)',
                   style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurpleAccent,
@@ -354,7 +394,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           const Center(
             child: Padding(
               padding: EdgeInsets.all(32),
-              child: Text('Aucun badge débloqué', style: TextStyle(color: Colors.white54)),
+              child: Text('Aucun badge debloque', style: TextStyle(color: Colors.white54)),
             ),
           )
         else
@@ -368,7 +408,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 child: Row(
                   children: [
-                    const Text('🏆 ', style: TextStyle(fontSize: 24)),
+                    const Text('\u{1F3C6} ', style: TextStyle(fontSize: 24)),
                     Text(badgeId, style: const TextStyle(color: Colors.amber, fontSize: 15)),
                   ],
                 ),
@@ -390,11 +430,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             return AlertDialog(
               backgroundColor: const Color(0xFF1a1a4a),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('🎁 Bonus personnalisé', style: TextStyle(color: Colors.amber, fontSize: 18)),
+              title: const Text('\u{1F381} Bonus personnalise', style: TextStyle(color: Colors.amber, fontSize: 18)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Minutes à ajouter :', style: TextStyle(color: Colors.white70)),
+                  const Text('Minutes a ajouter :', style: TextStyle(color: Colors.white70)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -468,11 +508,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             return AlertDialog(
               backgroundColor: const Color(0xFF1a1a4a),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('📋 Note du samedi', style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 18)),
+              title: const Text('\u{1F4CB} Note du samedi', style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 18)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Comment s\'est comporté l\'enfant aujourd\'hui ?',
+                  const Text('Comment s\'est comporte l\'enfant aujourd\'hui ?',
                       style: TextStyle(color: Colors.white70), textAlign: TextAlign.center),
                   const SizedBox(height: 16),
                   Row(
@@ -524,7 +564,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Temps d\'écran dimanche : ${_formatMinutes(_previewMinutesFromRating(rating))}',
+                    'Temps d\'ecran dimanche : ${_formatMinutes(_previewMinutesFromRating(rating))}',
                     style: const TextStyle(color: Colors.deepPurpleAccent, fontSize: 13),
                   ),
                 ],
