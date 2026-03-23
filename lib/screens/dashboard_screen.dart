@@ -48,8 +48,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     _refreshController.repeat();
     try {
       if (provider.isSyncEnabled) {
-        final code = await provider.getFamilyCode();
-        if (code != null) {
+        final code = provider.getFamilyCode();
+        if (code.isNotEmpty) {
           await provider.disconnectFamily();
           await Future.delayed(const Duration(milliseconds: 500));
           await provider.joinFamily(code);
@@ -154,6 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     if (m == 0) return '${h}h';
     return '${h}h${m.toString().padLeft(2, '0')}';
   }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
@@ -442,7 +443,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       ),
     );
   }
-
   Widget _buildScreenTimeMini(String childName, int minutes) {
     final progress = (minutes / 360).clamp(0.0, 1.0);
     Color barColor;
@@ -480,6 +480,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       ),
     );
   }
+
   void _showScreenTimeSummary(BuildContext context, FamilyProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
@@ -816,13 +817,13 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             Wrap(
               spacing: 10, runSpacing: 10, alignment: WrapAlignment.center,
               children: [
-                _pointChip('+1', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 1, 'Bonus +1', 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
-                _pointChip('+2', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 2, 'Bon comportement', 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
-                _pointChip('+5', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 5, 'Tres bien !', 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
-                _pointChip('+10', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 10, 'Excellent !', 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
-                _pointChip('-1', const Color(0xFFFF1744), isDark, () { provider.addPoints(child.id, -1, 'Penalite -1', 'Penalite', isBonus: false); Navigator.pop(ctx); }),
-                _pointChip('-2', const Color(0xFFFF1744), isDark, () { provider.addPoints(child.id, -2, 'Mauvais comportement', 'Penalite', isBonus: false); Navigator.pop(ctx); }),
-                _pointChip('-5', const Color(0xFFFF1744), isDark, () { provider.addPoints(child.id, -5, 'Sanction', 'Penalite', isBonus: false); Navigator.pop(ctx); }),
+                _pointChip('+1', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 1, 'Bonus +1', category: 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
+                _pointChip('+2', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 2, 'Bon comportement', category: 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
+                _pointChip('+5', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 5, 'Tres bien !', category: 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
+                _pointChip('+10', const Color(0xFF00E676), isDark, () { provider.addPoints(child.id, 10, 'Excellent !', category: 'Bonus'); Navigator.pop(ctx); setState(() => _showConfetti = true); }),
+                _pointChip('-1', const Color(0xFFFF1744), isDark, () { provider.addPoints(child.id, 1, 'Penalite -1', category: 'Penalite', isBonus: false); Navigator.pop(ctx); }),
+                _pointChip('-2', const Color(0xFFFF1744), isDark, () { provider.addPoints(child.id, 2, 'Mauvais comportement', category: 'Penalite', isBonus: false); Navigator.pop(ctx); }),
+                _pointChip('-5', const Color(0xFFFF1744), isDark, () { provider.addPoints(child.id, 5, 'Sanction', category: 'Penalite', isBonus: false); Navigator.pop(ctx); }),
               ],
             ),
             const SizedBox(height: 24),
@@ -853,7 +854,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   void _showChildDetail(BuildContext context, child, FamilyProvider provider) {
-    final badges = provider.getBadgesForChild(child);
+    final badges = provider.getBadgesForChild(child.id);
     final history = provider.getHistoryForChild(child.id);
     final notes = provider.getNotesForChild(child.id);
     final primary = Theme.of(context).colorScheme.primary;
