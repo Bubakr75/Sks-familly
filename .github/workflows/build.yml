@@ -32,17 +32,10 @@ jobs:
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
 
-      - name: Generate keystore
+            - name: Decode keystore from secret
         run: |
-          keytool -genkey -v \
-            -keystore android/release-key.jks \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -alias release \
-            -storepass "SKS2026" \
-            -keypass "SKS2026" \
-            -dname "CN=SKS Family, OU=App, O=SKS, L=Paris, ST=IDF, C=FR"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/release-key.jks
 
-      - name: Enable core library desugaring
         run: |
           cat > /tmp/fix_gradle.py << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
