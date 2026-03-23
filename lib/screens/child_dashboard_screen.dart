@@ -160,7 +160,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               label: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('\u{1F91D} Echanges d\'immunite', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  const Text('💰 Vente d\'immunités', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                   if (pendingTrades.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(
