@@ -391,11 +391,12 @@ class BadgesScreen extends StatelessWidget {
                 if (nameCtrl.text.isNotEmpty) {
                   final provider = context.read<FamilyProvider>();
                   provider.addCustomBadge(
-                    nameCtrl.text,
-                    descCtrl.text,
-                    int.tryParse(pointsCtrl.text) ?? 50,
-                    powerType: selectedPower,
-                  );
+  nameCtrl.text,
+  descCtrl.text,
+  int.tryParse(pointsCtrl.text) ?? 50,
+  selectedPower,
+);
+
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Pouvoir "${nameCtrl.text}" cree !')),
