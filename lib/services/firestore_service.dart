@@ -172,6 +172,7 @@ class FirestoreService {
 
   void _markDataReceived() => _lastDataReceived = DateTime.now();
 
+  // ===== REAL-TIME LISTENERS (10 COLLECTIONS) =====
   void _startListening() {
     if (_familyId == null) return;
     final fRef = _db.collection('families').doc(_familyId);
@@ -180,7 +181,12 @@ class FirestoreService {
       _markDataReceived();
       final list = <ChildModel>[];
       final raw = <Map<String, dynamic>>[];
-      for (final doc in s.docs) { final d = doc.data(); d['id'] = doc.id; list.add(ChildModel.fromMap(d)); raw.add(Map<String, dynamic>.from(d)); }
+      for (final doc in s.docs) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        list.add(ChildModel.fromMap(d));
+        raw.add(Map<String, dynamic>.from(d));
+      }
       onChildrenChanged?.call(list, raw);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
 
@@ -188,7 +194,12 @@ class FirestoreService {
       _markDataReceived();
       final list = <HistoryEntry>[];
       final raw = <Map<String, dynamic>>[];
-      for (final doc in s.docs) { final d = doc.data(); d['id'] = doc.id; list.add(HistoryEntry.fromMap(d)); raw.add(Map<String, dynamic>.from(d)); }
+      for (final doc in s.docs) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        list.add(HistoryEntry.fromMap(d));
+        raw.add(Map<String, dynamic>.from(d));
+      }
       list.sort((a, b) => b.date.compareTo(a.date));
       onHistoryChanged?.call(list, raw);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
@@ -197,7 +208,12 @@ class FirestoreService {
       _markDataReceived();
       final list = <GoalModel>[];
       final raw = <Map<String, dynamic>>[];
-      for (final doc in s.docs) { final d = doc.data(); d['id'] = doc.id; list.add(GoalModel.fromMap(d)); raw.add(Map<String, dynamic>.from(d)); }
+      for (final doc in s.docs) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        list.add(GoalModel.fromMap(d));
+        raw.add(Map<String, dynamic>.from(d));
+      }
       onGoalsChanged?.call(list, raw);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
 
@@ -205,46 +221,73 @@ class FirestoreService {
       _markDataReceived();
       final list = <PunishmentLines>[];
       final raw = <Map<String, dynamic>>[];
-      for (final doc in s.docs) { final d = doc.data(); d['id'] = doc.id; list.add(PunishmentLines.fromMap(d)); raw.add(Map<String, dynamic>.from(d)); }
+      for (final doc in s.docs) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        list.add(PunishmentLines.fromMap(d));
+        raw.add(Map<String, dynamic>.from(d));
+      }
       onPunishmentsChanged?.call(list, raw);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
 
     _notesSub = fRef.collection('notes').snapshots().listen((s) {
       _markDataReceived();
-      final list = s.docs.map((doc) { final d = doc.data(); d['id'] = doc.id; return NoteModel.fromMap(d); }).toList();
+      final list = s.docs.map((doc) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        return NoteModel.fromMap(d);
+      }).toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       onNotesChanged?.call(list);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
 
     _immunitiesSub = fRef.collection('immunities').snapshots().listen((s) {
       _markDataReceived();
-      final list = s.docs.map((doc) { final d = doc.data(); d['id'] = doc.id; return ImmunityLines.fromMap(d); }).toList();
+      final list = s.docs.map((doc) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        return ImmunityLines.fromMap(d);
+      }).toList();
       onImmunitiesChanged?.call(list);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
 
     _tradesSub = fRef.collection('trades').snapshots().listen((s) {
       _markDataReceived();
-      final list = s.docs.map((doc) { final d = doc.data(); d['id'] = doc.id; return TradeModel.fromMap(d); }).toList();
+      final list = s.docs.map((doc) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        return TradeModel.fromMap(d);
+      }).toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       onTradesChanged?.call(list);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
 
     _tribunalSub = fRef.collection('tribunal').snapshots().listen((s) {
       _markDataReceived();
-      final list = s.docs.map((doc) { final d = doc.data(); d['id'] = doc.id; return TribunalCase.fromMap(d); }).toList();
+      final list = s.docs.map((doc) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        return TribunalCase.fromMap(d);
+      }).toList();
       onTribunalChanged?.call(list);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
 
-    _badgesSub = fRef.collection('custom     _badgesSub = fRef.collection('custom_badges').snapshots().listen((s) {
+    _badgesSub = fRef.collection('custom_badges').snapshots().listen((s) {
       _markDataReceived();
-      final list = s.docs.map((doc) { final d = doc.data(); d['id'] = doc.id; return BadgeModel.fromMap(d); }).toList();
+      final list = s.docs.map((doc) {
+        final d = doc.data();
+        d['id'] = doc.id;
+        return BadgeModel.fromMap(d);
+      }).toList();
       onBadgesChanged?.call(list);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
 
     _screenTimeSub = fRef.collection('screen_time').snapshots().listen((s) {
       _markDataReceived();
       final Map<String, dynamic> data = {};
-      for (final doc in s.docs) { data[doc.id] = doc.data()['value']; }
+      for (final doc in s.docs) {
+        data[doc.id] = doc.data()['value'];
+      }
       onScreenTimeChanged?.call(data);
     }, onError: (e) => Future.delayed(const Duration(seconds: 5), () => reconnect()));
   }
@@ -275,7 +318,8 @@ class FirestoreService {
   // ===== WRITE: CHILDREN =====
   Future<void> saveChild(ChildModel child) async {
     if (_familyId == null) return;
-    final data = child.toMap(); data['lastModifiedBy'] = deviceId;
+    final data = child.toMap();
+    data['lastModifiedBy'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('children').doc(child.id).set(data);
   }
 
@@ -295,7 +339,8 @@ class FirestoreService {
   // ===== WRITE: HISTORY =====
   Future<void> saveHistoryEntry(HistoryEntry entry) async {
     if (_familyId == null) return;
-    final data = entry.toMap(); data['deviceId'] = deviceId;
+    final data = entry.toMap();
+    data['deviceId'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('history').doc(entry.id).set(data);
   }
 
@@ -308,7 +353,8 @@ class FirestoreService {
   // ===== WRITE: GOALS =====
   Future<void> saveGoal(GoalModel goal) async {
     if (_familyId == null) return;
-    final data = goal.toMap(); data['lastModifiedBy'] = deviceId;
+    final data = goal.toMap();
+    data['lastModifiedBy'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('goals').doc(goal.id).set(data);
   }
 
@@ -320,7 +366,8 @@ class FirestoreService {
   // ===== WRITE: PUNISHMENTS =====
   Future<void> savePunishment(PunishmentLines p) async {
     if (_familyId == null) return;
-    final data = p.toMap(); data['lastModifiedBy'] = deviceId;
+    final data = p.toMap();
+    data['lastModifiedBy'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('punishments').doc(p.id).set(data);
   }
 
@@ -332,7 +379,8 @@ class FirestoreService {
   // ===== WRITE: NOTES =====
   Future<void> saveNote(NoteModel note) async {
     if (_familyId == null) return;
-    final data = note.toMap(); data['lastModifiedBy'] = deviceId;
+    final data = note.toMap();
+    data['lastModifiedBy'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('notes').doc(note.id).set(data);
   }
 
@@ -344,7 +392,8 @@ class FirestoreService {
   // ===== WRITE: IMMUNITIES =====
   Future<void> saveImmunity(ImmunityLines im) async {
     if (_familyId == null) return;
-    final data = im.toMap(); data['lastModifiedBy'] = deviceId;
+    final data = im.toMap();
+    data['lastModifiedBy'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('immunities').doc(im.id).set(data);
   }
 
@@ -356,7 +405,8 @@ class FirestoreService {
   // ===== WRITE: TRADES =====
   Future<void> saveTrade(TradeModel trade) async {
     if (_familyId == null) return;
-    final data = trade.toMap(); data['lastModifiedBy'] = deviceId;
+    final data = trade.toMap();
+    data['lastModifiedBy'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('trades').doc(trade.id).set(data);
   }
 
@@ -368,7 +418,8 @@ class FirestoreService {
   // ===== WRITE: TRIBUNAL =====
   Future<void> saveTribunalCase(TribunalCase tc) async {
     if (_familyId == null) return;
-    final data = tc.toMap(); data['lastModifiedBy'] = deviceId;
+    final data = tc.toMap();
+    data['lastModifiedBy'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('tribunal').doc(tc.id).set(data);
   }
 
@@ -380,7 +431,8 @@ class FirestoreService {
   // ===== WRITE: CUSTOM BADGES =====
   Future<void> saveCustomBadge(BadgeModel badge) async {
     if (_familyId == null) return;
-    final data = badge.toMap(); data['lastModifiedBy'] = deviceId;
+    final data = badge.toMap();
+    data['lastModifiedBy'] = deviceId;
     await _db.collection('families').doc(_familyId).collection('custom_badges').doc(badge.id).set(data);
   }
 
@@ -427,7 +479,11 @@ class FirestoreService {
     int ops = 0;
 
     Future<void> flush() async {
-      if (ops >= 450) { await batch.commit(); batch = _db.batch(); ops = 0; }
+      if (ops >= 450) {
+        await batch.commit();
+        batch = _db.batch();
+        ops = 0;
+      }
     }
 
     for (final c in children) { final d = c.toMap(); d['lastModifiedBy'] = deviceId; batch.set(fRef.collection('children').doc(c.id), d); ops++; await flush(); }
@@ -450,17 +506,33 @@ class FirestoreService {
     required List<GoalModel> goals,
     required List<PunishmentLines> punishments,
   }) async {
-    await uploadAllData(children: children, history: history, goals: goals, punishments: punishments, notes: [], immunities: [], trades: [], tribunalCases: [], customBadges: [], screenTimeData: {});
+    await uploadAllData(
+      children: children,
+      history: history,
+      goals: goals,
+      punishments: punishments,
+      notes: [],
+      immunities: [],
+      trades: [],
+      tribunalCases: [],
+      customBadges: [],
+      screenTimeData: {},
+    );
   }
 
   Future<void> uploadNotes(List<NoteModel> notes) async {
     if (_familyId == null) return;
     final batch = _db.batch();
     final fRef = _db.collection('families').doc(_familyId);
-    for (final n in notes) { final d = n.toMap(); d['lastModifiedBy'] = deviceId; batch.set(fRef.collection('notes').doc(n.id), d); }
+    for (final n in notes) {
+      final d = n.toMap();
+      d['lastModifiedBy'] = deviceId;
+      batch.set(fRef.collection('notes').doc(n.id), d);
+    }
     await batch.commit();
   }
 
+  // ===== FORCE REFRESH =====
   Future<void> forceRefresh() async {
     if (_familyId == null) return;
     try {
@@ -468,23 +540,27 @@ class FirestoreService {
       final opts = const GetOptions(source: Source.server);
 
       final cs = await fRef.collection('children').get(opts);
-      final children = <ChildModel>[]; final cr = <Map<String, dynamic>>[];
+      final children = <ChildModel>[];
+      final cr = <Map<String, dynamic>>[];
       for (final doc in cs.docs) { final d = doc.data(); d['id'] = doc.id; children.add(ChildModel.fromMap(d)); cr.add(Map<String, dynamic>.from(d)); }
       onChildrenChanged?.call(children, cr);
 
       final hs = await fRef.collection('history').get(opts);
-      final history = <HistoryEntry>[]; final hr = <Map<String, dynamic>>[];
+      final history = <HistoryEntry>[];
+      final hr = <Map<String, dynamic>>[];
       for (final doc in hs.docs) { final d = doc.data(); d['id'] = doc.id; history.add(HistoryEntry.fromMap(d)); hr.add(Map<String, dynamic>.from(d)); }
       history.sort((a, b) => b.date.compareTo(a.date));
       onHistoryChanged?.call(history, hr);
 
       final gs = await fRef.collection('goals').get(opts);
-      final goals = <GoalModel>[]; final gr = <Map<String, dynamic>>[];
+      final goals = <GoalModel>[];
+      final gr = <Map<String, dynamic>>[];
       for (final doc in gs.docs) { final d = doc.data(); d['id'] = doc.id; goals.add(GoalModel.fromMap(d)); gr.add(Map<String, dynamic>.from(d)); }
       onGoalsChanged?.call(goals, gr);
 
       final ps = await fRef.collection('punishments').get(opts);
-      final punishments = <PunishmentLines>[]; final pr = <Map<String, dynamic>>[];
+      final punishments = <PunishmentLines>[];
+      final pr = <Map<String, dynamic>>[];
       for (final doc in ps.docs) { final d = doc.data(); d['id'] = doc.id; punishments.add(PunishmentLines.fromMap(d)); pr.add(Map<String, dynamic>.from(d)); }
       onPunishmentsChanged?.call(punishments, pr);
 
