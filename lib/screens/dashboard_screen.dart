@@ -17,6 +17,8 @@ import 'pin_verification_screen.dart';
 import 'notes_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'school_notes_screen.dart';
+import 'trade_screens.dart';
+import '../models/trade_model.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -113,40 +115,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return notes;
   }
 
-  static int _getScreenMinutesForGrade(double grade) {
-    if (grade >= 18) return 45;
-    if (grade >= 16) return 35;
-    if (grade >= 14) return 25;
-    if (grade >= 12) return 20;
-    if (grade >= 10) return 15;
-    if (grade >= 8) return 5;
-    return 0;
-  }
-
+  // ═══ TEMPS D'ÉCRAN : utilise les VRAIES fonctions du provider ═══
   int _getScreenTimeForChild(String childId, FamilyProvider provider) {
-    final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    int totalMinutes = 0;
-
-    for (int i = 0; i < 5; i++) {
-      final day = DateTime(monday.year, monday.month, monday.day + i);
-      final dayHistory = provider.history.where((h) =>
-          h.childId == childId &&
-          h.category == 'school_note' &&
-          h.date.year == day.year &&
-          h.date.month == day.month &&
-          h.date.day == day.day).toList();
-
-      if (dayHistory.isNotEmpty) {
-        final reason = dayHistory.last.reason;
-        final match = RegExp(r'Note: ([\d.]+)/20').firstMatch(reason);
-        if (match != null) {
-          final grade = double.tryParse(match.group(1)!);
-          if (grade != null) totalMinutes += _getScreenMinutesForGrade(grade);
-        }
-      }
-    }
-    return totalMinutes.clamp(0, 360);
+    final satMin = provider.getSaturdayMinutes(childId);
+    final sunMin = provider.getSundayMinutes(childId);
+    return (satMin + sunMin).clamp(0, 720);
   }
 
   String _formatMinutes(int minutes) {
@@ -155,6 +128,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     if (h == 0) return '${m}min';
     if (m == 0) return '${h}h';
     return '${h}h${m.toString().padLeft(2, '0')}';
+  }
+
+  // ═══ VENTES À VALIDER ═══
+  List<TradeModel> _getPendingValidationTrades(FamilyProvider provider) {
+    return provider.trades.where((t) => t.isServiceDone).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   @override
@@ -167,6 +146,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
+    final pendingValidations = _getPendingValidationTrades(provider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -180,6 +160,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ===== HEADER =====
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
                       child: Row(
@@ -218,6 +199,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         ],
                       ),
                     ),
+                    // ===== STAT CHIPS =====
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -231,6 +213,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ],
                         ),
                       ),
+                    // ===== TODAY ACTIVITY =====
                     if (todayEntries.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -253,6 +236,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                         ),
                       ),
+                    // ===== PODIUM =====
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
@@ -298,6 +282,128 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         ],
                       ),
                     ),
+                    // ===== VENTES À VALIDER =====
+                    if (pendingValidations.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.gavel_rounded, color: Color(0xFF7C4DFF), size: 18),
+                                const SizedBox(width: 8),
+                                NeonText(text: 'Ventes à valider', fontSize: 16, color: const Color(0xFF7C4DFF), glowIntensity: 0.15),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
+                                  child: Text('${pendingValidations.length}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ...pendingValidations.map((trade) {
+                              final seller = provider.getChild(trade.fromChildId);
+                              final buyer = provider.getChild(trade.toChildId);
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.3)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 36, height: 36,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF7C4DFF).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: const Icon(Icons.sell_rounded, color: Color(0xFF7C4DFF), size: 18),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${seller?.name ?? "?"} → ${buyer?.name ?? "?"}',
+                                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                                              ),
+                                              Text(
+                                                '${trade.immunityLines} ligne${trade.immunityLines > 1 ? 's' : ''} • ${trade.serviceDescription}',
+                                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                                                maxLines: 1, overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.4)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 14),
+                                              const SizedBox(width: 4),
+                                              Text('${trade.immunityLines}', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.w900, fontSize: 14)),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => provider.cancelTrade(trade.id),
+                                            icon: const Icon(Icons.close_rounded, size: 16),
+                                            label: const Text('Refuser'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red.withValues(alpha: 0.15),
+                                              foregroundColor: Colors.red,
+                                              side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              padding: const EdgeInsets.symmetric(vertical: 10),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _showParentValidationDialog(context, provider, trade),
+                                            icon: const Icon(Icons.gavel_rounded, size: 16),
+                                            label: const Text('Valider'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
+                                              foregroundColor: const Color(0xFF7C4DFF),
+                                              side: BorderSide(color: const Color(0xFF7C4DFF).withValues(alpha: 0.4)),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              padding: const EdgeInsets.symmetric(vertical: 10),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    // ===== EMPTY STATE =====
                     if (provider.children.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 60),
@@ -328,6 +434,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                         ),
                       ),
+                    // ===== MES ENFANTS =====
                     if (provider.children.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -380,7 +487,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                       if (hasAnyNote) _buildWeekNotesBar(weekNotes, child.name),
                                       if (screenMin > 0) ...[
                                         const SizedBox(height: 4),
-                                        _buildScreenTimeMini(child.name, screenMin),
+                                        _buildScreenTimeMini(child.id, screenMin, provider),
                                       ],
                                     ],
                                   ),
@@ -390,6 +497,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         );
                       }),
                     ],
+                    // ===== ACTIVITÉ RÉCENTE =====
                     if (provider.history.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -463,11 +571,18 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       ),
     );
   }
-  Widget _buildScreenTimeMini(String childName, int minutes) {
-    final progress = (minutes / 360).clamp(0.0, 1.0);
+
+  // ══════════════════════════════════════
+  //  MINI TEMPS D'ÉCRAN (sous chaque enfant) — CORRIGÉ
+  // ══════════════════════════════════════
+  Widget _buildScreenTimeMini(String childId, int totalMinutes, FamilyProvider provider) {
+    final satMin = provider.getSaturdayMinutes(childId);
+    final sunMin = provider.getSundayMinutes(childId);
+    final maxMin = satMin + sunMin;
+    final progress = maxMin > 0 ? (totalMinutes / 720).clamp(0.0, 1.0) : 0.0;
     Color barColor;
-    if (progress >= 0.8) barColor = const Color(0xFF00E676);
-    else if (progress >= 0.5) barColor = Colors.orange;
+    if (progress >= 0.5) barColor = const Color(0xFF00E676);
+    else if (progress >= 0.25) barColor = Colors.orange;
     else barColor = const Color(0xFFFF1744);
 
     return Container(
@@ -481,9 +596,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         children: [
           const Icon(Icons.tv_rounded, color: Color(0xFFB388FF), size: 14),
           const SizedBox(width: 6),
-          Text('Week-end: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
-          Text(_formatMinutes(minutes), style: TextStyle(color: barColor, fontWeight: FontWeight.w800, fontSize: 12)),
-          Text(' / 6h', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
+          Text('Sam: ${_formatMinutes(satMin)}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11)),
+          const SizedBox(width: 8),
+          Text('Dim: ${_formatMinutes(sunMin)}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11)),
+          const SizedBox(width: 8),
+          Text('= ${_formatMinutes(totalMinutes)}', style: TextStyle(color: barColor, fontWeight: FontWeight.w800, fontSize: 12)),
           const SizedBox(width: 8),
           Expanded(
             child: ClipRRect(
@@ -501,6 +618,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  // ══════════════════════════════════════
+  //  BOTTOM SHEET TEMPS D'ÉCRAN — CORRIGÉ
+  // ══════════════════════════════════════
   void _showScreenTimeSummary(BuildContext context, FamilyProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
@@ -520,7 +640,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               children: [
                 Icon(Icons.tv_rounded, color: Color(0xFFB388FF), size: 24),
                 SizedBox(width: 10),
-                Text('Temps d\'ecran - Week-end', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text('Temps d\'écran - Week-end', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               ],
             ),
             const SizedBox(height: 20),
@@ -531,13 +651,13 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               )
             else
               ...provider.children.map((child) {
-                final minutes = _getScreenTimeForChild(child.id, provider);
-                final satMin = minutes > 180 ? 180 : minutes;
-                final sunMin = minutes > 180 ? (minutes - 180).clamp(0, 180) : 0;
-                final progress = (minutes / 360).clamp(0.0, 1.0);
+                final satMin = provider.getSaturdayMinutes(child.id);
+                final sunMin = provider.getSundayMinutes(child.id);
+                final totalMin = satMin + sunMin;
+                final progress = (totalMin / 720).clamp(0.0, 1.0);
                 Color barColor;
-                if (progress >= 0.8) barColor = const Color(0xFF00E676);
-                else if (progress >= 0.5) barColor = Colors.orange;
+                if (progress >= 0.5) barColor = const Color(0xFF00E676);
+                else if (progress >= 0.25) barColor = Colors.orange;
                 else barColor = const Color(0xFFFF1744);
 
                 return Container(
@@ -568,7 +688,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(color: barColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: barColor.withValues(alpha: 0.4))),
-                            child: Text(_formatMinutes(minutes), style: TextStyle(color: barColor, fontWeight: FontWeight.w900, fontSize: 14)),
+                            child: Text(_formatMinutes(totalMin), style: TextStyle(color: barColor, fontWeight: FontWeight.w900, fontSize: 14)),
                           ),
                         ],
                       ),
@@ -584,7 +704,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           const SizedBox(width: 16),
                           Text('\u{1F31E} Dim: ${_formatMinutes(sunMin)}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
                           const Spacer(),
-                          Text('/ 6h max', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
+                          Text('/ 12h max', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
                         ],
                       ),
                     ],
@@ -598,6 +718,107 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  // ══════════════════════════════════════
+  //  DIALOG VALIDATION PARENT (depuis dashboard)
+  // ══════════════════════════════════════
+  void _showParentValidationDialog(BuildContext context, FamilyProvider provider, TradeModel trade) {
+    String note = '';
+    final seller = provider.getChild(trade.fromChildId);
+    final buyer = provider.getChild(trade.toChildId);
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1a1a4a),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.gavel_rounded, color: Color(0xFF7C4DFF), size: 22),
+              SizedBox(width: 8),
+              Text('Validation parent', style: TextStyle(color: Color(0xFF7C4DFF), fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${seller?.name ?? "?"} vend ${trade.immunityLines} ligne${trade.immunityLines > 1 ? 's' : ''} à ${buyer?.name ?? "?"}',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Text('Service : ${trade.serviceDescription}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Note (optionnel) :', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 8),
+              TextField(
+                onChanged: (val) => note = val,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Commentaire...',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.08),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await provider.completeTrade(trade.id, parentNote: note.isNotEmpty ? note : null);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Row(children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                        SizedBox(width: 8),
+                        Text('Vente validée ! Immunités transférées.'),
+                      ]),
+                      backgroundColor: const Color(0xFF7C4DFF),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: const Text('Valider la vente'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C4DFF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ══════════════════════════════════════
+  //  WEEK NOTES BAR
+  // ══════════════════════════════════════
   Widget _buildWeekNotesBar(List<Map<String, dynamic>> notes, String childName) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -660,8 +881,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       ),
     );
   }
-
-  // ===== SCHOOL NOTES CHILD PICKER =====
+  // ══════════════════════════════════════
+  //  SCHOOL NOTES CHILD PICKER
+  // ══════════════════════════════════════
   void _showSchoolNotesChildPicker(BuildContext context, FamilyProvider provider) {
     showModalBottomSheet(
       context: context,
@@ -696,6 +918,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  // ══════════════════════════════════════
+  //  CHILD MODE PICKER
+  // ══════════════════════════════════════
   void _showChildModePicker(BuildContext context, FamilyProvider provider) {
     showModalBottomSheet(
       context: context,
@@ -748,6 +973,78 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  // ══════════════════════════════════════
+  //  FULL HISTORY
+  // ══════════════════════════════════════
+  void _showFullHistory(BuildContext context, FamilyProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF141833),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75, minChildSize: 0.4, maxChildSize: 0.92, expand: false,
+        builder: (_, sc) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              const Text('Historique complet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  controller: sc,
+                  itemCount: provider.history.length,
+                  itemBuilder: (_, i) {
+                    final entry = provider.history[i];
+                    final child = provider.getChild(entry.childId);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15),
+                            ),
+                            child: Icon(
+                              entry.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                              color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744),
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
+                                Text(entry.reason, style: TextStyle(fontSize: 11, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '${entry.isBonus ? '+' : '-'}${entry.points}',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════
+  //  HELPERS UI
+  // ══════════════════════════════════════
   Widget _buildModeIndicator(PinProvider pin) {
     if (!pin.isPinSet) {
       return Text('Tableau de bord', style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w500));
@@ -854,6 +1151,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  // ══════════════════════════════════════
+  //  QUICK ADD POINTS
+  // ══════════════════════════════════════
   void _quickAddPoints(BuildContext context, child, FamilyProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
@@ -908,6 +1208,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  // ══════════════════════════════════════
+  //  CHILD DETAIL BOTTOM SHEET
+  // ══════════════════════════════════════
   void _showChildDetail(BuildContext context, child, FamilyProvider provider) {
     final badges = provider.getBadgesForChild(child.id);
     final history = provider.getHistoryForChild(child.id);
@@ -1012,20 +1315,47 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             ),
             if (badges.isNotEmpty) ...[
               const SizedBox(height: 24),
-              NeonText(text: 'Badges obtenus', fontSize: 16, color: Colors.white, glowIntensity: 0.2),
+              NeonText(text: 'Badges obtenus', fontSize: 16, color: Colors.white, glowIntensity: 0.15),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: badges.map((b) => Chip(avatar: const Icon(Icons.emoji_events_rounded, size: 18, color: Colors.amber), label: Text(b.name, style: const TextStyle(fontSize: 12)))).toList()),
+              Wrap(
+                spacing: 8, runSpacing: 8,
+                children: badges.map((b) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(b.icon, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 6),
+                      Text(b.name, style: const TextStyle(color: Color(0xFFFFD700), fontWeight: FontWeight.w600, fontSize: 12)),
+                    ],
+                  ),
+                )).toList(),
+              ),
             ],
             if (history.isNotEmpty) ...[
               const SizedBox(height: 24),
-              NeonText(text: 'Dernieres activites', fontSize: 16, color: Colors.white, glowIntensity: 0.2),
-              ...history.take(10).map((h) => ListTile(
-                dense: true, contentPadding: EdgeInsets.zero,
-                leading: Icon(h.isBonus ? Icons.add_circle_rounded : Icons.remove_circle_rounded, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 20),
-                title: Text(h.reason, style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: Text('${h.isBonus ? '+' : ''}${h.points}', style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
+              NeonText(text: 'Derniere activite', fontSize: 16, color: Colors.white, glowIntensity: 0.15),
+              const SizedBox(height: 8),
+              ...history.take(10).map((entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(entry.isBonus ? Icons.add_circle_rounded : Icons.remove_circle_rounded, size: 16,
+                        color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(entry.reason, style: TextStyle(fontSize: 12, color: Colors.grey[400]), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Text('${entry.isBonus ? '+' : '-'}${entry.points}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                        color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
+                  ],
+                ),
               )),
             ],
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -1036,97 +1366,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return Container(
       width: 100, height: 100,
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [primary, primary.withValues(alpha: 0.5)]),
-        borderRadius: BorderRadius.circular(24),
+        shape: BoxShape.circle,
+        color: primary.withValues(alpha: 0.15),
         boxShadow: isDark ? [BoxShadow(color: primary.withValues(alpha: 0.3), blurRadius: 16)] : null,
       ),
-      child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 48))),
-    );
-  }
-
-  void _showFullHistory(BuildContext context, FamilyProvider provider) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context, isScrollControlled: true,
-      backgroundColor: isDark ? const Color(0xFF141833) : null,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.8, expand: false,
-        builder: (_, sc) => Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 12),
-            Text('Historique complet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
-            const SizedBox(height: 8),
-            Expanded(
-              child: provider.history.isEmpty
-                  ? Center(child: Text('Aucune activite', style: TextStyle(color: Colors.grey[600])))
-                  : ListView.builder(
-                      controller: sc, itemCount: provider.history.length,
-                      itemBuilder: (_, i) {
-                        final h = provider.history[i];
-                        final child = provider.getChild(h.childId);
-                        return ListTile(
-                          leading: Container(
-                            width: 40, height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12),
-                              border: Border.all(color: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.3) : const Color(0xFFFF1744).withValues(alpha: 0.3)),
-                            ),
-                            child: Icon(h.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 20),
-                          ),
-                          title: Text(child?.name ?? 'Inconnu', style: const TextStyle(color: Colors.white)),
-                          subtitle: Text('${h.reason}\n${h.date.day}/${h.date.month}/${h.date.year} ${h.date.hour}:${h.date.minute.toString().padLeft(2, '0')}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12)),
-                            child: Text('${h.isBonus ? '+' : ''}${h.points}', style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
-                          ),
-                          isThreeLine: true,
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showNotesChildPicker(BuildContext context, FamilyProvider provider) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF141833),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 16),
-            Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
-            const SizedBox(height: 16),
-            ...provider.children.map((child) => ListTile(
-              leading: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22))),
-              ),
-              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              subtitle: Text('${provider.getNotesForChild(child.id).length} notes', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-              trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => NotesScreen(childId: child.id, childName: child.name)));
-              },
-            )),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+      child: Center(child: Text(child.avatar.isEmpty ? child.name[0] : child.avatar, style: const TextStyle(fontSize: 48))),
     );
   }
 }
