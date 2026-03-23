@@ -284,7 +284,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                         const SizedBox(height: 20),
 
-                        // ── Sélection enfant (CORRIGÉ : plus de débordement) ──
+                        // ── Sélection enfant ──
                         NeonText(
                             text: 'Choisir un enfant',
                             fontSize: 14,
@@ -849,7 +849,9 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     );
   }
 
-  // ── Soumettre ──
+  // ══════════════════════════════════════════════════════════
+  // ── CORRIGÉ : category et proofPhotoBase64 en paramètres nommés ──
+  // ══════════════════════════════════════════════════════════
   void _submitPoints(FamilyProvider provider) {
     final pts = _isBonus ? _points : -_points;
 
@@ -857,7 +859,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
       _selectedChildId!,
       pts,
       _reason,
-      _category,
+      category: _category,
       isBonus: _isBonus,
       proofPhotoBase64: _proofPhotoBase64,
     );
