@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'firebase_options.dart';
 import 'providers/family_provider.dart';
 import 'providers/pin_provider.dart';
@@ -13,7 +15,6 @@ import 'screens/onboarding_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/notification_service.dart';
 import 'services/update_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +34,9 @@ void main() async {
     try {
       try {
         Firebase.app();
-        if (kDebugMode) debugPrint('Firebase already initialized (attempt $attempt)');
+        if (kDebugMode) {
+          debugPrint('Firebase already initialized (attempt $attempt)');
+        }
         firebaseReady = true;
         break;
       } catch (_) {}
@@ -41,6 +44,7 @@ void main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+
       if (kDebugMode) debugPrint('Firebase initialized OK (attempt $attempt)');
       firebaseReady = true;
       break;
@@ -51,14 +55,19 @@ void main() async {
         firebaseReady = true;
         break;
       }
-      if (kDebugMode) debugPrint('Firebase init attempt $attempt failed: $e');
+
+      if (kDebugMode) {
+        debugPrint('Firebase init attempt $attempt failed: $e');
+      }
+
       if (attempt < 3) {
         await Future.delayed(Duration(milliseconds: 500 * attempt));
       }
     }
   }
-  if (!firebaseReady) {
-    if (kDebugMode) debugPrint('WARNING: Firebase not initialized after 3 attempts');
+
+  if (!firebaseReady && kDebugMode) {
+    debugPrint('WARNING: Firebase not initialized after 3 attempts');
   }
 
   final familyProvider = FamilyProvider();
@@ -76,6 +85,7 @@ void main() async {
 
   try {
     await familyProvider.init();
+
     try {
       await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
     } catch (e) {
@@ -86,9 +96,18 @@ void main() async {
   }
 
   bool onboardingDone = false;
+  bool openDirectlyToHome = false;
+
   try {
     final prefs = await SharedPreferences.getInstance();
     onboardingDone = prefs.getBool('onboarding_done') ?? false;
+
+    // Si on a déjà des données locales ou une synchro active,
+    // on ouvre directement l'app sans repasser par WelcomeScreen.
+    openDirectlyToHome =
+        familyProvider.children.isNotEmpty ||
+        familyProvider.history.isNotEmpty ||
+        familyProvider.isSyncEnabled;
   } catch (e) {
     if (kDebugMode) debugPrint('SharedPreferences error: $e');
   }
@@ -100,20 +119,30 @@ void main() async {
         ChangeNotifierProvider.value(value: pinProvider),
         ChangeNotifierProvider.value(value: themeProvider),
       ],
-      child: SKSFamilyApp(showOnboarding: !onboardingDone),
+      child: SKSFamilyApp(
+        showOnboarding: !onboardingDone,
+        openDirectlyToHome: openDirectlyToHome,
+      ),
     ),
   );
 }
 
 class SKSFamilyApp extends StatefulWidget {
   final bool showOnboarding;
-  const SKSFamilyApp({super.key, required this.showOnboarding});
+  final bool openDirectlyToHome;
+
+  const SKSFamilyApp({
+    super.key,
+    required this.showOnboarding,
+    required this.openDirectlyToHome,
+  });
 
   @override
   State<SKSFamilyApp> createState() => _SKSFamilyAppState();
 }
 
-class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver {
+class _SKSFamilyAppState extends State<SKSFamilyApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -143,30 +172,49 @@ class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver
         title: 'SKS Family',
         debugShowCheckedModeBanner: false,
         theme: themeProvider.theme,
-        home: widget.showOnboarding ? const OnboardingScreen() : const _WelcomeWrapper(),
+        home: widget.showOnboarding
+            ? const OnboardingScreen()
+            : _StartupRouter(openDirectlyToHome: widget.openDirectlyToHome),
       ),
     );
   }
 }
 
-class _WelcomeWrapper extends StatefulWidget {
-  const _WelcomeWrapper();
+class _StartupRouter extends StatefulWidget {
+  final bool openDirectlyToHome;
+
+  const _StartupRouter({
+    required this.openDirectlyToHome,
+  });
 
   @override
-  State<_WelcomeWrapper> createState() => _WelcomeWrapperState();
+  State<_StartupRouter> createState() => _StartupRouterState();
 }
 
-class _WelcomeWrapperState extends State<_WelcomeWrapper> {
+class _StartupRouterState extends State<_StartupRouter> {
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
       UpdateService.checkForUpdate(context);
+
+      try {
+        context.read<FamilyProvider>().reconnectFirestore();
+      } catch (e) {
+        if (kDebugMode) debugPrint('Reconnect Firestore error: $e');
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.openDirectlyToHome) {
+      return const HomeScreen();
+    }
+
     return WelcomeScreen(
       onEnter: () {
         Navigator.of(context).pushReplacement(
@@ -174,7 +222,10 @@ class _WelcomeWrapperState extends State<_WelcomeWrapper> {
             pageBuilder: (_, __, ___) => const HomeScreen(),
             transitionsBuilder: (_, anim, __, child) {
               return FadeTransition(
-                opacity: CurvedAnimation(parent: anim, curve: Curves.easeIn),
+                opacity: CurvedAnimation(
+                  parent: anim,
+                  curve: Curves.easeIn,
+                ),
                 child: child,
               );
             },
