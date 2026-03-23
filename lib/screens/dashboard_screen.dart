@@ -86,7 +86,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final monday = now.subtract(Duration(days: now.weekday - 1));
     final dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
     final List<Map<String, dynamic>> notes = [];
-
     for (int i = 0; i < 5; i++) {
       final day = DateTime(monday.year, monday.month, monday.day + i);
       final dayHistory = provider.history.where((h) =>
@@ -95,10 +94,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           h.date.year == day.year &&
           h.date.month == day.month &&
           h.date.day == day.day).toList();
-
       final bool isToday = day.year == now.year && day.month == now.month && day.day == now.day;
       final bool isFuture = day.isAfter(now);
-
       if (dayHistory.isNotEmpty) {
         final reason = dayHistory.last.reason;
         final match = RegExp(r'Note: ([\d.]+)/20').firstMatch(reason);
@@ -115,7 +112,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return notes;
   }
 
-  // ═══ TEMPS D'ÉCRAN : utilise les VRAIES fonctions du provider ═══
   int _getScreenTimeForChild(String childId, FamilyProvider provider) {
     final satMin = provider.getSaturdayMinutes(childId);
     final sunMin = provider.getSundayMinutes(childId);
@@ -130,10 +126,30 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return '${h}h${m.toString().padLeft(2, '0')}';
   }
 
-  // ═══ VENTES À VALIDER ═══
-  List<TradeModel> _getPendingValidationTrades(FamilyProvider provider) {
-    return provider.trades.where((t) => t.isServiceDone).toList()
+  List<TradeModel> _getActiveTrades(FamilyProvider provider) {
+    return provider.trades.where((t) => t.isActive).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  String _tradeStatusLabel(TradeModel trade) {
+    if (trade.isPending) return 'En attente';
+    if (trade.isAccepted) return 'Service en cours';
+    if (trade.isServiceDone) return 'À valider';
+    return '';
+  }
+
+  Color _tradeStatusColor(TradeModel trade) {
+    if (trade.isPending) return Colors.amber;
+    if (trade.isAccepted) return Colors.orange;
+    if (trade.isServiceDone) return const Color(0xFF7C4DFF);
+    return Colors.grey;
+  }
+
+  IconData _tradeStatusIcon(TradeModel trade) {
+    if (trade.isPending) return Icons.schedule_rounded;
+    if (trade.isAccepted) return Icons.hourglass_top_rounded;
+    if (trade.isServiceDone) return Icons.gavel_rounded;
+    return Icons.help_outline;
   }
 
   @override
@@ -146,7 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
-    final pendingValidations = _getPendingValidationTrades(provider);
+    final activeTrades = _getActiveTrades(provider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -160,7 +176,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ===== HEADER =====
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
                       child: Row(
@@ -199,7 +214,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         ],
                       ),
                     ),
-                    // ===== STAT CHIPS =====
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -213,7 +227,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ],
                         ),
                       ),
-                    // ===== TODAY ACTIVITY =====
                     if (todayEntries.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -236,13 +249,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                         ),
                       ),
-                    // ===== PODIUM =====
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
                         child: PodiumWidget(children: provider.children),
                       ),
-                    // ===== QUICK ACTIONS - LIGNE 1 =====
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
@@ -261,7 +272,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         ],
                       ),
                     ),
-                    // ===== QUICK ACTIONS - LIGNE 2 =====
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
@@ -282,8 +292,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         ],
                       ),
                     ),
-                    // ===== VENTES À VALIDER =====
-                    if (pendingValidations.isNotEmpty)
+                    // ===== VENTES EN COURS =====
+                    if (activeTrades.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                         child: Column(
@@ -291,41 +301,61 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.gavel_rounded, color: Color(0xFF7C4DFF), size: 18),
+                                const Icon(Icons.sell_rounded, color: Color(0xFF7C4DFF), size: 18),
                                 const SizedBox(width: 8),
-                                NeonText(text: 'Ventes à valider', fontSize: 16, color: const Color(0xFF7C4DFF), glowIntensity: 0.15),
+                                NeonText(text: 'Ventes en cours', fontSize: 16, color: const Color(0xFF7C4DFF), glowIntensity: 0.15),
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                   decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
-                                  child: Text('${pendingValidations.length}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  child: Text('${activeTrades.length}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            ...pendingValidations.map((trade) {
+                            ...activeTrades.map((trade) {
                               final seller = provider.getChild(trade.fromChildId);
                               final buyer = provider.getChild(trade.toChildId);
+                              final statusColor = _tradeStatusColor(trade);
+                              final statusLabel = _tradeStatusLabel(trade);
+                              final statusIcon = _tradeStatusIcon(trade);
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.08),
+                                  color: statusColor.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.3)),
+                                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    // Status badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(statusIcon, color: statusColor, size: 14),
+                                          const SizedBox(width: 6),
+                                          Text(statusLabel, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
                                     Row(
                                       children: [
                                         Container(
                                           width: 36, height: 36,
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF7C4DFF).withValues(alpha: 0.15),
+                                            color: statusColor.withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(10),
                                           ),
-                                          child: const Icon(Icons.sell_rounded, color: Color(0xFF7C4DFF), size: 18),
+                                          child: const Icon(Icons.sell_rounded, color: Colors.white54, size: 18),
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(
@@ -354,149 +384,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 14),
-                                              const SizedBox(width: 4),
-                                              Text('${trade.immunityLines}', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.w900, fontSize: 14)),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed: () => provider.cancelTrade(trade.id),
-                                            icon: const Icon(Icons.close_rounded, size: 16),
-                                            label: const Text('Refuser'),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.red.withValues(alpha: 0.15),
-                                              foregroundColor: Colors.red,
-                                              side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                              padding: const EdgeInsets.symmetric(vertical: 10),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed: () => _showParentValidationDialog(context, provider, trade),
-                                            icon: const Icon(Icons.gavel_rounded, size: 16),
-                                            label: const Text('Valider'),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
-                                              foregroundColor: const Color(0xFF7C4DFF),
-                                              side: BorderSide(color: const Color(0xFF7C4DFF).withValues(alpha: 0.4)),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                              padding: const EdgeInsets.symmetric(vertical: 10),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    // ===== EMPTY STATE =====
-                    if (provider.children.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 60),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 120, height: 120,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: primary.withValues(alpha: 0.1),
-                                  boxShadow: isDark ? [BoxShadow(color: primary.withValues(alpha: 0.2), blurRadius: 24)] : null,
-                                ),
-                                child: const Center(child: Text('\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}', style: TextStyle(fontSize: 56))),
-                              ),
-                              const SizedBox(height: 24),
-                              NeonText(text: 'Bienvenue !', fontSize: 24, color: Colors.white),
-                              const SizedBox(height: 8),
-                              Text('Ajoutez vos enfants pour commencer', style: TextStyle(color: Colors.grey[400], fontSize: 16)),
-                              const SizedBox(height: 24),
-                              FilledButton.icon(
-                                onPressed: () => PinGuard.guardNavigation(context, const ManageChildrenScreen()),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Ajouter un enfant'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    // ===== MES ENFANTS =====
-                    if (provider.children.isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                        child: Row(
-                          children: [
-                            NeonText(text: 'Mes enfants', fontSize: 18, color: Colors.white, glowIntensity: 0.15),
-                            const Spacer(),
-                            TextButton.icon(
-                              onPressed: () => PinGuard.guardNavigation(context, const ManageChildrenScreen()),
-                              icon: Icon(Icons.edit_rounded, size: 16, color: primary),
-                              label: Text('Gerer', style: TextStyle(color: primary)),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ...List.generate(provider.children.length, (index) {
-                        final sorted = provider.childrenSorted;
-                        final child = sorted[index];
-                        final weekNotes = _getWeekNotesForChild(child.id, provider);
-                        final hasAnyNote = weekNotes.any((n) => n['hasNote'] == true);
-                        final screenMin = _getScreenTimeForChild(child.id, provider);
-                        return TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: Duration(milliseconds: 400 + index * 100),
-                          curve: Curves.easeOutCubic,
-                          builder: (_, v, w) => Opacity(
-                            opacity: v.clamp(0.0, 1.0),
-                            child: Transform.translate(offset: Offset(0, 30 * (1 - v)), child: w),
-                          ),
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 0),
-                                child: ChildCard(
-                                  child: child,
-                                  rank: index,
-                                  onTap: () => _showChildDetail(context, child, provider),
-                                  onAddPoints: () {
-                                    PinGuard.guardAction(context, () {
-                                      _quickAddPoints(context, child, provider);
-                                    });
-                                  },
-                                ),
-                              ),
-                              if (hasAnyNote || screenMin > 0)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                                  child: Column(
-                                    children: [
-                                      if (hasAnyNote) _buildWeekNotesBar(weekNotes, child.name),
-                                      if (screenMin > 0) ...[
-                                        const SizedBox(height: 4),
-                                        _buildScreenTimeMini(child.id, screenMin, provider),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
+                                              const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 
                     // ===== ACTIVITÉ RÉCENTE =====
                     if (provider.history.isNotEmpty) ...[
                       Padding(
@@ -573,13 +461,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   // ══════════════════════════════════════
-  //  MINI TEMPS D'ÉCRAN (sous chaque enfant) — CORRIGÉ
+  //  MINI TEMPS D'ÉCRAN (sous chaque enfant)
   // ══════════════════════════════════════
   Widget _buildScreenTimeMini(String childId, int totalMinutes, FamilyProvider provider) {
     final satMin = provider.getSaturdayMinutes(childId);
     final sunMin = provider.getSundayMinutes(childId);
-    final maxMin = satMin + sunMin;
-    final progress = maxMin > 0 ? (totalMinutes / 720).clamp(0.0, 1.0) : 0.0;
+    final progress = totalMinutes > 0 ? (totalMinutes / 720).clamp(0.0, 1.0) : 0.0;
     Color barColor;
     if (progress >= 0.5) barColor = const Color(0xFF00E676);
     else if (progress >= 0.25) barColor = Colors.orange;
@@ -619,7 +506,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   // ══════════════════════════════════════
-  //  BOTTOM SHEET TEMPS D'ÉCRAN — CORRIGÉ
+  //  BOTTOM SHEET TEMPS D'ÉCRAN
   // ══════════════════════════════════════
   void _showScreenTimeSummary(BuildContext context, FamilyProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -719,7 +606,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   // ══════════════════════════════════════
-  //  DIALOG VALIDATION PARENT (depuis dashboard)
+  //  DIALOG VALIDATION PARENT
   // ══════════════════════════════════════
   void _showParentValidationDialog(BuildContext context, FamilyProvider provider, TradeModel trade) {
     String note = '';
@@ -836,7 +723,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             final isToday = n['isToday'] as bool;
             final isFuture = n['isFuture'] ?? false;
             final grade = n['grade'] as double?;
-
             Color noteColor = Colors.grey;
             if (hasNote && grade != null) {
               if (grade >= 16) noteColor = const Color(0xFF00E676);
@@ -844,7 +730,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               else if (grade >= 10) noteColor = Colors.orange;
               else noteColor = const Color(0xFFFF1744);
             }
-
             return Expanded(
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 2),
