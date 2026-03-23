@@ -287,9 +287,6 @@ class BadgesScreen extends StatelessWidget {
     );
   }
 
-  // ══════════════════════════════════════════════════════════
-  // ── CORRIGÉ : paramètres nommés pour addCustomBadge ──
-  // ══════════════════════════════════════════════════════════
   void _showAddBadgeDialog(BuildContext context) {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -391,12 +388,11 @@ class BadgesScreen extends StatelessWidget {
                 if (nameCtrl.text.isNotEmpty) {
                   final provider = context.read<FamilyProvider>();
                   provider.addCustomBadge(
-  nameCtrl.text,
-  descCtrl.text,
-  int.tryParse(pointsCtrl.text) ?? 50,
-  selectedPower,
-);
-
+                    nameCtrl.text,
+                    descCtrl.text,
+                    selectedPower,
+                    int.tryParse(pointsCtrl.text) ?? 50,
+                  );
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Pouvoir "${nameCtrl.text}" cree !')),
