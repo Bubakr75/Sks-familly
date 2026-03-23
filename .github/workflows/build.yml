@@ -32,10 +32,11 @@ jobs:
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
 
-            - name: Decode keystore from secret
+      - name: Decode keystore from secret
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/release-key.jks
 
+      - name: Enable core library desugaring
         run: |
           cat > /tmp/fix_gradle.py << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
@@ -106,8 +107,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.2.${{ github.run_number }}
-          name: "Family Score v4.2.${{ github.run_number }}"
+          tag_name: v4.8.0+${{ github.run_number }}
+          name: "Family Score v4.8.0+${{ github.run_number }}"
           body: "Mise a jour automatique - Build #${{ github.run_number }}"
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
