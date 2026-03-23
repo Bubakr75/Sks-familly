@@ -5,7 +5,7 @@ import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../models/history_entry.dart';
 import 'school_notes_screen.dart';
-import 'trade_screen.dart';
+import 'trade_screens.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
   final String childId;
