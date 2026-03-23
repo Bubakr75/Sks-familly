@@ -287,6 +287,9 @@ class BadgesScreen extends StatelessWidget {
     );
   }
 
+  // ══════════════════════════════════════════════════════════
+  // ── CORRIGÉ : paramètres nommés pour addCustomBadge ──
+  // ══════════════════════════════════════════════════════════
   void _showAddBadgeDialog(BuildContext context) {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -391,7 +394,7 @@ class BadgesScreen extends StatelessWidget {
                     nameCtrl.text,
                     descCtrl.text,
                     int.tryParse(pointsCtrl.text) ?? 50,
-                    selectedPower,
+                    powerType: selectedPower,
                   );
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
