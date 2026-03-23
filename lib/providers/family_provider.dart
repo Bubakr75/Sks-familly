@@ -89,6 +89,7 @@ class FamilyProvider extends ChangeNotifier {
       _familyCode = await _firestore.getFamilyCode();
       if (_firestore.isConnected) {
         _setupFirestoreCallbacks();
+        if (kDebugMode) debugPrint('FamilyProvider: Firestore connected, all callbacks set');
       }
     } catch (e) {
       if (kDebugMode) debugPrint('Firestore init error: $e');
@@ -127,6 +128,9 @@ class FamilyProvider extends ChangeNotifier {
         .toList();
   }
 
+  // ══════════════════════════════════════
+  //  FIRESTORE CALLBACKS (SYNCHRO TEMPS RÉEL)
+  // ══════════════════════════════════════
   void _setupFirestoreCallbacks() {
     _firestore.onChildrenChanged = (list, _) {
       _children = list;
@@ -154,6 +158,33 @@ class FamilyProvider extends ChangeNotifier {
       _saveBoxFromList(_notesBox, _notes, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
+    _firestore.onImmunitiesChanged = (list) {
+      _immunities = list;
+      _saveBoxFromList(_immunitiesBox, _immunities, (e) => e.id, (e) => e.toMap());
+      notifyListeners();
+    };
+    _firestore.onTradesChanged = (list) {
+      _trades = list;
+      _saveBoxFromList(_tradesBox, _trades, (e) => e.id, (e) => e.toMap());
+      notifyListeners();
+    };
+    _firestore.onTribunalChanged = (list) {
+      _tribunalCases = list;
+      _saveBoxFromList(_tribunalBox, _tribunalCases, (e) => e.id, (e) => e.toMap());
+      notifyListeners();
+    };
+    _firestore.onBadgesChanged = (list) {
+      _customBadges = list;
+      _saveBoxFromList(_badgesBox, _customBadges, (e) => e.id, (e) => e.toMap());
+      notifyListeners();
+    };
+    _firestore.onScreenTimeChanged = (data) {
+      _screenTimeBox.clear();
+      for (final entry in data.entries) {
+        _screenTimeBox.put(entry.key, entry.value);
+      }
+      notifyListeners();
+    };
   }
 
   void _saveBoxFromList<T>(Box box, List<T> items, String Function(T) getId, Map<String, dynamic> Function(T) toMap) {
@@ -177,13 +208,18 @@ class FamilyProvider extends ChangeNotifier {
     final code = await _firestore.createFamily(customCode: customCode);
     _familyCode = code;
     _setupFirestoreCallbacks();
-    await _firestore.uploadLocalData(
+    await _firestore.uploadAllData(
       children: _children,
       history: _history,
       goals: _goals,
       punishments: _punishments,
+      notes: _notes,
+      immunities: _immunities,
+      trades: _trades,
+      tribunalCases: _tribunalCases,
+      customBadges: _customBadges,
+      screenTimeData: _getAllScreenTimeData(),
     );
-    await _firestore.uploadNotes(_notes);
     notifyListeners();
     return code;
   }
@@ -206,6 +242,13 @@ class FamilyProvider extends ChangeNotifier {
 
   String getFamilyCode() => _familyCode ?? '';
 
+  Map<String, dynamic> _getAllScreenTimeData() {
+    final Map<String, dynamic> data = {};
+    for (final key in _screenTimeBox.keys) {
+      data[key.toString()] = _screenTimeBox.get(key);
+    }
+    return data;
+  }
   // ══════════════════════════════════════
   //  CHILDREN
   // ══════════════════════════════════════
@@ -314,6 +357,7 @@ class FamilyProvider extends ChangeNotifier {
     _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) _firestore.saveChild(child);
   }
+
   // ══════════════════════════════════════
   //  GOALS
   // ══════════════════════════════════════
@@ -466,12 +510,14 @@ class FamilyProvider extends ChangeNotifier {
     );
     _immunities.add(im);
     await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
+    if (_firestore.isConnected) await _firestore.saveImmunity(im);
     notifyListeners();
   }
 
   Future<void> removeImmunity(String id) async {
     _immunities.removeWhere((im) => im.id == id);
     await _immunitiesBox.delete(id);
+    if (_firestore.isConnected) await _firestore.deleteImmunity(id);
     notifyListeners();
   }
 
@@ -493,7 +539,10 @@ class FamilyProvider extends ChangeNotifier {
       p.completedLines = (p.completedLines + actualLines).clamp(0, p.totalLines);
       await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
       await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
-      if (_firestore.isConnected) await _firestore.savePunishment(p);
+      if (_firestore.isConnected) {
+        await _firestore.saveImmunity(im);
+        await _firestore.savePunishment(p);
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -520,6 +569,7 @@ class FamilyProvider extends ChangeNotifier {
     );
     _customBadges.add(badge);
     await _badgesBox.put(badge.id, jsonEncode(badge.toMap()));
+    if (_firestore.isConnected) await _firestore.saveCustomBadge(badge);
     notifyListeners();
   }
 
@@ -530,9 +580,9 @@ class FamilyProvider extends ChangeNotifier {
       child.badgeIds.remove(id);
       await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     }
+    if (_firestore.isConnected) await _firestore.deleteCustomBadge(id);
     notifyListeners();
   }
-
   // ══════════════════════════════════════
   //  SCREEN TIME
   // ══════════════════════════════════════
@@ -609,6 +659,7 @@ class FamilyProvider extends ChangeNotifier {
     final key = _screenTimeKey(childId, 'bonus');
     final current = _screenTimeBox.get(key, defaultValue: 0) as int;
     await _screenTimeBox.put(key, current + minutes);
+    if (_firestore.isConnected) await _firestore.saveScreenTimeValue(key, current + minutes);
 
     final entry = HistoryEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -627,12 +678,14 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> resetScreenTimeBonus(String childId) async {
     final key = _screenTimeKey(childId, 'bonus');
     await _screenTimeBox.put(key, 0);
+    if (_firestore.isConnected) await _firestore.saveScreenTimeValue(key, 0);
     notifyListeners();
   }
 
   Future<void> rateSaturdayBehavior(String childId, int rating) async {
     final key = _screenTimeKey(childId, 'sat_rating');
     await _screenTimeBox.put(key, rating.toDouble());
+    if (_firestore.isConnected) await _firestore.saveScreenTimeValue(key, rating.toDouble());
 
     final entry = HistoryEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -658,12 +711,14 @@ class FamilyProvider extends ChangeNotifier {
   List<HistoryEntry> _getWeekSchoolNotes(String childId) {
     return _getWeekHistory(childId).where((h) => h.category == 'school_note').toList();
   }
+
   // ══════════════════════════════════════
   //  TRIBUNAL
   // ══════════════════════════════════════
   Future<void> addTribunalCase(TribunalCase tc) async {
     _tribunalCases.add(tc);
     await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+    if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
     notifyListeners();
   }
 
@@ -672,6 +727,7 @@ class FamilyProvider extends ChangeNotifier {
     if (idx != -1) {
       _tribunalCases[idx] = tc;
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       notifyListeners();
     }
   }
@@ -679,6 +735,7 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> removeTribunalCase(String id) async {
     _tribunalCases.removeWhere((c) => c.id == id);
     await _tribunalBox.delete(id);
+    if (_firestore.isConnected) await _firestore.deleteTribunalCase(id);
     notifyListeners();
   }
 
@@ -718,6 +775,7 @@ class FamilyProvider extends ChangeNotifier {
     );
     _tribunalCases.add(tc);
     await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+    if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
     notifyListeners();
   }
 
@@ -727,6 +785,7 @@ class FamilyProvider extends ChangeNotifier {
       tc.status = TribunalStatus.scheduled;
       tc.scheduledDate = date;
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       notifyListeners();
     } catch (_) {}
   }
@@ -736,6 +795,7 @@ class FamilyProvider extends ChangeNotifier {
       final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
       tc.status = TribunalStatus.inProgress;
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       notifyListeners();
     } catch (_) {}
   }
@@ -745,6 +805,7 @@ class FamilyProvider extends ChangeNotifier {
       final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
       tc.status = TribunalStatus.deliberation;
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       notifyListeners();
     } catch (_) {}
   }
@@ -757,6 +818,7 @@ class FamilyProvider extends ChangeNotifier {
       tc.verdictReason = 'Classe sans suite';
       tc.verdictDate = DateTime.now();
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       notifyListeners();
     } catch (_) {}
   }
@@ -823,12 +885,12 @@ class FamilyProvider extends ChangeNotifier {
       }
 
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       notifyListeners();
     } catch (_) {}
   }
-
   // ══════════════════════════════════════
-  //  TRADES (ÉCHANGES D'IMMUNITÉ)
+  //  TRADES (VENTE D'IMMUNITÉ)
   // ══════════════════════════════════════
   List<TradeModel> getTradesForChild(String childId) {
     return _trades.where((t) => t.fromChildId == childId || t.toChildId == childId).toList()
@@ -858,6 +920,7 @@ class FamilyProvider extends ChangeNotifier {
 
     _trades.add(trade);
     await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+    if (_firestore.isConnected) await _firestore.saveTrade(trade);
     notifyListeners();
   }
 
@@ -869,6 +932,7 @@ class FamilyProvider extends ChangeNotifier {
       trade.status = 'accepted';
       trade.acceptedAt = DateTime.now();
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
     } catch (_) {}
   }
@@ -880,6 +944,7 @@ class FamilyProvider extends ChangeNotifier {
 
       trade.status = 'service_done';
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
     } catch (_) {}
   }
@@ -889,7 +954,7 @@ class FamilyProvider extends ChangeNotifier {
       final trade = _trades.firstWhere((t) => t.id == tradeId);
       if (!trade.isServiceDone) return;
 
-      // Retirer les lignes d'immunité du fromChild
+      // Retirer les lignes d'immunité du vendeur
       int remaining = trade.immunityLines;
       final fromImmunities = getImmunitiesForChild(trade.fromChildId)
           .where((im) => im.isUsable)
@@ -901,12 +966,13 @@ class FamilyProvider extends ChangeNotifier {
         im.usedLines += canUse;
         remaining -= canUse;
         await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
+        if (_firestore.isConnected) await _firestore.saveImmunity(im);
       }
 
-      // Donner les lignes au toChild
+      // Donner les lignes à l'acheteur
       await addImmunity(
         trade.toChildId,
-        'Echange: ${trade.serviceDescription}',
+        'Vente: ${trade.serviceDescription}',
         trade.immunityLines,
       );
 
@@ -914,6 +980,7 @@ class FamilyProvider extends ChangeNotifier {
       trade.completedAt = DateTime.now();
       trade.parentValidatorNote = parentNote;
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
     } catch (_) {}
   }
@@ -925,6 +992,7 @@ class FamilyProvider extends ChangeNotifier {
 
       trade.status = 'rejected';
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
     } catch (_) {}
   }
@@ -936,6 +1004,7 @@ class FamilyProvider extends ChangeNotifier {
 
       trade.status = 'cancelled';
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
     } catch (_) {}
   }
