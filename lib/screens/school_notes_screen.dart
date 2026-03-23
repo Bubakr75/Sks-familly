@@ -32,13 +32,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
         final satMinutes = provider.getSaturdayMinutes(widget.childId);
         final sunMinutes = provider.getSundayMinutes(widget.childId);
 
-        // Récupérer les notes scolaires de l'enfant
         final schoolNotes = provider.getHistoryForChild(widget.childId)
             .where((h) => h.category == 'school_note')
             .toList();
         schoolNotes.sort((a, b) => b.date.compareTo(a.date));
 
-        // Notes du mois sélectionné
         final monthNotes = schoolNotes.where((h) =>
             h.date.month == _selectedDate.month &&
             h.date.year == _selectedDate.year).toList();
@@ -90,6 +88,20 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                         'Comportement semaine : ${provider.getWeeklyBehaviorScore(widget.childId).toStringAsFixed(1)}/20',
                         style: const TextStyle(color: Colors.white54, fontSize: 13),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ===== SEMAINE EN COURS (vue rapide) =====
+                _buildGlassCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('📅 Cette semaine',
+                          style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      _buildCurrentWeekView(provider),
                     ],
                   ),
                 ),
@@ -169,6 +181,73 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     );
   }
 
+  // ===== VUE SEMAINE EN COURS =====
+  Widget _buildCurrentWeekView(FamilyProvider provider) {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: List.generate(5, (i) {
+        final day = DateTime(monday.year, monday.month, monday.day + i);
+        final isToday = day.year == now.year && day.month == now.month && day.day == now.day;
+        final isFuture = day.isAfter(now);
+
+        final dayHistory = provider.getHistoryForChild(widget.childId).where((h) =>
+            h.category == 'school_note' &&
+            h.date.year == day.year &&
+            h.date.month == day.month &&
+            h.date.day == day.day).toList();
+
+        double? grade;
+        if (dayHistory.isNotEmpty) {
+          final reason = dayHistory.last.reason;
+          final match = RegExp(r'(\d+)/20').firstMatch(reason);
+          if (match != null) {
+            grade = double.tryParse(match.group(1)!);
+          }
+        }
+
+        Color noteColor = Colors.grey;
+        if (grade != null) {
+          if (grade >= 16) noteColor = Colors.greenAccent;
+          else if (grade >= 12) noteColor = Colors.yellow;
+          else if (grade >= 8) noteColor = Colors.orange;
+          else noteColor = Colors.red;
+        }
+
+        return GestureDetector(
+          onTap: isFuture ? null : () => _showAddNoteForDate(context, provider, provider.getChild(widget.childId)!, day),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            decoration: BoxDecoration(
+              color: isToday ? Colors.amber.withOpacity(0.15) : Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isToday ? Colors.amber.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+                width: isToday ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(dayNames[i], style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w600)),
+                Text('${day.day}', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10)),
+                const SizedBox(height: 4),
+                if (grade != null)
+                  Text('${grade.toInt()}', style: TextStyle(color: noteColor, fontWeight: FontWeight.w900, fontSize: 18))
+                else if (isFuture)
+                  Text('-', style: TextStyle(color: Colors.white.withOpacity(0.15), fontSize: 18))
+                else
+                  Icon(Icons.add_circle_outline, color: Colors.amber.withOpacity(0.4), size: 20),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   Widget _buildTimeChip(String label, int minutes) {
     final hours = minutes ~/ 60;
     final mins = minutes % 60;
@@ -223,7 +302,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
   }
 
   Widget _buildNoteTile(HistoryEntry note) {
-    final dateStr = DateFormat('dd/MM/yyyy', 'fr_FR').format(note.date);
+    final dateStr = DateFormat('EEEE dd/MM', 'fr_FR').format(note.date);
     Color noteColor;
     if (note.points >= 16) {
       noteColor = Colors.greenAccent;
@@ -245,14 +324,17 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(dateStr, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-              const SizedBox(height: 2),
-              Text(note.reason, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(dateStr, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                const SizedBox(height: 2),
+                Text(note.reason, style: const TextStyle(color: Colors.white70, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -283,19 +365,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     );
   }
 
-  // ===== DIALOG AJOUTER NOTE =====
-  void _showAddNote(BuildContext context, FamilyProvider provider, ChildModel child) {
+  // ===== DIALOG NOTER UN JOUR SPÉCIFIQUE =====
+  void _showAddNoteForDate(BuildContext context, FamilyProvider provider, ChildModel child, DateTime date) {
     int selectedGrade = 10;
     String reason = '';
-    DateTime selectedDate = DateTime.now();
-
-    // Calculer les jours disponibles (lundi à aujourd'hui de cette semaine)
-    final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final List<DateTime> availableDays = [];
-    for (int i = 0; i <= now.weekday - 1 && i < 5; i++) {
-      availableDays.add(DateTime(monday.year, monday.month, monday.day + i));
-    }
+    final dayStr = DateFormat('EEEE dd MMMM', 'fr_FR').format(date);
 
     showDialog(
       context: context,
@@ -305,85 +379,40 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
             return AlertDialog(
               backgroundColor: const Color(0xFF1a1a4a),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Row(
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('📝 ', style: TextStyle(fontSize: 24)),
-                  Expanded(
-                    child: Text('Noter ${child.name}',
-                        style: const TextStyle(color: Colors.amber, fontSize: 18)),
+                  Row(
+                    children: [
+                      const Text('📝 ', style: TextStyle(fontSize: 24)),
+                      Expanded(
+                        child: Text('Noter ${child.name}',
+                            style: const TextStyle(color: Colors.amber, fontSize: 18)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(dayStr, style: const TextStyle(color: Colors.amber, fontSize: 13)),
                   ),
                 ],
               ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sélection du jour
-                    const Text('Jour à noter :', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: availableDays.map((day) {
-                        final isSelected = day.day == selectedDate.day &&
-                            day.month == selectedDate.month &&
-                            day.year == selectedDate.year;
-                        final dayName = DateFormat('EEE dd', 'fr_FR').format(day);
-
-                        // Vérifier si une note existe déjà pour ce jour
-                        final existingNote = provider.getHistoryForChild(widget.childId).any((h) =>
-                            h.category == 'school_note' &&
-                            h.date.day == day.day &&
-                            h.date.month == day.month &&
-                            h.date.year == day.year);
-
-                        return GestureDetector(
-                          onTap: () {
-                            setDialogState(() {
-                              selectedDate = day;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.amber.withOpacity(0.3)
-                                  : Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected ? Colors.amber : Colors.white24,
-                                width: isSelected ? 2 : 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(dayName,
-                                    style: TextStyle(
-                                        color: isSelected ? Colors.amber : Colors.white70,
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                        fontSize: 13)),
-                                if (existingNote)
-                                  const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Note sur 20
-                    const Text('Note sur 20 :', style: TextStyle(color: Colors.white70, fontSize: 14)),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
                           onPressed: () {
-                            if (selectedGrade > 0) {
-                              setDialogState(() => selectedGrade--);
-                            }
+                            if (selectedGrade > 0) setDialogState(() => selectedGrade--);
                           },
                           icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
                         ),
@@ -410,16 +439,12 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                         ),
                         IconButton(
                           onPressed: () {
-                            if (selectedGrade < 20) {
-                              setDialogState(() => selectedGrade++);
-                            }
+                            if (selectedGrade < 20) setDialogState(() => selectedGrade++);
                           },
                           icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 32),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    // Slider
                     Slider(
                       value: selectedGrade.toDouble(),
                       min: 0,
@@ -427,9 +452,206 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                       divisions: 20,
                       activeColor: Colors.amber,
                       inactiveColor: Colors.white24,
-                      onChanged: (val) {
-                        setDialogState(() => selectedGrade = val.round());
+                      onChanged: (val) => setDialogState(() => selectedGrade = val.round()),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      onChanged: (val) => reason = val,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Raison (ex: Bonne journée...)',
+                        hintStyle: const TextStyle(color: Colors.white38),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.1),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('📺 ', style: TextStyle(fontSize: 16)),
+                          Expanded(
+                            child: Text(
+                              'Cette note donnera environ ${_previewMinutes(selectedGrade)}',
+                              style: const TextStyle(color: Colors.amber, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final noteReason = reason.isNotEmpty ? reason : 'Note du jour';
+                    await provider.addPoints(
+                      widget.childId,
+                      selectedGrade,
+                      '📝 $noteReason ($selectedGrade/20)',
+                      category: 'school_note',
+                      isBonus: true,
+                      date: date,
+                    );
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Valider', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ===== DIALOG AJOUTER NOTE (avec sélecteur de date libre) =====
+  void _showAddNote(BuildContext context, FamilyProvider provider, ChildModel child) {
+    int selectedGrade = 10;
+    String reason = '';
+    DateTime selectedDate = DateTime.now();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final dayStr = DateFormat('EEEE dd MMMM yyyy', 'fr_FR').format(selectedDate);
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1a1a4a),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  const Text('📝 ', style: TextStyle(fontSize: 24)),
+                  Expanded(
+                    child: Text('Noter ${child.name}',
+                        style: const TextStyle(color: Colors.amber, fontSize: 18)),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sélecteur de date libre
+                    const Text('Jour à noter :', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2024, 1, 1),
+                          lastDate: DateTime.now(),
+                          locale: const Locale('fr', 'FR'),
+                          builder: (context, child) {
+                            return Theme(
+                              data: ThemeData.dark().copyWith(
+                                colorScheme: const ColorScheme.dark(
+                                  primary: Colors.amber,
+                                  onPrimary: Colors.black,
+                                  surface: Color(0xFF1a1a4a),
+                                  onSurface: Colors.white,
+                                ),
+                                dialogBackgroundColor: const Color(0xFF1a1a4a),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setDialogState(() => selectedDate = picked);
+                        }
                       },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today_rounded, color: Colors.amber, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(dayStr, style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 14)),
+                            ),
+                            const Icon(Icons.edit_rounded, color: Colors.amber, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Note sur 20
+                    const Text('Note sur 20 :', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            if (selectedGrade > 0) setDialogState(() => selectedGrade--);
+                          },
+                          icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$selectedGrade/20',
+                            style: TextStyle(
+                              color: selectedGrade >= 16
+                                  ? Colors.greenAccent
+                                  : selectedGrade >= 12
+                                      ? Colors.yellow
+                                      : selectedGrade >= 8
+                                          ? Colors.orange
+                                          : Colors.red,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            if (selectedGrade < 20) setDialogState(() => selectedGrade++);
+                          },
+                          icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 32),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: selectedGrade.toDouble(),
+                      min: 0,
+                      max: 20,
+                      divisions: 20,
+                      activeColor: Colors.amber,
+                      inactiveColor: Colors.white24,
+                      onChanged: (val) => setDialogState(() => selectedGrade = val.round()),
                     ),
                     const SizedBox(height: 12),
 
@@ -447,7 +669,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Aperçu temps d'écran
+                    // Aperçu
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
