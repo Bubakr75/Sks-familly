@@ -12,6 +12,7 @@ import '../widgets/glass_card.dart';
 import 'manage_children_screen.dart';
 import 'badges_screen.dart';
 import 'punishment_lines_screen.dart';
+import 'immunity_lines_screen.dart';
 import 'pin_verification_screen.dart';
 import 'notes_screen.dart';
 import 'child_dashboard_screen.dart';
