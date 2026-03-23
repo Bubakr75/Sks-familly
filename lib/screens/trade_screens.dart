@@ -49,12 +49,12 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
         return Scaffold(
           backgroundColor: const Color(0xFF0a0a2a),
           appBar: AppBar(
-            title: Row(
+            title: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.storefront_rounded, color: Colors.amber, size: 22),
-                const SizedBox(width: 8),
-                const Text('Vente d\'immunités'),
+                Icon(Icons.storefront_rounded, color: Colors.amber, size: 22),
+                SizedBox(width: 8),
+                Text('Vente d\'immunités'),
               ],
             ),
             backgroundColor: Colors.transparent,
@@ -95,7 +95,6 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
           ),
           body: Column(
             children: [
-              // Bandeau stock d'immunités
               _buildImmunityBanner(child, availableImmunity),
               Expanded(
                 child: TabBarView(
@@ -199,8 +198,6 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   //  TAB MARCHÉ
   // ══════════════════════════════════════
   Widget _buildMarketTab(FamilyProvider provider, ChildModel child, int available, List<TradeModel> pendingForMe) {
-    // Offres en attente POUR cet enfant (quelqu'un lui vend)
-    // + offres créées PAR cet enfant en attente
     final myPendingSales = provider.trades
         .where((t) => t.isPending && t.fromChildId == widget.childId)
         .toList();
@@ -384,7 +381,6 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   //  TAB EN COURS
   // ══════════════════════════════════════
   Widget _buildActiveTab(FamilyProvider provider, ChildModel child, List<TradeModel> activeTrades) {
-    // On ne montre ici que les trades "accepted" ou "service_done"
     final inProgress = activeTrades.where((t) => t.isAccepted || t.isServiceDone).toList();
 
     if (inProgress.isEmpty) {
@@ -436,7 +432,6 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
@@ -500,10 +495,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
             child: Text('💼 ${trade.serviceDescription}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
           ),
           const SizedBox(height: 12),
-
-          // Actions selon le statut
           if (trade.isAccepted && !isSeller)
-            // L'acheteur peut marquer le service comme fait
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -519,9 +511,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                 ),
               ),
             ),
-
           if (trade.isServiceDone)
-            // Le parent doit valider
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -537,8 +527,6 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                 ),
               ),
             ),
-
-          // Bouton annuler toujours dispo
           const SizedBox(height: 6),
           Center(
             child: TextButton(
@@ -642,7 +630,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   }
 
   // ══════════════════════════════════════
-  //  DIALOG: CRÉER UNE VENTE
+  //  DIALOG: CRÉER UNE VENTE (CORRIGÉ)
   // ══════════════════════════════════════
   void _showCreateSaleDialog(BuildContext context, FamilyProvider provider, ChildModel seller, int maxLines) {
     final otherChildren = provider.children.where((c) => c.id != widget.childId).toList();
@@ -659,15 +647,17 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
       return;
     }
 
-    String? selectedBuyerId;
-    int lines = 1;
-    String service = '';
-
     showDialog(
       context: context,
       builder: (ctx) {
+        String? selectedBuyerId;
+        int lines = 1;
+        String service = '';
+
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
+            final bool canSubmit = selectedBuyerId != null && service.trim().isNotEmpty;
+
             return AlertDialog(
               backgroundColor: const Color(0xFF1a1a4a),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -683,7 +673,6 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sélection de l'acheteur
                     const Text('Vendre à :', style: TextStyle(color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 8),
                     Wrap(
@@ -706,10 +695,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  c.avatar.isNotEmpty ? c.avatar : '👤',
-                                  style: const TextStyle(fontSize: 16),
-                                ),
+                                Text(c.avatar.isNotEmpty ? c.avatar : '👤', style: const TextStyle(fontSize: 16)),
                                 const SizedBox(width: 6),
                                 Text(
                                   c.name,
@@ -725,8 +711,6 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                       }).toList(),
                     ),
                     const SizedBox(height: 20),
-
-                    // Nombre de lignes
                     const Text('Nombre de lignes :', style: TextStyle(color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
@@ -742,10 +726,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                             color: Colors.white.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(
-                            '$lines',
-                            style: const TextStyle(color: Color(0xFF00E676), fontSize: 28, fontWeight: FontWeight.w900),
-                          ),
+                          child: Text('$lines', style: const TextStyle(color: Color(0xFF00E676), fontSize: 28, fontWeight: FontWeight.w900)),
                         ),
                         IconButton(
                           onPressed: lines < maxLines ? () => setDialogState(() => lines++) : null,
@@ -753,16 +734,12 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                         ),
                       ],
                     ),
-                    Center(
-                      child: Text('max: $maxLines', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11)),
-                    ),
+                    Center(child: Text('max: $maxLines', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11))),
                     const SizedBox(height: 20),
-
-                    // Service demandé
                     const Text('Service demandé en échange :', style: TextStyle(color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 8),
                     TextField(
-                      onChanged: (val) => service = val,
+                      onChanged: (val) => setDialogState(() => service = val),
                       style: const TextStyle(color: Colors.white),
                       maxLines: 2,
                       decoration: InputDecoration(
@@ -770,10 +747,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                         hintStyle: const TextStyle(color: Colors.white30),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.08),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       ),
                     ),
                   ],
@@ -785,20 +759,18 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                   child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
                 ),
                 ElevatedButton.icon(
-                  onPressed: selectedBuyerId != null && service.trim().isNotEmpty
+                  onPressed: canSubmit
                       ? () async {
                           await provider.createTrade(widget.childId, selectedBuyerId!, lines, service.trim());
                           if (ctx.mounted) Navigator.pop(ctx);
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: const Row(
-                                  children: [
-                                    Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Vente proposée !'),
-                                  ],
-                                ),
+                                content: const Row(children: [
+                                  Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Vente proposée !'),
+                                ]),
                                 backgroundColor: const Color(0xFF00E676),
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -899,13 +871,11 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Row(
-                        children: [
-                          Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                          SizedBox(width: 8),
-                          Text('Vente validée ! Immunités transférées.'),
-                        ],
-                      ),
+                      content: const Row(children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                        SizedBox(width: 8),
+                        Text('Vente validée ! Immunités transférées.'),
+                      ]),
                       backgroundColor: const Color(0xFF7C4DFF),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
