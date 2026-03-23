@@ -16,6 +16,7 @@ import 'immunity_lines_screen.dart';
 import 'pin_verification_screen.dart';
 import 'notes_screen.dart';
 import 'child_dashboard_screen.dart';
+import 'school_notes_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -257,24 +258,42 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
                         child: PodiumWidget(children: provider.children),
                       ),
+                    // ===== QUICK ACTIONS - LIGNE 1 =====
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
                         children: [
-                          _buildQuickAction(Icons.emoji_events_rounded, 'Badges', const Color(0xFFFFD700), isDark, () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => BadgesScreen()));
-                          }),
-                          const SizedBox(width: 8),
-                          _buildQuickAction(Icons.edit_note_rounded, 'Lignes', const Color(0xFFFF1744), isDark, () {
+                          _buildQuickAction(Icons.edit_note_rounded, 'Punition', const Color(0xFFFF1744), isDark, () {
                             PinGuard.guardNavigation(context, const PunishmentLinesScreen());
                           }),
                           const SizedBox(width: 8),
-                          _buildQuickAction(Icons.tv_rounded, 'Ecran', const Color(0xFF7C4DFF), isDark, () {
-                            _showScreenTimeSummary(context, provider);
+                          _buildQuickAction(Icons.shield_rounded, 'Immunité', const Color(0xFF00E676), isDark, () {
+                            PinGuard.guardNavigation(context, const ImmunityLinesScreen());
                           }),
                           const SizedBox(width: 8),
-                          _buildQuickAction(Icons.child_care_rounded, 'Enfant', const Color(0xFF00E676), isDark, () {
+                          _buildQuickAction(Icons.tv_rounded, 'Écran', const Color(0xFF7C4DFF), isDark, () {
+                            _showScreenTimeSummary(context, provider);
+                          }),
+                        ],
+                      ),
+                    ),
+                    // ===== QUICK ACTIONS - LIGNE 2 =====
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Row(
+                        children: [
+                          _buildQuickAction(Icons.school_rounded, 'Notes', const Color(0xFF448AFF), isDark, () {
+                            if (provider.children.isNotEmpty) {
+                              _showSchoolNotesChildPicker(context, provider);
+                            }
+                          }),
+                          const SizedBox(width: 8),
+                          _buildQuickAction(Icons.child_care_rounded, 'Enfant', const Color(0xFFFF9800), isDark, () {
                             _showChildModePicker(context, provider);
+                          }),
+                          const SizedBox(width: 8),
+                          _buildQuickAction(Icons.emoji_events_rounded, 'Badges', const Color(0xFFFFD700), isDark, () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => BadgesScreen()));
                           }),
                         ],
                       ),
@@ -642,6 +661,41 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  // ===== SCHOOL NOTES CHILD PICKER =====
+  void _showSchoolNotesChildPicker(BuildContext context, FamilyProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141833),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
+            const SizedBox(height: 16),
+            ...provider.children.map((child) => ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22))),
+              ),
+              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SchoolNotesScreen(childId: child.id)));
+              },
+            )),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showChildModePicker(BuildContext context, FamilyProvider provider) {
     showModalBottomSheet(
       context: context,
@@ -1003,26 +1057,73 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             const SizedBox(height: 12),
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 12),
-            NeonText(text: 'Historique complet', fontSize: 18, color: Colors.white),
+            Text('Historique complet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
             const SizedBox(height: 8),
             Expanded(
-              child: ListView.builder(
-                controller: sc, itemCount: provider.history.length,
-                itemBuilder: (_, i) {
-                  final h = provider.history[i];
-                  final child = provider.getChild(h.childId);
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15),
-                      child: Icon(h.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 20),
+              child: provider.history.isEmpty
+                  ? Center(child: Text('Aucune activite', style: TextStyle(color: Colors.grey[600])))
+                  : ListView.builder(
+                      controller: sc, itemCount: provider.history.length,
+                      itemBuilder: (_, i) {
+                        final h = provider.history[i];
+                        final child = provider.getChild(h.childId);
+                        return ListTile(
+                          leading: Container(
+                            width: 40, height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12),
+                              border: Border.all(color: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.3) : const Color(0xFFFF1744).withValues(alpha: 0.3)),
+                            ),
+                            child: Icon(h.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 20),
+                          ),
+                          title: Text(child?.name ?? 'Inconnu', style: const TextStyle(color: Colors.white)),
+                          subtitle: Text('${h.reason}\n${h.date.day}/${h.date.month}/${h.date.year} ${h.date.hour}:${h.date.minute.toString().padLeft(2, '0')}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12)),
+                            child: Text('${h.isBonus ? '+' : ''}${h.points}', style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
+                          ),
+                          isThreeLine: true,
+                        );
+                      },
                     ),
-                    title: Text(child?.name ?? 'Inconnu'),
-                    subtitle: Text(h.reason, style: TextStyle(fontSize: 13, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    trailing: Text('${h.isBonus ? '+' : ''}${h.points}', style: TextStyle(fontWeight: FontWeight.w800, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
-                  );
-                },
-              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNotesChildPicker(BuildContext context, FamilyProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141833),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
+            const SizedBox(height: 16),
+            ...provider.children.map((child) => ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22))),
+              ),
+              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              subtitle: Text('${provider.getNotesForChild(child.id).length} notes', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => NotesScreen(childId: child.id, childName: child.name)));
+              },
+            )),
+            const SizedBox(height: 16),
           ],
         ),
       ),
