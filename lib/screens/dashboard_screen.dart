@@ -1,4 +1,4 @@
-import 'dart:convert';
+7uimport 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -1391,7 +1391,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         onPressed: _isRefreshing ? null : () => _refreshData(provider),
       ),
     );
-  }
 
   Widget _buildStatChip(
       IconData icon, String label, Color color, bool isDark) {
