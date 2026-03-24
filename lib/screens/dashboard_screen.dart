@@ -18,6 +18,7 @@ import 'notes_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'school_notes_screen.dart';
 import 'trade_screens.dart';
+import 'screen_time_screen.dart';
 import '../models/trade_model.dart';
 
 class DashboardScreen extends StatefulWidget {
