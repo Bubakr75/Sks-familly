@@ -2,7 +2,7 @@
   "name": "sks-family-functions",
   "description": "Cloud Functions for SKS Family notifications",
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "main": "index.js",
   "dependencies": {
