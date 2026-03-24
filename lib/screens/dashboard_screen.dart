@@ -1361,11 +1361,12 @@ class _DashboardScreenState extends State<DashboardScreen>
       padding: EdgeInsets.zero,
       onPressed: () {
         if (pin.isParentMode) {
-          pin.lockToChildMode();
-        } else {
+          if (pin.isParentMode) {
+  pin.switchToChildMode();
+} else {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
+            MaterialPageRoute(builder: (_) => PinVerificationScreen(onVerified: () {})),
           );
         }
       },
