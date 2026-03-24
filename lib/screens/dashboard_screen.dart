@@ -1350,7 +1350,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildLockButton(PinProvider pin) {
+    Widget _buildLockButton(PinProvider pin) {
     return IconButton(
       icon: Icon(
         pin.isParentMode ? Icons.lock_open_rounded : Icons.lock_rounded,
@@ -1361,16 +1361,23 @@ class _DashboardScreenState extends State<DashboardScreen>
       padding: EdgeInsets.zero,
       onPressed: () {
         if (pin.isParentMode) {
-          if (pin.isParentMode) {
-  pin.switchToChildMode();
-} else {
+          pin.lockParentMode();
+        } else {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => PinVerificationScreen(onVerified: () {})),
+            MaterialPageRoute(
+              builder: (_) => PinVerificationScreen(
+                onVerified: () {
+                  pin.unlockParentMode();
+                },
+              ),
+            ),
           );
         }
       },
     );
+  }
+
   }
 
   Widget _buildRefreshButton(
