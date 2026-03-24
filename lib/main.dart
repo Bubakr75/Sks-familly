@@ -42,8 +42,7 @@ void main() async {
         break;
       } catch (_) {}
 
-      await Firebase.initializeApp(await FcmService().init();
-
+      await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
@@ -70,6 +69,16 @@ void main() async {
 
   if (!firebaseReady && kDebugMode) {
     debugPrint('WARNING: Firebase not initialized after 3 attempts');
+  }
+
+  // Initialiser FCM pour les notifications push
+  if (firebaseReady) {
+    try {
+      await FcmService().init();
+      if (kDebugMode) debugPrint('FcmService initialized OK');
+    } catch (e) {
+      if (kDebugMode) debugPrint('FcmService init error: $e');
+    }
   }
 
   final familyProvider = FamilyProvider();
@@ -104,8 +113,6 @@ void main() async {
     final prefs = await SharedPreferences.getInstance();
     onboardingDone = prefs.getBool('onboarding_done') ?? false;
 
-    // Si on a déjà des données locales ou une synchro active,
-    // on ouvre directement l'app sans repasser par WelcomeScreen.
     openDirectlyToHome =
         familyProvider.children.isNotEmpty ||
         familyProvider.history.isNotEmpty ||
