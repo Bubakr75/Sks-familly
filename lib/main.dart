@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/fcm_service.dart';
 
 import 'firebase_options.dart';
 import 'providers/family_provider.dart';
@@ -41,7 +42,8 @@ void main() async {
         break;
       } catch (_) {}
 
-      await Firebase.initializeApp(
+      await Firebase.initializeApp(await FcmService().init();
+
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
