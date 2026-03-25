@@ -47,6 +47,6 @@ jobs:
           }' > .firebaserc
 
       - name: Deploy Functions
-        run: firebase deploy --only functions --project sks-familly-3f205
+        run: firebase deploy --only functions --project sks-familly-3f205 --force
         env:
           GOOGLE_APPLICATION_CREDENTIALS: sa.json
