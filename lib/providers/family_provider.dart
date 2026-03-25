@@ -1166,3 +1166,26 @@ class FamilyProvider extends ChangeNotifier {
     );
   }
 }
+  // ══════════════════════════════════════
+  //  RESET & CLEAR
+  // ══════════════════════════════════════
+  Future<void> resetAllScores() async {
+    for (final child in _children) {
+      child.points = 0;
+      child.badgeIds.clear();
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      if (_firestore.isConnected) await _firestore.saveChild(child);
+    }
+    notifyListeners();
+  }
+
+  Future<void> clearHistory() async {
+    _history.clear();
+    await _historyBox.clear();
+    if (_firestore.isConnected) {
+      for (final key in _historyBox.keys) {
+        await _firestore.deleteHistoryEntry(key.toString());
+      }
+    }
+    notifyListeners();
+  }
