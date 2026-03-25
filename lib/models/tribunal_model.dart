@@ -11,9 +11,9 @@ enum TribunalRole { plaintiff, accused, prosecutionLawyer, defenseLawyer, witnes
 // ══════════════════════════════════════
 class TribunalVote {
   final String childId;
-  final TribunalVerdict vote; // guilty ou innocent
+  final TribunalVerdict vote;
   final DateTime votedAt;
-  int pointsAwarded; // calculé après verdict
+  int pointsAwarded;
 
   TribunalVote({
     required this.childId,
@@ -79,7 +79,7 @@ class TribunalCase {
   String plaintiffId;
   String accusedId;
   List<TribunalParticipant> participants;
-  List<TribunalVote> votes; // NOUVEAU
+  List<TribunalVote> votes;
   TribunalStatus status;
   TribunalVerdict? verdict;
   String? verdictReason;
@@ -88,6 +88,7 @@ class TribunalCase {
   DateTime? verdictDate;
   int plaintiffPoints;
   int accusedPoints;
+  bool votingEnabled; // ← AJOUTÉ
 
   TribunalCase({
     required this.id,
@@ -105,6 +106,7 @@ class TribunalCase {
     this.verdictDate,
     this.plaintiffPoints = 0,
     this.accusedPoints = 0,
+    this.votingEnabled = false, // ← AJOUTÉ
   })  : participants = participants ?? [],
         votes = votes ?? [],
         filedDate = filedDate ?? DateTime.now();
@@ -124,8 +126,9 @@ class TribunalCase {
   int get innocentVotes => votes.where((v) => v.vote == TribunalVerdict.innocent).length;
   int get totalVotes => votes.length;
 
-  /// Enfants éligibles au vote : ni plaignant, ni accusé
+  /// Enfants éligibles au vote : vote activé + ni plaignant ni accusé
   bool canVote(String childId) =>
+      votingEnabled && // ← AJOUTÉ
       childId != plaintiffId &&
       childId != accusedId &&
       !hasVoted(childId) &&
@@ -219,6 +222,7 @@ class TribunalCase {
         'verdictDate': verdictDate?.toIso8601String(),
         'plaintiffPoints': plaintiffPoints,
         'accusedPoints': accusedPoints,
+        'votingEnabled': votingEnabled, // ← AJOUTÉ
       };
 
   factory TribunalCase.fromMap(Map<String, dynamic> map) => TribunalCase(
@@ -245,5 +249,6 @@ class TribunalCase {
         verdictDate: map['verdictDate'] != null ? DateTime.parse(map['verdictDate']) : null,
         plaintiffPoints: map['plaintiffPoints'] ?? 0,
         accusedPoints: map['accusedPoints'] ?? 0,
+        votingEnabled: map['votingEnabled'] ?? false, // ← AJOUTÉ
       );
 }
