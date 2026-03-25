@@ -30,12 +30,10 @@ class ChildCard extends StatefulWidget {
 }
 
 class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
-  // Seulement 1 controller pour le 1er, 1 pour le border top3, 1 pour la couronne du 1er
   AnimationController? _pulseController;
   AnimationController? _borderController;
   AnimationController? _crownController;
 
-  // Parallaxe 3D
   double _rotateX = 0.0;
   double _rotateY = 0.0;
   bool _showMenu = false;
@@ -46,7 +44,6 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    // On ne crée les animations lourdes QUE pour le top 3
     if (_isFirst) {
       _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
       _crownController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
@@ -121,7 +118,6 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
     final primary = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Pour les cartes hors top 3, pas d'AnimatedBuilder = pas de rebuild chaque frame
     if (!_isTop3) {
       return RepaintBoundary(
         child: Padding(
@@ -131,7 +127,6 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
       );
     }
 
-    // Top 3 seulement : animations
     final listenables = <Listenable>[];
     if (_pulseController != null) listenables.add(_pulseController!);
     if (_borderController != null) listenables.add(_borderController!);
@@ -175,7 +170,6 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
                   clipBehavior: Clip.none,
                   children: [
                     _buildMainCard(emoji, isDark, primary, pulseVal, borderAngle),
-                    // Reflet holographique seulement pendant le drag
                     if (isDark && (_rotateX != 0 || _rotateY != 0))
                       Positioned.fill(
                         child: IgnorePointer(
@@ -346,8 +340,8 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
             ),
           ),
         Container(
-          width: 62,
-          height: 62,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
@@ -368,13 +362,13 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
             child: _hasValidPhoto
                 ? Image.memory(
                     base64Decode(widget.child.photoBase64!),
-                    width: 62,
-                    height: 62,
+                    width: 80,
+                    height: 80,
                     fit: BoxFit.cover,
                     gaplessPlayback: true,
-                    errorBuilder: (_, __, ___) => Center(child: Text(emoji, style: const TextStyle(fontSize: 30))),
+                    errorBuilder: (_, __, ___) => Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
                   )
-                : Center(child: Text(emoji, style: const TextStyle(fontSize: 30))),
+                : Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
           ),
         ),
         if (_isFirst && _crownController != null)
