@@ -6,6 +6,40 @@ enum TribunalVerdict { guilty, innocent, dismissed }
 
 enum TribunalRole { plaintiff, accused, prosecutionLawyer, defenseLawyer, witness }
 
+// ══════════════════════════════════════
+//  VOTE D'UN ENFANT SUR UNE AFFAIRE
+// ══════════════════════════════════════
+class TribunalVote {
+  final String childId;
+  final TribunalVerdict vote; // guilty ou innocent
+  final DateTime votedAt;
+  int pointsAwarded; // calculé après verdict
+
+  TribunalVote({
+    required this.childId,
+    required this.vote,
+    DateTime? votedAt,
+    this.pointsAwarded = 0,
+  }) : votedAt = votedAt ?? DateTime.now();
+
+  Map<String, dynamic> toMap() => {
+        'childId': childId,
+        'vote': vote.name,
+        'votedAt': votedAt.toIso8601String(),
+        'pointsAwarded': pointsAwarded,
+      };
+
+  factory TribunalVote.fromMap(Map<String, dynamic> map) => TribunalVote(
+        childId: map['childId'] ?? '',
+        vote: TribunalVerdict.values.firstWhere(
+          (v) => v.name == map['vote'],
+          orElse: () => TribunalVerdict.innocent,
+        ),
+        votedAt: map['votedAt'] != null ? DateTime.parse(map['votedAt']) : DateTime.now(),
+        pointsAwarded: map['pointsAwarded'] ?? 0,
+      );
+}
+
 class TribunalParticipant {
   final String childId;
   final TribunalRole role;
@@ -45,6 +79,7 @@ class TribunalCase {
   String plaintiffId;
   String accusedId;
   List<TribunalParticipant> participants;
+  List<TribunalVote> votes; // NOUVEAU
   TribunalStatus status;
   TribunalVerdict? verdict;
   String? verdictReason;
@@ -61,6 +96,7 @@ class TribunalCase {
     required this.plaintiffId,
     required this.accusedId,
     List<TribunalParticipant>? participants,
+    List<TribunalVote>? votes,
     this.status = TribunalStatus.filed,
     this.verdict,
     this.verdictReason,
@@ -70,8 +106,33 @@ class TribunalCase {
     this.plaintiffPoints = 0,
     this.accusedPoints = 0,
   })  : participants = participants ?? [],
+        votes = votes ?? [],
         filedDate = filedDate ?? DateTime.now();
 
+  // ── Helpers votes ──
+  bool hasVoted(String childId) => votes.any((v) => v.childId == childId);
+
+  TribunalVote? getVote(String childId) {
+    try {
+      return votes.firstWhere((v) => v.childId == childId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int get guiltyVotes => votes.where((v) => v.vote == TribunalVerdict.guilty).length;
+  int get innocentVotes => votes.where((v) => v.vote == TribunalVerdict.innocent).length;
+  int get totalVotes => votes.length;
+
+  /// Enfants éligibles au vote : ni plaignant, ni accusé
+  bool canVote(String childId) =>
+      childId != plaintiffId &&
+      childId != accusedId &&
+      !hasVoted(childId) &&
+      !isClosed &&
+      (status == TribunalStatus.inProgress || status == TribunalStatus.deliberation);
+
+  // ── Helpers participants ──
   TribunalParticipant? getParticipant(TribunalRole role) {
     try {
       return participants.firstWhere((p) => p.role == role);
@@ -149,6 +210,7 @@ class TribunalCase {
         'plaintiffId': plaintiffId,
         'accusedId': accusedId,
         'participants': participants.map((p) => p.toMap()).toList(),
+        'votes': votes.map((v) => v.toMap()).toList(),
         'status': status.name,
         'verdict': verdict?.name,
         'verdictReason': verdictReason,
@@ -167,6 +229,10 @@ class TribunalCase {
         accusedId: map['accusedId'] ?? '',
         participants: (map['participants'] as List<dynamic>?)
                 ?.map((p) => TribunalParticipant.fromMap(Map<String, dynamic>.from(p)))
+                .toList() ??
+            [],
+        votes: (map['votes'] as List<dynamic>?)
+                ?.map((v) => TribunalVote.fromMap(Map<String, dynamic>.from(v)))
                 .toList() ??
             [],
         status: TribunalStatus.values.firstWhere((s) => s.name == map['status'], orElse: () => TribunalStatus.filed),
