@@ -863,6 +863,35 @@ class FamilyProvider extends ChangeNotifier {
       notifyListeners();
     } catch (_) {}
   }
+  /// Un juré change son vote
+  Future<void> changeTribunalVote(String caseId, String childId, TribunalVerdict newVote) async {
+    try {
+      final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
+      if (!tc.votingEnabled || tc.isClosed) return;
+      if (childId == tc.plaintiffId || childId == tc.accusedId) return;
+
+      // Retirer l'ancien vote
+      tc.votes.removeWhere((v) => v.childId == childId);
+      // Ajouter le nouveau
+      tc.votes.add(TribunalVote(childId: childId, vote: newVote));
+      await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Retirer un vote
+  Future<void> removeTribunalVote(String caseId, String childId) async {
+    try {
+      final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
+      if (!tc.votingEnabled || tc.isClosed) return;
+
+      tc.votes.removeWhere((v) => v.childId == childId);
+      await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
+      notifyListeners();
+    } catch (_) {}
+  }
 
   /// Distribue +1/-1 aux jurés selon le verdict final
   Future<void> _distributeVotePoints(TribunalCase tc) async {
