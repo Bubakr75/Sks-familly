@@ -1165,9 +1165,8 @@ class FamilyProvider extends ChangeNotifier {
       screenTimeData: _getAllScreenTimeData(),
     );
   }
-}
-  // ══════════════════════════════════════
-  //  RESET & CLEAR
+    // ══════════════════════════════════════
+  //  RESET & CLEAR (utilisé par settings_screen)
   // ══════════════════════════════════════
   Future<void> resetAllScores() async {
     for (final child in _children) {
@@ -1180,12 +1179,17 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<void> clearHistory() async {
+    final keys = _historyBox.keys.toList();
     _history.clear();
     await _historyBox.clear();
     if (_firestore.isConnected) {
-      for (final key in _historyBox.keys) {
-        await _firestore.deleteHistoryEntry(key.toString());
+      for (final key in keys) {
+        try {
+          await _firestore.deleteHistoryEntry(key.toString());
+        } catch (_) {}
       }
     }
     notifyListeners();
   }
+}
+  
