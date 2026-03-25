@@ -1178,16 +1178,11 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> clearHistory() async {
-    final keys = _historyBox.keys.toList();
+    Future<void> clearHistory() async {
     _history.clear();
     await _historyBox.clear();
     if (_firestore.isConnected) {
-      for (final key in keys) {
-        try {
-          await _firestore.deleteHistoryEntry(key.toString());
-        } catch (_) {}
-      }
+      await _firestore.clearAllHistory();
     }
     notifyListeners();
   }
