@@ -249,6 +249,7 @@ class FamilyProvider extends ChangeNotifier {
     }
     return data;
   }
+
   // ══════════════════════════════════════
   //  CHILDREN
   // ══════════════════════════════════════
@@ -583,6 +584,7 @@ class FamilyProvider extends ChangeNotifier {
     if (_firestore.isConnected) await _firestore.deleteCustomBadge(id);
     notifyListeners();
   }
+
   // ══════════════════════════════════════
   //  SCREEN TIME
   // ══════════════════════════════════════
@@ -665,7 +667,7 @@ class FamilyProvider extends ChangeNotifier {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       childId: childId,
       points: minutes.abs(),
-      reason: '📺 $reason (${minutes > 0 ? '+' : ''}${minutes}min)',
+      reason: '\u{1F4FA} $reason (${minutes > 0 ? '+' : ''}${minutes}min)',
       category: 'screen_time_bonus',
       isBonus: minutes > 0,
     );
@@ -691,7 +693,7 @@ class FamilyProvider extends ChangeNotifier {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       childId: childId,
       points: rating,
-      reason: '📋 Note samedi: $rating/20',
+      reason: '\u{1F4CB} Note samedi: $rating/20',
       category: 'saturday_rating',
       isBonus: true,
     );
@@ -823,6 +825,65 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ══════════════════════════════════════
+  //  TRIBUNAL — VOTES DES JURÉS
+  // ══════════════════════════════════════
+
+  /// Le juge (parent) active le vote pour une affaire
+  Future<void> enableTribunalVoting(String caseId) async {
+    try {
+      final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
+      tc.votingEnabled = true;
+      await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Le juge (parent) désactive le vote
+  Future<void> disableTribunalVoting(String caseId) async {
+    try {
+      final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
+      tc.votingEnabled = false;
+      await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Un juré vote coupable ou innocent
+  Future<void> castTribunalVote(String caseId, String childId, TribunalVerdict vote) async {
+    try {
+      final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
+      if (!tc.canVote(childId)) return;
+
+      tc.votes.add(TribunalVote(childId: childId, vote: vote));
+      await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Distribue +1/-1 aux jurés selon le verdict final
+  Future<void> _distributeVotePoints(TribunalCase tc) async {
+    if (tc.verdict == null || tc.verdict == TribunalVerdict.dismissed) return;
+
+    for (final vote in tc.votes) {
+      final correct = vote.vote == tc.verdict;
+      vote.pointsAwarded = correct ? 1 : -1;
+      await addPoints(
+        vote.childId,
+        1,
+        '\u{1F5F3} Tribunal (jure): ${correct ? "bon vote" : "mauvais vote"}',
+        category: 'tribunal_vote',
+        isBonus: correct,
+      );
+    }
+  }
+
+  // ══════════════════════════════════════
+  //  TRIBUNAL — VERDICT
+  // ══════════════════════════════════════
   Future<void> renderVerdict({
     required String caseId,
     required TribunalVerdict verdict,
@@ -843,11 +904,11 @@ class FamilyProvider extends ChangeNotifier {
       tc.accusedPoints = accusedPoints;
 
       if (plaintiffPoints != 0) {
-        await addPoints(tc.plaintiffId, plaintiffPoints.abs(), '⚖️ Tribunal: $reason',
+        await addPoints(tc.plaintiffId, plaintiffPoints.abs(), '\u{2696} Tribunal: $reason',
             category: 'tribunal', isBonus: plaintiffPoints > 0);
       }
       if (accusedPoints != 0) {
-        await addPoints(tc.accusedId, accusedPoints.abs(), '⚖️ Tribunal: $reason',
+        await addPoints(tc.accusedId, accusedPoints.abs(), '\u{2696} Tribunal: $reason',
             category: 'tribunal', isBonus: accusedPoints > 0);
       }
 
@@ -857,7 +918,7 @@ class FamilyProvider extends ChangeNotifier {
             final participant = tc.participants.firstWhere((p) => p.childId == entry.key,
                 orElse: () => TribunalParticipant(childId: entry.key, role: TribunalRole.witness));
             participant.pointsAwarded = entry.value;
-            await addPoints(entry.key, entry.value.abs(), '⚖️ Tribunal (avocat)',
+            await addPoints(entry.key, entry.value.abs(), '\u{2696} Tribunal (avocat)',
                 category: 'tribunal', isBonus: entry.value > 0);
           }
         }
@@ -878,17 +939,21 @@ class FamilyProvider extends ChangeNotifier {
             if (wParticipant.isNotEmpty) {
               wParticipant.first.pointsAwarded = entry.value;
             }
-            await addPoints(entry.key, entry.value.abs(), '⚖️ Tribunal (temoin)',
+            await addPoints(entry.key, entry.value.abs(), '\u{2696} Tribunal (temoin)',
                 category: 'tribunal', isBonus: entry.value > 0);
           }
         }
       }
+
+      // Distribuer les points de votes des jurés
+      await _distributeVotePoints(tc);
 
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
       if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       notifyListeners();
     } catch (_) {}
   }
+
   // ══════════════════════════════════════
   //  TRADES (VENTE D'IMMUNITÉ)
   // ══════════════════════════════════════
@@ -954,7 +1019,6 @@ class FamilyProvider extends ChangeNotifier {
       final trade = _trades.firstWhere((t) => t.id == tradeId);
       if (!trade.isServiceDone) return;
 
-      // Retirer les lignes d'immunité du vendeur
       int remaining = trade.immunityLines;
       final fromImmunities = getImmunitiesForChild(trade.fromChildId)
           .where((im) => im.isUsable)
@@ -969,7 +1033,6 @@ class FamilyProvider extends ChangeNotifier {
         if (_firestore.isConnected) await _firestore.saveImmunity(im);
       }
 
-      // Donner les lignes à l'acheteur
       await addImmunity(
         trade.toChildId,
         'Vente: ${trade.serviceDescription}',
@@ -1048,46 +1111,58 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // ══════════════════════════════════════
-  //  RESET / CLEAR
-  // ══════════════════════════════════════
-  Future<void> resetAllScores() async {
-    for (var child in _children) {
-      child.points = 0;
-      child.badgeIds.clear();
-      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-      if (_firestore.isConnected) await _firestore.saveChild(child);
-    }
-    notifyListeners();
-  }
-
-  Future<void> clearHistory() async {
-    _history.clear();
-    await _historyBox.clear();
-    if (_firestore.isConnected) await _firestore.clearAllHistory();
-    notifyListeners();
-  }
-
-  // ══════════════════════════════════════
-  //  SAVE ALL LOCAL
+  //  RESET / CLEAR / SAVE ALL
   // ══════════════════════════════════════
   Future<void> _saveAllLocal() async {
+    _saveBoxFromList(_childrenBox, _children, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_historyBox, _history, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_goalsBox, _goals, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_notesBox, _notes, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_punishmentsBox, _punishments, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_immunitiesBox, _immunities, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_tribunalBox, _tribunalCases, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_badgesBox, _customBadges, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_tradesBox, _trades, (e) => e.id, (e) => e.toMap());
+  }
+
+  Future<void> resetAll() async {
+    _children.clear();
+    _history.clear();
+    _goals.clear();
+    _notes.clear();
+    _punishments.clear();
+    _immunities.clear();
+    _tribunalCases.clear();
+    _customBadges.clear();
+    _trades.clear();
+
     await _childrenBox.clear();
-    for (final c in _children) await _childrenBox.put(c.id, jsonEncode(c.toMap()));
     await _historyBox.clear();
-    for (final h in _history) await _historyBox.put(h.id, jsonEncode(h.toMap()));
     await _goalsBox.clear();
-    for (final g in _goals) await _goalsBox.put(g.id, jsonEncode(g.toMap()));
     await _notesBox.clear();
-    for (final n in _notes) await _notesBox.put(n.id, jsonEncode(n.toMap()));
     await _punishmentsBox.clear();
-    for (final p in _punishments) await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
     await _immunitiesBox.clear();
-    for (final im in _immunities) await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
     await _tribunalBox.clear();
-    for (final tc in _tribunalCases) await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
     await _badgesBox.clear();
-    for (final b in _customBadges) await _badgesBox.put(b.id, jsonEncode(b.toMap()));
+    await _screenTimeBox.clear();
     await _tradesBox.clear();
-    for (final t in _trades) await _tradesBox.put(t.id, jsonEncode(t.toMap()));
+
+    notifyListeners();
+  }
+
+  Future<void> syncAll() async {
+    if (!_firestore.isConnected) return;
+    await _firestore.uploadAllData(
+      children: _children,
+      history: _history,
+      goals: _goals,
+      punishments: _punishments,
+      notes: _notes,
+      immunities: _immunities,
+      trades: _trades,
+      tribunalCases: _tribunalCases,
+      customBadges: _customBadges,
+      screenTimeData: _getAllScreenTimeData(),
+    );
   }
 }
