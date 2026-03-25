@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
@@ -19,7 +20,9 @@ import 'child_dashboard_screen.dart';
 import 'school_notes_screen.dart';
 import 'trade_screens.dart';
 import 'screen_time_screen.dart';
+import 'tribunal_screen.dart';
 import '../models/trade_model.dart';
+import '../models/history_entry.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -172,6 +175,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ═══ HEADER ═══
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
                       child: Row(
@@ -210,6 +214,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ],
                       ),
                     ),
+
+                    // ═══ STAT CHIPS ═══
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -223,6 +229,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ],
                         ),
                       ),
+
+                    // ═══ TODAY BANNER ═══
                     if (todayEntries.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -245,11 +253,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ),
                         ),
                       ),
+
+                    // ═══ PODIUM (déjà interactif via PodiumWidget) ═══
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
                         child: PodiumWidget(children: provider.children),
                       ),
+
+                    // ═══ QUICK ACTIONS (Badges remplacé par Tribunal) ═══
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
@@ -280,12 +292,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                             _showChildModePicker(context, provider);
                           }),
                           const SizedBox(width: 8),
-                          _buildQuickAction(Icons.emoji_events_rounded, 'Badges', const Color(0xFFFFD700), isDark, () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => BadgesScreen()));
+                          // ★ TRIBUNAL au lieu de Badges ★
+                          _buildQuickAction(Icons.gavel_rounded, 'Tribunal', const Color(0xFF5D4037), isDark, () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const TribunalScreen()));
                           }),
                         ],
                       ),
                     ),
+
+                    // ═══ TRADES EN COURS (cliquables) ═══
                     if (activeTrades.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -300,61 +315,60 @@ class _DashboardScreenState extends State<DashboardScreen>
                               Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2), decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)), child: Text('${activeTrades.length}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
                             ]),
                             const SizedBox(height: 8),
-                            ...activeTrades.map((trade) {
-                              final seller = provider.getChild(trade.fromChildId);
-                              final buyer = provider.getChild(trade.toChildId);
-                              final statusColor = _tradeStatusColor(trade);
-                              final statusLabel = _tradeStatusLabel(trade);
-                              final statusIcon = _tradeStatusIcon(trade);
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(16), border: Border.all(color: statusColor.withValues(alpha: 0.3))),
-                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(statusIcon, color: statusColor, size: 14), const SizedBox(width: 6), Text(statusLabel, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w600))])),
-                                  const SizedBox(height: 10),
-                                  Row(children: [
-                                    Container(width: 36, height: 36, decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.sell_rounded, color: Colors.white54, size: 18)),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                      Text('${seller?.name ?? "?"} → ${buyer?.name ?? "?"}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                                      Text('${trade.immunityLines} ligne${trade.immunityLines > 1 ? 's' : ''} - ${trade.serviceDescription}', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    ])),
-                                    Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF00E676).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.4))), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 14), const SizedBox(width: 4), Text('${trade.immunityLines} ligne${trade.immunityLines > 1 ? 's' : ''}', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.w700, fontSize: 12))])),
-                                  ]),
-                                  const SizedBox(height: 10),
-                                  Row(children: [
-                                    Expanded(child: OutlinedButton.icon(onPressed: () async { await provider.cancelTrade(trade.id); }, icon: const Icon(Icons.close_rounded, size: 16), label: const Text('Annuler'), style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFFF1744), side: BorderSide(color: const Color(0xFFFF1744).withValues(alpha: 0.4)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 10)))),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: ElevatedButton.icon(onPressed: trade.isServiceDone ? () => _showParentValidationDialog(context, provider, trade) : null, icon: Icon(trade.isServiceDone ? Icons.gavel_rounded : Icons.hourglass_top_rounded, size: 16), label: Text(trade.isServiceDone ? 'Valider' : statusLabel), style: ElevatedButton.styleFrom(backgroundColor: trade.isServiceDone ? const Color(0xFF7C4DFF) : Colors.orange.withValues(alpha: 0.3), foregroundColor: trade.isServiceDone ? Colors.white : Colors.orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 10)))),
-                                  ]),
-                                ]),
-                              );
-                            }),
+                            ...activeTrades.map((trade) => _buildInteractiveTradeCard(trade, provider)),
                           ],
                         ),
                       ),
+
+                    // ═══ CARTES ENFANTS (avec notes et écran cliquables) ═══
                     if (provider.children.isNotEmpty)
                       ...provider.children.map((child) {
                         final weekNotes = _getWeekNotesForChild(child.id, provider);
                         final screenTime = _getScreenTimeForChild(child.id, provider);
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          child: GlassCard(margin: EdgeInsets.zero, padding: const EdgeInsets.all(12), borderRadius: 16, onTap: () => _showChildDetail(context, child, provider), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            ChildCard(child: child, onTap: null),
-                            const SizedBox(height: 8),
-                            _buildWeekNotesBar(weekNotes, child.name),
-                            const SizedBox(height: 6),
-                            _buildScreenTimeMini(child.id, screenTime, provider),
-                          ])),
+                          child: GlassCard(
+                            margin: EdgeInsets.zero,
+                            padding: const EdgeInsets.all(12),
+                            borderRadius: 16,
+                            onTap: () => _showChildDetail(context, child, provider),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ChildCard(child: child, onTap: null),
+                                const SizedBox(height: 8),
+                                // ★ Barre notes cliquable → SchoolNotesScreen ★
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => SchoolNotesScreen(childId: child.id)));
+                                  },
+                                  child: _buildWeekNotesBar(weekNotes, child.name),
+                                ),
+                                const SizedBox(height: 6),
+                                // ★ Temps d'écran cliquable → ChildDashboard onglet 1 ★
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => ChildDashboardScreen(childId: child.id)));
+                                  },
+                                  child: _buildScreenTimeMini(child.id, screenTime, provider),
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       }),
+
+                    // ═══ EMPTY STATE ═══
                     if (provider.children.isEmpty)
                       Padding(padding: const EdgeInsets.all(40), child: Center(child: Column(children: [
                         Icon(Icons.family_restroom_rounded, size: 64, color: Colors.white.withValues(alpha: 0.15)),
                         const SizedBox(height: 16),
                         Text('Ajoutez votre premier enfant !', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
                       ]))),
+
+                    // ═══ HISTORIQUE RECENT (cliquable) ═══
                     if (provider.history.isNotEmpty) ...[
                       Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 8), child: Row(children: [
                         const NeonText(text: 'Activite recente', fontSize: 18, color: Colors.white, glowIntensity: 0.15),
@@ -363,17 +377,22 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ])),
                       ...provider.history.take(5).map((entry) {
                         final child = provider.getChild(entry.childId);
-                        return GlassCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          child: Row(children: [
-                            Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15)), child: Icon(entry.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 18)),
-                            const SizedBox(width: 12),
-                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                              Text(entry.reason, style: TextStyle(fontSize: 12, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ])),
-                            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12)), child: Text('${entry.isBonus ? '+' : ''}${entry.points}', style: TextStyle(fontWeight: FontWeight.w800, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)))),
-                          ]),
+                        return GestureDetector(
+                          onTap: () => _showHistoryDetail(context, entry, child, provider),
+                          child: GlassCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            child: Row(children: [
+                              Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15)), child: Icon(entry.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 18)),
+                              const SizedBox(width: 12),
+                              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                Text(entry.reason, style: TextStyle(fontSize: 12, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ])),
+                              Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12)), child: Text('${entry.isBonus ? '+' : ''}${entry.points}', style: TextStyle(fontWeight: FontWeight.w800, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)))),
+                              const SizedBox(width: 6),
+                              Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.3), size: 18),
+                            ]),
+                          ),
                         );
                       }),
                     ],
@@ -388,6 +407,171 @@ class _DashboardScreenState extends State<DashboardScreen>
       ),
     );
   }
+
+  // ═══════════════════════════════════════
+  //  ★ TRADE CARD INTERACTIF ★
+  // ═══════════════════════════════════════
+  Widget _buildInteractiveTradeCard(TradeModel trade, FamilyProvider provider) {
+    final seller = provider.getChild(trade.fromChildId);
+    final buyer = provider.getChild(trade.toChildId);
+    final statusColor = _tradeStatusColor(trade);
+    final statusLabel = _tradeStatusLabel(trade);
+    final statusIcon = _tradeStatusIcon(trade);
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        // Ouvre le TradeScreen du vendeur
+        Navigator.push(context, MaterialPageRoute(builder: (_) => TradeScreen(childId: trade.fromChildId)));
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(16), border: Border.all(color: statusColor.withValues(alpha: 0.3))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(
+            children: [
+              Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(statusIcon, color: statusColor, size: 14), const SizedBox(width: 6), Text(statusLabel, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w600))])),
+              const Spacer(),
+              Icon(Icons.open_in_new_rounded, color: statusColor.withValues(alpha: 0.5), size: 16),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            Container(width: 36, height: 36, decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.sell_rounded, color: Colors.white54, size: 18)),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${seller?.name ?? "?"}  \u{2192}  ${buyer?.name ?? "?"}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              Text('${trade.immunityLines} ligne${trade.immunityLines > 1 ? 's' : ''} - ${trade.serviceDescription}', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ])),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF00E676).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.4))), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 14), const SizedBox(width: 4), Text('${trade.immunityLines}', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.w700, fontSize: 12))])),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(onPressed: () async { await provider.cancelTrade(trade.id); }, icon: const Icon(Icons.close_rounded, size: 16), label: const Text('Annuler'), style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFFF1744), side: BorderSide(color: const Color(0xFFFF1744).withValues(alpha: 0.4)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 10)))),
+            const SizedBox(width: 10),
+            Expanded(child: ElevatedButton.icon(onPressed: trade.isServiceDone ? () => _showParentValidationDialog(context, provider, trade) : null, icon: Icon(trade.isServiceDone ? Icons.gavel_rounded : Icons.hourglass_top_rounded, size: 16), label: Text(trade.isServiceDone ? 'Valider' : statusLabel), style: ElevatedButton.styleFrom(backgroundColor: trade.isServiceDone ? const Color(0xFF7C4DFF) : Colors.orange.withValues(alpha: 0.3), foregroundColor: trade.isServiceDone ? Colors.white : Colors.orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 10)))),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════
+  //  ★ HISTORY DETAIL POPUP ★
+  // ═══════════════════════════════════════
+  void _showHistoryDetail(BuildContext context, HistoryEntry entry, dynamic child, FamilyProvider provider) {
+    final isPositive = entry.isBonus && entry.points > 0;
+    final color = isPositive ? const Color(0xFF00E676) : const Color(0xFFFF1744);
+    final dateStr = '${entry.date.day.toString().padLeft(2, '0')}/${entry.date.month.toString().padLeft(2, '0')}/${entry.date.year} a ${entry.date.hour.toString().padLeft(2, '0')}:${entry.date.minute.toString().padLeft(2, '0')}';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0D1B2A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            // Icone + points
+            Container(
+              width: 70, height: 70,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.15), border: Border.all(color: color.withValues(alpha: 0.4), width: 2)),
+              child: Center(child: Text('${isPositive ? '+' : ''}${entry.points}', style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 24))),
+            ),
+            const SizedBox(height: 16),
+            // Enfant
+            Text(child?.name ?? 'Inconnu', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20)),
+            const SizedBox(height: 8),
+            // Raison
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withValues(alpha: 0.1))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Raison', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(entry.reason, style: const TextStyle(color: Colors.white, fontSize: 15)),
+              ]),
+            ),
+            const SizedBox(height: 12),
+            // Infos
+            Row(children: [
+              Expanded(child: _detailChip(Icons.category_rounded, 'Categorie', entry.category, const Color(0xFF448AFF))),
+              const SizedBox(width: 10),
+              Expanded(child: _detailChip(Icons.access_time_rounded, 'Date', dateStr, Colors.amber)),
+            ]),
+            // Photo preuve
+            if (entry.hasProofPhoto) ...[
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  showDialog(context: context, builder: (ctx) => Dialog(
+                    backgroundColor: Colors.black, insetPadding: const EdgeInsets.all(8),
+                    child: Stack(children: [
+                      InteractiveViewer(child: Image.memory(base64Decode(entry.proofPhotoBase64!), fit: BoxFit.contain)),
+                      Positioned(top: 8, right: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 28), onPressed: () => Navigator.pop(ctx))),
+                    ]),
+                  ));
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.blue.withValues(alpha: 0.2))),
+                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.photo_rounded, color: Colors.blue, size: 20),
+                    SizedBox(width: 8),
+                    Text('Voir la preuve photo', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            // Bouton voir profil
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  if (child != null) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => ChildDashboardScreen(childId: child.id)));
+                  }
+                },
+                icon: const Icon(Icons.person_rounded, size: 18),
+                label: const Text('Voir le profil'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF7C4DFF),
+                  side: BorderSide(color: const Color(0xFF7C4DFF).withValues(alpha: 0.4)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailChip(IconData icon, String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.2))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Icon(icon, color: color, size: 14), const SizedBox(width: 6), Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600))]),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+      ]),
+    );
+  }
+
+  // ═══════════════════════════════════════
+  //  WIDGETS EXISTANTS (inchangés)
+  // ═══════════════════════════════════════
   Widget _buildScreenTimeMini(String childId, int totalMinutes, FamilyProvider provider) {
     final satMin = provider.getSaturdayMinutes(childId);
     final sunMin = provider.getSundayMinutes(childId);
@@ -409,55 +593,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         Text('= ${_formatMinutes(totalMinutes)}', style: TextStyle(color: barColor, fontWeight: FontWeight.w800, fontSize: 12)),
         const SizedBox(width: 8),
         Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: progress, minHeight: 5, backgroundColor: Colors.white.withValues(alpha: 0.08), valueColor: AlwaysStoppedAnimation(barColor)))),
+        const SizedBox(width: 6),
+        Icon(Icons.chevron_right_rounded, color: const Color(0xFFB388FF).withValues(alpha: 0.5), size: 16),
       ]),
-    );
-  }
-
-  void _showScreenTimeSummary(BuildContext context, FamilyProvider provider) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context, isScrollControlled: true, backgroundColor: isDark ? const Color(0xFF141833) : null,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
-        const SizedBox(height: 16),
-        const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.tv_rounded, color: Color(0xFFB388FF), size: 24), SizedBox(width: 10), Text("Temps d'ecran - Week-end", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white))]),
-        const SizedBox(height: 20),
-        if (provider.children.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Aucun enfant', style: TextStyle(color: Colors.white60)))
-        else ...provider.children.map((child) {
-          final satMin = provider.getSaturdayMinutes(child.id);
-          final sunMin = provider.getSundayMinutes(child.id);
-          final totalMin = satMin + sunMin;
-          final progress = (totalMin / 720).clamp(0.0, 1.0);
-          Color barColor;
-          if (progress >= 0.5) { barColor = const Color(0xFF00E676); }
-          else if (progress >= 0.25) { barColor = Colors.orange; }
-          else { barColor = const Color(0xFFFF1744); }
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.25))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                child.hasPhoto ? ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.memory(base64Decode(child.photoBase64), width: 36, height: 36, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildAvatarFallback(child))) : _buildAvatarFallback(child),
-                const SizedBox(width: 12),
-                Expanded(child: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15))),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: barColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: barColor.withValues(alpha: 0.4))), child: Text(_formatMinutes(totalMin), style: TextStyle(color: barColor, fontWeight: FontWeight.w900, fontSize: 14))),
-              ]),
-              const SizedBox(height: 10),
-              ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: progress, minHeight: 6, backgroundColor: Colors.white.withValues(alpha: 0.08), valueColor: AlwaysStoppedAnimation(barColor))),
-              const SizedBox(height: 8),
-              Row(children: [
-                Text('Sam: ${_formatMinutes(satMin)}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
-                const SizedBox(width: 16),
-                Text('Dim: ${_formatMinutes(sunMin)}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
-                const Spacer(),
-                Text('/ 12h max', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
-              ]),
-            ]),
-          );
-        }),
-        const SizedBox(height: 8),
-      ])),
     );
   }
 
@@ -529,6 +667,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             ]),
           ));
         }),
+        const SizedBox(width: 6),
+        Icon(Icons.chevron_right_rounded, color: const Color(0xFF448AFF).withValues(alpha: 0.5), size: 16),
       ]),
     );
   }
@@ -582,15 +722,23 @@ class _DashboardScreenState extends State<DashboardScreen>
           Expanded(child: ListView.builder(controller: sc, itemCount: provider.history.length, itemBuilder: (_, i) {
             final entry = provider.history[i];
             final child = provider.getChild(entry.childId);
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(12)),
-              child: Row(children: [
-                Container(width: 32, height: 32, decoration: BoxDecoration(shape: BoxShape.circle, color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15)), child: Icon(entry.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 16)),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), Text(entry.reason, style: TextStyle(fontSize: 11, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis)])),
-                Text('${entry.isBonus ? '+' : ''}${entry.points}', style: TextStyle(fontWeight: FontWeight.w800, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
-              ]),
+            return GestureDetector(
+              onTap: () {
+                Navigator.pop(ctx);
+                _showHistoryDetail(context, entry, child, provider);
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(12)),
+                child: Row(children: [
+                  Container(width: 32, height: 32, decoration: BoxDecoration(shape: BoxShape.circle, color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15)), child: Icon(entry.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 16)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), Text(entry.reason, style: TextStyle(fontSize: 11, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+                  Text('${entry.isBonus ? '+' : ''}${entry.points}', style: TextStyle(fontWeight: FontWeight.w800, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744))),
+                  const SizedBox(width: 6),
+                  Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.3), size: 16),
+                ]),
+              ),
             );
           })),
         ])),
