@@ -121,9 +121,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  // ══════════════════════════════════════
-  //  STATS
-  // ══════════════════════════════════════
   Widget _buildTribunalStats(FamilyProvider provider) {
     final total = provider.tribunalCases.length;
     final active = provider.activeTribunalCases.length;
@@ -161,9 +158,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  // ══════════════════════════════════════
-  //  LISTES
-  // ══════════════════════════════════════
   Widget _buildActiveCases(FamilyProvider provider) {
     final cases = provider.activeTribunalCases;
     if (cases.isEmpty) {
@@ -208,9 +202,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  // ══════════════════════════════════════
-  //  CARTE AFFAIRE
-  // ══════════════════════════════════════
   Widget _buildCaseCard(TribunalCase tc, FamilyProvider provider) {
     final plaintiff = provider.getChild(tc.plaintiffId);
     final accused = provider.getChild(tc.accusedId);
@@ -224,10 +215,7 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              _courtBrown.withValues(alpha: 0.15),
-              tc.statusColor.withValues(alpha: 0.08),
-            ],
+            colors: [_courtBrown.withValues(alpha: 0.15), tc.statusColor.withValues(alpha: 0.08)],
           ),
           border: Border.all(color: tc.statusColor.withValues(alpha: 0.3)),
         ),
@@ -236,27 +224,19 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 children: [
                   Text(tc.statusEmoji, style: const TextStyle(fontSize: 20)),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(tc.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
+                  Expanded(child: Text(tc.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis)),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: tc.statusColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: tc.statusColor.withValues(alpha: 0.3)),
-                    ),
+                    decoration: BoxDecoration(color: tc.statusColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: tc.statusColor.withValues(alpha: 0.3))),
                     child: Text(tc.statusLabel, style: TextStyle(color: tc.statusColor, fontSize: 10, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              // VS
               Row(
                 children: [
                   Expanded(child: _buildPartyChip(plaintiff, 'Plaignant', _courtBlue)),
@@ -264,11 +244,7 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _courtRed.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: _courtRed.withValues(alpha: 0.3)),
-                      ),
+                      decoration: BoxDecoration(color: _courtRed.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10), border: Border.all(color: _courtRed.withValues(alpha: 0.3))),
                       child: const Text('VS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
                     ),
                   ),
@@ -278,15 +254,10 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
               const SizedBox(height: 10),
               Text(tc.description, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 8),
-              // Votes mini-résumé
               if (tc.totalVotes > 0) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _courtPurple.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _courtPurple.withValues(alpha: 0.2)),
-                  ),
+                  decoration: BoxDecoration(color: _courtPurple.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: _courtPurple.withValues(alpha: 0.2))),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -302,7 +273,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                 ),
                 const SizedBox(height: 8),
               ],
-              // Footer
               Row(
                 children: [
                   Icon(Icons.calendar_today_rounded, size: 12, color: Colors.white.withValues(alpha: 0.4)),
@@ -323,18 +293,13 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                     ]),
                 ],
               ),
-              // Verdict
               if (tc.verdict != null) ...[
                 const SizedBox(height: 10),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: tc.verdict == TribunalVerdict.guilty
-                        ? _courtRed.withValues(alpha: 0.1)
-                        : tc.verdict == TribunalVerdict.innocent
-                            ? _courtGreen.withValues(alpha: 0.1)
-                            : Colors.grey.withValues(alpha: 0.1),
+                    color: tc.verdict == TribunalVerdict.guilty ? _courtRed.withValues(alpha: 0.1) : tc.verdict == TribunalVerdict.innocent ? _courtGreen.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -365,11 +330,7 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
   Widget _buildPartyChip(ChildModel? child, String role, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.2))),
       child: Column(
         children: [
           if (child != null && child.hasPhoto)
@@ -392,9 +353,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  // ══════════════════════════════════════
-  //  DETAIL AFFAIRE
-  // ══════════════════════════════════════
   void _showCaseDetail(BuildContext context, TribunalCase tc, FamilyProvider provider) {
     final plaintiff = provider.getChild(tc.plaintiffId);
     final accused = provider.getChild(tc.accusedId);
@@ -423,16 +381,11 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
               Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: tc.statusColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: tc.statusColor.withValues(alpha: 0.3)),
-                  ),
+                  decoration: BoxDecoration(color: tc.statusColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10), border: Border.all(color: tc.statusColor.withValues(alpha: 0.3))),
                   child: Text('${tc.statusEmoji} ${tc.statusLabel}', style: TextStyle(color: tc.statusColor, fontWeight: FontWeight.w700)),
                 ),
               ),
               const SizedBox(height: 20),
-              // Parties
               Row(
                 children: [
                   Expanded(child: _buildDetailParty(plaintiff, 'Plaignant', _courtBlue, tc.plaintiffPoints)),
@@ -441,15 +394,10 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                 ],
               ),
               const SizedBox(height: 16),
-              // Description
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                ),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withValues(alpha: 0.1))),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -460,11 +408,7 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                 ),
               ),
               const SizedBox(height: 16),
-
-              // ═══ SECTION VOTES ═══
               _buildVoteSection(ctx, tc, provider, setModalState),
-
-              // Avocats
               if (tc.prosecutionLawyer != null || tc.defenseLawyer != null) ...[
                 const Text('\u{1F4BC} Avocats', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 8),
@@ -472,14 +416,12 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                 if (tc.defenseLawyer != null) _buildParticipantTile(tc.defenseLawyer!, provider, 'Avocat de la defense', _courtPurple),
                 const SizedBox(height: 16),
               ],
-              // Temoins
               if (tc.witnesses.isNotEmpty) ...[
                 const Text('\u{1F9D1}\u{200D}\u{2696} Temoins', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 8),
                 ...tc.witnesses.map((w) => _buildParticipantTile(w, provider, 'Temoin', Colors.amber)),
                 const SizedBox(height: 16),
               ],
-              // Dates
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14)),
@@ -491,7 +433,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                   ],
                 ),
               ),
-              // Verdict
               if (tc.verdict != null) ...[
                 const SizedBox(height: 16),
                 Container(
@@ -514,15 +455,11 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                         const SizedBox(height: 8),
                         Text(tc.verdictReason!, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13), textAlign: TextAlign.center),
                       ],
-                      // Résultat des votes après verdict
                       if (tc.votes.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Container(
                           padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: _courtPurple.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                          decoration: BoxDecoration(color: _courtPurple.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                           child: Column(
                             children: [
                               const Text('\u{1F5F3} Resultats des votes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
@@ -542,14 +479,8 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                                       const SizedBox(width: 8),
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: (wasRight ? _courtGreen : _courtRed).withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          wasRight ? '+1' : '-1',
-                                          style: TextStyle(color: wasRight ? _courtGreen : _courtRed, fontWeight: FontWeight.w900, fontSize: 12),
-                                        ),
+                                        decoration: BoxDecoration(color: (wasRight ? _courtGreen : _courtRed).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
+                                        child: Text(wasRight ? '+1' : '-1', style: TextStyle(color: wasRight ? _courtGreen : _courtRed, fontWeight: FontWeight.w900, fontSize: 12)),
                                       ),
                                     ],
                                   ),
@@ -563,7 +494,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
                   ),
                 ),
               ],
-              // Actions
               if (!tc.isClosed) ...[
                 const SizedBox(height: 20),
                 _buildActionButtons(ctx, tc, provider),
@@ -576,9 +506,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  // ══════════════════════════════════════
-  //  SECTION VOTES
-  // ══════════════════════════════════════
   Widget _buildVoteSection(BuildContext ctx, TribunalCase tc, FamilyProvider provider, StateSetter setModalState) {
     final canVoteNow = tc.status == TribunalStatus.inProgress || tc.status == TribunalStatus.deliberation;
 
@@ -599,18 +526,27 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
               const SizedBox(width: 8),
               const Text('Votes du jury', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
               const Spacer(),
+              if (tc.votingEnabled)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: _courtGreen.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                  child: Text('Vote ouvert', style: TextStyle(color: _courtGreen, fontSize: 11, fontWeight: FontWeight.w700)),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                  child: Text('Vote ferme', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _courtPurple.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                decoration: BoxDecoration(color: _courtPurple.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
                 child: Text('${tc.totalVotes} vote${tc.totalVotes > 1 ? 's' : ''}', style: TextStyle(color: _courtPurple, fontSize: 11, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          // Barre de votes
           if (tc.totalVotes > 0) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
@@ -639,7 +575,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
               ),
             ),
             const SizedBox(height: 10),
-            // Liste des votants
             ...tc.votes.map((v) {
               final vChild = provider.getChild(v.childId);
               return Padding(
@@ -670,10 +605,14 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
           ] else
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(canVoteNow ? 'Aucun vote pour le moment' : 'Les votes sont ouverts pendant l\'audience', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+              child: Text(
+                !tc.votingEnabled
+                    ? 'Le juge n\'a pas encore ouvert le vote'
+                    : 'Aucun vote pour le moment',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+              ),
             ),
-          // Boutons de vote
-          if (canVoteNow) ...[
+          if (canVoteNow && tc.votingEnabled) ...[
             const Divider(color: Colors.white12),
             const SizedBox(height: 6),
             Text('Choisir un enfant pour voter :', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12, fontWeight: FontWeight.w600)),
@@ -723,27 +662,16 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withValues(alpha: 0.3))),
         child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
       ),
     );
   }
 
-  // ══════════════════════════════════════
-  //  HELPERS DETAIL
-  // ══════════════════════════════════════
   Widget _buildDetailParty(ChildModel? child, String role, Color color, int points) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: 0.2))),
       child: Column(
         children: [
           if (child != null && child.hasPhoto)
@@ -779,11 +707,7 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.15))),
       child: Row(
         children: [
           Container(
@@ -832,12 +756,25 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  // ══════════════════════════════════════
-  //  ACTIONS
-  // ══════════════════════════════════════
   Widget _buildActionButtons(BuildContext ctx, TribunalCase tc, FamilyProvider provider) {
     return Column(
       children: [
+        // BOUTON OUVRIR/FERMER LE VOTE
+        if (tc.status == TribunalStatus.inProgress || tc.status == TribunalStatus.deliberation)
+          _actionButton(
+            tc.votingEnabled
+                ? '\u{1F512} Fermer le vote des jures'
+                : '\u{1F5F3} Ouvrir le vote des jures',
+            tc.votingEnabled ? Colors.orange : _courtPurple,
+            () async {
+              if (tc.votingEnabled) {
+                await provider.disableTribunalVoting(tc.id);
+              } else {
+                await provider.enableTribunalVoting(tc.id);
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+          ),
         if (tc.status == TribunalStatus.filed)
           _actionButton('\u{1F4C5} Programmer l\'audience', _courtBlue, () {
             Navigator.pop(ctx);
@@ -886,9 +823,6 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  // ══════════════════════════════════════
-  //  DEPOSER PLAINTE
-  // ══════════════════════════════════════
   void _showFileComplaint(BuildContext context) {
     final provider = context.read<FamilyProvider>();
     if (provider.children.length < 2) {
@@ -993,195 +927,56 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  // ══════════════════════════════════════
-  //  PROGRAMMER AUDIENCE
-  // ══════════════════════════════════════
-  void _showScheduleHearing(BuildContext context, TribunalCase tc, FamilyProvider provider) async {
-    final date = await showDatePicker(context: context, initialDate: DateTime.now().add(const Duration(days: 1)), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 30)));
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 18, minute: 0));
-    if (time == null || !mounted) return;
-    final scheduledDate = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    await provider.scheduleTribunalHearing(tc.id, scheduledDate);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Text('\u{1F4C5}', style: TextStyle(fontSize: 18)), const SizedBox(width: 8), Text('Audience prevue le ${_formatDateTime(scheduledDate)}')]), backgroundColor: _courtBlue, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
-  }
-
-  // ══════════════════════════════════════
-  //  RENDRE VERDICT
-  // ══════════════════════════════════════
-  void _showRenderVerdict(BuildContext context, TribunalCase tc, FamilyProvider provider) {
-    TribunalVerdict selectedVerdict = TribunalVerdict.guilty;
-    final reasonCtrl = TextEditingController();
-    int plaintiffPts = 0;
-    int accusedPts = 0;
-    Map<String, int> lawyerPts = {};
-    Map<String, bool> witnessVerified = {};
-    Map<String, int> witnessPts = {};
-
-    for (final w in tc.witnesses) { witnessVerified[w.childId] = true; witnessPts[w.childId] = 2; }
-    if (tc.prosecutionLawyer != null) lawyerPts[tc.prosecutionLawyer!.childId] = 0;
-    if (tc.defenseLawyer != null) lawyerPts[tc.defenseLawyer!.childId] = 0;
+  void _showScheduleHearing(BuildContext context, TribunalCase tc, FamilyProvider provider) {
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    TimeOfDay selectedTime = const TimeOfDay(hour: 14, minute: 0);
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: const Color(0xFF0D1B2A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) {
-          if (selectedVerdict == TribunalVerdict.guilty) {
-            plaintiffPts = 5; accusedPts = -5;
-            if (tc.prosecutionLawyer != null) lawyerPts[tc.prosecutionLawyer!.childId] = 3;
-            if (tc.defenseLawyer != null) lawyerPts[tc.defenseLawyer!.childId] = -2;
-          } else if (selectedVerdict == TribunalVerdict.innocent) {
-            plaintiffPts = -3; accusedPts = 5;
-            if (tc.prosecutionLawyer != null) lawyerPts[tc.prosecutionLawyer!.childId] = -2;
-            if (tc.defenseLawyer != null) lawyerPts[tc.defenseLawyer!.childId] = 3;
-          } else {
-            plaintiffPts = 0; accusedPts = 0;
-            if (tc.prosecutionLawyer != null) lawyerPts[tc.prosecutionLawyer!.childId] = 0;
-            if (tc.defenseLawyer != null) lawyerPts[tc.defenseLawyer!.childId] = 0;
-          }
-          for (final w in tc.witnesses) {
-            final verified = witnessVerified[w.childId] ?? true;
-            witnessPts[w.childId] = verified ? 2 : -3;
-          }
-
-          final plaintiff = provider.getChild(tc.plaintiffId);
-          final accused = provider.getChild(tc.accusedId);
-
-          return Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)))),
-                  const SizedBox(height: 16),
-                  const Center(child: Text('\u{1F528}', style: TextStyle(fontSize: 36))),
-                  const SizedBox(height: 8),
-                  const Center(child: Text('Rendre le verdict', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800))),
-                  const SizedBox(height: 20),
-                  const Text('Verdict', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    _verdictChip('Coupable', '\u{274C}', TribunalVerdict.guilty, selectedVerdict, _courtRed, () => setState(() => selectedVerdict = TribunalVerdict.guilty)),
-                    const SizedBox(width: 8),
-                    _verdictChip('Innocent', '\u{2705}', TribunalVerdict.innocent, selectedVerdict, _courtGreen, () => setState(() => selectedVerdict = TribunalVerdict.innocent)),
-                    const SizedBox(width: 8),
-                    _verdictChip('Classe', '\u{1F5C4}', TribunalVerdict.dismissed, selectedVerdict, Colors.grey, () => setState(() => selectedVerdict = TribunalVerdict.dismissed)),
-                  ]),
-                  const SizedBox(height: 16),
-                  TextField(controller: reasonCtrl, style: const TextStyle(color: Colors.white), maxLines: 2, decoration: InputDecoration(labelText: 'Explication du verdict', hintText: 'Pourquoi cette decision...', hintStyle: TextStyle(color: Colors.grey[700]), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
-                  const SizedBox(height: 16),
-                  // Votes preview
-                  if (tc.votes.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: _courtPurple.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: _courtPurple.withValues(alpha: 0.2))),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('\u{1F5F3} ${tc.totalVotes} vote${tc.totalVotes > 1 ? 's' : ''} - Impact apres verdict :', style: TextStyle(color: _courtPurple, fontSize: 12, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 6),
-                          ...tc.votes.map((v) {
-                            final vChild = provider.getChild(v.childId);
-                            final willWin = v.vote == selectedVerdict;
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Row(children: [
-                                Text(vChild?.name ?? '?', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                                const Spacer(),
-                                Text(v.vote == TribunalVerdict.guilty ? '\u{274C}' : '\u{2705}', style: const TextStyle(fontSize: 12)),
-                                const SizedBox(width: 6),
-                                Text(willWin ? '+1 pt' : '-1 pt', style: TextStyle(color: willWin ? _courtGreen : _courtRed, fontWeight: FontWeight.w800, fontSize: 12)),
-                              ]),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  const Text('Points attribues', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  _pointsPreview(plaintiff?.name ?? 'Plaignant', plaintiffPts),
-                  _pointsPreview(accused?.name ?? 'Accuse', accusedPts),
-                  if (tc.prosecutionLawyer != null)
-                    _pointsPreview('Avocat accusation (${provider.getChild(tc.prosecutionLawyer!.childId)?.name ?? "?"})', lawyerPts[tc.prosecutionLawyer!.childId] ?? 0),
-                  if (tc.defenseLawyer != null)
-                    _pointsPreview('Avocat defense (${provider.getChild(tc.defenseLawyer!.childId)?.name ?? "?"})', lawyerPts[tc.defenseLawyer!.childId] ?? 0),
-                  if (tc.witnesses.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    const Text('Temoignages', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    ...tc.witnesses.map((w) {
-                      final wChild = provider.getChild(w.childId);
-                      final verified = witnessVerified[w.childId] ?? true;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: (verified ? _courtGreen : _courtRed).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: (verified ? _courtGreen : _courtRed).withValues(alpha: 0.2))),
-                        child: Row(children: [
-                          Text(wChild?.name ?? '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-                          const Spacer(),
-                          ChoiceChip(label: const Text('Veridique'), selected: verified, selectedColor: _courtGreen.withValues(alpha: 0.2), onSelected: (_) => setState(() => witnessVerified[w.childId] = true)),
-                          const SizedBox(width: 6),
-                          ChoiceChip(label: const Text('Faux'), selected: !verified, selectedColor: _courtRed.withValues(alpha: 0.2), onSelected: (_) => setState(() => witnessVerified[w.childId] = false)),
-                        ]),
-                      );
-                    }),
-                  ],
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity, height: 52,
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: _courtGold),
-                      onPressed: () async {
-                        await provider.renderVerdict(
-                          caseId: tc.id,
-                          verdict: selectedVerdict,
-                          reason: reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : selectedVerdict == TribunalVerdict.guilty ? 'Reconnu coupable' : selectedVerdict == TribunalVerdict.innocent ? 'Declare innocent' : 'Classe sans suite',
-                          plaintiffPoints: plaintiffPts,
-                          accusedPoints: accusedPts,
-                          lawyerPoints: lawyerPts.isNotEmpty ? lawyerPts : null,
-                          witnessVerified: witnessVerified.isNotEmpty ? witnessVerified : null,
-                          witnessPoints: witnessPts.isNotEmpty ? witnessPts : null,
-                        );
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Row(children: [Text('\u{1F528}', style: TextStyle(fontSize: 18)), SizedBox(width: 8), Text('Verdict rendu !')]), backgroundColor: _courtGreen, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
-                      },
-                      icon: const Icon(Icons.gavel_rounded),
-                      label: const Text('Confirmer le verdict', style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _verdictChip(String label, String emoji, TribunalVerdict verdict, TribunalVerdict selected, Color color, VoidCallback onTap) {
-    final isSelected = verdict == selected;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isSelected ? color : Colors.white.withValues(alpha: 0.1), width: isSelected ? 2 : 1),
-          ),
+        builder: (ctx, setState) => Padding(
+          padding: const EdgeInsets.all(24),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 22)),
-              const SizedBox(height: 4),
-              Text(label, style: TextStyle(color: isSelected ? color : Colors.white54, fontWeight: FontWeight.w700, fontSize: 12)),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              const Text('\u{1F4C5} Programmer l\'audience', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.calendar_today_rounded, color: Color(0xFF448AFF)),
+                title: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}', style: const TextStyle(color: Colors.white)),
+                subtitle: const Text('Date', style: TextStyle(color: Colors.grey)),
+                onTap: () async {
+                  final picked = await showDatePicker(context: ctx, initialDate: selectedDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                  if (picked != null) setState(() => selectedDate = picked);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.access_time_rounded, color: Color(0xFFFFD740)),
+                title: Text('${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}', style: const TextStyle(color: Colors.white)),
+                subtitle: const Text('Heure', style: TextStyle(color: Colors.grey)),
+                onTap: () async {
+                  final picked = await showTimePicker(context: ctx, initialTime: selectedTime);
+                  if (picked != null) setState(() => selectedTime = picked);
+                },
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity, height: 52,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: _courtBlue),
+                  onPressed: () async {
+                    final date = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, selectedTime.hour, selectedTime.minute);
+                    await provider.scheduleTribunalHearing(tc.id, date);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                  icon: const Icon(Icons.event_rounded),
+                  label: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
             ],
           ),
         ),
@@ -1189,31 +984,108 @@ class _TribunalScreenState extends State<TribunalScreen> with SingleTickerProvid
     );
   }
 
-  Widget _pointsPreview(String name, int points) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 13))),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: (points > 0 ? _courtGreen : points < 0 ? _courtRed : Colors.grey).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              points == 0 ? '0 pt' : '${points > 0 ? '+' : ''}$points pts',
-              style: TextStyle(color: points > 0 ? _courtGreen : points < 0 ? _courtRed : Colors.grey, fontWeight: FontWeight.w800, fontSize: 13),
+  void _showRenderVerdict(BuildContext context, TribunalCase tc, FamilyProvider provider) {
+    TribunalVerdict? selectedVerdict;
+    final reasonCtrl = TextEditingController();
+    int plaintiffPts = 0;
+    int accusedPts = 0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0D1B2A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                const Center(child: Text('\u{1F528} Rendre le verdict', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
+                const SizedBox(height: 20),
+                const Text('Verdict', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _verdictChip('\u{274C} Coupable', TribunalVerdict.guilty, _courtRed, selectedVerdict, (v) => setState(() => selectedVerdict = v)),
+                    const SizedBox(width: 8),
+                    _verdictChip('\u{2705} Innocent', TribunalVerdict.innocent, _courtGreen, selectedVerdict, (v) => setState(() => selectedVerdict = v)),
+                    const SizedBox(width: 8),
+                    _verdictChip('\u{1F5C4} Classe', TribunalVerdict.dismissed, Colors.grey, selectedVerdict, (v) => setState(() => selectedVerdict = v)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(controller: reasonCtrl, style: const TextStyle(color: Colors.white), maxLines: 2, decoration: InputDecoration(labelText: 'Raison du verdict', hintStyle: TextStyle(color: Colors.grey[700]), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: _pointsField('Plaignant (pts)', plaintiffPts, (v) => setState(() => plaintiffPts = v))),
+                    const SizedBox(width: 12),
+                    Expanded(child: _pointsField('Accuse (pts)', accusedPts, (v) => setState(() => accusedPts = v))),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity, height: 52,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: _courtGreen),
+                    onPressed: selectedVerdict != null
+                        ? () async {
+                            await provider.renderVerdict(caseId: tc.id, verdict: selectedVerdict!, reason: reasonCtrl.text.trim().isEmpty ? selectedVerdict!.name : reasonCtrl.text.trim(), plaintiffPoints: plaintiffPts, accusedPoints: accusedPts);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          }
+                        : null,
+                    icon: const Icon(Icons.gavel_rounded),
+                    label: const Text('Prononcer le verdict', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // ══════════════════════════════════════
-  //  FORMAT HELPERS
-  // ══════════════════════════════════════
-  String _formatDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-  String _formatDateTime(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  Widget _verdictChip(String label, TribunalVerdict verdict, Color color, TribunalVerdict? selected, ValueChanged<TribunalVerdict> onTap) {
+    final isSelected = selected == verdict;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(verdict),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isSelected ? color : Colors.white.withValues(alpha: 0.1), width: isSelected ? 2 : 1),
+          ),
+          child: Center(child: Text(label, style: TextStyle(color: isSelected ? color : Colors.white54, fontSize: 11, fontWeight: FontWeight.w700))),
+        ),
+      ),
+    );
+  }
+
+  Widget _pointsField(String label, int value, ValueChanged<int> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            IconButton(icon: Icon(Icons.remove_circle_rounded, color: _courtRed, size: 28), onPressed: () => onChanged(value - 1)),
+            Expanded(child: Center(child: Text('$value', style: TextStyle(color: value > 0 ? _courtGreen : value < 0 ? _courtRed : Colors.white, fontWeight: FontWeight.w900, fontSize: 20)))),
+            IconButton(icon: Icon(Icons.add_circle_rounded, color: _courtGreen, size: 28), onPressed: () => onChanged(value + 1)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+  String _formatDateTime(DateTime d) => '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
 }
