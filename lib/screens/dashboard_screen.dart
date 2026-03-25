@@ -175,7 +175,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ═══ HEADER ═══
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
                       child: Row(
@@ -214,8 +213,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ],
                       ),
                     ),
-
-                    // ═══ STAT CHIPS ═══
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -229,8 +226,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ],
                         ),
                       ),
-
-                    // ═══ TODAY BANNER ═══
                     if (todayEntries.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -253,15 +248,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ),
                         ),
                       ),
-
-                    // ═══ PODIUM (déjà interactif via PodiumWidget) ═══
                     if (provider.children.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
                         child: PodiumWidget(children: provider.children),
                       ),
-
-                    // ═══ QUICK ACTIONS (Badges remplacé par Tribunal) ═══
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
@@ -292,15 +283,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                             _showChildModePicker(context, provider);
                           }),
                           const SizedBox(width: 8),
-                          // ★ TRIBUNAL au lieu de Badges ★
                           _buildQuickAction(Icons.gavel_rounded, 'Tribunal', const Color(0xFF5D4037), isDark, () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => const TribunalScreen()));
                           }),
                         ],
                       ),
                     ),
-
-                    // ═══ TRADES EN COURS (cliquables) ═══
                     if (activeTrades.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -319,8 +307,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ],
                         ),
                       ),
-
-                    // ═══ CARTES ENFANTS (avec notes et écran cliquables) ═══
                     if (provider.children.isNotEmpty)
                       ...provider.children.map((child) {
                         final weekNotes = _getWeekNotesForChild(child.id, provider);
@@ -337,7 +323,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                               children: [
                                 ChildCard(child: child, onTap: null),
                                 const SizedBox(height: 8),
-                                // ★ Barre notes cliquable → SchoolNotesScreen ★
                                 GestureDetector(
                                   onTap: () {
                                     HapticFeedback.lightImpact();
@@ -346,7 +331,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   child: _buildWeekNotesBar(weekNotes, child.name),
                                 ),
                                 const SizedBox(height: 6),
-                                // ★ Temps d'écran cliquable → ChildDashboard onglet 1 ★
                                 GestureDetector(
                                   onTap: () {
                                     HapticFeedback.lightImpact();
@@ -359,16 +343,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ),
                         );
                       }),
-
-                    // ═══ EMPTY STATE ═══
                     if (provider.children.isEmpty)
                       Padding(padding: const EdgeInsets.all(40), child: Center(child: Column(children: [
                         Icon(Icons.family_restroom_rounded, size: 64, color: Colors.white.withValues(alpha: 0.15)),
                         const SizedBox(height: 16),
                         Text('Ajoutez votre premier enfant !', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
                       ]))),
-
-                    // ═══ HISTORIQUE RECENT (cliquable) ═══
                     if (provider.history.isNotEmpty) ...[
                       Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 8), child: Row(children: [
                         const NeonText(text: 'Activite recente', fontSize: 18, color: Colors.white, glowIntensity: 0.15),
@@ -408,9 +388,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ═══════════════════════════════════════
-  //  ★ TRADE CARD INTERACTIF ★
-  // ═══════════════════════════════════════
   Widget _buildInteractiveTradeCard(TradeModel trade, FamilyProvider provider) {
     final seller = provider.getChild(trade.fromChildId);
     final buyer = provider.getChild(trade.toChildId);
@@ -421,7 +398,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        // Ouvre le TradeScreen du vendeur
         Navigator.push(context, MaterialPageRoute(builder: (_) => TradeScreen(childId: trade.fromChildId)));
       },
       child: Container(
@@ -457,9 +433,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ═══════════════════════════════════════
-  //  ★ HISTORY DETAIL POPUP ★
-  // ═══════════════════════════════════════
   void _showHistoryDetail(BuildContext context, HistoryEntry entry, dynamic child, FamilyProvider provider) {
     final isPositive = entry.isBonus && entry.points > 0;
     final color = isPositive ? const Color(0xFF00E676) : const Color(0xFFFF1744);
@@ -476,17 +449,14 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 20),
-            // Icone + points
             Container(
               width: 70, height: 70,
               decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.15), border: Border.all(color: color.withValues(alpha: 0.4), width: 2)),
               child: Center(child: Text('${isPositive ? '+' : ''}${entry.points}', style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 24))),
             ),
             const SizedBox(height: 16),
-            // Enfant
             Text(child?.name ?? 'Inconnu', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20)),
             const SizedBox(height: 8),
-            // Raison
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
@@ -498,22 +468,20 @@ class _DashboardScreenState extends State<DashboardScreen>
               ]),
             ),
             const SizedBox(height: 12),
-            // Infos
             Row(children: [
               Expanded(child: _detailChip(Icons.category_rounded, 'Categorie', entry.category, const Color(0xFF448AFF))),
               const SizedBox(width: 10),
               Expanded(child: _detailChip(Icons.access_time_rounded, 'Date', dateStr, Colors.amber)),
             ]),
-            // Photo preuve
             if (entry.hasProofPhoto) ...[
               const SizedBox(height: 12),
               GestureDetector(
                 onTap: () {
-                  showDialog(context: context, builder: (ctx) => Dialog(
+                  showDialog(context: context, builder: (dlgCtx) => Dialog(
                     backgroundColor: Colors.black, insetPadding: const EdgeInsets.all(8),
                     child: Stack(children: [
                       InteractiveViewer(child: Image.memory(base64Decode(entry.proofPhotoBase64!), fit: BoxFit.contain)),
-                      Positioned(top: 8, right: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 28), onPressed: () => Navigator.pop(ctx))),
+                      Positioned(top: 8, right: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 28), onPressed: () => Navigator.pop(dlgCtx))),
                     ]),
                   ));
                 },
@@ -530,7 +498,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ],
             const SizedBox(height: 16),
-            // Bouton voir profil
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -569,9 +536,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ═══════════════════════════════════════
-  //  WIDGETS EXISTANTS (inchangés)
-  // ═══════════════════════════════════════
   Widget _buildScreenTimeMini(String childId, int totalMinutes, FamilyProvider provider) {
     final satMin = provider.getSaturdayMinutes(childId);
     final sunMin = provider.getSundayMinutes(childId);
