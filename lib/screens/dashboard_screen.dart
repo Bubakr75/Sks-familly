@@ -155,9 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
     final pin = context.watch<PinProvider>();
-    final totalPoints = provider.children.fold<int>(0, (s, c) => s + c.points);
     final todayEntries = provider.getHistoryForDate(DateTime.now());
-    final totalBadges = provider.children.fold<int>(0, (s, c) => s + c.badgeIds.length);
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
@@ -213,19 +211,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ],
                       ),
                     ),
-                    if (provider.children.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: Row(
-                          children: [
-                            _buildStatChip(Icons.star_rounded, '$totalPoints pts', primary, isDark),
-                            const SizedBox(width: 8),
-                            _buildStatChip(Icons.people_rounded, '${provider.children.length}', const Color(0xFF00B0FF), isDark),
-                            const SizedBox(width: 8),
-                            _buildStatChip(Icons.emoji_events_rounded, '$totalBadges', const Color(0xFFFFD700), isDark),
-                          ],
-                        ),
-                      ),
                     if (todayEntries.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -349,33 +334,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                         const SizedBox(height: 16),
                         Text('Ajoutez votre premier enfant !', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
                       ]))),
-                    if (provider.history.isNotEmpty) ...[
-                      Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 8), child: Row(children: [
-                        const NeonText(text: 'Activite recente', fontSize: 18, color: Colors.white, glowIntensity: 0.15),
-                        const Spacer(),
-                        TextButton(onPressed: () => _showFullHistory(context, provider), child: Text('Tout voir', style: TextStyle(color: primary))),
-                      ])),
-                      ...provider.history.take(5).map((entry) {
-                        final child = provider.getChild(entry.childId);
-                        return GestureDetector(
-                          onTap: () => _showHistoryDetail(context, entry, child, provider),
-                          child: GlassCard(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            child: Row(children: [
-                              Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFFFF1744).withValues(alpha: 0.15)), child: Icon(entry.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 18)),
-                              const SizedBox(width: 12),
-                              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text(child?.name ?? 'Inconnu', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                Text(entry.reason, style: TextStyle(fontSize: 12, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              ])),
-                              Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: entry.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12)), child: Text('${entry.isBonus ? '+' : ''}${entry.points}', style: TextStyle(fontWeight: FontWeight.w800, color: entry.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744)))),
-                              const SizedBox(width: 6),
-                              Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.3), size: 18),
-                            ]),
-                          ),
-                        );
-                      }),
-                    ],
                   ],
                 ),
               ),
@@ -562,7 +520,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       ]),
     );
   }
-
   void _showParentValidationDialog(BuildContext context, FamilyProvider provider, TradeModel trade) {
     String note = '';
     final seller = provider.getChild(trade.fromChildId);
@@ -759,9 +716,5 @@ class _DashboardScreenState extends State<DashboardScreen>
       decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withValues(alpha: 0.25))),
       child: Column(children: [Icon(icon, color: color, size: 24), const SizedBox(height: 6), Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 11))]),
     )));
-  }
-
-  Widget _buildAvatarFallback(dynamic child) {
-    return Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFF7C4DFF).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 18))));
   }
 }
