@@ -360,4 +360,136 @@ class FamilyProvider extends ChangeNotifier {
     for (final vote in tc.votes) { final correct = vote.vote == tc.verdict; vote.pointsAwarded = correct ? 1 : -1; await addPoints(vote.childId, 1, '\u{1F5F3} Tribunal (jure): ${correct ? "bon vote" : "mauvais vote"}', category: 'tribunal_vote', isBonus: correct); }
   }
 
-  Future<void> renderVerdict({required String c
+    Future<void> renderVerdict({required String caseId, required TribunalVerdict verdict, required String reason, int? pointsForAccused}) async {
+    try {
+      final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
+      tc.status = TribunalStatus.closed;
+      tc.verdict = verdict;
+      tc.verdictReason = reason;
+      tc.verdictDate = DateTime.now();
+      if (pointsForAccused != null && pointsForAccused != 0) {
+        final isPositive = pointsForAccused > 0;
+        await addPoints(tc.accusedId, pointsForAccused.abs(),
+            '\u{2696} Verdict tribunal: $reason',
+            category: 'tribunal_verdict', isBonus: isPositive);
+      }
+      await _distributeVotePoints(tc);
+      await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  // ============================================================
+  //  TRADES
+  // ============================================================
+
+  List<TradeModel> getPendingTradesForChild(String childId) {
+    return _trades.where((t) => t.toChildId == childId && t.status == 'pending').toList();
+  }
+
+  Future<void> createTrade(String fromChildId, String toChildId, int lines, String service) async {
+    final trade = TradeModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      fromChildId: fromChildId,
+      toChildId: toChildId,
+      immunityLines: lines,
+      serviceDescription: service,
+      status: 'pending',
+      createdAt: DateTime.now(),
+    );
+    _trades.add(trade);
+    await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+    if (_firestore.isConnected) await _firestore.saveTrade(_familyCode!, trade);
+    notifyListeners();
+  }
+
+  Future<void> acceptTrade(String tradeId) async {
+    final index = _trades.indexWhere((t) => t.id == tradeId);
+    if (index == -1) return;
+    _trades[index] = _trades[index].copyWith(status: 'accepted', acceptedAt: DateTime.now());
+    await _tradesBox.put(tradeId, jsonEncode(_trades[index].toMap()));
+    if (_firestore.isConnected) await _firestore.saveTrade(_familyCode!, _trades[index]);
+    notifyListeners();
+  }
+
+  Future<void> rejectTrade(String tradeId) async {
+    final index = _trades.indexWhere((t) => t.id == tradeId);
+    if (index == -1) return;
+    _trades[index] = _trades[index].copyWith(status: 'rejected');
+    await _tradesBox.put(tradeId, jsonEncode(_trades[index].toMap()));
+    if (_firestore.isConnected) await _firestore.saveTrade(_familyCode!, _trades[index]);
+    notifyListeners();
+  }
+
+  Future<void> cancelTrade(String tradeId) async {
+    final index = _trades.indexWhere((t) => t.id == tradeId);
+    if (index == -1) return;
+    _trades[index] = _trades[index].copyWith(status: 'cancelled');
+    await _tradesBox.put(tradeId, jsonEncode(_trades[index].toMap()));
+    if (_firestore.isConnected) await _firestore.saveTrade(_familyCode!, _trades[index]);
+    notifyListeners();
+  }
+
+  Future<void> markServiceDone(String tradeId) async {
+    final index = _trades.indexWhere((t) => t.id == tradeId);
+    if (index == -1) return;
+    _trades[index] = _trades[index].copyWith(status: 'service_done');
+    await _tradesBox.put(tradeId, jsonEncode(_trades[index].toMap()));
+    if (_firestore.isConnected) await _firestore.saveTrade(_familyCode!, _trades[index]);
+    notifyListeners();
+  }
+
+  Future<void> completeTrade(String tradeId, {String? parentNote}) async {
+    final index = _trades.indexWhere((t) => t.id == tradeId);
+    if (index == -1) return;
+    _trades[index] = _trades[index].copyWith(
+      status: 'completed',
+      completedAt: DateTime.now(),
+      parentValidatorNote: parentNote,
+    );
+    await _tradesBox.put(tradeId, jsonEncode(_trades[index].toMap()));
+    if (_firestore.isConnected) await _firestore.saveTrade(_familyCode!, _trades[index]);
+    notifyListeners();
+  }
+
+  // ============================================================
+  //  UTILITAIRES
+  // ============================================================
+
+  List<HistoryEntry> getHistoryForDate(DateTime date) {
+    return _history.where((h) =>
+      h.date.year == date.year && h.date.month == date.month && h.date.day == date.day
+    ).toList();
+  }
+
+  Future<void> resetAllScores() async {
+    for (final child in _children) {
+      child.points = 0;
+      child.badgeIds.clear();
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      if (_firestore.isConnected) await _firestore.saveChild(child);
+    }
+    notifyListeners();
+  }
+
+  Future<void> clearHistory() async {
+    _history.clear();
+    await _historyBox.clear();
+    if (_firestore.isConnected) await _firestore.clearHistory();
+    notifyListeners();
+  }
+
+  Future<void> _saveAllLocal() async {
+    _saveBoxFromList(_childrenBox, _children, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_historyBox, _history, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_goalsBox, _goals, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_notesBox, _notes, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_punishmentsBox, _punishments, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_immunitiesBox, _immunities, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_tribunalBox, _tribunalCases, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_badgesBox, _customBadges, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_tradesBox, _trades, (e) => e.id, (e) => e.toMap());
+  }
+}
+
