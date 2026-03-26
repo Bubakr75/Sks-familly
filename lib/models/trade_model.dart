@@ -67,6 +67,31 @@ class TradeModel {
       default:
         return '\u{2753}';
     }
+      TradeModel copyWith({
+    String? id,
+    String? fromChildId,
+    String? toChildId,
+    int? immunityLines,
+    String? serviceDescription,
+    String? status,
+    DateTime? createdAt,
+    DateTime? acceptedAt,
+    DateTime? completedAt,
+    String? parentValidatorNote,
+  }) {
+    return TradeModel(
+      id: id ?? this.id,
+      fromChildId: fromChildId ?? this.fromChildId,
+      toChildId: toChildId ?? this.toChildId,
+      immunityLines: immunityLines ?? this.immunityLines,
+      serviceDescription: serviceDescription ?? this.serviceDescription,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+      completedAt: completedAt ?? this.completedAt,
+      parentValidatorNote: parentValidatorNote ?? this.parentValidatorNote,
+    );
+  }
   }
 
   Map<String, dynamic> toMap() => {
