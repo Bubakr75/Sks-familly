@@ -6,6 +6,7 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/add_points_screen.dart';
 import '../screens/calendar_screen.dart';
@@ -214,11 +215,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         const SizedBox(height: 16),
         Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
         const SizedBox(height: 16),
-        ...provider.children.map((child) => ListTile(
-          leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22)))),
-          title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+        ...provider.children.map((child) => TvFocusWrapper(
           onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => SchoolNotesScreen(childId: child.id))); },
+          child: ListTile(
+            leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22)))),
+            title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+          ),
         )),
         const SizedBox(height: 16),
       ])),
@@ -234,12 +237,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         const SizedBox(height: 16),
         Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
         const SizedBox(height: 16),
-        ...provider.children.map((child) => ListTile(
-          leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22)))),
-          title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          subtitle: Text('${provider.getNotesForChild(child.id).length} notes', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-          trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+        ...provider.children.map((child) => TvFocusWrapper(
           onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => NotesScreen(childId: child.id, childName: child.name))); },
+          child: ListTile(
+            leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22)))),
+            title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            subtitle: Text('${provider.getNotesForChild(child.id).length} notes', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+            trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+          ),
         )),
         const SizedBox(height: 16),
       ])),
@@ -305,12 +310,15 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 8, spreadRadius: -2)]), child: Icon(icon, color: color, size: 22)),
-      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-      trailing: Icon(Icons.chevron_right, size: 20, color: Colors.grey[700]),
+    return TvFocusWrapper(
       onTap: onTap,
+      borderRadius: const BorderRadius.all(Radius.circular(12)),
+      child: ListTile(
+        leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 8, spreadRadius: -2)]), child: Icon(icon, color: color, size: 22)),
+        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        trailing: Icon(Icons.chevron_right, size: 20, color: Colors.grey[700]),
+      ),
     );
   }
 }
