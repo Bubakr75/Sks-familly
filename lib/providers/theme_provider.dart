@@ -6,15 +6,14 @@ class ThemeProvider extends ChangeNotifier {
   int _colorIndex = 0;
   int _bgIndex = 0;
 
-  // ─── Palette d'accents enrichie avec meilleur contraste ───
   static const List<Color> accentColors = [
-    Color(0xFF7B68EE), // Bleu-violet (meilleur contraste que 6C63FF)
-    Color(0xFF00BCD4), // Cyan profond
+    Color(0xFF7B68EE), // Bleu-violet
+    Color(0xFF00BCD4), // Cyan
     Color(0xFFFF7043), // Orange chaud
-    Color(0xFF66BB6A), // Vert lisible
+    Color(0xFF66BB6A), // Vert
     Color(0xFFFFCA28), // Jaune doré
-    Color(0xFFEC407A), // Rose vif
-    Color(0xFF9575CD), // Violet moyen
+    Color(0xFFEC407A), // Rose
+    Color(0xFF9575CD), // Violet
     Color(0xFF26C6DA), // Turquoise
   ];
 
@@ -33,9 +32,8 @@ class ThemeProvider extends ChangeNotifier {
   int get colorIndex => _colorIndex;
   int get bgIndex => _bgIndex;
   Color get primaryColor => accentColors[_colorIndex];
-  Color get backgroundColor => _isDark
-      ? (backgroundColors[_bgIndex]['color'] as Color)
-      : const Color(0xFFF5F5FA);
+  Color get backgroundColor =>
+      _isDark ? (backgroundColors[_bgIndex]['color'] as Color) : const Color(0xFFF5F5FA);
 
   ThemeData get theme {
     final primary = accentColors[_colorIndex];
@@ -49,54 +47,37 @@ class ThemeProvider extends ChangeNotifier {
         scaffoldBackgroundColor: bgColor,
         canvasColor: bgColor,
         cardColor: bgColor.withValues(alpha: 0.8),
-        // ─── Textes lisibles ───
         textTheme: const TextTheme(
           bodyLarge: TextStyle(color: Color(0xFFE8E8F0)),
           bodyMedium: TextStyle(color: Color(0xFFD0D0DC)),
           bodySmall: TextStyle(color: Color(0xFFB0B0C0)),
-          titleLarge: TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(
-              color: Color(0xFFF0F0FF), fontWeight: FontWeight.w600),
+          titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(color: Color(0xFFF0F0FF), fontWeight: FontWeight.w600),
         ),
-        // ─── AppBar lisible ───
         appBarTheme: AppBarTheme(
           backgroundColor: bgColor,
           foregroundColor: Colors.white,
           elevation: 0,
-          titleTextStyle: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700),
+          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
         ),
-        // ─── Dialogues ───
         dialogTheme: DialogTheme(
           backgroundColor: Color.lerp(bgColor, Colors.white, 0.08)!,
-          titleTextStyle: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold),
-          contentTextStyle: const TextStyle(
-              color: Color(0xFFCCCCDD), fontSize: 14),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          contentTextStyle: const TextStyle(color: Color(0xFFCCCCDD), fontSize: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
-        // ─── Boutons ───
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: primary,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
-        // ─── Inputs ───
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.07),
@@ -104,40 +85,32 @@ class ThemeProvider extends ChangeNotifier {
           hintStyle: const TextStyle(color: Color(0xFF666680)),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.1))),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
           enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.1))),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: primary, width: 2)),
         ),
-        // ─── BottomNav ───
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: bgColor,
           selectedItemColor: primary,
           unselectedItemColor: const Color(0xFF666680),
         ),
-        // ─── Snackbar ───
         snackBarTheme: SnackBarThemeData(
           backgroundColor: Color.lerp(bgColor, Colors.white, 0.15),
           contentTextStyle: const TextStyle(color: Colors.white),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           behavior: SnackBarBehavior.floating,
         ),
-        // ─── Switch ───
         switchTheme: SwitchThemeData(
           thumbColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) return primary;
             return Colors.grey;
           }),
           trackColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return primary.withValues(alpha: 0.3);
-            }
+            if (states.contains(WidgetState.selected)) return primary.withValues(alpha: 0.3);
             return Colors.white.withValues(alpha: 0.1);
           }),
         ),
@@ -155,46 +128,34 @@ class ThemeProvider extends ChangeNotifier {
           bodyLarge: TextStyle(color: Color(0xFF1A1A2E)),
           bodyMedium: TextStyle(color: Color(0xFF2E2E42)),
           bodySmall: TextStyle(color: Color(0xFF5A5A72)),
-          titleLarge: TextStyle(
-              color: Color(0xFF1A1A2E), fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(
-              color: Color(0xFF2E2E42), fontWeight: FontWeight.w600),
+          titleLarge: TextStyle(color: Color(0xFF1A1A2E), fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(color: Color(0xFF2E2E42), fontWeight: FontWeight.w600),
         ),
-        appBarTheme: AppBarTheme(
+        appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1A1A2E),
+          foregroundColor: Color(0xFF1A1A2E),
           elevation: 0,
           surfaceTintColor: Colors.transparent,
-          titleTextStyle: TextStyle(
-              color: const Color(0xFF1A1A2E),
-              fontSize: 18,
-              fontWeight: FontWeight.w700),
+          titleTextStyle: TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700),
         ),
         dialogTheme: DialogTheme(
           backgroundColor: Colors.white,
-          titleTextStyle: const TextStyle(
-              color: Color(0xFF1A1A2E),
-              fontSize: 18,
-              fontWeight: FontWeight.bold),
-          contentTextStyle: const TextStyle(
-              color: Color(0xFF5A5A72), fontSize: 14),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+          titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.bold),
+          contentTextStyle: const TextStyle(color: Color(0xFF5A5A72), fontSize: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             foregroundColor: Colors.white,
             backgroundColor: primary,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: primary,
             side: BorderSide(color: primary.withValues(alpha: 0.4)),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
@@ -204,12 +165,10 @@ class ThemeProvider extends ChangeNotifier {
           hintStyle: const TextStyle(color: Color(0xFFAAAABB)),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.black.withValues(alpha: 0.1))),
+              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1))),
           enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.black.withValues(alpha: 0.1))),
+              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1))),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: primary, width: 2)),
@@ -223,8 +182,7 @@ class ThemeProvider extends ChangeNotifier {
           color: Colors.white,
           elevation: 2,
           shadowColor: Colors.black.withValues(alpha: 0.08),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
         switchTheme: SwitchThemeData(
           thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -232,9 +190,7 @@ class ThemeProvider extends ChangeNotifier {
             return Colors.grey[400];
           }),
           trackColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return primary.withValues(alpha: 0.3);
-            }
+            if (states.contains(WidgetState.selected)) return primary.withValues(alpha: 0.3);
             return Colors.grey.withValues(alpha: 0.2);
           }),
         ),
