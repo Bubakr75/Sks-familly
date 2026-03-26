@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
@@ -6,6 +7,7 @@ import '../providers/theme_provider.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import 'family_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -25,7 +27,7 @@ class SettingsScreen extends StatelessWidget {
                     const Icon(Icons.settings, size: 22),
                     const SizedBox(width: 8),
                     const Text(
-                      'Réglages',
+                      'Reglages',
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -69,8 +71,10 @@ class SettingsScreen extends StatelessWidget {
                                   children: List.generate(ThemeProvider.accentColors.length, (i) {
                                     final color = ThemeProvider.accentColors[i];
                                     final selected = i == themeProv.colorIndex;
-                                    return GestureDetector(
+                                    return TvFocusWrapper(
                                       onTap: () => themeProv.setColorIndex(i),
+                                      focusBorderColor: color,
+                                      borderRadius: BorderRadius.circular(20),
                                       child: AnimatedContainer(
                                         duration: const Duration(milliseconds: 300),
                                         width: 40,
@@ -101,7 +105,7 @@ class SettingsScreen extends StatelessWidget {
                                   children: [
                                     Icon(Icons.wallpaper, color: Colors.white70, size: 20),
                                     SizedBox(width: 10),
-                                    Text('Fond d\'écran', style: TextStyle(fontWeight: FontWeight.w600)),
+                                    Text('Fond d\'ecran', style: TextStyle(fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
@@ -111,8 +115,10 @@ class SettingsScreen extends StatelessWidget {
                                   children: List.generate(ThemeProvider.backgroundColors.length, (i) {
                                     final bg = ThemeProvider.backgroundColors[i];
                                     final selected = i == themeProv.bgIndex;
-                                    return GestureDetector(
+                                    return TvFocusWrapper(
                                       onTap: () => themeProv.setBgIndex(i),
+                                      focusBorderColor: bg['color'] as Color,
+                                      borderRadius: BorderRadius.circular(22),
                                       child: Column(
                                         children: [
                                           AnimatedContainer(
@@ -148,7 +154,7 @@ class SettingsScreen extends StatelessWidget {
                         _GlassSettingsTile(
                           icon: Icons.cloud_sync,
                           title: 'Synchronisation',
-                          subtitle: familyProv.familyId != null ? 'Connecté' : 'Hors ligne',
+                          subtitle: familyProv.familyId != null ? 'Connecte' : 'Hors ligne',
                           trailing: Icon(
                             familyProv.familyId != null ? Icons.cloud_done : Icons.cloud_off,
                             color: familyProv.familyId != null ? Colors.greenAccent : Colors.redAccent,
@@ -166,12 +172,12 @@ class SettingsScreen extends StatelessWidget {
                           onTap: () => _showParentNameDialog(context, familyProv),
                         ),
                         const SizedBox(height: 16),
-                        const _GlassSectionTitle(icon: Icons.security, title: 'Sécurité'),
+                        const _GlassSectionTitle(icon: Icons.security, title: 'Securite'),
                         const SizedBox(height: 8),
                         _GlassSettingsTile(
                           icon: Icons.lock,
                           title: 'Code parental',
-                          subtitle: pinProv.isPinSet ? 'Activé' : 'Non défini',
+                          subtitle: pinProv.isPinSet ? 'Active' : 'Non defini',
                           trailing: Icon(
                             pinProv.isPinSet ? Icons.lock : Icons.lock_open,
                             color: pinProv.isPinSet ? Colors.greenAccent : Colors.orangeAccent,
@@ -195,12 +201,12 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const _GlassSectionTitle(icon: Icons.storage, title: 'Données'),
+                        const _GlassSectionTitle(icon: Icons.storage, title: 'Donnees'),
                         const SizedBox(height: 8),
                         _GlassSettingsTile(
                           icon: Icons.restart_alt,
-                          title: 'Réinitialiser les scores',
-                          subtitle: 'Remet tous les points à zéro',
+                          title: 'Reinitialiser les scores',
+                          subtitle: 'Remet tous les points a zero',
                           onTap: () => PinGuard.guardAction(context, () => _confirmResetScores(context, familyProv)),
                         ),
                         const SizedBox(height: 8),
@@ -211,11 +217,11 @@ class SettingsScreen extends StatelessWidget {
                           onTap: () => PinGuard.guardAction(context, () => _confirmClearHistory(context, familyProv)),
                         ),
                         const SizedBox(height: 16),
-                        const _GlassSectionTitle(icon: Icons.info_outline, title: 'À propos'),
+                        const _GlassSectionTitle(icon: Icons.info_outline, title: 'A propos'),
                         const SizedBox(height: 8),
                         _GlassSettingsTile(
                           icon: Icons.phone_android,
-                          title: 'SKS Family',
+                          title: 'SKS-Familly',
                           subtitle: 'Version 1.0.0',
                         ),
                         const SizedBox(height: 8),
@@ -261,6 +267,8 @@ class SettingsScreen extends StatelessWidget {
                 fillColor: Colors.white.withOpacity(0.1),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
+              // Quand on valide, passer au bouton suivant
+              onSubmitted: (_) => FocusScope.of(ctx).nextFocus(),
             ),
           ],
         ),
@@ -293,7 +301,7 @@ class SettingsScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              pinProv.isPinSet ? 'Modifier le code parental' : 'Créer un code parental',
+              pinProv.isPinSet ? 'Modifier le code parental' : 'Creer un code parental',
               style: const TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 16),
@@ -305,13 +313,14 @@ class SettingsScreen extends StatelessWidget {
               style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 12),
               textAlign: TextAlign.center,
               decoration: InputDecoration(
-                hintText: '• • • •',
+                hintText: '    ',
                 hintStyle: const TextStyle(color: Colors.white30),
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.1),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 counterText: '',
               ),
+              onSubmitted: (_) => FocusScope.of(ctx).nextFocus(),
             ),
           ],
         ),
@@ -322,7 +331,7 @@ class SettingsScreen extends StatelessWidget {
               onPressed: () {
                 pinProv.removePin();
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code supprimé')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code supprime')));
               },
               child: const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
             ),
@@ -331,7 +340,7 @@ class SettingsScreen extends StatelessWidget {
               if (controller.text.length == 4) {
                 pinProv.setPin(controller.text);
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code enregistré !')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code enregistre !')));
               }
             },
             child: const Text('Valider'),
@@ -347,8 +356,8 @@ class SettingsScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Réinitialiser ?', style: TextStyle(color: Colors.white)),
-        content: const Text('Tous les points seront remis à zéro. Cette action est irréversible.', style: TextStyle(color: Colors.white70)),
+        title: const Text('Reinitialiser ?', style: TextStyle(color: Colors.white)),
+        content: const Text('Tous les points seront remis a zero. Cette action est irreversible.', style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
           ElevatedButton(
@@ -356,9 +365,9 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () {
               prov.resetAllScores();
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scores réinitialisés')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scores reinitialises')));
             },
-            child: const Text('Réinitialiser'),
+            child: const Text('Reinitialiser'),
           ),
         ],
       ),
@@ -372,7 +381,7 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Effacer l\'historique ?', style: TextStyle(color: Colors.white)),
-        content: const Text('Tout l\'historique sera supprimé. Cette action est irréversible.', style: TextStyle(color: Colors.white70)),
+        content: const Text('Tout l\'historique sera supprime. Cette action est irreversible.', style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
           ElevatedButton(
@@ -380,7 +389,7 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () {
               prov.clearHistory();
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Historique effacé')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Historique efface')));
             },
             child: const Text('Effacer'),
           ),
