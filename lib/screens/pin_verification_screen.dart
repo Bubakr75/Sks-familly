@@ -2,314 +2,370 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/pin_provider.dart';
+import '../widgets/animated_background.dart';
 
 class PinVerificationScreen extends StatefulWidget {
-  final VoidCallback onVerified;
-  const PinVerificationScreen({super.key, required this.onVerified});
+  const PinVerificationScreen({super.key});
+
   @override
   State<PinVerificationScreen> createState() => _PinVerificationScreenState();
 }
 
 class _PinVerificationScreenState extends State<PinVerificationScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   String _enteredPin = '';
-  bool _error = false;
+  bool _isError = false;
   int _attempts = 0;
-  late AnimationController _shakeCtrl;
+  static const int _maxAttempts = 5;
+
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _shakeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _shakeAnimation = Tween<double>(begin: 0, end: 24)
+        .chain(CurveTween(curve: Curves.elasticIn))
+        .animate(_shakeController)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _shakeController.reverse();
+        }
+      });
+
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeOut),
+    );
   }
 
   @override
   void dispose() {
-    _shakeCtrl.dispose();
+    _shakeController.dispose();
+    _scaleController.dispose();
     super.dispose();
   }
 
-  void _addDigit(String digit) {
-    if (_enteredPin.length < 4) {
-      HapticFeedback.lightImpact();
-      setState(() {
-        _enteredPin += digit;
-        _error = false;
-      });
-      if (_enteredPin.length == 4) {
-        Future.delayed(const Duration(milliseconds: 200), _verify);
-      }
+  void _onDigitPressed(String digit) {
+    if (_attempts >= _maxAttempts) return;
+    if (_enteredPin.length >= 4) return;
+
+    HapticFeedback.lightImpact();
+    setState(() {
+      _enteredPin += digit;
+      _isError = false;
+    });
+
+    _scaleController.forward().then((_) => _scaleController.reverse());
+
+    if (_enteredPin.length == 4) {
+      _verifyPin();
     }
   }
 
-  void _removeDigit() {
-    if (_enteredPin.isNotEmpty) {
-      HapticFeedback.lightImpact();
-      setState(() {
-        _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
-        _error = false;
-      });
-    }
+  void _onDeletePressed() {
+    if (_enteredPin.isEmpty) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
+      _isError = false;
+    });
   }
 
-  void _verify() {
-    final pin = context.read<PinProvider>();
-    if (pin.verifyPin(_enteredPin)) {
+  Future<void> _verifyPin() async {
+    final pinProvider = context.read<PinProvider>();
+    final isCorrect = pinProvider.verifyPin(_enteredPin);
+
+    if (isCorrect) {
       HapticFeedback.mediumImpact();
-      pin.unlockParentMode();
-      widget.onVerified();
+      pinProvider.unlockParentMode();
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
     } else {
       HapticFeedback.heavyImpact();
-      _shakeCtrl.forward(from: 0);
-      _attempts++;
+      _shakeController.forward(from: 0);
       setState(() {
-        _error = true;
+        _isError = true;
+        _attempts++;
         _enteredPin = '';
       });
+
+      if (_attempts >= _maxAttempts) {
+        Future.delayed(const Duration(seconds: 30), () {
+          if (mounted) {
+            setState(() {
+              _attempts = 0;
+            });
+          }
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = Theme.of(context).colorScheme.primary;
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF0A110B), const Color(0xFF162118)]
-                : [const Color(0xFFF5F7F5), Colors.white],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Align(
-                alignment: Alignment.topLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-              const Spacer(flex: 2),
-              // Lock icon
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.8, end: 1.0),
-                duration: const Duration(milliseconds: 600),
-                curve: Curves.elasticOut,
-                builder: (_, v, child) =>
-                    Transform.scale(scale: v, child: child),
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      primary,
-                      Theme.of(context).colorScheme.secondary
-                    ]),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                          color: primary.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8))
-                    ],
-                  ),
-                  child: const Icon(Icons.lock_rounded,
-                      size: 44, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text('Code Parental',
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black87)),
-              const SizedBox(height: 8),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: Text(
-                  _error
-                      ? (_attempts >= 3
-                          ? 'Trop de tentatives, reessayez'
-                          : 'Code incorrect, reessayez')
-                      : 'Entrez votre code a 4 chiffres',
-                  key: ValueKey('$_error$_attempts'),
-                  style: TextStyle(
-                      color: _error ? Colors.red : Colors.grey, fontSize: 14),
-                ),
-              ),
-              const SizedBox(height: 32),
-              // PIN dots with shake
-              AnimatedBuilder(
-                animation: _shakeCtrl,
-                builder: (_, child) {
-                  final dx = _shakeCtrl.isAnimating
-                      ? ((_shakeCtrl.value * 8).truncate() % 2 == 0
-                              ? 8.0
-                              : -8.0) *
-                          (1 - _shakeCtrl.value)
-                      : 0.0;
-                  return Transform.translate(
-                      offset: Offset(dx, 0), child: child);
-                },
-                child: Row(
+    // ignore: deprecated_member_use
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pop(false);
+        return false;
+      },
+      child: Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                      4,
-                      (i) => AnimatedContainer(
+                  children: [
+                    // Lock icon animé
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _scaleAnimation.value,
+                          child: child,
+                        );
+                      },
+                      child: Icon(
+                        _isError ? Icons.lock_outline : Icons.lock,
+                        size: 64,
+                        color: _isError ? Colors.redAccent : Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Code parental',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _attempts >= _maxAttempts
+                          ? 'Trop de tentatives. Patientez 30s.'
+                          : _isError
+                              ? 'Code incorrect (${_maxAttempts - _attempts} essais restants)'
+                              : 'Entrez votre code à 4 chiffres',
+                      style: TextStyle(
+                        color: _isError ? Colors.redAccent : Colors.white60,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+
+                    // PIN dots
+                    AnimatedBuilder(
+                      animation: _shakeAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(
+                            _shakeAnimation.value *
+                                ((_shakeController.value * 10).toInt().isEven
+                                    ? 1
+                                    : -1),
+                            0,
+                          ),
+                          child: child,
+                        );
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(4, (index) {
+                          final isFilled = index < _enteredPin.length;
+                          return AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            width: i < _enteredPin.length ? 22 : 16,
-                            height: i < _enteredPin.length ? 22 : 16,
-                            margin:
-                                const EdgeInsets.symmetric(horizontal: 12),
+                            margin: const EdgeInsets.symmetric(horizontal: 12),
+                            width: isFilled ? 20 : 16,
+                            height: isFilled ? 20 : 16,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: _error
-                                  ? Colors.red
-                                  : i < _enteredPin.length
-                                      ? primary
-                                      : Colors.transparent,
-                              border: Border.all(
-                                  color: _error ? Colors.red : primary,
-                                  width: 2.5),
-                              boxShadow:
-                                  i < _enteredPin.length && !_error
-                                      ? [
-                                          BoxShadow(
-                                              color: primary.withValues(
-                                                  alpha: 0.4),
-                                              blurRadius: 8)
-                                        ]
-                                      : [],
+                              color: _isError
+                                  ? Colors.redAccent
+                                  : isFilled
+                                      ? Colors.cyanAccent
+                                      : Colors.white24,
+                              boxShadow: isFilled && !_isError
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.cyanAccent.withOpacity(0.5),
+                                        blurRadius: 8,
+                                      )
+                                    ]
+                                  : null,
                             ),
-                          )),
-                ),
-              ),
-              const Spacer(flex: 1),
-              // ─── CORRIGÉ : Clavier focusable pour TV ───
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48),
-                child: Column(
-                  children: [
-                    _buildRow(['1', '2', '3']),
-                    _buildRow(['4', '5', '6']),
-                    _buildRow(['7', '8', '9']),
-                    Row(
-                      children: [
-                        const Expanded(child: SizedBox(height: 72)),
-                        Expanded(
-                            child: _KeyButton(
-                                label: '0',
-                                onTap: () => _addDigit('0'))),
-                        Expanded(
-                          child: SizedBox(
-                            height: 72,
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(36),
-                                onTap: _removeDigit,
-                                child: const Center(
-                                  child: Icon(Icons.backspace_outlined,
-                                      size: 26),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+
+                    // Clavier numérique
+                    _buildKeypad(),
+
+                    const SizedBox(height: 24),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text(
+                        'Annuler',
+                        style: TextStyle(color: Colors.white60, fontSize: 16),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Spacer(flex: 2),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildRow(List<String> digits) {
-    return Row(
-      children: digits
-          .map((d) =>
-              Expanded(child: _KeyButton(label: d, onTap: () => _addDigit(d))))
-          .toList(),
+  Widget _buildKeypad() {
+    final rows = [
+      ['1', '2', '3'],
+      ['4', '5', '6'],
+      ['7', '8', '9'],
+      ['', '0', 'del'],
+    ];
+
+    return Column(
+      children: rows.map((row) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: row.map((key) {
+              if (key.isEmpty) {
+                return const SizedBox(width: 80, height: 60);
+              }
+              return _KeyButton(
+                label: key,
+                onDigit: _onDigitPressed,
+                onDelete: _onDeletePressed,
+                disabled: _attempts >= _maxAttempts,
+              );
+            }).toList(),
+          ),
+        );
+      }).toList(),
     );
   }
 }
 
-/// ─── CORRIGÉ : Bouton focusable TV avec Focus + InkWell ───
 class _KeyButton extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
-  const _KeyButton({required this.label, required this.onTap});
+  final Function(String) onDigit;
+  final VoidCallback onDelete;
+  final bool disabled;
+
+  const _KeyButton({
+    required this.label,
+    required this.onDigit,
+    required this.onDelete,
+    this.disabled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDelete = label == 'del';
 
-    return SizedBox(
-      height: 72,
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Focus(
-          onKeyEvent: (node, event) {
-            if (event is KeyDownEvent &&
-                (event.logicalKey == LogicalKeyboardKey.select ||
-                    event.logicalKey == LogicalKeyboardKey.enter ||
-                    event.logicalKey == LogicalKeyboardKey.numpadEnter ||
-                    event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
-              onTap();
+    // Wrappé dans Focus pour la navigation TV
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Focus(
+        autofocus: label == '1',
+        onKeyEvent: (node, event) {
+          if (disabled) return KeyEventResult.ignored;
+          if (event is KeyDownEvent) {
+            final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.select ||
+                key == LogicalKeyboardKey.enter ||
+                key == LogicalKeyboardKey.gameButtonA ||
+                key == LogicalKeyboardKey.numpadEnter) {
+              if (isDelete) {
+                onDelete();
+              } else {
+                onDigit(label);
+              }
               return KeyEventResult.handled;
             }
-            return KeyEventResult.ignored;
-          },
-          child: Builder(builder: (context) {
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Builder(
+          builder: (context) {
             final hasFocus = Focus.of(context).hasFocus;
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(36),
-                onTap: onTap,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: hasFocus
-                        ? Border.all(color: primary, width: 2.5)
-                        : null,
-                    color: hasFocus
-                        ? primary.withValues(alpha: isDark ? 0.15 : 0.1)
-                        : Colors.transparent,
-                  ),
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 80,
+              height: 60,
+              decoration: BoxDecoration(
+                color: disabled
+                    ? Colors.white10
+                    : hasFocus
+                        ? Colors.cyanAccent.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: hasFocus ? Colors.cyanAccent : Colors.white12,
+                  width: hasFocus ? 2 : 1,
+                ),
+                boxShadow: hasFocus
+                    ? [
+                        BoxShadow(
+                          color: Colors.cyanAccent.withOpacity(0.3),
+                          blurRadius: 12,
+                        )
+                      ]
+                    : null,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: disabled
+                      ? null
+                      : () {
+                          if (isDelete) {
+                            onDelete();
+                          } else {
+                            onDigit(label);
+                          }
+                        },
                   child: Center(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight:
-                            hasFocus ? FontWeight.w700 : FontWeight.w500,
-                        color: hasFocus
-                            ? primary
-                            : isDark
-                                ? Colors.white
-                                : Colors.black87,
-                      ),
-                    ),
+                    child: isDelete
+                        ? Icon(
+                            Icons.backspace_outlined,
+                            color: disabled ? Colors.white24 : Colors.white70,
+                            size: 24,
+                          )
+                        : Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w600,
+                              color: disabled ? Colors.white24 : Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ),
             );
-          }),
+          },
         ),
       ),
     );
