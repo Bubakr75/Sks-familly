@@ -36,41 +36,26 @@ void main() async {
     try {
       try {
         Firebase.app();
-        if (kDebugMode) {
-          debugPrint('Firebase already initialized (attempt $attempt)');
-        }
+        if (kDebugMode) debugPrint('Firebase already initialized (attempt $attempt)');
         firebaseReady = true;
         break;
       } catch (_) {}
-
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
       if (kDebugMode) debugPrint('Firebase initialized OK (attempt $attempt)');
       firebaseReady = true;
       break;
     } catch (e) {
-      if (e.toString().contains('already been initialized') ||
-          e.toString().contains('duplicate-app')) {
+      if (e.toString().contains('already been initialized') || e.toString().contains('duplicate-app')) {
         if (kDebugMode) debugPrint('Firebase was already initialized');
         firebaseReady = true;
         break;
       }
-
-      if (kDebugMode) {
-        debugPrint('Firebase init attempt $attempt failed: $e');
-      }
-
-      if (attempt < 3) {
-        await Future.delayed(Duration(milliseconds: 500 * attempt));
-      }
+      if (kDebugMode) debugPrint('Firebase init attempt $attempt failed: $e');
+      if (attempt < 3) await Future.delayed(Duration(milliseconds: 500 * attempt));
     }
   }
 
-  if (!firebaseReady && kDebugMode) {
-    debugPrint('WARNING: Firebase not initialized after 3 attempts');
-  }
+  if (!firebaseReady && kDebugMode) debugPrint('WARNING: Firebase not initialized after 3 attempts');
 
   if (firebaseReady) {
     try {
@@ -86,37 +71,22 @@ void main() async {
   final themeProvider = ThemeProvider();
 
   try {
-    await Future.wait([
-      pinProvider.init(),
-      themeProvider.init(),
-    ]);
+    await Future.wait([pinProvider.init(), themeProvider.init()]);
   } catch (e) {
     if (kDebugMode) debugPrint('Provider init error: $e');
   }
 
   try {
     await familyProvider.init();
-
-    try {
-      await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Schedule reminder error: $e');
-    }
+    try { await NotificationService.scheduleDailyReminder(hour: 19, minute: 0); } catch (e) { if (kDebugMode) debugPrint('Schedule reminder error: $e'); }
   } catch (e) {
     if (kDebugMode) debugPrint('FamilyProvider init error: $e');
   }
 
   bool onboardingDone = false;
-  bool openDirectlyToHome = false;
-
   try {
     final prefs = await SharedPreferences.getInstance();
     onboardingDone = prefs.getBool('onboarding_done') ?? false;
-
-    openDirectlyToHome =
-        familyProvider.children.isNotEmpty ||
-        familyProvider.history.isNotEmpty ||
-        familyProvider.isSyncEnabled;
   } catch (e) {
     if (kDebugMode) debugPrint('SharedPreferences error: $e');
   }
@@ -128,48 +98,38 @@ void main() async {
         ChangeNotifierProvider.value(value: pinProvider),
         ChangeNotifierProvider.value(value: themeProvider),
       ],
-      child: SKSFamilyApp(
-        showOnboarding: !onboardingDone,
-        openDirectlyToHome: openDirectlyToHome,
-      ),
+      child: SKSFamilyApp(showOnboarding: !onboardingDone),
     ),
   );
 }
 
 class SKSFamilyApp extends StatefulWidget {
   final bool showOnboarding;
-  final bool openDirectlyToHome;
-
-  const SKSFamilyApp({
-    super.key,
-    required this.showOnboarding,
-    required this.openDirectlyToHome,
-  });
-
+  const SKSFamilyApp({super.key, required this.showOnboarding});
   @override
   State<SKSFamilyApp> createState() => _SKSFamilyAppState();
 }
 
-class _SKSFamilyAppState extends State<SKSFamilyApp>
-    with WidgetsBindingObserver {
+class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
+  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); }
 
   @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
+  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (kDebugMode) debugPrint('App resumed - reconnecting Firestore...');
-      final familyProvider = context.read<FamilyProvider>();
-      familyProvider.reconnectFirestore();
+      context.read<FamilyProvider>().reconnectFirestore();
+      // SECURITE : Verrouiller le mode parent automatiquement
+      try {
+        final pin = context.read<PinProvider>();
+        if (pin.isPinSet && pin.isParentMode) {
+          pin.lockParentMode();
+          if (kDebugMode) debugPrint('Mode parent verrouille automatiquement');
+        }
+      } catch (e) { if (kDebugMode) debugPrint('Lock parent mode error: $e'); }
     }
   }
 
@@ -181,23 +141,14 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
         title: 'SKS-Familly',
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
-          // Intercepteur global pour la telecommande TV
-          // Convertit les touches D-pad Select/Enter en activation
-          // de n'importe quel widget focuse (bouton, champ, switch...)
           return Shortcuts(
             shortcuts: <ShortcutActivator, Intent>{
-              // Bouton OK / Select de la telecommande
               const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
-              // Bouton Enter du clavier
               const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
-              // Bouton Enter du pave numerique
               const SingleActivator(LogicalKeyboardKey.numpadEnter): const ActivateIntent(),
-              // Bouton A de la manette
               const SingleActivator(LogicalKeyboardKey.gameButtonA): const ActivateIntent(),
-              // Bouton Retour de la telecommande = pop navigation
               const SingleActivator(LogicalKeyboardKey.goBack): const DismissIntent(),
               const SingleActivator(LogicalKeyboardKey.browserBack): const DismissIntent(),
-              // Escape = retour aussi
               const SingleActivator(LogicalKeyboardKey.escape): const DismissIntent(),
             },
             child: FocusTraversalGroup(
@@ -207,21 +158,14 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
           );
         },
         theme: themeProvider.theme,
-        home: widget.showOnboarding
-            ? const OnboardingScreen()
-            : _StartupRouter(openDirectlyToHome: widget.openDirectlyToHome),
+        home: widget.showOnboarding ? const OnboardingScreen() : const _StartupRouter(),
       ),
     );
   }
 }
 
 class _StartupRouter extends StatefulWidget {
-  final bool openDirectlyToHome;
-
-  const _StartupRouter({
-    required this.openDirectlyToHome,
-  });
-
+  const _StartupRouter();
   @override
   State<_StartupRouter> createState() => _StartupRouterState();
 }
@@ -230,40 +174,22 @@ class _StartupRouterState extends State<_StartupRouter> {
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
       UpdateService.checkForUpdate(context);
-
-      try {
-        context.read<FamilyProvider>().reconnectFirestore();
-      } catch (e) {
-        if (kDebugMode) debugPrint('Reconnect Firestore error: $e');
-      }
+      try { context.read<FamilyProvider>().reconnectFirestore(); } catch (e) { if (kDebugMode) debugPrint('Reconnect error: $e'); }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.openDirectlyToHome) {
-      return const HomeScreen();
-    }
-
+    // TOUJOURS afficher WelcomeScreen → Mode Parent (PIN) ou Mode Enfant
     return WelcomeScreen(
       onEnter: () {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => const HomeScreen(),
-            transitionsBuilder: (_, anim, __, child) {
-              return FadeTransition(
-                opacity: CurvedAnimation(
-                  parent: anim,
-                  curve: Curves.easeIn,
-                ),
-                child: child,
-              );
-            },
+            transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: CurvedAnimation(parent: anim, curve: Curves.easeIn), child: child),
             transitionDuration: const Duration(milliseconds: 600),
           ),
         );
