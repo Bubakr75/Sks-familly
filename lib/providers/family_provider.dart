@@ -1106,5 +1106,91 @@ class FamilyProvider extends ChangeNotifier {
       await _firestore.clearAllHistory();
     }
     notifyListeners();
+  }  // ══════════════════════════════════════
+  //  MÉTHODES MANQUANTES
+  // ══════════════════════════════════════
+
+  /// Stats hebdo pour le graphique (stats_screen)
+  Map<String, int> getWeeklyStats(String childId) {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    final Map<String, int> stats = {};
+    for (int i = 0; i < 7; i++) {
+      final day = DateTime(monday.year, monday.month, monday.day + i);
+      final dayEntries = _history.where((h) =>
+          h.childId == childId &&
+          h.date.year == day.year &&
+          h.date.month == day.month &&
+          h.date.day == day.day &&
+          h.isBonus).toList();
+      final pts = dayEntries.fold<int>(0, (s, e) => s + e.points);
+      stats[dayNames[i]] = pts;
+    }
+    return stats;
   }
+
+  /// Points de la semaine pour un enfant (child_dashboard_screen)
+  List<HistoryEntry> getWeeklyPoints(String childId) {
+    return _getWeekHistory(childId);
+  }
+
+  /// Historique récent d'un enfant (child_dashboard_screen)
+  List<HistoryEntry> getRecentHistory(String childId, {int limit = 50}) {
+    final childHistory = _history.where((h) => h.childId == childId).toList();
+    childHistory.sort((a, b) => b.date.compareTo(a.date));
+    return childHistory.take(limit).toList();
+  }
+
+  /// Historique pour une date donnée
+  List<HistoryEntry> getHistoryForDate(DateTime date) {
+    return _history.where((h) =>
+        h.date.year == date.year &&
+        h.date.month == date.month &&
+        h.date.day == date.day).toList();
+  }
+
+  /// Réinitialiser tous les scores
+  Future<void> resetAllScores() async {
+    for (final child in _children) {
+      child.points = 0;
+      child.badgeIds.clear();
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      if (_firestore.isConnected) await _firestore.saveChild(child);
+    }
+    notifyListeners();
+  }
+
+  /// Effacer tout l'historique
+  Future<void> clearHistory() async {
+    _history.clear();
+    await _historyBox.clear();
+    if (_firestore.isConnected) {
+      // Pas de méthode bulk delete, on laisse Firestore se sync
+    }
+    notifyListeners();
+  }
+
+  /// Sauvegarder tout en local
+  Future<void> _saveAllLocal() async {
+    _saveBoxFromList(_childrenBox, _children, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_historyBox, _history, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_goalsBox, _goals, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_notesBox, _notes, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_punishmentsBox, _punishments, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_immunitiesBox, _immunities, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_tradesBox, _trades, (e) => e.id, (e) => e.toMap());
+  }
+
+  /// Annuler un échange
+  Future<void> cancelTrade(String tradeId) async {
+    try {
+      final trade = _trades.firstWhere((t) => t.id == tradeId);
+      trade.status = 'cancelled';
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
+      notifyListeners();
+   } catch (_) {}
+  }
+
 }
