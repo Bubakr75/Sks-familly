@@ -126,6 +126,8 @@ class FamilyProvider extends ChangeNotifier {
     _trades = _tradesBox.values
         .map((v) => TradeModel.fromMap(Map<String, dynamic>.from(jsonDecode(v))))
         .toList();
+        _currentParentName = _metaBox.get('current_parent', defaultValue: 'Parent') as String;
+
   }
 
   // ══════════════════════════════════════
