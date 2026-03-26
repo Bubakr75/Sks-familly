@@ -171,6 +171,80 @@ class _FamilyScreenState extends State<FamilyScreen> {
     );
   }
 
+  Future<void> _showChangeCodeDialog() async {
+    final controller = TextEditingController(text: _familyCode);
+    final primary = Theme.of(context).colorScheme.primary;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1B2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_rounded, color: Color(0xFF448AFF)),
+            SizedBox(width: 8),
+            Text('Modifier le code', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Attention : les autres appareils devront utiliser le nouveau code pour rejoindre.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              textCapitalization: TextCapitalization.characters,
+              textAlign: TextAlign.center,
+              maxLength: 10,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'NOUVEAU CODE',
+                counterText: '',
+                helperText: '4 a 10 caracteres',
+                helperStyle: TextStyle(color: Colors.grey[600]),
+              ),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]'))],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim().toUpperCase()),
+            child: const Text('Valider'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == null || result.isEmpty || result == _familyCode) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await context.read<FamilyProvider>().changeFamilyCode(result);
+      if (!mounted) return;
+      setState(() {
+        _familyCode = result;
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Code change en "$result" !'), backgroundColor: const Color(0xFF00C853)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e'), backgroundColor: const Color(0xFFFF1744)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
@@ -344,6 +418,19 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   icon: const Icon(Icons.copy_rounded),
                   label: const Text('Copier le code'),
                   style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _showChangeCodeDialog,
+                  icon: Icon(Icons.edit_rounded, color: primary),
+                  label: Text('Modifier le code', style: TextStyle(color: primary)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: primary),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
