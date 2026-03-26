@@ -23,6 +23,7 @@ import 'screen_time_screen.dart';
 import 'tribunal_screen.dart';
 import '../models/trade_model.dart';
 import '../models/history_entry.dart';
+import '../widgets/tv_focus_wrapper.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
