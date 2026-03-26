@@ -450,6 +450,27 @@ class FirestoreService {
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
+  // ===== CHANGE FAMILY CODE =====
+  Future<void> changeFamilyCode(String newCode) async {
+    if (_familyId == null) throw Exception('Non connecté.');
+    final cleanCode = newCode.toUpperCase().trim();
+    if (cleanCode.length < 4 || cleanCode.length > 10) {
+      throw Exception('Le code doit avoir entre 4 et 10 caractères.');
+    }
+    // Vérifier que le nouveau code n'est pas déjà pris
+    final query = await _db.collection('families')
+        .where('code', isEqualTo: cleanCode)
+        .limit(1)
+        .get();
+    if (query.docs.isNotEmpty && query.docs.first.id != _familyId) {
+      throw Exception('Ce code est déjà utilisé par une autre famille.');
+    }
+    // Mettre à jour dans Firestore
+    await _db.collection('families').doc(_familyId).update({'code': cleanCode});
+    // Mettre à jour en local
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('family_code', cleanCode);
+  }
 
   // ===== RESET =====
   Future<void> resetAllScores() async {
