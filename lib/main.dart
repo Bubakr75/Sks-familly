@@ -180,6 +180,13 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
         navigatorKey: NotificationService.navigatorKey,
         title: 'SKS Family',
         debugShowCheckedModeBanner: false,
+                builder: (context, child) {
+          return FocusTraversalGroup(
+            policy: ReadingOrderTraversalPolicy(),
+            child: child ?? const SizedBox(),
+          );
+        },
+
         theme: themeProvider.theme,
         home: widget.showOnboarding
             ? const OnboardingScreen()
