@@ -7,7 +7,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/fcm_service.dart';
-
 import 'firebase_options.dart';
 import 'providers/family_provider.dart';
 import 'providers/pin_provider.dart';
@@ -20,7 +19,6 @@ import 'services/update_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Hive.initFlutter();
   await initializeDateFormatting('fr_FR', null);
 
@@ -78,7 +76,11 @@ void main() async {
 
   try {
     await familyProvider.init();
-    try { await NotificationService.scheduleDailyReminder(hour: 19, minute: 0); } catch (e) { if (kDebugMode) debugPrint('Schedule reminder error: $e'); }
+    try {
+      await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
+    } catch (e) {
+      if (kDebugMode) debugPrint('Schedule reminder error: $e');
+    }
   } catch (e) {
     if (kDebugMode) debugPrint('FamilyProvider init error: $e');
   }
@@ -112,24 +114,30 @@ class SKSFamilyApp extends StatefulWidget {
 
 class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver {
   @override
-  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
-  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (kDebugMode) debugPrint('App resumed - reconnecting Firestore...');
-      context.read<FamilyProvider>().reconnectFirestore();
-      // SECURITE : Verrouiller le mode parent automatiquement
-      try {
-        final pin = context.read<PinProvider>();
-        if (pin.isPinSet && pin.isParentMode) {
-          pin.lockParentMode();
-          if (kDebugMode) debugPrint('Mode parent verrouille automatiquement');
-        }
-      } catch (e) { if (kDebugMode) debugPrint('Lock parent mode error: $e'); }
+      final familyProvider = context.read<FamilyProvider>();
+      familyProvider.reconnectFirestore();
+
+      // ─── CORRIGÉ : Verrouiller automatiquement le mode parent ───
+      final pin = context.read<PinProvider>();
+      if (pin.isPinSet && pin.isParentMode) {
+        pin.lockParentMode();
+        if (kDebugMode) debugPrint('Parent mode locked on resume');
+      }
     }
   }
 
@@ -164,6 +172,7 @@ class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver
   }
 }
 
+// ─── CORRIGÉ : Toujours afficher WelcomeScreen ───
 class _StartupRouter extends StatefulWidget {
   const _StartupRouter();
   @override
@@ -177,19 +186,29 @@ class _StartupRouterState extends State<_StartupRouter> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       UpdateService.checkForUpdate(context);
-      try { context.read<FamilyProvider>().reconnectFirestore(); } catch (e) { if (kDebugMode) debugPrint('Reconnect error: $e'); }
+      try {
+        context.read<FamilyProvider>().reconnectFirestore();
+      } catch (e) {
+        if (kDebugMode) debugPrint('Reconnect Firestore error: $e');
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // TOUJOURS afficher WelcomeScreen → Mode Parent (PIN) ou Mode Enfant
+    // ─── Toujours WelcomeScreen pour que les enfants ne puissent pas ───
+    // ─── accéder au mode parent directement ───
     return WelcomeScreen(
       onEnter: () {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => const HomeScreen(),
-            transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: CurvedAnimation(parent: anim, curve: Curves.easeIn), child: child),
+            transitionsBuilder: (_, anim, __, child) {
+              return FadeTransition(
+                opacity: CurvedAnimation(parent: anim, curve: Curves.easeIn),
+                child: child,
+              );
+            },
             transitionDuration: const Duration(milliseconds: 600),
           ),
         );
