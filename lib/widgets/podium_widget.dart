@@ -81,8 +81,8 @@ class PodiumWidget extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(colors: [primaryColor, colors[1]]),
@@ -128,7 +128,7 @@ class PodiumWidget extends StatelessWidget {
   }
 
   Widget _buildAvatar(ChildModel child, Color borderColor) {
-    const size = 42.0;
+    const size = 60.0;
     Widget avatarContent;
     if (_hasValidPhoto(child)) {
       avatarContent = ClipOval(
@@ -140,7 +140,7 @@ class PodiumWidget extends StatelessWidget {
     }
     return Container(
       width: size + 4, height: size + 4,
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: borderColor, width: 2)),
+      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: borderColor, width: 2.5)),
       child: ClipOval(child: avatarContent),
     );
   }
