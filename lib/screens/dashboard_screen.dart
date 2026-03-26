@@ -710,11 +710,16 @@ class _DashboardScreenState extends State<DashboardScreen>
     ));
   }
 
-  Widget _buildQuickAction(IconData icon, String label, Color color, bool isDark, VoidCallback onTap) {
-    return Expanded(child: InkWell(borderRadius: BorderRadius.circular(14), onTap: onTap, child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withValues(alpha: 0.25))),
-      child: Column(children: [Icon(icon, color: color, size: 24), const SizedBox(height: 6), Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 11))]),
-    )));
+    Widget _buildQuickAction(IconData icon, String label, Color color, bool isDark, VoidCallback onTap) {
+    return Expanded(child: TvFocusWrapper(
+      onTap: onTap,
+      focusBorderColor: color,
+      borderRadius: const BorderRadius.all(Radius.circular(14)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withValues(alpha: 0.25))),
+        child: Column(children: [Icon(icon, color: color, size: 24), const SizedBox(height: 6), Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 11))]),
+      ),
+    ));
   }
-}
+
