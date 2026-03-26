@@ -464,6 +464,18 @@ class FamilyProvider extends ChangeNotifier {
     if (_firestore.isConnected) await _firestore.saveTrade(_trades[index]);
     notifyListeners();
   }
+  // ============================================================
+  //  CHANGEMENT DE CODE FAMILLE
+  // ============================================================
+
+  Future<void> changeFamilyCode(String newCode) async {
+    if (!_firestore.isConnected) {
+      throw Exception('Vous devez être connecté pour changer le code.');
+    }
+    await _firestore.changeFamilyCode(newCode);
+    _familyCode = newCode;
+    notifyListeners();
+  }
 
   // ============================================================
   //  HISTORY & STATS helpers
