@@ -340,8 +340,8 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
             ),
           ),
         Container(
-          width: 80,
-          height: 80,
+          width: 100,
+          height: 100,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
@@ -362,8 +362,8 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
             child: _hasValidPhoto
                 ? Image.memory(
                     base64Decode(widget.child.photoBase64!),
-                    width: 80,
-                    height: 80,
+                    width: 100,
+                    height: 100,
                     fit: BoxFit.cover,
                     gaplessPlayback: true,
                     errorBuilder: (_, __, ___) => Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
