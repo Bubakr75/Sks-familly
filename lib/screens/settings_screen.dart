@@ -78,16 +78,10 @@ class SettingsScreen extends StatelessWidget {
                                         decoration: BoxDecoration(
                                           color: color,
                                           shape: BoxShape.circle,
-                                          border: selected
-                                              ? Border.all(color: Colors.white, width: 3)
-                                              : null,
-                                          boxShadow: selected
-                                              ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 12)]
-                                              : [],
+                                          border: selected ? Border.all(color: Colors.white, width: 3) : null,
+                                          boxShadow: selected ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 12)] : [],
                                         ),
-                                        child: selected
-                                            ? const Icon(Icons.check, color: Colors.white, size: 20)
-                                            : null,
+                                        child: selected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
                                       ),
                                     );
                                   }),
@@ -135,15 +129,10 @@ class SettingsScreen extends StatelessWidget {
                                                   ? [BoxShadow(color: (bg['color'] as Color).withOpacity(0.5), blurRadius: 10)]
                                                   : [],
                                             ),
-                                            child: selected
-                                                ? Icon(Icons.check, color: themeProv.primaryColor, size: 18)
-                                                : null,
+                                            child: selected ? Icon(Icons.check, color: themeProv.primaryColor, size: 18) : null,
                                           ),
                                           const SizedBox(height: 4),
-                                          Text(
-                                            bg['label'] as String,
-                                            style: const TextStyle(fontSize: 10, color: Colors.white60),
-                                          ),
+                                          Text(bg['label'] as String, style: const TextStyle(fontSize: 10, color: Colors.white60)),
                                         ],
                                       ),
                                     );
@@ -164,10 +153,17 @@ class SettingsScreen extends StatelessWidget {
                             familyProv.familyId != null ? Icons.cloud_done : Icons.cloud_off,
                             color: familyProv.familyId != null ? Colors.greenAccent : Colors.redAccent,
                           ),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const FamilyScreen()),
-                          ),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FamilyScreen())),
+                        ),
+                        const SizedBox(height: 16),
+                        const _GlassSectionTitle(icon: Icons.person, title: 'Profil parent'),
+                        const SizedBox(height: 8),
+                        _GlassSettingsTile(
+                          icon: Icons.badge,
+                          title: 'Parent actif',
+                          subtitle: familyProv.currentParentName,
+                          trailing: const Icon(Icons.edit, color: Colors.white54, size: 20),
+                          onTap: () => _showParentNameDialog(context, familyProv),
                         ),
                         const SizedBox(height: 16),
                         const _GlassSectionTitle(icon: Icons.security, title: 'Sécurité'),
@@ -241,6 +237,50 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  void _showParentNameDialog(BuildContext context, FamilyProvider prov) {
+    final controller = TextEditingController(text: prov.currentParentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Parent actif', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Qui utilise l\'appli ?', style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white, fontSize: 18),
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                hintText: 'Ex: Papa, Maman...',
+                hintStyle: const TextStyle(color: Colors.white30),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                prov.setCurrentParent(controller.text.trim());
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Parent actif : ${controller.text.trim()}')));
+              }
+            },
+            child: const Text('Valider'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showPinSetup(BuildContext context, PinProvider pinProv) {
     final controller = TextEditingController();
     showDialog(
@@ -269,28 +309,20 @@ class SettingsScreen extends StatelessWidget {
                 hintStyle: const TextStyle(color: Colors.white30),
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 counterText: '',
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
           if (pinProv.isPinSet)
             TextButton(
               onPressed: () {
                 pinProv.removePin();
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code supprimé')),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code supprimé')));
               },
               child: const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
             ),
@@ -299,9 +331,7 @@ class SettingsScreen extends StatelessWidget {
               if (controller.text.length == 4) {
                 pinProv.setPin(controller.text);
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code enregistré !')),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code enregistré !')));
               }
             },
             child: const Text('Valider'),
@@ -318,23 +348,15 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Réinitialiser ?', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Tous les points seront remis à zéro. Cette action est irréversible.',
-          style: TextStyle(color: Colors.white70),
-        ),
+        content: const Text('Tous les points seront remis à zéro. Cette action est irréversible.', style: TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () {
               prov.resetAllScores();
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Scores réinitialisés')),
-              );
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scores réinitialisés')));
             },
             child: const Text('Réinitialiser'),
           ),
@@ -350,23 +372,15 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Effacer l\'historique ?', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Tout l\'historique sera supprimé. Cette action est irréversible.',
-          style: TextStyle(color: Colors.white70),
-        ),
+        content: const Text('Tout l\'historique sera supprimé. Cette action est irréversible.', style: TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () {
               prov.clearHistory();
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Historique effacé')),
-              );
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Historique effacé')));
             },
             child: const Text('Effacer'),
           ),
@@ -387,15 +401,7 @@ class _GlassSectionTitle extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: Colors.white54),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.white54,
-            letterSpacing: 1.2,
-          ),
-        ),
+        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white54, letterSpacing: 1.2)),
       ],
     );
   }
@@ -422,9 +428,7 @@ class _GlassSettingsTile extends StatelessWidget {
       child: ListTile(
         leading: Icon(icon, color: Colors.white70),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: subtitle != null
-            ? Text(subtitle!, style: const TextStyle(color: Colors.white60, fontSize: 12))
-            : null,
+        subtitle: subtitle != null ? Text(subtitle!, style: const TextStyle(color: Colors.white60, fontSize: 12)) : null,
         trailing: trailing,
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
