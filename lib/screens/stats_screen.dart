@@ -1,77 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../providers/family_provider.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/glass_card.dart';
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Consumer<FamilyProvider>(
       builder: (context, provider, _) {
         if (provider.children.isEmpty) {
           return AnimatedBackground(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GlowIcon(
-                      icon: Icons.bar_chart_rounded,
-                      size: 64,
-                      color: Colors.grey[600]),
-                  const SizedBox(height: 16),
-                  NeonText(
-                      text: 'Aucune donnee',
-                      fontSize: 18,
-                      color: Colors.grey),
-                ],
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bar_chart_rounded, size: 80, color: Colors.white24),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Aucun enfant enregistré',
+                      style: TextStyle(color: Colors.white54, fontSize: 16),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
         }
 
-        // ─── CORRIGÉ : AnimatedBackground englobe tout le Scaffold ───
         return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        GlowIcon(
-                            icon: Icons.bar_chart_rounded,
-                            color: primary,
-                            size: 26),
-                        const SizedBox(width: 10),
-                        NeonText(
-                          text: 'Statistiques',
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? Colors.white : Colors.black87,
-                          glowIntensity: 0.2,
-                        ),
-                      ],
+            appBar: AppBar(
+              title: const Text('Statistiques'),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+            ),
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 20),
+                  _buildScoreComparison(context, provider),
+                  const SizedBox(height: 20),
+                  ...provider.children.map(
+                    (child) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildWeeklyChart(context, provider, child),
                     ),
-                    const SizedBox(height: 20),
-                    _buildScoreComparison(provider, primary, isDark),
-                    const SizedBox(height: 20),
-                    ...provider.children.map(
-                        (child) => _buildWeeklyChart(child, provider, primary, isDark)),
-                    const SizedBox(height: 16),
-                    _buildSummaryCards(provider, primary, isDark),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSummaryCards(context, provider),
+                  const SizedBox(height: 32),
+                ],
               ),
             ),
           ),
@@ -80,307 +67,231 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreComparison(
-      FamilyProvider provider, Color primary, bool isDark) {
-    final sorted = provider.childrenSorted;
-    final maxPoints =
-        sorted.isNotEmpty ? sorted.first.points.toDouble() : 1.0;
+  Widget _buildHeader(BuildContext context) {
+    return Text(
+      'Vue d\'ensemble',
+      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+    );
+  }
 
-    final neonColors = [
-      const Color(0xFF00E676),
-      const Color(0xFF00E5FF),
-      const Color(0xFF7C4DFF),
-      const Color(0xFFFFD740),
-      const Color(0xFFFF6D00),
-      const Color(0xFFFF1744),
-    ];
+  Widget _buildScoreComparison(BuildContext context, FamilyProvider provider) {
+    final children = provider.children;
+    final maxPoints = children.fold<int>(
+      1,
+      (max, c) => c.points > max ? c.points : max,
+    );
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
-      glowColor: primary,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          NeonText(
-              text: 'Comparaison des scores',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : Colors.black87,
-              glowIntensity: 0.15),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: maxPoints > 0 ? maxPoints * 1.2 : 10,
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipRoundedRadius: 12,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      return BarTooltipItem(
-                        '${sorted[group.x].name}\n${rod.toY.toInt()} pts',
-                        TextStyle(
-                            color: isDark ? Colors.white : Colors.black87,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (v, _) {
-                        if (v.toInt() < sorted.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              sorted[v.toInt()].name,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: isDark
-                                      ? Colors.white60
-                                      : Colors.black54),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 36,
-                      getTitlesWidget: (v, _) => Text(
-                        v.toInt().toString(),
-                        style: TextStyle(
-                            fontSize: 10,
-                            color:
-                                isDark ? Colors.white38 : Colors.black38),
-                      ),
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                ),
-                borderData: FlBorderData(show: false),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.05),
-                    strokeWidth: 1,
-                  ),
-                ),
-                barGroups: sorted.asMap().entries.map((e) {
-                  final color = neonColors[e.key % neonColors.length];
-                  return BarChartGroupData(
-                    x: e.key,
-                    barRods: [
-                      BarChartRodData(
-                        toY: e.value.points.toDouble(),
-                        gradient: LinearGradient(
-                          colors: [color, color.withValues(alpha: 0.5)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        width: 22,
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(8)),
-                        backDrawRodData: BackgroundBarChartRodData(
-                          show: true,
-                          toY: maxPoints > 0 ? maxPoints * 1.2 : 10,
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.03)
-                              : Colors.black.withValues(alpha: 0.03),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Comparaison des scores',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            ...children.map((child) {
+              final ratio = maxPoints > 0 ? child.points / maxPoints : 0.0;
+              final colors = [
+                Colors.cyanAccent,
+                Colors.purpleAccent,
+                Colors.orangeAccent,
+                Colors.greenAccent,
+                Colors.pinkAccent,
+              ];
+              final colorIndex = children.indexOf(child) % colors.length;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 70,
+                      child: Text(
+                        child.name,
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: ratio.clamp(0.0, 1.0),
+                          minHeight: 18,
+                          backgroundColor: Colors.white10,
+                          valueColor:
+                              AlwaysStoppedAnimation(colors[colorIndex]),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${child.points}',
+                      style: TextStyle(
+                        color: colors[colorIndex],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildWeeklyChart(
-      child, FamilyProvider provider, Color primary, bool isDark) {
-    final weekStats = provider.getWeeklyStats(child.id);
-    final maxVal =
-        weekStats.values.fold<int>(0, (a, b) => a > b ? a : b);
+      BuildContext context, FamilyProvider provider, dynamic child) {
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final dailyPoints = List.generate(7, (i) {
+      final day = weekStart.add(Duration(days: i));
+      final dayActivities = provider.getActivitiesForChildOnDate(child.id, day);
+      int total = 0;
+      for (final a in dayActivities) {
+        total += (a.points as int?) ?? 0;
+      }
+      return total;
+    });
+
+    final maxDaily = dailyPoints.fold<int>(1, (m, v) => v.abs() > m ? v.abs() : m);
+    final days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar,
-                  style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 8),
-              NeonText(
-                  text: '${child.name} - Semaine',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                  glowIntensity: 0.15),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 140,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: maxVal > 0 ? maxVal.toDouble() * 1.3 : 10,
-                barTouchData: BarTouchData(enabled: true),
-                titlesData: FlTitlesData(
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (v, _) {
-                        final days = weekStats.keys.toList();
-                        if (v.toInt() < days.length) {
-                          return Text(days[v.toInt()],
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: isDark
-                                      ? Colors.white54
-                                      : Colors.black45));
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, _) => Text(
-                        v.toInt().toString(),
-                        style: TextStyle(
-                            fontSize: 9,
-                            color: isDark
-                                ? Colors.white30
-                                : Colors.black26),
-                      ),
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                ),
-                borderData: FlBorderData(show: false),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.black.withValues(alpha: 0.04),
-                    strokeWidth: 1,
-                  ),
-                ),
-                barGroups: weekStats.entries
-                    .toList()
-                    .asMap()
-                    .entries
-                    .map((e) {
-                  return BarChartGroupData(
-                    x: e.key,
-                    barRods: [
-                      BarChartRodData(
-                        toY: e.value.value.toDouble(),
-                        gradient: LinearGradient(
-                          colors: [
-                            primary,
-                            primary.withValues(alpha: 0.4)
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        width: 16,
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(6)),
-                      ),
-                    ],
-                  );
-                }).toList(),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${child.name} – Semaine',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 120,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: List.generate(7, (i) {
+                  final val = dailyPoints[i];
+                  final height = maxDaily > 0 ? (val.abs() / maxDaily) * 100 : 0.0;
+                  final isPositive = val >= 0;
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            '$val',
+                            style: TextStyle(
+                              color: isPositive
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            height: height.clamp(4.0, 100.0),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: isPositive
+                                    ? [Colors.cyanAccent.withOpacity(0.4), Colors.cyanAccent]
+                                    : [Colors.redAccent.withOpacity(0.4), Colors.redAccent],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            days[i],
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSummaryCards(
-      FamilyProvider provider, Color primary, bool isDark) {
-    final totalPoints =
-        provider.children.fold<int>(0, (s, c) => s + c.points);
-    final totalEntries = provider.history.length;
-    final bonusCount = provider.history.where((h) => h.isBonus).length;
-    final penalityCount =
-        provider.history.where((h) => !h.isBonus).length;
+  Widget _buildSummaryCards(BuildContext context, FamilyProvider provider) {
+    int totalPoints = 0;
+    int totalActivities = 0;
+    int bonusCount = 0;
+    int penaltyCount = 0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    for (final child in provider.children) {
+      totalPoints += child.points;
+      final activities = provider.getActivitiesForChild(child.id);
+      totalActivities += activities.length;
+      for (final a in activities) {
+        if ((a.points as int?) != null && a.points > 0) {
+          bonusCount++;
+        } else {
+          penaltyCount++;
+        }
+      }
+    }
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
       children: [
-        NeonText(
-            text: 'Resume',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : Colors.black87,
-            glowIntensity: 0.15),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _NeonStatCard(
-                icon: Icons.star_rounded,
-                label: 'Total points',
-                value: '$totalPoints',
-                color: const Color(0xFFFFD700),
-                isDark: isDark),
-            const SizedBox(width: 10),
-            _NeonStatCard(
-                icon: Icons.history_rounded,
-                label: 'Activites',
-                value: '$totalEntries',
-                color: const Color(0xFF00E5FF),
-                isDark: isDark),
-          ],
+        _NeonStatCard(
+          icon: Icons.star_rounded,
+          value: '$totalPoints',
+          label: 'Points totaux',
+          color: Colors.amberAccent,
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            _NeonStatCard(
-                icon: Icons.add_circle_rounded,
-                label: 'Bonus',
-                value: '$bonusCount',
-                color: const Color(0xFF00E676),
-                isDark: isDark),
-            const SizedBox(width: 10),
-            _NeonStatCard(
-                icon: Icons.remove_circle_rounded,
-                label: 'Penalites',
-                value: '$penalityCount',
-                color: const Color(0xFFFF1744),
-                isDark: isDark),
-          ],
+        _NeonStatCard(
+          icon: Icons.timeline_rounded,
+          value: '$totalActivities',
+          label: 'Activités',
+          color: Colors.cyanAccent,
+        ),
+        _NeonStatCard(
+          icon: Icons.thumb_up_rounded,
+          value: '$bonusCount',
+          label: 'Bonus',
+          color: Colors.greenAccent,
+        ),
+        _NeonStatCard(
+          icon: Icons.thumb_down_rounded,
+          value: '$penaltyCount',
+          label: 'Pénalités',
+          color: Colors.redAccent,
         ),
       ],
     );
@@ -389,60 +300,47 @@ class StatsScreen extends StatelessWidget {
 
 class _NeonStatCard extends StatelessWidget {
   final IconData icon;
-  final String label;
   final String value;
+  final String label;
   final Color color;
-  final bool isDark;
-  const _NeonStatCard(
-      {required this.icon,
-      required this.label,
-      required this.value,
-      required this.color,
-      this.isDark = true});
+
+  const _NeonStatCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: color.withValues(alpha: isDark ? 0.06 : 0.08),
-          border: Border.all(
-              color: color.withValues(alpha: isDark ? 0.15 : 0.25)),
-          boxShadow: isDark
-              ? [
-                  BoxShadow(
-                      color: color.withValues(alpha: 0.08),
-                      blurRadius: 12)
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon,
-                color: color,
-                size: 24,
-                shadows: isDark
-                    ? [
-                        Shadow(
-                            color: color.withValues(alpha: 0.5),
-                            blurRadius: 8)
-                      ]
-                    : null),
-            const SizedBox(height: 8),
-            NeonText(
-                text: value,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                color: color,
-                glowIntensity: isDark ? 0.4 : 0.0),
-            Text(label,
+    final width = (MediaQuery.of(context).size.width - 44) / 2;
+    return GlassCard(
+      child: SizedBox(
+        width: width,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 32),
+              const SizedBox(height: 8),
+              Text(
+                value,
                 style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.grey[500] : Colors.grey[600])),
-          ],
+                  color: color,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(color: color.withOpacity(0.5), blurRadius: 12),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );
