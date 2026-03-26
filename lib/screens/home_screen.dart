@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
@@ -133,58 +134,83 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 final item = entry.value;
                 final isSelected = _currentIndex == i;
                 return Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _onTabSelected(i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutCubic,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(14),
-                                  color: isSelected ? primary.withValues(alpha: 0.15) : Colors.transparent,
-                                ),
-                                child: Icon(
-                                  isSelected ? item.activeIcon : item.icon,
-                                  size: isSelected ? 26 : 24,
-                                  color: isSelected ? primary : Colors.grey[600],
-                                  shadows: isSelected ? [Shadow(color: primary.withValues(alpha: 0.5), blurRadius: 8)] : null,
-                                ),
-                              ),
-                              if (item.locked)
-                                Positioned(
-                                  right: 2, top: 2,
-                                  child: Container(
-                                    width: 12, height: 12,
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange, shape: BoxShape.circle,
-                                      border: Border.all(color: const Color(0xFF0A0E21), width: 1.5),
+                  child: Focus(
+                    autofocus: i == 0,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          (event.logicalKey == LogicalKeyboardKey.select ||
+                           event.logicalKey == LogicalKeyboardKey.enter ||
+                           event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
+                        _onTabSelected(i);
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Builder(
+                      builder: (context) {
+                        final hasFocus = Focus.of(context).hasFocus;
+                        return InkWell(
+                          onTap: () => _onTabSelected(i),
+                          borderRadius: BorderRadius.circular(16),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOutCubic,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: hasFocus
+                                  ? Border.all(color: primary, width: 2)
+                                  : Border.all(color: Colors.transparent, width: 2),
+                              color: hasFocus ? primary.withValues(alpha: 0.1) : Colors.transparent,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 250),
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(14),
+                                        color: isSelected ? primary.withValues(alpha: 0.15) : Colors.transparent,
+                                      ),
+                                      child: Icon(
+                                        isSelected ? item.activeIcon : item.icon,
+                                        size: (isSelected || hasFocus) ? 26 : 24,
+                                        color: (isSelected || hasFocus) ? primary : Colors.grey[600],
+                                        shadows: (isSelected || hasFocus) ? [Shadow(color: primary.withValues(alpha: 0.5), blurRadius: 8)] : null,
+                                      ),
                                     ),
-                                    child: const Icon(Icons.lock, size: 7, color: Colors.white),
+                                    if (item.locked)
+                                      Positioned(
+                                        right: 2, top: 2,
+                                        child: Container(
+                                          width: 12, height: 12,
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange, shape: BoxShape.circle,
+                                            border: Border.all(color: const Color(0xFF0A0E21), width: 1.5),
+                                          ),
+                                          child: const Icon(Icons.lock, size: 7, color: Colors.white),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    fontSize: (isSelected || hasFocus) ? 10 : 9,
+                                    fontWeight: (isSelected || hasFocus) ? FontWeight.w700 : FontWeight.w500,
+                                    color: (isSelected || hasFocus) ? primary : Colors.grey[600],
+                                    shadows: (isSelected || hasFocus) ? [Shadow(color: primary.withValues(alpha: 0.4), blurRadius: 6)] : null,
                                   ),
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              fontSize: isSelected ? 10 : 9,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected ? primary : Colors.grey[600],
-                              shadows: isSelected ? [Shadow(color: primary.withValues(alpha: 0.4), blurRadius: 6)] : null,
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
                 );
@@ -357,9 +383,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // =====================================================
-  // MÉTHODE MODIFIÉE : affichage de actionBy dans le subtitle
-  // =====================================================
   void _showFullHistoryPage(BuildContext context, FamilyProvider provider) {
     showModalBottomSheet(
       context: context, isScrollControlled: true,
@@ -410,91 +433,3 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       },
                     ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showNotesChildPicker(BuildContext context, FamilyProvider provider) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF141833),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 16),
-            Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
-            const SizedBox(height: 16),
-            ...provider.children.map((child) => ListTile(
-              leading: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22))),
-              ),
-              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              subtitle: Text('${provider.getNotesForChild(child.id).length} notes', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-              trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => NotesScreen(childId: child.id, childName: child.name)));
-              },
-            )),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    switch (_currentIndex) {
-      case 0: return const DashboardScreen();
-      case 1: return const AddPointsScreen();
-      case 2: return const CalendarScreen();
-      case 3: return const StatsScreen();
-      case 4: return const SettingsScreen();
-      default: return const DashboardScreen();
-    }
-  }
-}
-
-class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final bool locked;
-  const _NavItem(this.icon, this.activeIcon, this.label, {this.locked = false});
-}
-
-class _DrawerItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-  const _DrawerItem({required this.icon, required this.label, required this.color, required this.subtitle, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(
-        width: 40, height: 40,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 8, spreadRadius: -2)],
-        ),
-        child: Icon(icon, color: color, size: 22),
-      ),
-      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-      trailing: Icon(Icons.chevron_right, size: 20, color: Colors.grey[700]),
-      onTap: onTap,
-    );
-  }
-}
