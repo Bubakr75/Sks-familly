@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import 'firebase_diagnostic_screen.dart';
 
 class FamilyScreen extends StatefulWidget {
@@ -18,6 +19,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
   final _joinController = TextEditingController();
   final _customCodeController = TextEditingController();
   bool _useCustomCode = false;
+
+  // FocusNodes pour gerer la navigation TV sur les TextFields
+  final _joinFocusNode = FocusNode();
+  final _customCodeFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -35,6 +40,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
   void dispose() {
     _joinController.dispose();
     _customCodeController.dispose();
+    _joinFocusNode.dispose();
+    _customCodeFocusNode.dispose();
     super.dispose();
   }
 
@@ -245,6 +252,57 @@ class _FamilyScreenState extends State<FamilyScreen> {
     }
   }
 
+  /// Helper pour creer un TextField compatible telecommande TV
+  /// Quand l'utilisateur appuie sur fleche bas, le focus passe au widget suivant
+  /// Quand il appuie sur fleche haut, le focus passe au widget precedent
+  Widget _buildTvTextField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    String? hintText,
+    int? maxLength,
+    TextInputType? keyboardType,
+    bool obscureText = false,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    List<TextInputFormatter>? inputFormatters,
+    Widget? suffixIcon,
+    TextStyle? style,
+    String? helperText,
+    String? counterText,
+  }) {
+    return KeyboardListener(
+      focusNode: FocusNode(), // listener externe
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            focusNode.nextFocus();
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            focusNode.previousFocus();
+          }
+        }
+      },
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        textCapitalization: textCapitalization,
+        textAlign: TextAlign.center,
+        maxLength: maxLength,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        style: style ?? const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hintText,
+          counterText: counterText ?? '',
+          helperText: helperText,
+          helperStyle: TextStyle(color: Colors.grey[600]),
+          suffixIcon: suffixIcon,
+        ),
+        inputFormatters: inputFormatters,
+        // Quand l'utilisateur valide dans le TextField, on passe au focus suivant
+        onSubmitted: (_) => focusNode.nextFocus(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
@@ -275,8 +333,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       // Header
                       Row(
                         children: [
-                          GestureDetector(
+                          TvFocusWrapper(
                             onTap: () => Navigator.pop(context),
+                            borderRadius: BorderRadius.circular(12),
                             child: Container(
                               width: 40,
                               height: 40,
@@ -293,8 +352,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                           const SizedBox(width: 10),
                           NeonText(text: 'Synchronisation', fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, glowIntensity: 0.2),
                           const Spacer(),
-                          GestureDetector(
+                          TvFocusWrapper(
                             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FirebaseDiagnosticScreen())),
+                            borderRadius: BorderRadius.circular(18),
                             child: Container(
                               width: 36,
                               height: 36,
@@ -390,8 +450,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
             children: [
               const Text('Partagez ce code avec votre conjoint(e) :', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.white70)),
               const SizedBox(height: 16),
-              GestureDetector(
+              TvFocusWrapper(
                 onTap: _copyCode,
+                borderRadius: BorderRadius.circular(18),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -490,18 +551,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
               ),
               if (_useCustomCode) ...[
                 const SizedBox(height: 8),
-                TextField(
+                _buildTvTextField(
                   controller: _customCodeController,
-                  textCapitalization: TextCapitalization.characters,
-                  textAlign: TextAlign.center,
+                  focusNode: _customCodeFocusNode,
+                  hintText: 'Ex: SKS2025',
                   maxLength: 10,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Ex: SKS2025',
-                    counterText: '',
-                    helperText: '4 a 10 caracteres',
-                    helperStyle: TextStyle(color: Colors.grey[600]),
-                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  helperText: '4 a 10 caracteres',
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]'))],
                 ),
                 const SizedBox(height: 8),
@@ -548,24 +604,20 @@ class _FamilyScreenState extends State<FamilyScreen> {
               const SizedBox(height: 16),
               const Text('Entrez le code pour rejoindre.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 16),
-              TextField(
+              _buildTvTextField(
                 controller: _joinController,
-                textCapitalization: TextCapitalization.characters,
-                textAlign: TextAlign.center,
+                focusNode: _joinFocusNode,
+                hintText: 'CODE',
                 maxLength: 10,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'CODE',
-                  counterText: '',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.paste_rounded),
-                    onPressed: () async {
-                      final data = await Clipboard.getData(Clipboard.kTextPlain);
-                      if (data?.text != null) _joinController.text = data!.text!.toUpperCase().trim();
-                    },
-                  ),
-                ),
+                textCapitalization: TextCapitalization.characters,
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]'))],
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.paste_rounded),
+                  onPressed: () async {
+                    final data = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (data?.text != null) _joinController.text = data!.text!.toUpperCase().trim();
+                  },
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(
