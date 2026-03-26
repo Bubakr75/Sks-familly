@@ -4,7 +4,7 @@ class TradeModel {
   String toChildId;
   int immunityLines;
   String serviceDescription;
-  String status; // pending, accepted, service_done, completed, rejected, cancelled
+  String status;
   DateTime createdAt;
   DateTime? acceptedAt;
   DateTime? completedAt;
@@ -67,7 +67,9 @@ class TradeModel {
       default:
         return '\u{2753}';
     }
-      TradeModel copyWith({
+  }
+
+  TradeModel copyWith({
     String? id,
     String? fromChildId,
     String? toChildId,
@@ -91,7 +93,6 @@ class TradeModel {
       completedAt: completedAt ?? this.completedAt,
       parentValidatorNote: parentValidatorNote ?? this.parentValidatorNote,
     );
-  }
   }
 
   Map<String, dynamic> toMap() => {
