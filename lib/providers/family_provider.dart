@@ -360,7 +360,7 @@ class FamilyProvider extends ChangeNotifier {
     for (final vote in tc.votes) { final correct = vote.vote == tc.verdict; vote.pointsAwarded = correct ? 1 : -1; await addPoints(vote.childId, 1, '\u{1F5F3} Tribunal (jure): ${correct ? "bon vote" : "mauvais vote"}', category: 'tribunal_vote', isBonus: correct); }
   }
 
-    Future<void> renderVerdict({required String caseId, required TribunalVerdict verdict, required String reason, int? pointsForAccused}) async {
+        Future<void> renderVerdict({required String caseId, required TribunalVerdict verdict, required String reason, int? plaintiffPoints, int? accusedPoints}) async {
     try {
       final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
       tc.status = TribunalStatus.closed;
