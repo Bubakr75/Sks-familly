@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -71,7 +72,6 @@ void main() async {
     debugPrint('WARNING: Firebase not initialized after 3 attempts');
   }
 
-  // Initialiser FCM pour les notifications push
   if (firebaseReady) {
     try {
       await FcmService().init();
@@ -178,15 +178,34 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
     return Consumer<ThemeProvider>(
       builder: (_, themeProvider, __) => MaterialApp(
         navigatorKey: NotificationService.navigatorKey,
-        title: 'SKS Family',
+        title: 'SKS-Familly',
         debugShowCheckedModeBanner: false,
-                builder: (context, child) {
-          return FocusTraversalGroup(
-            policy: ReadingOrderTraversalPolicy(),
-            child: child ?? const SizedBox(),
+        builder: (context, child) {
+          // Intercepteur global pour la telecommande TV
+          // Convertit les touches D-pad Select/Enter en activation
+          // de n'importe quel widget focuse (bouton, champ, switch...)
+          return Shortcuts(
+            shortcuts: <ShortcutActivator, Intent>{
+              // Bouton OK / Select de la telecommande
+              const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
+              // Bouton Enter du clavier
+              const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
+              // Bouton Enter du pave numerique
+              const SingleActivator(LogicalKeyboardKey.numpadEnter): const ActivateIntent(),
+              // Bouton A de la manette
+              const SingleActivator(LogicalKeyboardKey.gameButtonA): const ActivateIntent(),
+              // Bouton Retour de la telecommande = pop navigation
+              const SingleActivator(LogicalKeyboardKey.goBack): const DismissIntent(),
+              const SingleActivator(LogicalKeyboardKey.browserBack): const DismissIntent(),
+              // Escape = retour aussi
+              const SingleActivator(LogicalKeyboardKey.escape): const DismissIntent(),
+            },
+            child: FocusTraversalGroup(
+              policy: ReadingOrderTraversalPolicy(),
+              child: child ?? const SizedBox(),
+            ),
           );
         },
-
         theme: themeProvider.theme,
         home: widget.showOnboarding
             ? const OnboardingScreen()
