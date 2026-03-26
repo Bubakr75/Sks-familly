@@ -11,6 +11,7 @@ class StatsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Consumer<FamilyProvider>(
       builder: (context, provider, _) {
@@ -20,19 +21,26 @@ class StatsScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  GlowIcon(icon: Icons.bar_chart_rounded, size: 64, color: Colors.grey[600]),
+                  GlowIcon(
+                      icon: Icons.bar_chart_rounded,
+                      size: 64,
+                      color: Colors.grey[600]),
                   const SizedBox(height: 16),
-                  NeonText(text: 'Aucune donnee', fontSize: 18, color: Colors.grey),
+                  NeonText(
+                      text: 'Aucune donnee',
+                      fontSize: 18,
+                      color: Colors.grey),
                 ],
               ),
             ),
           );
         }
 
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: AnimatedBackground(
-            child: SafeArea(
+        // ─── CORRIGÉ : AnimatedBackground englobe tout le Scaffold ───
+        return AnimatedBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
@@ -41,20 +49,27 @@ class StatsScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        GlowIcon(icon: Icons.bar_chart_rounded, color: primary, size: 26),
+                        GlowIcon(
+                            icon: Icons.bar_chart_rounded,
+                            color: primary,
+                            size: 26),
                         const SizedBox(width: 10),
-                        NeonText(text: 'Statistiques', fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, glowIntensity: 0.2),
+                        NeonText(
+                          text: 'Statistiques',
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : Colors.black87,
+                          glowIntensity: 0.2,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Score comparison
-                    _buildScoreComparison(provider, primary),
+                    _buildScoreComparison(provider, primary, isDark),
                     const SizedBox(height: 20),
-                    // Weekly charts
-                    ...provider.children.map((child) => _buildWeeklyChart(child, provider, primary)),
+                    ...provider.children.map(
+                        (child) => _buildWeeklyChart(child, provider, primary, isDark)),
                     const SizedBox(height: 16),
-                    // Summary
-                    _buildSummaryCards(provider, primary),
+                    _buildSummaryCards(provider, primary, isDark),
                   ],
                 ),
               ),
@@ -65,9 +80,11 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreComparison(FamilyProvider provider, Color primary) {
+  Widget _buildScoreComparison(
+      FamilyProvider provider, Color primary, bool isDark) {
     final sorted = provider.childrenSorted;
-    final maxPoints = sorted.isNotEmpty ? sorted.first.points.toDouble() : 1.0;
+    final maxPoints =
+        sorted.isNotEmpty ? sorted.first.points.toDouble() : 1.0;
 
     final neonColors = [
       const Color(0xFF00E676),
@@ -84,7 +101,12 @@ class StatsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          NeonText(text: 'Comparaison des scores', fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, glowIntensity: 0.15),
+          NeonText(
+              text: 'Comparaison des scores',
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : Colors.black87,
+              glowIntensity: 0.15),
           const SizedBox(height: 20),
           SizedBox(
             height: 200,
@@ -98,7 +120,10 @@ class StatsScreen extends StatelessWidget {
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
                         '${sorted[group.x].name}\n${rod.toY.toInt()} pts',
-                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                        TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
                       );
                     },
                   ),
@@ -114,7 +139,11 @@ class StatsScreen extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               sorted[v.toInt()].name,
-                              style: const TextStyle(fontSize: 10, color: Colors.white60),
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : Colors.black54),
                               overflow: TextOverflow.ellipsis,
                             ),
                           );
@@ -129,19 +158,26 @@ class StatsScreen extends StatelessWidget {
                       reservedSize: 36,
                       getTitlesWidget: (v, _) => Text(
                         v.toInt().toString(),
-                        style: const TextStyle(fontSize: 10, color: Colors.white38),
+                        style: TextStyle(
+                            fontSize: 10,
+                            color:
+                                isDark ? Colors.white38 : Colors.black38),
                       ),
                     ),
                   ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                 ),
                 borderData: FlBorderData(show: false),
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.05),
                     strokeWidth: 1,
                   ),
                 ),
@@ -158,11 +194,14 @@ class StatsScreen extends StatelessWidget {
                           end: Alignment.bottomCenter,
                         ),
                         width: 22,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8)),
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxPoints > 0 ? maxPoints * 1.2 : 10,
-                          color: Colors.white.withValues(alpha: 0.03),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : Colors.black.withValues(alpha: 0.03),
                         ),
                       ),
                     ],
@@ -176,9 +215,11 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWeeklyChart(child, FamilyProvider provider, Color primary) {
+  Widget _buildWeeklyChart(
+      child, FamilyProvider provider, Color primary, bool isDark) {
     final weekStats = provider.getWeeklyStats(child.id);
-    final maxVal = weekStats.values.fold<int>(0, (a, b) => a > b ? a : b);
+    final maxVal =
+        weekStats.values.fold<int>(0, (a, b) => a > b ? a : b);
 
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -187,9 +228,15 @@ class StatsScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 20)),
+              Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar,
+                  style: const TextStyle(fontSize: 20)),
               const SizedBox(width: 8),
-              NeonText(text: '${child.name} - Semaine', fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white, glowIntensity: 0.15),
+              NeonText(
+                  text: '${child.name} - Semaine',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : Colors.black87,
+                  glowIntensity: 0.15),
             ],
           ),
           const SizedBox(height: 16),
@@ -207,7 +254,12 @@ class StatsScreen extends StatelessWidget {
                       getTitlesWidget: (v, _) {
                         final days = weekStats.keys.toList();
                         if (v.toInt() < days.length) {
-                          return Text(days[v.toInt()], style: const TextStyle(fontSize: 10, color: Colors.white54));
+                          return Text(days[v.toInt()],
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDark
+                                      ? Colors.white54
+                                      : Colors.black45));
                         }
                         return const Text('');
                       },
@@ -219,35 +271,51 @@ class StatsScreen extends StatelessWidget {
                       reservedSize: 28,
                       getTitlesWidget: (v, _) => Text(
                         v.toInt().toString(),
-                        style: const TextStyle(fontSize: 9, color: Colors.white30),
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: isDark
+                                ? Colors.white30
+                                : Colors.black26),
                       ),
                     ),
                   ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                 ),
                 borderData: FlBorderData(show: false),
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.white.withValues(alpha: 0.04),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.black.withValues(alpha: 0.04),
                     strokeWidth: 1,
                   ),
                 ),
-                barGroups: weekStats.entries.toList().asMap().entries.map((e) {
+                barGroups: weekStats.entries
+                    .toList()
+                    .asMap()
+                    .entries
+                    .map((e) {
                   return BarChartGroupData(
                     x: e.key,
                     barRods: [
                       BarChartRodData(
                         toY: e.value.value.toDouble(),
                         gradient: LinearGradient(
-                          colors: [primary, primary.withValues(alpha: 0.4)],
+                          colors: [
+                            primary,
+                            primary.withValues(alpha: 0.4)
+                          ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),
                         width: 16,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(6)),
                       ),
                     ],
                   );
@@ -260,30 +328,58 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCards(FamilyProvider provider, Color primary) {
-    final totalPoints = provider.children.fold<int>(0, (s, c) => s + c.points);
+  Widget _buildSummaryCards(
+      FamilyProvider provider, Color primary, bool isDark) {
+    final totalPoints =
+        provider.children.fold<int>(0, (s, c) => s + c.points);
     final totalEntries = provider.history.length;
     final bonusCount = provider.history.where((h) => h.isBonus).length;
-    final penalityCount = provider.history.where((h) => !h.isBonus).length;
+    final penalityCount =
+        provider.history.where((h) => !h.isBonus).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NeonText(text: 'Resume', fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, glowIntensity: 0.15),
+        NeonText(
+            text: 'Resume',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : Colors.black87,
+            glowIntensity: 0.15),
         const SizedBox(height: 12),
         Row(
           children: [
-            _NeonStatCard(icon: Icons.star_rounded, label: 'Total points', value: '$totalPoints', color: const Color(0xFFFFD700)),
+            _NeonStatCard(
+                icon: Icons.star_rounded,
+                label: 'Total points',
+                value: '$totalPoints',
+                color: const Color(0xFFFFD700),
+                isDark: isDark),
             const SizedBox(width: 10),
-            _NeonStatCard(icon: Icons.history_rounded, label: 'Activites', value: '$totalEntries', color: const Color(0xFF00E5FF)),
+            _NeonStatCard(
+                icon: Icons.history_rounded,
+                label: 'Activites',
+                value: '$totalEntries',
+                color: const Color(0xFF00E5FF),
+                isDark: isDark),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            _NeonStatCard(icon: Icons.add_circle_rounded, label: 'Bonus', value: '$bonusCount', color: const Color(0xFF00E676)),
+            _NeonStatCard(
+                icon: Icons.add_circle_rounded,
+                label: 'Bonus',
+                value: '$bonusCount',
+                color: const Color(0xFF00E676),
+                isDark: isDark),
             const SizedBox(width: 10),
-            _NeonStatCard(icon: Icons.remove_circle_rounded, label: 'Penalites', value: '$penalityCount', color: const Color(0xFFFF1744)),
+            _NeonStatCard(
+                icon: Icons.remove_circle_rounded,
+                label: 'Penalites',
+                value: '$penalityCount',
+                color: const Color(0xFFFF1744),
+                isDark: isDark),
           ],
         ),
       ],
@@ -296,7 +392,13 @@ class _NeonStatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _NeonStatCard({required this.icon, required this.label, required this.value, required this.color});
+  final bool isDark;
+  const _NeonStatCard(
+      {required this.icon,
+      required this.label,
+      required this.value,
+      required this.color,
+      this.isDark = true});
 
   @override
   Widget build(BuildContext context) {
@@ -305,17 +407,41 @@ class _NeonStatCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          color: color.withValues(alpha: 0.06),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 12)],
+          color: color.withValues(alpha: isDark ? 0.06 : 0.08),
+          border: Border.all(
+              color: color.withValues(alpha: isDark ? 0.15 : 0.25)),
+          boxShadow: isDark
+              ? [
+                  BoxShadow(
+                      color: color.withValues(alpha: 0.08),
+                      blurRadius: 12)
+                ]
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 24, shadows: [Shadow(color: color.withValues(alpha: 0.5), blurRadius: 8)]),
+            Icon(icon,
+                color: color,
+                size: 24,
+                shadows: isDark
+                    ? [
+                        Shadow(
+                            color: color.withValues(alpha: 0.5),
+                            blurRadius: 8)
+                      ]
+                    : null),
             const SizedBox(height: 8),
-            NeonText(text: value, fontSize: 24, fontWeight: FontWeight.w900, color: color, glowIntensity: 0.4),
-            Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            NeonText(
+                text: value,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: color,
+                glowIntensity: isDark ? 0.4 : 0.0),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey[500] : Colors.grey[600])),
           ],
         ),
       ),
