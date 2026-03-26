@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/family_provider.dart';
@@ -22,9 +23,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
       builder: (context, provider, _) {
         final child = provider.getChild(widget.childId);
         if (child == null) {
-          return Scaffold(
-            body: Center(child: Text('Enfant non trouvé')),
-          );
+          return Scaffold(body: Center(child: Text('Enfant non trouve')));
         }
 
         final weeklyAvg = provider.getWeeklySchoolAverage(widget.childId);
@@ -52,19 +51,18 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
             onPressed: () => _showAddNote(context, provider, child),
             backgroundColor: Colors.amber,
             icon: const Icon(Icons.add, color: Colors.black),
-            label: const Text('Noter la journée', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            label: const Text('Noter la journee', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ===== TEMPS D'ÉCRAN =====
                 _buildGlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('📺 Temps d\'écran ce week-end',
+                      const Text('\u{1F4FA} Temps d\'ecran ce week-end',
                           style: TextStyle(color: Colors.amber, fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
                       Row(
@@ -93,12 +91,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ===== SEMAINE EN COURS (vue rapide) =====
                 _buildGlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('📅 Cette semaine',
+                      const Text('\u{1F4C5} Cette semaine',
                           style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       _buildCurrentWeekView(provider),
@@ -107,12 +104,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ===== BARÈME =====
                 _buildGlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('📊 Barème des points',
+                      const Text('\u{1F4CA} Bareme des points',
                           style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       _buildBaremeRow('18-20/20', '3h', Colors.greenAccent),
@@ -127,16 +123,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ===== NAVIGATION MOIS =====
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedDate = DateTime(_selectedDate.year, _selectedDate.month - 1);
-                        });
-                      },
+                      onPressed: () => setState(() => _selectedDate = DateTime(_selectedDate.year, _selectedDate.month - 1)),
                       icon: const Icon(Icons.chevron_left, color: Colors.white),
                     ),
                     Text(
@@ -144,23 +135,18 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                       style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedDate = DateTime(_selectedDate.year, _selectedDate.month + 1);
-                        });
-                      },
+                      onPressed: () => setState(() => _selectedDate = DateTime(_selectedDate.year, _selectedDate.month + 1)),
                       icon: const Icon(Icons.chevron_right, color: Colors.white),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
 
-                // ===== HISTORIQUE DU MOIS =====
                 _buildGlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('📅 Historique du mois',
+                      const Text('\u{1F4C5} Historique du mois',
                           style: TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       if (monthNotes.isEmpty)
@@ -181,7 +167,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     );
   }
 
-  // ===== VUE SEMAINE EN COURS =====
+  // CORRIGE : OutlinedButton au lieu de GestureDetector pour TV
   Widget _buildCurrentWeekView(FamilyProvider provider) {
     final now = DateTime.now();
     final monday = now.subtract(Duration(days: now.weekday - 1));
@@ -204,9 +190,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
         if (dayHistory.isNotEmpty) {
           final reason = dayHistory.last.reason;
           final match = RegExp(r'(\d+)/20').firstMatch(reason);
-          if (match != null) {
-            grade = double.tryParse(match.group(1)!);
-          }
+          if (match != null) grade = double.tryParse(match.group(1)!);
         }
 
         Color noteColor = Colors.grey;
@@ -217,20 +201,20 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
           else noteColor = Colors.red;
         }
 
-        return GestureDetector(
-          onTap: isFuture ? null : () => _showAddNoteForDate(context, provider, provider.getChild(widget.childId)!, day),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-            decoration: BoxDecoration(
-              color: isToday ? Colors.amber.withOpacity(0.15) : Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isToday ? Colors.amber.withOpacity(0.5) : Colors.white.withOpacity(0.1),
-                width: isToday ? 2 : 1,
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: OutlinedButton(
+              onPressed: isFuture ? null : () => _showAddNoteForDate(context, provider, provider.getChild(widget.childId)!, day),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: isToday ? Colors.amber.withOpacity(0.15) : Colors.white.withOpacity(0.04),
+                side: BorderSide(color: isToday ? Colors.amber.withOpacity(0.5) : Colors.white.withOpacity(0.1), width: isToday ? 2 : 1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-            ),
-            child: Column(
-              children: [
+              child: Column(children: [
                 Text(dayNames[i], style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w600)),
                 Text('${day.day}', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10)),
                 const SizedBox(height: 4),
@@ -240,7 +224,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                   Text('-', style: TextStyle(color: Colors.white.withOpacity(0.15), fontSize: 18))
                 else
                   Icon(Icons.add_circle_outline, color: Colors.amber.withOpacity(0.4), size: 20),
-              ],
+              ]),
             ),
           ),
         );
@@ -252,103 +236,62 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     final hours = minutes ~/ 60;
     final mins = minutes % 60;
     String timeStr;
-    if (hours > 0 && mins > 0) {
-      timeStr = '${hours}h${mins.toString().padLeft(2, '0')}';
-    } else if (hours > 0) {
-      timeStr = '${hours}h';
-    } else {
-      timeStr = '${mins}min';
-    }
+    if (hours > 0 && mins > 0) timeStr = '${hours}h${mins.toString().padLeft(2, '0')}';
+    else if (hours > 0) timeStr = '${hours}h';
+    else timeStr = '${mins}min';
 
     Color color;
-    if (minutes >= 150) {
-      color = Colors.greenAccent;
-    } else if (minutes >= 90) {
-      color = Colors.yellow;
-    } else if (minutes >= 30) {
-      color = Colors.orange;
-    } else {
-      color = Colors.red;
-    }
+    if (minutes >= 150) color = Colors.greenAccent;
+    else if (minutes >= 90) color = Colors.yellow;
+    else if (minutes >= 30) color = Colors.orange;
+    else color = Colors.red;
 
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color, width: 1),
-          ),
-          child: Text(timeStr, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    );
+    return Column(children: [
+      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      const SizedBox(height: 4),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: color, width: 1)),
+        child: Text(timeStr, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+      ),
+    ]);
   }
 
   Widget _buildBaremeRow(String note, String temps, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(note, style: TextStyle(color: color, fontSize: 13)),
-          Text(temps, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
-        ],
-      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(note, style: TextStyle(color: color, fontSize: 13)),
+        Text(temps, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+      ]),
     );
   }
 
   Widget _buildNoteTile(HistoryEntry note) {
     final dateStr = DateFormat('EEEE dd/MM', 'fr_FR').format(note.date);
     Color noteColor;
-    if (note.points >= 16) {
-      noteColor = Colors.greenAccent;
-    } else if (note.points >= 12) {
-      noteColor = Colors.yellow;
-    } else if (note.points >= 8) {
-      noteColor = Colors.orange;
-    } else {
-      noteColor = Colors.red;
-    }
+    if (note.points >= 16) noteColor = Colors.greenAccent;
+    else if (note.points >= 12) noteColor = Colors.yellow;
+    else if (note.points >= 8) noteColor = Colors.orange;
+    else noteColor = Colors.red;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(dateStr, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                const SizedBox(height: 2),
-                Text(note.reason, style: const TextStyle(color: Colors.white70, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: noteColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: noteColor),
-            ),
-            child: Text(
-              '${note.points}/20',
-              style: TextStyle(color: noteColor, fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(10)),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(dateStr, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          const SizedBox(height: 2),
+          Text(note.reason, style: const TextStyle(color: Colors.white70, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+        ])),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(color: noteColor.withOpacity(0.2), borderRadius: BorderRadius.circular(15), border: Border.all(color: noteColor)),
+          child: Text('${note.points}/20', style: TextStyle(color: noteColor, fontWeight: FontWeight.bold, fontSize: 15)),
+        ),
+      ]),
     );
   }
 
@@ -356,20 +299,17 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
-      ),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.15))),
       child: child,
     );
   }
 
-  // ===== DIALOG NOTER UN JOUR SPÉCIFIQUE =====
+  // CORRIGE : Slider avec Focus pour navigation TV fleches haut/bas
   void _showAddNoteForDate(BuildContext context, FamilyProvider provider, ChildModel child, DateTime date) {
     int selectedGrade = 10;
     String reason = '';
     final dayStr = DateFormat('EEEE dd MMMM', 'fr_FR').format(date);
+    final reasonFocusNode = FocusNode();
 
     showDialog(
       context: context,
@@ -379,138 +319,86 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
             return AlertDialog(
               backgroundColor: const Color(0xFF1a1a4a),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text('📝 ', style: TextStyle(fontSize: 24)),
-                      Expanded(
-                        child: Text('Noter ${child.name}',
-                            style: const TextStyle(color: Colors.amber, fontSize: 18)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(dayStr, style: const TextStyle(color: Colors.amber, fontSize: 13)),
-                  ),
-                ],
-              ),
+              title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Text('\u{1F4DD} ', style: TextStyle(fontSize: 24)),
+                  Expanded(child: Text('Noter ${child.name}', style: const TextStyle(color: Colors.amber, fontSize: 18))),
+                ]),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.amber.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                  child: Text(dayStr, style: const TextStyle(color: Colors.amber, fontSize: 13)),
+                ),
+              ]),
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            if (selectedGrade > 0) setDialogState(() => selectedGrade--);
-                          },
-                          icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '$selectedGrade/20',
-                            style: TextStyle(
-                              color: selectedGrade >= 16
-                                  ? Colors.greenAccent
-                                  : selectedGrade >= 12
-                                      ? Colors.yellow
-                                      : selectedGrade >= 8
-                                          ? Colors.orange
-                                          : Colors.red,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            if (selectedGrade < 20) setDialogState(() => selectedGrade++);
-                          },
-                          icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 32),
-                        ),
-                      ],
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const SizedBox(height: 8),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    IconButton(
+                      onPressed: () { if (selectedGrade > 0) setDialogState(() => selectedGrade--); },
+                      icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
                     ),
-                    Slider(
-                      value: selectedGrade.toDouble(),
-                      min: 0,
-                      max: 20,
-                      divisions: 20,
-                      activeColor: Colors.amber,
-                      inactiveColor: Colors.white24,
-                      onChanged: (val) => setDialogState(() => selectedGrade = val.round()),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                      child: Text('$selectedGrade/20', style: TextStyle(
+                        color: selectedGrade >= 16 ? Colors.greenAccent : selectedGrade >= 12 ? Colors.yellow : selectedGrade >= 8 ? Colors.orange : Colors.red,
+                        fontSize: 28, fontWeight: FontWeight.bold)),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
+                    IconButton(
+                      onPressed: () { if (selectedGrade < 20) setDialogState(() => selectedGrade++); },
+                      icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 32),
+                    ),
+                  ]),
+                  Focus(
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowRight) { if (selectedGrade < 20) setDialogState(() => selectedGrade++); return KeyEventResult.handled; }
+                        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) { if (selectedGrade > 0) setDialogState(() => selectedGrade--); return KeyEventResult.handled; }
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown || event.logicalKey == LogicalKeyboardKey.arrowUp) return KeyEventResult.ignored;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Slider(value: selectedGrade.toDouble(), min: 0, max: 20, divisions: 20, activeColor: Colors.amber, inactiveColor: Colors.white24, onChanged: (val) => setDialogState(() => selectedGrade = val.round())),
+                  ),
+                  const SizedBox(height: 12),
+                  KeyboardListener(
+                    focusNode: FocusNode(),
+                    onKeyEvent: (event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) reasonFocusNode.nextFocus();
+                        else if (event.logicalKey == LogicalKeyboardKey.arrowUp) reasonFocusNode.previousFocus();
+                      }
+                    },
+                    child: TextField(
+                      focusNode: reasonFocusNode,
                       onChanged: (val) => reason = val,
                       style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Raison (ex: Bonne journée...)',
-                        hintStyle: const TextStyle(color: Colors.white38),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.1),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
+                      decoration: InputDecoration(hintText: 'Raison (ex: Bonne journee...)', hintStyle: const TextStyle(color: Colors.white38), filled: true, fillColor: Colors.white.withOpacity(0.1), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                      onSubmitted: (_) => reasonFocusNode.nextFocus(),
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Text('📺 ', style: TextStyle(fontSize: 16)),
-                          Expanded(
-                            child: Text(
-                              'Cette note donnera environ ${_previewMinutes(selectedGrade)}',
-                              style: const TextStyle(color: Colors.amber, fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: Colors.amber.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.withOpacity(0.3))),
+                    child: Row(children: [
+                      const Text('\u{1F4FA} ', style: TextStyle(fontSize: 16)),
+                      Expanded(child: Text('Cette note donnera environ ${_previewMinutes(selectedGrade)}', style: const TextStyle(color: Colors.amber, fontSize: 12))),
+                    ]),
+                  ),
+                ]),
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
-                ),
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
                 ElevatedButton(
                   onPressed: () async {
                     final noteReason = reason.isNotEmpty ? reason : 'Note du jour';
-                    await provider.addPoints(
-                      widget.childId,
-                      selectedGrade,
-                      '📝 $noteReason ($selectedGrade/20)',
-                      category: 'school_note',
-                      isBonus: true,
-                      date: date,
-                    );
+                    await provider.addPoints(widget.childId, selectedGrade, '\u{1F4DD} $noteReason ($selectedGrade/20)', category: 'school_note', isBonus: true, date: date);
                     if (ctx.mounted) Navigator.pop(ctx);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   child: const Text('Valider', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
               ],
@@ -521,11 +409,12 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     );
   }
 
-  // ===== DIALOG AJOUTER NOTE (avec sélecteur de date libre) =====
+  // CORRIGE : Date picker en OutlinedButton, Slider avec Focus, TextField avec KeyboardListener
   void _showAddNote(BuildContext context, FamilyProvider provider, ChildModel child) {
     int selectedGrade = 10;
     String reason = '';
     DateTime selectedDate = DateTime.now();
+    final reasonFocusNode = FocusNode();
 
     showDialog(
       context: context,
@@ -537,183 +426,93 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
             return AlertDialog(
               backgroundColor: const Color(0xFF1a1a4a),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Row(
-                children: [
-                  const Text('📝 ', style: TextStyle(fontSize: 24)),
-                  Expanded(
-                    child: Text('Noter ${child.name}',
-                        style: const TextStyle(color: Colors.amber, fontSize: 18)),
-                  ),
-                ],
-              ),
+              title: Row(children: [
+                const Text('\u{1F4DD} ', style: TextStyle(fontSize: 24)),
+                Expanded(child: Text('Noter ${child.name}', style: const TextStyle(color: Colors.amber, fontSize: 18))),
+              ]),
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sélecteur de date libre
-                    const Text('Jour à noter :', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () async {
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Jour a noter :', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () async {
                         final picked = await showDatePicker(
-                          context: ctx,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2024, 1, 1),
-                          lastDate: DateTime.now(),
-                          locale: const Locale('fr', 'FR'),
-                          builder: (context, child) {
-                            return Theme(
-                              data: ThemeData.dark().copyWith(
-                                colorScheme: const ColorScheme.dark(
-                                  primary: Colors.amber,
-                                  onPrimary: Colors.black,
-                                  surface: Color(0xFF1a1a4a),
-                                  onSurface: Colors.white,
-                                ),
-                                dialogBackgroundColor: const Color(0xFF1a1a4a),
-                              ),
-                              child: child!,
-                            );
-                          },
+                          context: ctx, initialDate: selectedDate, firstDate: DateTime(2024, 1, 1), lastDate: DateTime.now(), locale: const Locale('fr', 'FR'),
+                          builder: (context, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: Colors.amber, onPrimary: Colors.black, surface: Color(0xFF1a1a4a), onSurface: Colors.white), dialogBackgroundColor: const Color(0xFF1a1a4a)), child: child!),
                         );
-                        if (picked != null) {
-                          setDialogState(() => selectedDate = picked);
-                        }
+                        if (picked != null) setDialogState(() => selectedDate = picked);
                       },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.amber.withOpacity(0.4)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.calendar_today_rounded, color: Colors.amber, size: 18),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(dayStr, style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 14)),
-                            ),
-                            const Icon(Icons.edit_rounded, color: Colors.amber, size: 16),
-                          ],
-                        ),
-                      ),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.amber, side: BorderSide(color: Colors.amber.withOpacity(0.4)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                      child: Row(children: [
+                        const Icon(Icons.calendar_today_rounded, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(dayStr, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
+                        const Icon(Icons.edit_rounded, size: 16),
+                      ]),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Note sur 20
-                    const Text('Note sur 20 :', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            if (selectedGrade > 0) setDialogState(() => selectedGrade--);
-                          },
-                          icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '$selectedGrade/20',
-                            style: TextStyle(
-                              color: selectedGrade >= 16
-                                  ? Colors.greenAccent
-                                  : selectedGrade >= 12
-                                      ? Colors.yellow
-                                      : selectedGrade >= 8
-                                          ? Colors.orange
-                                          : Colors.red,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            if (selectedGrade < 20) setDialogState(() => selectedGrade++);
-                          },
-                          icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 32),
-                        ),
-                      ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Note sur 20 :', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    IconButton(onPressed: () { if (selectedGrade > 0) setDialogState(() => selectedGrade--); }, icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                      child: Text('$selectedGrade/20', style: TextStyle(color: selectedGrade >= 16 ? Colors.greenAccent : selectedGrade >= 12 ? Colors.yellow : selectedGrade >= 8 ? Colors.orange : Colors.red, fontSize: 28, fontWeight: FontWeight.bold)),
                     ),
-                    Slider(
-                      value: selectedGrade.toDouble(),
-                      min: 0,
-                      max: 20,
-                      divisions: 20,
-                      activeColor: Colors.amber,
-                      inactiveColor: Colors.white24,
-                      onChanged: (val) => setDialogState(() => selectedGrade = val.round()),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Raison
-                    TextField(
+                    IconButton(onPressed: () { if (selectedGrade < 20) setDialogState(() => selectedGrade++); }, icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 32)),
+                  ]),
+                  Focus(
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowRight) { if (selectedGrade < 20) setDialogState(() => selectedGrade++); return KeyEventResult.handled; }
+                        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) { if (selectedGrade > 0) setDialogState(() => selectedGrade--); return KeyEventResult.handled; }
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown || event.logicalKey == LogicalKeyboardKey.arrowUp) return KeyEventResult.ignored;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Slider(value: selectedGrade.toDouble(), min: 0, max: 20, divisions: 20, activeColor: Colors.amber, inactiveColor: Colors.white24, onChanged: (val) => setDialogState(() => selectedGrade = val.round())),
+                  ),
+                  const SizedBox(height: 12),
+                  KeyboardListener(
+                    focusNode: FocusNode(),
+                    onKeyEvent: (event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) reasonFocusNode.nextFocus();
+                        else if (event.logicalKey == LogicalKeyboardKey.arrowUp) reasonFocusNode.previousFocus();
+                      }
+                    },
+                    child: TextField(
+                      focusNode: reasonFocusNode,
                       onChanged: (val) => reason = val,
                       style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Raison (ex: Bonne journée, maths 16/20...)',
-                        hintStyle: const TextStyle(color: Colors.white38),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.1),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
+                      decoration: InputDecoration(hintText: 'Raison (ex: Bonne journee, maths 16/20...)', hintStyle: const TextStyle(color: Colors.white38), filled: true, fillColor: Colors.white.withOpacity(0.1), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                      onSubmitted: (_) => reasonFocusNode.nextFocus(),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Aperçu
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Text('📺 ', style: TextStyle(fontSize: 20)),
-                          Expanded(
-                            child: Text(
-                              'Cette note donnera environ ${_previewMinutes(selectedGrade)}',
-                              style: const TextStyle(color: Colors.amber, fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.amber.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.withOpacity(0.3))),
+                    child: Row(children: [
+                      const Text('\u{1F4FA} ', style: TextStyle(fontSize: 20)),
+                      Expanded(child: Text('Cette note donnera environ ${_previewMinutes(selectedGrade)}', style: const TextStyle(color: Colors.amber, fontSize: 13))),
+                    ]),
+                  ),
+                ]),
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
-                ),
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
                 ElevatedButton(
                   onPressed: () async {
                     final noteReason = reason.isNotEmpty ? reason : 'Note du jour';
-                    await provider.addPoints(
-                      widget.childId,
-                      selectedGrade,
-                      '📝 $noteReason ($selectedGrade/20)',
-                      category: 'school_note',
-                      isBonus: true,
-                      date: selectedDate,
-                    );
+                    await provider.addPoints(widget.childId, selectedGrade, '\u{1F4DD} $noteReason ($selectedGrade/20)', category: 'school_note', isBonus: true, date: selectedDate);
                     if (ctx.mounted) Navigator.pop(ctx);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   child: const Text('Valider', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
               ],
