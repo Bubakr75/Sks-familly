@@ -6,26 +6,27 @@ class ThemeProvider extends ChangeNotifier {
   int _colorIndex = 0;
   int _bgIndex = 0;
 
+  // ─── Palette d'accents enrichie avec meilleur contraste ───
   static const List<Color> accentColors = [
-    Color(0xFF6C63FF),
-    Color(0xFF00E5FF),
-    Color(0xFFFF6E40),
-    Color(0xFF00E676),
-    Color(0xFFFFD740),
-    Color(0xFFFF4081),
-    Color(0xFF7C4DFF),
-    Color(0xFF18FFFF),
+    Color(0xFF7B68EE), // Bleu-violet (meilleur contraste que 6C63FF)
+    Color(0xFF00BCD4), // Cyan profond
+    Color(0xFFFF7043), // Orange chaud
+    Color(0xFF66BB6A), // Vert lisible
+    Color(0xFFFFCA28), // Jaune doré
+    Color(0xFFEC407A), // Rose vif
+    Color(0xFF9575CD), // Violet moyen
+    Color(0xFF26C6DA), // Turquoise
   ];
 
   static const List<Map<String, dynamic>> backgroundColors = [
     {'color': Color(0xFF0A0E21), 'label': 'Nuit'},
-    {'color': Color(0xFF000000), 'label': 'Noir'},
-    {'color': Color(0xFF1A1A2E), 'label': 'Gris'},
-    {'color': Color(0xFF1A0A2E), 'label': 'Violet'},
-    {'color': Color(0xFF0A1E14), 'label': 'Forêt'},
-    {'color': Color(0xFF1E0A0A), 'label': 'Rouge'},
-    {'color': Color(0xFF0A1A2E), 'label': 'Océan'},
-    {'color': Color(0xFF1E1A0A), 'label': 'Ambre'},
+    {'color': Color(0xFF121212), 'label': 'Noir'},
+    {'color': Color(0xFF1C1C2E), 'label': 'Ardoise'},
+    {'color': Color(0xFF1A0F2E), 'label': 'Violet'},
+    {'color': Color(0xFF0F1E17), 'label': 'Foret'},
+    {'color': Color(0xFF1E1114), 'label': 'Bordeaux'},
+    {'color': Color(0xFF0E1A2B), 'label': 'Ocean'},
+    {'color': Color(0xFF1E1B0F), 'label': 'Ambre'},
   ];
 
   bool get isDark => _isDark;
@@ -34,11 +35,12 @@ class ThemeProvider extends ChangeNotifier {
   Color get primaryColor => accentColors[_colorIndex];
   Color get backgroundColor => _isDark
       ? (backgroundColors[_bgIndex]['color'] as Color)
-      : Colors.white;
+      : const Color(0xFFF5F5FA);
 
   ThemeData get theme {
     final primary = accentColors[_colorIndex];
     final bgColor = backgroundColor;
+
     if (_isDark) {
       return ThemeData(
         brightness: Brightness.dark,
@@ -46,13 +48,196 @@ class ThemeProvider extends ChangeNotifier {
         useMaterial3: true,
         scaffoldBackgroundColor: bgColor,
         canvasColor: bgColor,
-        cardColor: bgColor.withOpacity(0.8),
+        cardColor: bgColor.withValues(alpha: 0.8),
+        // ─── Textes lisibles ───
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Color(0xFFE8E8F0)),
+          bodyMedium: TextStyle(color: Color(0xFFD0D0DC)),
+          bodySmall: TextStyle(color: Color(0xFFB0B0C0)),
+          titleLarge: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(
+              color: Color(0xFFF0F0FF), fontWeight: FontWeight.w600),
+        ),
+        // ─── AppBar lisible ───
+        appBarTheme: AppBarTheme(
+          backgroundColor: bgColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          titleTextStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700),
+        ),
+        // ─── Dialogues ───
+        dialogTheme: DialogTheme(
+          backgroundColor: Color.lerp(bgColor, Colors.white, 0.08)!,
+          titleTextStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold),
+          contentTextStyle: const TextStyle(
+              color: Color(0xFFCCCCDD), fontSize: 14),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+        ),
+        // ─── Boutons ───
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: primary,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+        // ─── Inputs ───
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.07),
+          labelStyle: const TextStyle(color: Color(0xFF9999AA)),
+          hintStyle: const TextStyle(color: Color(0xFF666680)),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.1))),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.1))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primary, width: 2)),
+        ),
+        // ─── BottomNav ───
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: bgColor,
+          selectedItemColor: primary,
+          unselectedItemColor: const Color(0xFF666680),
+        ),
+        // ─── Snackbar ───
+        snackBarTheme: SnackBarThemeData(
+          backgroundColor: Color.lerp(bgColor, Colors.white, 0.15),
+          contentTextStyle: const TextStyle(color: Colors.white),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+          behavior: SnackBarBehavior.floating,
+        ),
+        // ─── Switch ───
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return primary;
+            return Colors.grey;
+          }),
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return primary.withValues(alpha: 0.3);
+            }
+            return Colors.white.withValues(alpha: 0.1);
+          }),
+        ),
       );
     } else {
+      // ─── MODE CLAIR COMPLET ───
       return ThemeData(
         brightness: Brightness.light,
         colorSchemeSeed: primary,
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF5F5FA),
+        canvasColor: Colors.white,
+        cardColor: Colors.white,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Color(0xFF1A1A2E)),
+          bodyMedium: TextStyle(color: Color(0xFF2E2E42)),
+          bodySmall: TextStyle(color: Color(0xFF5A5A72)),
+          titleLarge: TextStyle(
+              color: Color(0xFF1A1A2E), fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(
+              color: Color(0xFF2E2E42), fontWeight: FontWeight.w600),
+        ),
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF1A1A2E),
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          titleTextStyle: TextStyle(
+              color: const Color(0xFF1A1A2E),
+              fontSize: 18,
+              fontWeight: FontWeight.w700),
+        ),
+        dialogTheme: DialogTheme(
+          backgroundColor: Colors.white,
+          titleTextStyle: const TextStyle(
+              color: Color(0xFF1A1A2E),
+              fontSize: 18,
+              fontWeight: FontWeight.bold),
+          contentTextStyle: const TextStyle(
+              color: Color(0xFF5A5A72), fontSize: 14),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor: primary,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: primary,
+            side: BorderSide(color: primary.withValues(alpha: 0.4)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFFF0F0F8),
+          labelStyle: const TextStyle(color: Color(0xFF8888AA)),
+          hintStyle: const TextStyle(color: Color(0xFFAAAABB)),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  BorderSide(color: Colors.black.withValues(alpha: 0.1))),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  BorderSide(color: Colors.black.withValues(alpha: 0.1))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primary, width: 2)),
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          selectedItemColor: primary,
+          unselectedItemColor: const Color(0xFF999999),
+        ),
+        cardTheme: CardTheme(
+          color: Colors.white,
+          elevation: 2,
+          shadowColor: Colors.black.withValues(alpha: 0.08),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return primary;
+            return Colors.grey[400];
+          }),
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return primary.withValues(alpha: 0.3);
+            }
+            return Colors.grey.withValues(alpha: 0.2);
+          }),
+        ),
       );
     }
   }
