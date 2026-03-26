@@ -43,10 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   @override
-  void dispose() {
-    _navAnimController.dispose();
-    super.dispose();
-  }
+  void dispose() { _navAnimController.dispose(); super.dispose(); }
 
   void _onTabSelected(int index) {
     final pin = context.read<PinProvider>();
@@ -67,13 +64,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E21),
       drawer: _buildDrawer(context, provider, pin, primary),
-      body: Stack(children: [
-        _buildBody(),
-        Positioned(left: 0, right: 0, bottom: 0, child: SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(_navSlideAnim),
-          child: _buildGlassNavBar(pin, primary),
-        )),
-      ]),
+      // CORRIGE : Column avec FocusTraversalGroup separes pour body et navbar
+      body: Column(
+        children: [
+          Expanded(
+            child: FocusTraversalGroup(
+              policy: ReadingOrderTraversalPolicy(),
+              child: _buildBody(),
+            ),
+          ),
+          SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(_navSlideAnim),
+            child: FocusTraversalGroup(
+              policy: ReadingOrderTraversalPolicy(),
+              child: _buildGlassNavBar(pin, primary),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -206,48 +214,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // CORRIGE : ListView scrollable + TvFocusWrapper pour TV
   void _showSchoolNotesChildPicker(BuildContext context, FamilyProvider provider) {
     showModalBottomSheet(
       context: context, backgroundColor: const Color(0xFF141833),
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
-        const SizedBox(height: 16),
-        Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
-        const SizedBox(height: 16),
-        ...provider.children.map((child) => TvFocusWrapper(
-          onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => SchoolNotesScreen(childId: child.id))); },
-          child: ListTile(
-            leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22)))),
-            title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
-          ),
-        )),
-        const SizedBox(height: 16),
-      ])),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5, minChildSize: 0.3, maxChildSize: 0.85, expand: false,
+        builder: (_, scrollController) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
+          const SizedBox(height: 16),
+          Expanded(child: ListView(controller: scrollController, children: provider.children.map((child) => TvFocusWrapper(
+            onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => SchoolNotesScreen(childId: child.id))); },
+            child: ListTile(
+              leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22)))),
+              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+            ),
+          )).toList())),
+        ])),
+      ),
     );
   }
 
   void _showNotesChildPicker(BuildContext context, FamilyProvider provider) {
     showModalBottomSheet(
       context: context, backgroundColor: const Color(0xFF141833),
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
-        const SizedBox(height: 16),
-        Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
-        const SizedBox(height: 16),
-        ...provider.children.map((child) => TvFocusWrapper(
-          onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => NotesScreen(childId: child.id, childName: child.name))); },
-          child: ListTile(
-            leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22)))),
-            title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            subtitle: Text('${provider.getNotesForChild(child.id).length} notes', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-            trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
-          ),
-        )),
-        const SizedBox(height: 16),
-      ])),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5, minChildSize: 0.3, maxChildSize: 0.85, expand: false,
+        builder: (_, scrollController) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          Text('Choisir un enfant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, shadows: [Shadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 8)])),
+          const SizedBox(height: 16),
+          Expanded(child: ListView(controller: scrollController, children: provider.children.map((child) => TvFocusWrapper(
+            onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => NotesScreen(childId: child.id, childName: child.name))); },
+            child: ListTile(
+              leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Center(child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar, style: const TextStyle(fontSize: 22)))),
+              title: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              subtitle: Text('${provider.getNotesForChild(child.id).length} notes', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+            ),
+          )).toList())),
+        ])),
+      ),
     );
   }
 
