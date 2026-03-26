@@ -357,6 +357,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // =====================================================
+  // MÉTHODE MODIFIÉE : affichage de actionBy dans le subtitle
+  // =====================================================
   void _showFullHistoryPage(BuildContext context, FamilyProvider provider) {
     showModalBottomSheet(
       context: context, isScrollControlled: true,
@@ -379,6 +382,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       itemBuilder: (_, i) {
                         final h = provider.history[i];
                         final child = provider.getChild(h.childId);
+                        final parLabel = h.actionBy != null && h.actionBy!.isNotEmpty
+                            ? ' • Par ${h.actionBy}'
+                            : '';
                         return ListTile(
                           leading: Container(
                             width: 40, height: 40,
@@ -390,7 +396,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: Icon(h.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744), size: 20),
                           ),
                           title: Text(child?.name ?? 'Inconnu', style: const TextStyle(color: Colors.white)),
-                          subtitle: Text('${h.reason}\n${h.date.day}/${h.date.month}/${h.date.year} ${h.date.hour}:${h.date.minute.toString().padLeft(2, '0')}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                          subtitle: Text(
+                            '${h.reason}$parLabel\n${h.date.day}/${h.date.month}/${h.date.year} ${h.date.hour}:${h.date.minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          ),
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: h.isBonus ? const Color(0xFF00E676).withValues(alpha: 0.12) : const Color(0xFFFF1744).withValues(alpha: 0.12)),
