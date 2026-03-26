@@ -196,80 +196,43 @@ class ImmunityLinesScreen extends StatelessWidget {
   }
 
   Widget _immunityTile(BuildContext context, ImmunityLines im, FamilyProvider provider, {required bool isActive}) {
-    return GestureDetector(
+    return TvFocusWrapper(
       onTap: () {
         HapticFeedback.lightImpact();
         _showImmunityDetail(context, im, provider, isActive: isActive);
       },
+      focusBorderColor: isActive ? const Color(0xFF00E676) : Colors.grey,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: isActive
-              ? const Color(0xFF00E676).withValues(alpha: 0.06)
-              : Colors.white.withValues(alpha: 0.02),
-          border: Border.all(
-            color: isActive
-                ? const Color(0xFF00E676).withValues(alpha: 0.15)
-                : Colors.white.withValues(alpha: 0.05),
-          ),
+          color: isActive ? const Color(0xFF00E676).withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.02),
+          border: Border.all(color: isActive ? const Color(0xFF00E676).withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05)),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: isActive
-                    ? const Color(0xFF00E676).withValues(alpha: 0.12)
-                    : Colors.grey.withValues(alpha: 0.08),
-              ),
-              child: Center(
-                child: Text('\u{1F6E1}', style: TextStyle(fontSize: 18, color: isActive ? null : Colors.grey)),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    im.reason,
-                    style: TextStyle(
-                      color: isActive ? Colors.white : Colors.grey[600],
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Text(im.statusLabel, style: TextStyle(color: isActive ? const Color(0xFF00E676) : Colors.grey[600], fontSize: 11)),
-                      if (im.expiresAt != null) ...[
-                        const SizedBox(width: 8),
-                        Text(im.expiresLabel, style: TextStyle(color: im.isExpired ? Colors.orange : Colors.grey[600], fontSize: 10)),
-                      ],
-                    ],
-                  ),
-                  Text('Donne le ${im.createdAt.day}/${im.createdAt.month}/${im.createdAt.year}', style: TextStyle(color: Colors.grey[700], fontSize: 10)),
-                ],
-              ),
-            ),
-            if (isActive)
-              Text('${im.availableLines}', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.w900, fontSize: 20))
-            else
-              Text('${im.usedLines}/${im.lines}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_right_rounded, color: isActive ? const Color(0xFF00E676).withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.3), size: 20),
-          ],
-        ),
+        child: Row(children: [
+          Container(width: 36, height: 36, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: isActive ? const Color(0xFF00E676).withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.08)),
+            child: Center(child: Text('\u{1F6E1}', style: TextStyle(fontSize: 18, color: isActive ? null : Colors.grey)))),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(im.reason, style: TextStyle(color: isActive ? Colors.white : Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Row(children: [
+              Text(im.statusLabel, style: TextStyle(color: isActive ? const Color(0xFF00E676) : Colors.grey[600], fontSize: 11)),
+              if (im.expiresAt != null) ...[const SizedBox(width: 8), Text(im.expiresLabel, style: TextStyle(color: im.isExpired ? Colors.orange : Colors.grey[600], fontSize: 10))],
+            ]),
+            Text('Donne le ${im.createdAt.day}/${im.createdAt.month}/${im.createdAt.year}', style: TextStyle(color: Colors.grey[700], fontSize: 10)),
+          ])),
+          if (isActive) Text('${im.availableLines}', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.w900, fontSize: 20))
+          else Text('${im.usedLines}/${im.lines}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right_rounded, color: isActive ? const Color(0xFF00E676).withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.3), size: 20),
+        ]),
       ),
     );
   }
+
 
   void _showImmunityDetail(BuildContext context, ImmunityLines im, FamilyProvider provider, {required bool isActive}) {
     final child = provider.getChild(im.childId);
