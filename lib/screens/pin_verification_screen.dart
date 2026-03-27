@@ -103,9 +103,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
       if (_attempts >= _maxAttempts) {
         Future.delayed(const Duration(seconds: 30), () {
           if (mounted) {
-            setState(() {
-              _attempts = 0;
-            });
+            setState(() => _attempts = 0);
           }
         });
       }
@@ -129,7 +127,6 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // ── FIXED: AnimatedBuilder → AnimatedBuilder ──
                     ScaleTransition(
                       scale: _scaleAnimation,
                       child: Icon(
@@ -152,7 +149,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                           ? 'Trop de tentatives. Patientez 30s.'
                           : _isError
                               ? 'Code incorrect (${_maxAttempts - _attempts} essais restants)'
-                              : 'Entrez votre code à 4 chiffres',
+                              : 'Entrez votre code a 4 chiffres',
                       style: TextStyle(
                         color: _isError ? Colors.redAccent : Colors.white60,
                         fontSize: 14,
@@ -160,16 +157,13 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
-                    // ── FIXED: AnimatedBuilder → SlideTransition-style manual transform ──
                     AnimatedBuilder(
                       animation: _shakeAnimation,
                       builder: (context, child) {
                         return Transform.translate(
                           offset: Offset(
                             _shakeAnimation.value *
-                                ((_shakeController.value * 10).toInt().isEven
-                                    ? 1
-                                    : -1),
+                                ((_shakeController.value * 10).toInt().isEven ? 1 : -1),
                             0,
                           ),
                           child: child,
@@ -192,12 +186,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                                       ? Colors.cyanAccent
                                       : Colors.white24,
                               boxShadow: isFilled && !_isError
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.cyanAccent.withOpacity(0.5),
-                                        blurRadius: 8,
-                                      )
-                                    ]
+                                  ? [BoxShadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: 8)]
                                   : null,
                             ),
                           );
@@ -209,10 +198,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                     const SizedBox(height: 24),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text(
-                        'Annuler',
-                        style: TextStyle(color: Colors.white60, fontSize: 16),
-                      ),
+                      child: const Text('Annuler', style: TextStyle(color: Colors.white60, fontSize: 16)),
                     ),
                   ],
                 ),
@@ -239,9 +225,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: row.map((key) {
-              if (key.isEmpty) {
-                return const SizedBox(width: 80, height: 60);
-              }
+              if (key.isEmpty) return const SizedBox(width: 80, height: 60);
               return _KeyButton(
                 label: key,
                 onDigit: _onDigitPressed,
@@ -285,11 +269,7 @@ class _KeyButton extends StatelessWidget {
                 key == LogicalKeyboardKey.enter ||
                 key == LogicalKeyboardKey.gameButtonA ||
                 key == LogicalKeyboardKey.numpadEnter) {
-              if (isDelete) {
-                onDelete();
-              } else {
-                onDigit(label);
-              }
+              if (isDelete) { onDelete(); } else { onDigit(label); }
               return KeyEventResult.handled;
             }
           }
@@ -298,12 +278,47 @@ class _KeyButton extends StatelessWidget {
         child: Builder(
           builder: (context) {
             final hasFocus = Focus.of(context).hasFocus;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 80,
-              height: 60,
-              decoration: BoxDecoration(
-                color: disabled
-                    ? Colors.white10
-                    : hasFocus
-                        ? Colors.cyanAccent.withOpacity(0.2)
+            return GestureDetector(
+              onTap: disabled
+                  ? null
+                  : () {
+                      if (isDelete) { onDelete(); } else { onDigit(label); }
+                    },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 80,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: disabled
+                      ? Colors.white10
+                      : hasFocus
+                          ? Colors.cyanAccent.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: disabled
+                        ? Colors.white10
+                        : hasFocus
+                            ? Colors.cyanAccent
+                            : Colors.white24,
+                  ),
+                ),
+                child: Center(
+                  child: isDelete
+                      ? Icon(Icons.backspace_outlined,
+                          color: disabled ? Colors.white24 : Colors.white70, size: 22)
+                      : Text(label,
+                          style: TextStyle(
+                            color: disabled ? Colors.white24 : Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                          )),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
