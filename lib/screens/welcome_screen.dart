@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -54,7 +54,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void _enterParentMode() async {
     final pinProvider = context.read<PinProvider>();
 
-    if (pinProvider.hasPin) {
+    if (pinProvider.isPinSet) {
       final result = await Navigator.push<bool>(
         context,
         MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
@@ -179,14 +179,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     radius: 24,
                                     backgroundColor:
                                         Colors.cyanAccent.withOpacity(0.3),
-                                    backgroundImage: child.photoPath != null
-                                        ? FileImage(File(child.photoPath!))
+                                    backgroundImage: child.hasPhoto
+                                        ? MemoryImage(
+                                            base64Decode(child.photoBase64!))
                                         : null,
-                                    child: child.photoPath == null
+                                    child: !child.hasPhoto
                                         ? Text(
-                                            child.name.isNotEmpty
-                                                ? child.name[0].toUpperCase()
-                                                : '?',
+                                            child.avatar.isNotEmpty
+                                                ? child.avatar
+                                                : (child.name.isNotEmpty
+                                                    ? child.name[0]
+                                                        .toUpperCase()
+                                                    : '?'),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -211,7 +215,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'Niveau ${child.level} • ${child.points} pts',
+                                          '${child.levelTitle} • ${child.points} pts',
                                           style: const TextStyle(
                                             color: Colors.white54,
                                             fontSize: 13,
