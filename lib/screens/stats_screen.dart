@@ -19,9 +19,10 @@ class StatsScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.bar_chart_rounded, size: 80, color: Colors.white24),
+                    Icon(Icons.bar_chart_rounded,
+                        size: 80, color: Colors.white24),
                     const SizedBox(height: 16),
-                    Text(
+                    const Text(
                       'Aucun enfant enregistré',
                       style: TextStyle(color: Colors.white54, fontSize: 16),
                     ),
@@ -90,7 +91,7 @@ class StatsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Comparaison des scores',
               style: TextStyle(
                 color: Colors.white,
@@ -118,7 +119,8 @@ class StatsScreen extends StatelessWidget {
                       width: 70,
                       child: Text(
                         child.name,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        style:
+                            const TextStyle(color: Colors.white70, fontSize: 13),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -160,7 +162,8 @@ class StatsScreen extends StatelessWidget {
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
     final dailyPoints = List.generate(7, (i) {
       final day = weekStart.add(Duration(days: i));
-      final dayActivities = provider.getActivitiesForChildOnDate(child.id, day);
+      final dayActivities =
+          provider.getActivitiesForChildOnDate(child.id, day);
       int total = 0;
       for (final a in dayActivities) {
         total += (a.points as int?) ?? 0;
@@ -168,7 +171,8 @@ class StatsScreen extends StatelessWidget {
       return total;
     });
 
-    final maxDaily = dailyPoints.fold<int>(1, (m, v) => v.abs() > m ? v.abs() : m);
+    final maxDaily =
+        dailyPoints.fold<int>(1, (m, v) => v.abs() > m ? v.abs() : m);
     final days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
     return GlassCard(
@@ -192,7 +196,8 @@ class StatsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: List.generate(7, (i) {
                   final val = dailyPoints[i];
-                  final height = maxDaily > 0 ? (val.abs() / maxDaily) * 100 : 0.0;
+                  final height =
+                      maxDaily > 0 ? (val.abs() / maxDaily) * 100 : 0.0;
                   final isPositive = val >= 0;
 
                   return Expanded(
@@ -220,8 +225,14 @@ class StatsScreen extends StatelessWidget {
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,
                                 colors: isPositive
-                                    ? [Colors.cyanAccent.withOpacity(0.4), Colors.cyanAccent]
-                                    : [Colors.redAccent.withOpacity(0.4), Colors.redAccent],
+                                    ? [
+                                        Colors.cyanAccent.withOpacity(0.4),
+                                        Colors.cyanAccent
+                                      ]
+                                    : [
+                                        Colors.redAccent.withOpacity(0.4),
+                                        Colors.redAccent
+                                      ],
                               ),
                             ),
                           ),
