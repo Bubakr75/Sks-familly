@@ -2,33 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../models/child_model.dart';
+import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import 'tribunal_screen.dart';
+import 'manage_children_screen.dart';
+import 'punishment_lines_screen.dart';
+import 'immunity_lines_screen.dart';
+import 'screen_time_screen.dart';
 import 'school_notes_screen.dart';
+import 'child_dashboard_screen.dart';
+import 'tribunal_screen.dart';
 
-class ChildDashboardScreen extends StatefulWidget {
-  final String childId;
-  const ChildDashboardScreen({super.key, required this.childId});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<ChildDashboardScreen> createState() => _ChildDashboardScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _ChildDashboardScreenState extends State<ChildDashboardScreen>
+class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..forward();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _animController.dispose();
     super.dispose();
   }
 
@@ -42,370 +51,345 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final pinProvider = context.watch<PinProvider>();
-    final isParentMode = pinProvider.isParentMode;
-
     return Consumer<FamilyProvider>(
       builder: (context, provider, _) {
-        final child = provider.getChild(widget.childId);
-        if (child == null) {
-          return AnimatedBackground(
-            child: Scaffold(
-              backgroundColor: Colors.transparent,
-              body: const Center(child: Text('Enfant introuvable', style: TextStyle(color: Colors.white54))),
-            ),
-          );
-        }
+        final children = provider.children;
+        final pendingTrades = provider.trades.where((t) => t.status == 'pending').toList();
 
-        final satMin = provider.getSaturdayMinutes(child.id);
-        final sunMin = provider.getSundayMinutes(child.id);
-        final weekendMinutes = satMin + sunMin;
-        final history = provider.getHistoryForChild(child.id);
-        final badges = provider.getBadgesForChild(child.id);
-
-        return AnimatedBackground(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              title: Text(child.name),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              bottom: TabBar(
-                controller: _tabController,
-                indicatorColor: Colors.cyanAccent,
-                labelColor: Colors.cyanAccent,
-                unselectedLabelColor: Colors.white54,
-                tabs: const [
-                  Tab(icon: Icon(Icons.person), text: 'Profil'),
-                  Tab(icon: Icon(Icons.tv), text: 'Ecran'),
-                  Tab(icon: Icon(Icons.history), text: 'Historique'),
-                  Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
-                ],
-              ),
-            ),
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildProfileTab(child, provider, isParentMode),
-                _buildScreenTimeTab(child, provider, weekendMinutes, isParentMode),
-                _buildHistoryTab(history, provider),
-                _buildBadgesTab(badges),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildQuickActions(context),
+              const SizedBox(height: 20),
+              if (pendingTrades.isNotEmpty) ...[
+                const Text('Echanges en cours', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 120,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: pendingTrades.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) => _buildInteractiveTradeCard(pendingTrades[index], provider),
+                  ),
+                ),
+                const SizedBox(height: 20),
               ],
-            ),
+              if (children.isEmpty)
+                GlassCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(children: [
+                      const Icon(Icons.family_restroom, size: 64, color: Colors.white24),
+                      const SizedBox(height: 16),
+                      const Text('Aucun enfant enregistre', style: TextStyle(color: Colors.white54, fontSize: 16)),
+                      const SizedBox(height: 16),
+                      TvFocusWrapper(
+                        onTap: () => PinGuard.guardNavigation(context, const ManageChildrenScreen()),
+                        child: ElevatedButton.icon(
+                          onPressed: () => PinGuard.guardNavigation(context, const ManageChildrenScreen()),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Ajouter un enfant'),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent.shade700, foregroundColor: Colors.white),
+                        ),
+                      ),
+                    ]),
+                  ),
+                )
+              else
+                ...children.map((child) => _buildChildCard(child, provider)),
+              const SizedBox(height: 24),
+              TvFocusWrapper(
+                onTap: () => _showFullHistory(provider),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white12)),
+                  child: const Center(child: Text('Voir l\'historique complet', style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.w600))),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildProfileTab(dynamic child, FamilyProvider provider, bool isParentMode) {
-    final weekHistory = provider.getWeeklyPoints(child.id);
-    int bonusCount = weekHistory.where((h) => h.isBonus).length;
-    int penaltyCount = weekHistory.where((h) => !h.isBonus).length;
+  Widget _buildQuickActions(BuildContext context) {
+    final actions = [
+      _QuickAction('Enfants', Icons.people, Colors.cyanAccent, () => PinGuard.guardNavigation(context, const ManageChildrenScreen())),
+      _QuickAction('Punitions', Icons.gavel, Colors.redAccent, () => PinGuard.guardNavigation(context, const PunishmentLinesScreen())),
+      _QuickAction('Immunites', Icons.shield, Colors.greenAccent, () => PinGuard.guardNavigation(context, const ImmunityLinesScreen())),
+      _QuickAction('Ecran', Icons.tv, Colors.purpleAccent, () => PinGuard.guardNavigation(context, const ScreenTimeScreen())),
+      _QuickAction('Notes', Icons.school, Colors.orangeAccent, () => _showSchoolNotesChildPicker()),
+      _QuickAction('Tribunal', Icons.balance, Colors.amberAccent, () => PinGuard.guardNavigation(context, const TribunalScreen())),
+    ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(children: [
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(children: [
-              CircleAvatar(radius: 40, backgroundColor: Colors.cyanAccent.withOpacity(0.3),
-                child: Text(child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
-                    style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold))),
-              const SizedBox(height: 16),
-              Text(child.name, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('Niveau ${child.level}', style: const TextStyle(color: Colors.white54, fontSize: 14)),
-              const SizedBox(height: 16),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _statChip(Icons.star, '${child.points}', 'Points', Colors.amberAccent),
-                const SizedBox(width: 24),
-                _statChip(Icons.emoji_events, '${provider.getBadgesForChild(child.id).length}', 'Badges', Colors.purpleAccent),
+    return SizedBox(
+      height: 90,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal, itemCount: actions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final action = actions[index];
+          return TvFocusWrapper(
+            autofocus: index == 0, onTap: action.onTap,
+            child: Container(
+              width: 90, padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(color: action.color.withOpacity(0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: action.color.withOpacity(0.3))),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(action.icon, color: action.color, size: 28), const SizedBox(height: 6),
+                Text(action.label, style: TextStyle(color: action.color, fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
               ]),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(children: [
-          Expanded(child: TvFocusWrapper(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SchoolNotesScreen(childId: child.id))),
-            child: _actionCard(Icons.school, 'Notes scolaires', Colors.orangeAccent),
-          )),
-          const SizedBox(width: 12),
-          Expanded(child: TvFocusWrapper(
-            onTap: () {},
-            child: _actionCard(Icons.swap_horiz, 'Echanges', Colors.greenAccent),
-          )),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildInteractiveTradeCard(dynamic trade, FamilyProvider provider) {
+    final fromChild = provider.getChild(trade.fromChildId);
+    final fromName = fromChild?.name ?? 'Inconnu';
+    return TvFocusWrapper(
+      onTap: () => _showTradeDetail(trade, provider),
+      child: Container(
+        width: 200, padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.orangeAccent.withOpacity(0.15), Colors.amber.withOpacity(0.05)]), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.orangeAccent.withOpacity(0.3))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Row(children: [const Icon(Icons.swap_horiz, color: Colors.orangeAccent, size: 18), const SizedBox(width: 6),
+            Expanded(child: Text(trade.serviceDescription ?? 'Echange', style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w600, fontSize: 13), overflow: TextOverflow.ellipsis))]),
+          Text('De: $fromName', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(trade.status ?? 'En attente', style: const TextStyle(color: Colors.white38, fontSize: 11)),
         ]),
-        const SizedBox(height: 12),
-        TvFocusWrapper(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TribunalScreen())),
-          child: Container(
-            width: double.infinity, padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.amberAccent.withOpacity(0.15), Colors.orangeAccent.withOpacity(0.05)]),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.amberAccent.withOpacity(0.3)),
-            ),
-            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(Icons.balance, color: Colors.amberAccent, size: 24),
-              SizedBox(width: 10),
-              Text('Demander un tribunal', style: TextStyle(color: Colors.amberAccent, fontSize: 16, fontWeight: FontWeight.w600)),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Cette semaine', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                _weekStatItem(Icons.thumb_up, '$bonusCount', 'Bonus', Colors.greenAccent),
-                _weekStatItem(Icons.thumb_down, '$penaltyCount', 'Penalites', Colors.redAccent),
-                _weekStatItem(Icons.timeline, '${weekHistory.length}', 'Total', Colors.cyanAccent),
-              ]),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 32),
-      ]),
+      ),
     );
   }
 
-  Widget _statChip(IconData icon, String value, String label, Color color) {
-    return Column(children: [
-      Icon(icon, color: color, size: 24), const SizedBox(height: 4),
-      Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-      Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-    ]);
-  }
-
-  Widget _actionCard(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.3))),
-      child: Column(children: [
-        Icon(icon, color: color, size: 28), const SizedBox(height: 8),
-        Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
-      ]),
+  void _showTradeDetail(dynamic trade, FamilyProvider provider) {
+    final fromChild = provider.getChild(trade.fromChildId);
+    final fromName = fromChild?.name ?? 'Inconnu';
+    showModalBottomSheet(
+      context: context, backgroundColor: Colors.grey[900],
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Detail de l\'echange', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          _infoRow('Service', trade.serviceDescription ?? 'N/A'),
+          _infoRow('De', fromName),
+          _infoRow('Lignes', '${trade.immunityLines ?? 0}'),
+          _infoRow('Statut', trade.status ?? 'En attente'),
+          const SizedBox(height: 20),
+          Row(children: [
+            Expanded(child: TvFocusWrapper(onTap: () { provider.cancelTrade(trade.id); Navigator.pop(ctx); },
+              child: OutlinedButton(onPressed: () { provider.cancelTrade(trade.id); Navigator.pop(ctx); },
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent)), child: const Text('Annuler')))),
+            const SizedBox(width: 12),
+            Expanded(child: TvFocusWrapper(onTap: () { provider.acceptTrade(trade.id); Navigator.pop(ctx); },
+              child: ElevatedButton(onPressed: () { provider.acceptTrade(trade.id); Navigator.pop(ctx); },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent.shade700), child: const Text('Accepter')))),
+          ]),
+        ]),
+      ),
     );
   }
 
-  Widget _weekStatItem(IconData icon, String value, String label, Color color) {
-    return Column(children: [
-      Icon(icon, color: color, size: 20), const SizedBox(height: 4),
-      Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold)),
-      Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-    ]);
-  }
-
-  Widget _buildScreenTimeTab(dynamic child, FamilyProvider provider, int weekendMinutes, bool isParentMode) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(children: [
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(children: [
-              const Icon(Icons.tv, color: Colors.purpleAccent, size: 48),
-              const SizedBox(height: 12),
-              Text(_formatMinutes(weekendMinutes),
-                  style: const TextStyle(color: Colors.purpleAccent, fontSize: 40, fontWeight: FontWeight.bold)),
-              const Text('Temps d\'ecran weekend', style: TextStyle(color: Colors.white54, fontSize: 14)),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Detail du calcul', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              _calcRow('Base weekend', '120 min'),
-              _calcRow('Points (${child.points})', '+${child.points} min'),
-              const Divider(color: Colors.white12),
-              _calcRow('Total', _formatMinutes(weekendMinutes), bold: true),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (isParentMode) ...[
-          const Text('Bonus de temps', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [15, 30, 60].map((val) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: TvFocusWrapper(
-                  onTap: () {
-                    provider.addScreenTimeBonus(child.id, val, 'Bonus parent +${val}min');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('+${val}min ajoutees'), backgroundColor: Colors.purpleAccent),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.purpleAccent.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.purpleAccent.withOpacity(0.4)),
-                    ),
-                    child: Text('+${val}min', style: const TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 12),
-          TvFocusWrapper(
-            onTap: () => _showCustomBonusDialog(child, provider),
-            child: OutlinedButton.icon(
-              onPressed: () => _showCustomBonusDialog(child, provider),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Bonus personnalise'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.purpleAccent,
-                side: const BorderSide(color: Colors.purpleAccent),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 32),
-      ]),
-    );
-  }
-
-  Widget _calcRow(String label, String value, {bool bold = false}) {
+  Widget _infoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: TextStyle(color: Colors.white54, fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-        Text(value, style: TextStyle(color: bold ? Colors.purpleAccent : Colors.white, fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.w600)),
+        Text(label, style: const TextStyle(color: Colors.white54)),
+        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ]),
     );
   }
 
-  void _showCustomBonusDialog(dynamic child, FamilyProvider provider) {
-    int customMinutes = 30;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Bonus personnalise', style: TextStyle(color: Colors.white)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              TvFocusWrapper(
-                onTap: () { if (customMinutes > 5) setDialogState(() => customMinutes -= 5); },
-                child: const Icon(Icons.remove_circle_outline, color: Colors.white54, size: 32),
-              ),
-              const SizedBox(width: 20),
-              Text('${customMinutes}min', style: const TextStyle(color: Colors.purpleAccent, fontSize: 32, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 20),
-              TvFocusWrapper(
-                onTap: () { if (customMinutes < 240) setDialogState(() => customMinutes += 5); },
-                child: const Icon(Icons.add_circle_outline, color: Colors.white54, size: 32),
-              ),
+  Widget _buildChildCard(ChildModel child, FamilyProvider provider) {
+    final satMinutes = provider.getSaturdayMinutes(child.id);
+    final schoolAvg = provider.getWeeklySchoolAverage(child.id);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TvFocusWrapper(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChildDashboardScreen(childId: child.id))),
+        child: GlassCard(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
+              Row(children: [
+                CircleAvatar(radius: 24, backgroundColor: Colors.cyanAccent.withOpacity(0.3),
+                  child: Text(child.avatar.isNotEmpty ? child.avatar : (child.name.isNotEmpty ? child.name[0].toUpperCase() : '?'),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20))),
+                const SizedBox(width: 14),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(child.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                  Text(child.levelTitle, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                ])),
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text('${child.points}', style: const TextStyle(color: Colors.cyanAccent, fontSize: 24, fontWeight: FontWeight.bold)),
+                  const Text('points', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                ]),
+              ]),
+              const SizedBox(height: 12),
+              const Divider(color: Colors.white12, height: 1),
+              const SizedBox(height: 12),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+                _buildScreenTimeMini(satMinutes),
+                _buildWeekNotesMini(schoolAvg),
+              ]),
             ]),
-          ]),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
-            ElevatedButton(
-              onPressed: () {
-                provider.addScreenTimeBonus(child.id, customMinutes, 'Bonus parent +${customMinutes}min');
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(this.context).showSnackBar(
-                  SnackBar(content: Text('+${customMinutes}min ajoutees'), backgroundColor: Colors.purpleAccent),
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-              child: const Text('Ajouter'),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHistoryTab(List<dynamic> history, FamilyProvider provider) {
-    if (history.isEmpty) {
-      return const Center(child: Text('Aucun historique', style: TextStyle(color: Colors.white38)));
+  Widget _buildScreenTimeMini(int minutes) {
+    return Column(children: [
+      const Icon(Icons.tv, color: Colors.purpleAccent, size: 20), const SizedBox(height: 4),
+      Text(_formatMinutes(minutes), style: const TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+      const Text('Ecran sam.', style: TextStyle(color: Colors.white38, fontSize: 10)),
+    ]);
+  }
+
+  Widget _buildWeekNotesMini(double avg) {
+    final displayText = avg < 0 ? '--' : '${avg.toStringAsFixed(1)}/20';
+    return Column(children: [
+      const Icon(Icons.school, color: Colors.orangeAccent, size: 20), const SizedBox(height: 4),
+      Text(displayText, style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+      const Text('Moy. sem.', style: TextStyle(color: Colors.white38, fontSize: 10)),
+    ]);
+  }
+
+  void _showSchoolNotesChildPicker() {
+    final provider = context.read<FamilyProvider>();
+    final children = provider.children;
+    if (children.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aucun enfant enregistre'), backgroundColor: Colors.orangeAccent));
+      return;
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: history.length,
-      itemBuilder: (context, index) {
-        final activity = history[index];
-        final isPositive = activity.isBonus;
-        return TvFocusWrapper(
-          onTap: () {},
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-            child: Row(children: [
-              Icon(isPositive ? Icons.add_circle_outline : Icons.remove_circle_outline,
-                  color: isPositive ? Colors.greenAccent : Colors.redAccent, size: 20),
-              const SizedBox(width: 10),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(activity.reason ?? '', style: const TextStyle(color: Colors.white, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text('${activity.date.day.toString().padLeft(2, '0')}/${activity.date.month.toString().padLeft(2, '0')}',
-                    style: const TextStyle(color: Colors.white38, fontSize: 11)),
-              ])),
-              Text('${isPositive ? '+' : '-'}${activity.points}',
-                  style: TextStyle(color: isPositive ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
-            ]),
-          ),
-        );
-      },
+    if (children.length == 1) {
+      PinGuard.guardNavigation(context, SchoolNotesScreen(childId: children.first.id));
+      return;
+    }
+    showModalBottomSheet(
+      context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.45, minChildSize: 0.3, maxChildSize: 0.7,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(color: Colors.grey[900]?.withOpacity(0.95), borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+          child: Column(children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Text('Notes scolaires - Choisir un enfant', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Expanded(child: ListView.builder(
+              controller: scrollController, itemCount: children.length, padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemBuilder: (context, index) {
+                final child = children[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TvFocusWrapper(autofocus: index == 0,
+                    onTap: () { Navigator.pop(context); PinGuard.guardNavigation(this.context, SchoolNotesScreen(childId: child.id)); },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white12)),
+                      child: Row(children: [
+                        CircleAvatar(radius: 20, backgroundColor: Colors.orangeAccent.withOpacity(0.3),
+                          child: Text(child.avatar.isNotEmpty ? child.avatar : (child.name.isNotEmpty ? child.name[0].toUpperCase() : '?'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(child.name, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
+                        const Icon(Icons.chevron_right, color: Colors.white38),
+                      ]),
+                    ),
+                  ),
+                );
+              },
+            )),
+          ]),
+        ),
+      ),
     );
   }
 
-  Widget _buildBadgesTab(List<dynamic> badges) {
-    if (badges.isEmpty) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.emoji_events, size: 64, color: Colors.white24), const SizedBox(height: 12),
-        const Text('Aucun badge gagne', style: TextStyle(color: Colors.white38)),
-      ]));
-    }
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 12, mainAxisSpacing: 12),
-      itemCount: badges.length,
-      itemBuilder: (context, index) {
-        final badge = badges[index];
-        return TvFocusWrapper(
-          onTap: () => _showBadgeDetail(badge),
-          child: Container(
-            decoration: BoxDecoration(color: Colors.amberAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.amberAccent.withOpacity(0.3))),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.emoji_events, color: Colors.amberAccent, size: 32), const SizedBox(height: 6),
-              Text(badge.name ?? 'Badge', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-            ]),
-          ),
-        );
-      },
+  void _showFullHistory(FamilyProvider provider) {
+    final allHistory = provider.history;
+    showModalBottomSheet(
+      context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7, minChildSize: 0.4, maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(color: Colors.grey[900]?.withOpacity(0.95), borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+          child: Column(children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Text('Historique complet', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Expanded(child: allHistory.isEmpty
+              ? const Center(child: Text('Aucune activite', style: TextStyle(color: Colors.white38)))
+              : ListView.builder(
+                  controller: scrollController, itemCount: allHistory.length, padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemBuilder: (context, index) {
+                    final h = allHistory[index];
+                    final child = provider.getChild(h.childId);
+                    final childName = child?.name ?? 'Inconnu';
+                    return TvFocusWrapper(onTap: () => _showHistoryDetail(h, provider),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
+                        child: Row(children: [
+                          Icon(h.isBonus ? Icons.add_circle_outline : Icons.remove_circle_outline, color: h.isBonus ? Colors.greenAccent : Colors.redAccent, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(h.reason, style: const TextStyle(color: Colors.white, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(childName, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                          ])),
+                          Text('${h.isBonus ? '+' : '-'}${h.points}', style: TextStyle(color: h.isBonus ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold)),
+                        ]),
+                      ),
+                    );
+                  },
+                )),
+          ]),
+        ),
+      ),
     );
   }
 
-  void _showBadgeDetail(dynamic badge) {
+  void _showHistoryDetail(dynamic h, FamilyProvider provider) {
+    final child = provider.getChild(h.childId);
+    final childName = child?.name ?? 'Inconnu';
     showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: Colors.grey[900],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(children: [
-        const Icon(Icons.emoji_events, color: Colors.amberAccent), const SizedBox(width: 8),
-        Expanded(child: Text(badge.name ?? 'Badge', style: const TextStyle(color: Colors.white))),
+        Icon(h.isBonus ? Icons.thumb_up_rounded : Icons.thumb_down_rounded, color: h.isBonus ? Colors.greenAccent : Colors.redAccent, size: 22),
+        const SizedBox(width: 10),
+        Expanded(child: Text(h.reason, style: const TextStyle(color: Colors.white, fontSize: 16))),
       ]),
-      content: Text(badge.description ?? 'Aucune description', style: const TextStyle(color: Colors.white70)),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        _infoRow('Enfant', childName),
+        _infoRow('Points', '${h.isBonus ? '+' : '-'}${h.points}'),
+        _infoRow('Categorie', h.category),
+        _infoRow('Date', '${h.date.day.toString().padLeft(2, '0')}/${h.date.month.toString().padLeft(2, '0')}/${h.date.year}'),
+        if (h.actionBy != null && h.actionBy!.isNotEmpty) _infoRow('Par', h.actionBy!),
+      ]),
       actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fermer', style: TextStyle(color: Colors.cyanAccent)))],
     ));
   }
+}
+
+class _QuickAction {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  _QuickAction(this.label, this.icon, this.color, this.onTap);
 }
