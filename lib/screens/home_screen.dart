@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_protectedTabs.contains(index) && pin.isPinSet && !pin.isParentMode) {
       Navigator.push<bool>(
         context,
-        MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
+        MaterialPageRoute(builder: (_) => PinVerificationScreen()),
       ).then((result) {
         if (result == true && mounted) {
           setState(() => _currentIndex = index);
