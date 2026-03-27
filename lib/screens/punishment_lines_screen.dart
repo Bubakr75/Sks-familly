@@ -9,10 +9,12 @@ class PunishmentLinesScreen extends StatefulWidget {
   const PunishmentLinesScreen({super.key});
 
   @override
-  State<PunishmentLinesScreen> createState() => _PunishmentLinesScreenState();
+  State<PunishmentLinesScreen> createState() =>
+      _PunishmentLinesScreenState();
 }
 
-class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
+class _PunishmentLinesScreenState
+    extends State<PunishmentLinesScreen> {
   void _showAddPunishment() {
     final provider = context.read<FamilyProvider>();
     final children = provider.children;
@@ -35,9 +37,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
               builder: (context, scrollController) {
                 return Container(
                   decoration: BoxDecoration(
-                    color: Colors.grey[900]?.withOpacity(0.95),
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(24)),
+                    color:
+                        Colors.grey[900]?.withOpacity(0.95),
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24)),
                   ),
                   child: ListView(
                     controller: scrollController,
@@ -49,7 +52,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                           height: 4,
                           decoration: BoxDecoration(
                             color: Colors.white24,
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius:
+                                BorderRadius.circular(2),
                           ),
                         ),
                       ),
@@ -64,31 +68,39 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
-
-                      // Sélection enfant
                       const Text('Enfant',
-                          style:
-                              TextStyle(color: Colors.white70, fontSize: 14)),
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: children.map((child) {
-                          final isSelected = selectedChildId == child.id;
+                          final isSelected =
+                              selectedChildId == child.id;
                           return TvFocusWrapper(
-                            autofocus: children.first.id == child.id,
-                            onSelect: () {
-                              setModalState(() => selectedChildId = child.id);
+                            autofocus:
+                                children.first.id == child.id,
+                            onTap: () {
+                              setModalState(() =>
+                                  selectedChildId = child.id);
                             },
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 10),
+                              duration: const Duration(
+                                  milliseconds: 200),
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? Colors.redAccent.withOpacity(0.2)
-                                    : Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(12),
+                                    ? Colors.redAccent
+                                        .withOpacity(0.2)
+                                    : Colors.white
+                                        .withOpacity(0.06),
+                                borderRadius:
+                                    BorderRadius.circular(12),
                                 border: Border.all(
                                   color: isSelected
                                       ? Colors.redAccent
@@ -109,53 +121,61 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                         }).toList(),
                       ),
                       const SizedBox(height: 20),
-
-                      // Raison
                       const Text('Raison',
-                          style:
-                              TextStyle(color: Colors.white70, fontSize: 14)),
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14)),
                       const SizedBox(height: 8),
                       TextField(
                         controller: reasonController,
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(
+                            color: Colors.white),
                         decoration: InputDecoration(
-                          hintText: 'Ex: Insolence, bagarre...',
-                          hintStyle: const TextStyle(color: Colors.white38),
+                          hintText:
+                              'Ex: Insolence, bagarre...',
+                          hintStyle: const TextStyle(
+                              color: Colors.white38),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.06),
+                          fillColor:
+                              Colors.white.withOpacity(0.06),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius:
+                                BorderRadius.circular(14),
                             borderSide: BorderSide.none,
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide:
-                                const BorderSide(color: Colors.redAccent),
+                            borderRadius:
+                                BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                                color: Colors.redAccent),
                           ),
                         ),
                         onChanged: (val) => reason = val,
                       ),
                       const SizedBox(height: 20),
-
-                      // Nombre de lignes
                       const Text('Nombre de lignes',
-                          style:
-                              TextStyle(color: Colors.white70, fontSize: 14)),
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14)),
                       const SizedBox(height: 8),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment:
+                            MainAxisAlignment.center,
                         children: [
                           TvFocusWrapper(
-                            onSelect: () {
-                              if (lines > 1) setModalState(() => lines--);
+                            onTap: () {
+                              if (lines > 1)
+                                setModalState(() => lines--);
                             },
                             child: Container(
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.1),
-                                border: Border.all(color: Colors.white24),
+                                color: Colors.white
+                                    .withOpacity(0.1),
+                                border: Border.all(
+                                    color: Colors.white24),
                               ),
                               child: const Icon(Icons.remove,
                                   color: Colors.white70),
@@ -172,16 +192,19 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                           ),
                           const SizedBox(width: 24),
                           TvFocusWrapper(
-                            onSelect: () {
-                              if (lines < 100) setModalState(() => lines++);
+                            onTap: () {
+                              if (lines < 100)
+                                setModalState(() => lines++);
                             },
                             child: Container(
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.1),
-                                border: Border.all(color: Colors.white24),
+                                color: Colors.white
+                                    .withOpacity(0.1),
+                                border: Border.all(
+                                    color: Colors.white24),
                               ),
                               child: const Icon(Icons.add,
                                   color: Colors.white70),
@@ -191,14 +214,18 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                       ),
                       const SizedBox(height: 8),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [5, 10, 20, 50].map((val) {
+                        mainAxisAlignment:
+                            MainAxisAlignment.center,
+                        children:
+                            [5, 10, 20, 50].map((val) {
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets
+                                .symmetric(horizontal: 4),
                             child: OutlinedButton(
-                              onPressed: () =>
-                                  setModalState(() => lines = val),
-                              style: OutlinedButton.styleFrom(
+                              onPressed: () => setModalState(
+                                  () => lines = val),
+                              style:
+                                  OutlinedButton.styleFrom(
                                 foregroundColor: lines == val
                                     ? Colors.redAccent
                                     : Colors.white54,
@@ -207,10 +234,15 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                                       ? Colors.redAccent
                                       : Colors.white24,
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                                padding: const EdgeInsets
+                                    .symmetric(
+                                    horizontal: 16,
+                                    vertical: 8),
+                                shape:
+                                    RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(
+                                          20),
                                 ),
                               ),
                               child: Text('$val'),
@@ -219,19 +251,20 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                         }).toList(),
                       ),
                       const SizedBox(height: 28),
-
-                      // Bouton Créer
                       SizedBox(
                         width: double.infinity,
                         height: 52,
                         child: TvFocusWrapper(
-                          onSelect: () {
-                            if (selectedChildId == null || reason.isEmpty) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
+                          onTap: () {
+                            if (selectedChildId == null ||
+                                reason.isEmpty) {
+                              ScaffoldMessenger.of(ctx)
+                                  .showSnackBar(
                                 const SnackBar(
                                   content: Text(
                                       'Sélectionnez un enfant et une raison'),
-                                  backgroundColor: Colors.orangeAccent,
+                                  backgroundColor:
+                                      Colors.orangeAccent,
                                 ),
                               );
                               return;
@@ -242,22 +275,27 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                               lines: lines,
                             );
                             Navigator.pop(ctx);
-                            ScaffoldMessenger.of(this.context).showSnackBar(
+                            ScaffoldMessenger.of(this.context)
+                                .showSnackBar(
                               SnackBar(
                                 content: Text(
                                     '$lines ligne(s) de punition ajoutée(s)'),
-                                backgroundColor: Colors.redAccent,
+                                backgroundColor:
+                                    Colors.redAccent,
                               ),
                             );
                           },
                           child: ElevatedButton.icon(
                             onPressed: () {
-                              if (selectedChildId == null || reason.isEmpty) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
+                              if (selectedChildId == null ||
+                                  reason.isEmpty) {
+                                ScaffoldMessenger.of(ctx)
+                                    .showSnackBar(
                                   const SnackBar(
                                     content: Text(
                                         'Sélectionnez un enfant et une raison'),
-                                    backgroundColor: Colors.orangeAccent,
+                                    backgroundColor:
+                                        Colors.orangeAccent,
                                   ),
                                 );
                                 return;
@@ -268,24 +306,31 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                                 lines: lines,
                               );
                               Navigator.pop(ctx);
-                              ScaffoldMessenger.of(this.context).showSnackBar(
+                              ScaffoldMessenger.of(
+                                      this.context)
+                                  .showSnackBar(
                                 SnackBar(
                                   content: Text(
                                       '$lines ligne(s) de punition ajoutée(s)'),
-                                  backgroundColor: Colors.redAccent,
+                                  backgroundColor:
+                                      Colors.redAccent,
                                 ),
                               );
                             },
                             icon: const Icon(Icons.gavel),
-                            label: const Text('Créer la punition',
+                            label: const Text(
+                                'Créer la punition',
                                 style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.bold)),
+                                    fontWeight:
+                                        FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent.shade700,
+                              backgroundColor:
+                                  Colors.redAccent.shade700,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius:
+                                    BorderRadius.circular(16),
                               ),
                             ),
                           ),
@@ -313,7 +358,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
           elevation: 0,
         ),
         floatingActionButton: TvFocusWrapper(
-          onSelect: _showAddPunishment,
+          onTap: _showAddPunishment,
           child: FloatingActionButton.extended(
             onPressed: _showAddPunishment,
             backgroundColor: Colors.redAccent.shade700,
@@ -346,17 +391,19 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
                             CircleAvatar(
                               radius: 20,
-                              backgroundColor:
-                                  Colors.redAccent.withOpacity(0.3),
+                              backgroundColor: Colors.redAccent
+                                  .withOpacity(0.3),
                               child: Text(
                                 child.name.isNotEmpty
-                                    ? child.name[0].toUpperCase()
+                                    ? child.name[0]
+                                        .toUpperCase()
                                     : '?',
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -367,20 +414,23 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     child.name,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight:
+                                          FontWeight.w600,
                                     ),
                                   ),
                                   Text(
                                     '${punishments.length} punition(s)',
                                     style: const TextStyle(
-                                        color: Colors.white54, fontSize: 13),
+                                        color: Colors.white54,
+                                        fontSize: 13),
                                   ),
                                 ],
                               ),
@@ -389,31 +439,44 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                         ),
                         if (punishments.isEmpty)
                           const Padding(
-                            padding: EdgeInsets.only(top: 12),
+                            padding:
+                                EdgeInsets.only(top: 12),
                             child: Text('Aucune punition',
-                                style: TextStyle(color: Colors.white38)),
+                                style: TextStyle(
+                                    color: Colors.white38)),
                           )
                         else ...[
                           const SizedBox(height: 12),
                           ...punishments.map((p) {
-                            final isCompleted = p.isCompleted == true;
+                            final isCompleted =
+                                p.isCompleted == true;
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.only(
+                                  bottom: 6),
                               child: TvFocusWrapper(
-                                onSelect: () =>
-                                    _showPunishmentDetail(p, child, provider),
+                                onTap: () =>
+                                    _showPunishmentDetail(
+                                        p, child, provider),
                                 child: Container(
-                                  padding: const EdgeInsets.all(12),
+                                  padding:
+                                      const EdgeInsets.all(
+                                          12),
                                   decoration: BoxDecoration(
                                     color: (isCompleted
-                                            ? Colors.greenAccent
-                                            : Colors.redAccent)
+                                            ? Colors
+                                                .greenAccent
+                                            : Colors
+                                                .redAccent)
                                         .withOpacity(0.06),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            12),
                                     border: Border.all(
                                       color: (isCompleted
-                                              ? Colors.greenAccent
-                                              : Colors.redAccent)
+                                              ? Colors
+                                                  .greenAccent
+                                              : Colors
+                                                  .redAccent)
                                           .withOpacity(0.2),
                                     ),
                                   ),
@@ -421,36 +484,48 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                                     children: [
                                       Icon(
                                         isCompleted
-                                            ? Icons.check_circle
+                                            ? Icons
+                                                .check_circle
                                             : Icons.pending,
                                         color: isCompleted
-                                            ? Colors.greenAccent
-                                            : Colors.redAccent,
+                                            ? Colors
+                                                .greenAccent
+                                            : Colors
+                                                .redAccent,
                                         size: 20,
                                       ),
-                                      const SizedBox(width: 10),
+                                      const SizedBox(
+                                          width: 10),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                              CrossAxisAlignment
+                                                  .start,
                                           children: [
                                             Text(
-                                              p.reason ?? 'Sans raison',
+                                              p.reason ??
+                                                  'Sans raison',
                                               style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 14),
+                                                  color: Colors
+                                                      .white,
+                                                  fontSize:
+                                                      14),
                                               maxLines: 1,
                                               overflow:
-                                                  TextOverflow.ellipsis,
+                                                  TextOverflow
+                                                      .ellipsis,
                                             ),
                                             Text(
                                               isCompleted
                                                   ? 'Terminée'
                                                   : 'En cours',
-                                              style: TextStyle(
+                                              style:
+                                                  TextStyle(
                                                 color: isCompleted
-                                                    ? Colors.greenAccent
-                                                    : Colors.white38,
+                                                    ? Colors
+                                                        .greenAccent
+                                                    : Colors
+                                                        .white38,
                                                 fontSize: 11,
                                               ),
                                             ),
@@ -458,26 +533,42 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                                         ),
                                       ),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.redAccent
-                                              .withOpacity(0.15),
+                                        padding: const EdgeInsets
+                                            .symmetric(
+                                            horizontal: 8,
+                                            vertical: 4),
+                                        decoration:
+                                            BoxDecoration(
+                                          color: Colors
+                                              .redAccent
+                                              .withOpacity(
+                                                  0.15),
                                           borderRadius:
-                                              BorderRadius.circular(8),
+                                              BorderRadius
+                                                  .circular(
+                                                      8),
                                         ),
                                         child: Text(
                                           '${p.lines ?? 0}L',
-                                          style: const TextStyle(
-                                            color: Colors.redAccent,
-                                            fontWeight: FontWeight.bold,
+                                          style:
+                                              const TextStyle(
+                                            color: Colors
+                                                .redAccent,
+                                            fontWeight:
+                                                FontWeight
+                                                    .bold,
                                             fontSize: 12,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 4),
-                                      const Icon(Icons.chevron_right,
-                                          color: Colors.white24, size: 18),
+                                      const SizedBox(
+                                          width: 4),
+                                      const Icon(
+                                          Icons
+                                              .chevron_right,
+                                          color:
+                                              Colors.white24,
+                                          size: 18),
                                     ],
                                   ),
                                 ),
@@ -497,8 +588,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
     );
   }
 
-  void _showPunishmentDetail(
-      dynamic punishment, dynamic child, FamilyProvider provider) {
+  void _showPunishmentDetail(dynamic punishment,
+      dynamic child, FamilyProvider provider) {
     final isCompleted = punishment.isCompleted == true;
 
     showModalBottomSheet(
@@ -513,9 +604,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
           builder: (context, scrollController) {
             return Container(
               decoration: BoxDecoration(
-                color: Colors.grey[900]?.withOpacity(0.95),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
+                color:
+                    Colors.grey[900]?.withOpacity(0.95),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24)),
               ),
               child: ListView(
                 controller: scrollController,
@@ -527,7 +619,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                       height: 4,
                       decoration: BoxDecoration(
                         color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2),
+                        borderRadius:
+                            BorderRadius.circular(2),
                       ),
                     ),
                   ),
@@ -542,12 +635,14 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                   ),
                   const SizedBox(height: 16),
                   _detailRow('Enfant', child.name),
-                  _detailRow('Lignes', '${punishment.lines ?? 0}'),
+                  _detailRow(
+                      'Lignes', '${punishment.lines ?? 0}'),
                   _detailRow(
                     'Statut',
                     isCompleted ? 'Terminée' : 'En cours',
-                    valueColor:
-                        isCompleted ? Colors.greenAccent : Colors.redAccent,
+                    valueColor: isCompleted
+                        ? Colors.greenAccent
+                        : Colors.redAccent,
                   ),
                   if (punishment.createdAt != null)
                     _detailRow(
@@ -560,25 +655,36 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                       children: [
                         Expanded(
                           child: TvFocusWrapper(
-                            onSelect: () {
-                              provider.deletePunishment(punishment.id);
+                            onTap: () {
+                              provider.deletePunishment(
+                                  punishment.id);
                               Navigator.pop(ctx);
                               setState(() {});
                             },
                             child: OutlinedButton.icon(
                               onPressed: () {
-                                provider.deletePunishment(punishment.id);
+                                provider.deletePunishment(
+                                    punishment.id);
                                 Navigator.pop(ctx);
                                 setState(() {});
                               },
-                              icon: const Icon(Icons.delete_outline, size: 18),
-                              label: const Text('Supprimer'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.redAccent,
-                                side:
-                                    const BorderSide(color: Colors.redAccent),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 18),
+                              label:
+                                  const Text('Supprimer'),
+                              style:
+                                  OutlinedButton.styleFrom(
+                                foregroundColor:
+                                    Colors.redAccent,
+                                side: const BorderSide(
+                                    color:
+                                        Colors.redAccent),
+                                shape:
+                                    RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(
+                                          12),
                                 ),
                               ),
                             ),
@@ -587,26 +693,36 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: TvFocusWrapper(
-                            onSelect: () {
-                              provider.completePunishment(punishment.id);
+                            onTap: () {
+                              provider.completePunishment(
+                                  punishment.id);
                               Navigator.pop(ctx);
                               setState(() {});
                             },
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                provider.completePunishment(punishment.id);
+                                provider
+                                    .completePunishment(
+                                        punishment.id);
                                 Navigator.pop(ctx);
                                 setState(() {});
                               },
-                              icon:
-                                  const Icon(Icons.check_circle, size: 18),
-                              label: const Text('Terminer'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    Colors.greenAccent.shade700,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              icon: const Icon(
+                                  Icons.check_circle,
+                                  size: 18),
+                              label:
+                                  const Text('Terminer'),
+                              style:
+                                  ElevatedButton.styleFrom(
+                                backgroundColor: Colors
+                                    .greenAccent.shade700,
+                                foregroundColor:
+                                    Colors.white,
+                                shape:
+                                    RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(
+                                          12),
                                 ),
                               ),
                             ),
@@ -623,14 +739,16 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
     );
   }
 
-  Widget _detailRow(String label, String value, {Color? valueColor}) {
+  Widget _detailRow(String label, String value,
+      {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: const TextStyle(color: Colors.white54, fontSize: 14)),
+              style: const TextStyle(
+                  color: Colors.white54, fontSize: 14)),
           Text(
             value,
             style: TextStyle(
