@@ -3,54 +3,41 @@ import 'package:provider/provider.dart';
 import '../providers/pin_provider.dart';
 import '../screens/pin_verification_screen.dart';
 
-/// Utility class for PIN protection throughout the app.
-/// Every parent-only action MUST go through this.
 class PinGuard {
-  /// Execute an action that requires parent authentication.
-  /// If PIN is set and not in parent mode, shows the PIN verification screen.
-  /// If PIN is not set or already in parent mode, executes immediately.
   static void guardAction(BuildContext context, VoidCallback onAuthorized) {
     final pin = context.read<PinProvider>();
     if (pin.canPerformParentAction()) {
       pin.refreshActivity();
       onAuthorized();
     } else {
-      Navigator.push(
+      Navigator.push<bool>(
         context,
-        MaterialPageRoute(
-          builder: (_) => PinVerificationScreen(
-            onVerified: () {
-              Navigator.pop(context);
-              onAuthorized();
-            },
-          ),
-        ),
-      );
+        MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
+      ).then((result) {
+        if (result == true) {
+          onAuthorized();
+        }
+      });
     }
   }
 
-  /// Navigate to a screen that requires parent mode.
   static void guardNavigation(BuildContext context, Widget screen) {
     final pin = context.read<PinProvider>();
     if (pin.canPerformParentAction()) {
       pin.refreshActivity();
       Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
     } else {
-      Navigator.push(
+      Navigator.push<bool>(
         context,
-        MaterialPageRoute(
-          builder: (_) => PinVerificationScreen(
-            onVerified: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-            },
-          ),
-        ),
-      );
+        MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
+      ).then((result) {
+        if (result == true) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+        }
+      });
     }
   }
 
-  /// Show a "locked" snackbar when trying to do a protected action
   static void showLockedMessage(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
