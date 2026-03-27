@@ -156,17 +156,22 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
+  // ── FIXED: replaced getActivitiesForChildOnDate with getHistoryForChild + date filter ──
   Widget _buildWeeklyChart(
       BuildContext context, FamilyProvider provider, dynamic child) {
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final childHistory = provider.getHistoryForChild(child.id);
+
     final dailyPoints = List.generate(7, (i) {
       final day = weekStart.add(Duration(days: i));
-      final dayActivities =
-          provider.getActivitiesForChildOnDate(child.id, day);
       int total = 0;
-      for (final a in dayActivities) {
-        total += (a.points as int?) ?? 0;
+      for (final h in childHistory) {
+        if (h.date.year == day.year &&
+            h.date.month == day.month &&
+            h.date.day == day.day) {
+          total += h.isBonus ? h.points : -h.points;
+        }
       }
       return total;
     });
@@ -257,6 +262,7 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
+  // ── FIXED: replaced getActivitiesForChild with getHistoryForChild ──
   Widget _buildSummaryCards(BuildContext context, FamilyProvider provider) {
     int totalPoints = 0;
     int totalActivities = 0;
@@ -265,10 +271,10 @@ class StatsScreen extends StatelessWidget {
 
     for (final child in provider.children) {
       totalPoints += child.points;
-      final activities = provider.getActivitiesForChild(child.id);
-      totalActivities += activities.length;
-      for (final a in activities) {
-        if ((a.points as int?) != null && a.points > 0) {
+      final history = provider.getHistoryForChild(child.id);
+      totalActivities += history.length;
+      for (final h in history) {
+        if (h.isBonus) {
           bonusCount++;
         } else {
           penaltyCount++;
