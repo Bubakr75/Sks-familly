@@ -7,7 +7,6 @@ import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'tribunal_screen.dart';
 import 'school_notes_screen.dart';
-import 'trade_screen.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
   final String childId;
@@ -63,10 +62,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           );
         }
 
-        final screenTime =
-            provider.getScreenTimeForChild(child.id);
-        final weekendMinutes = screenTime?.weekendMinutes ?? 0;
-        final history = provider.getActivitiesForChild(child.id);
+        // Remplacer getScreenTimeForChild par getSaturdayMinutes
+        final weekendMinutes = provider.getSaturdayMinutes(child.id);
+        // Remplacer getActivitiesForChild par getHistoryForChild
+        final history = provider.getHistoryForChild(child.id);
         final badges = provider.getBadgesForChild(child.id);
 
         return AnimatedBackground(
@@ -190,10 +189,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               Expanded(
                 child: TvFocusWrapper(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const TradeScreen()),
+                    // TradeScreen supprimé (fichier manquant) - on peut naviguer vers TribunalScreen ou afficher un message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Échanges bientôt disponibles'),
+                        backgroundColor: Colors.greenAccent,
+                      ),
                     );
                   },
                   child: _actionCard(Icons.swap_horiz,
@@ -225,9 +226,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 border: Border.all(
                     color: Colors.amberAccent.withOpacity(0.3)),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   Icon(Icons.balance,
                       color: Colors.amberAccent, size: 24),
                   SizedBox(width: 10),
@@ -304,16 +305,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final now = DateTime.now();
     final weekStart =
         now.subtract(Duration(days: now.weekday - 1));
+    // Utiliser getHistoryForChild au lieu de getActivitiesForChild
     final weekActivities = provider
-        .getActivitiesForChild(child.id)
+        .getHistoryForChild(child.id)
         .where(
-            (a) => a.date != null && a.date.isAfter(weekStart))
+            (a) => a.date.isAfter(weekStart))
         .toList();
 
     int bonusCount = 0;
     int penaltyCount = 0;
     for (final a in weekActivities) {
-      if ((a.points as int?) != null && a.points > 0) {
+      if (a.isBonus) {
         bonusCount++;
       } else {
         penaltyCount++;
@@ -452,8 +454,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       const EdgeInsets.symmetric(horizontal: 6),
                   child: TvFocusWrapper(
                     onTap: () {
+                      // addScreenTimeBonus attend 3 arguments : childId, minutes, reason
                       provider.addScreenTimeBonus(
-                          child.id, val);
+                          child.id, val, 'Bonus rapide +${val}min');
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content:
@@ -609,8 +612,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 TvFocusWrapper(
                   onTap: () {
+                    // 3 arguments requis : childId, minutes, reason
                     provider.addScreenTimeBonus(
-                        child.id, customMinutes);
+                        child.id, customMinutes, 'Bonus personnalisé +${customMinutes}min');
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(this.context)
                         .showSnackBar(
@@ -624,7 +628,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   child: ElevatedButton(
                     onPressed: () {
                       provider.addScreenTimeBonus(
-                          child.id, customMinutes);
+                          child.id, customMinutes, 'Bonus personnalisé +${customMinutes}min');
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(this.context)
                           .showSnackBar(
@@ -664,9 +668,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       itemCount: history.length,
       itemBuilder: (context, index) {
         final activity = history[index];
-        final isPositive =
-            (activity.points as int?) != null &&
-                activity.points > 0;
+        final isPositive = activity.isBonus;
 
         return TvFocusWrapper(
           onTap: () {},
@@ -703,18 +705,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (activity.date != null)
-                        Text(
-                          '${activity.date.day.toString().padLeft(2, '0')}/${activity.date.month.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
-                              color: Colors.white38,
-                              fontSize: 11),
-                        ),
+                      Text(
+                        '${activity.date.day.toString().padLeft(2, '0')}/${activity.date.month.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 11),
+                      ),
                     ],
                   ),
                 ),
                 Text(
-                  '${isPositive ? '+' : ''}${activity.points}',
+                  '${isPositive ? '+' : '-'}${activity.points}',
                   style: TextStyle(
                     color: isPositive
                         ? Colors.greenAccent
