@@ -7,6 +7,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'tribunal_screen.dart';
 import 'school_notes_screen.dart';
+import 'trade_screen.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
   final String childId;
