@@ -129,14 +129,9 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    AnimatedBuilder(
-                      animation: _scaleAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _scaleAnimation.value,
-                          child: child,
-                        );
-                      },
+                    // ── FIXED: AnimatedBuilder → AnimatedBuilder ──
+                    ScaleTransition(
+                      scale: _scaleAnimation,
                       child: Icon(
                         _isError ? Icons.lock_outline : Icons.lock,
                         size: 64,
@@ -165,6 +160,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
+                    // ── FIXED: AnimatedBuilder → SlideTransition-style manual transform ──
                     AnimatedBuilder(
                       animation: _shakeAnimation,
                       builder: (context, child) {
@@ -311,56 +307,3 @@ class _KeyButton extends StatelessWidget {
                     ? Colors.white10
                     : hasFocus
                         ? Colors.cyanAccent.withOpacity(0.2)
-                        : Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: hasFocus ? Colors.cyanAccent : Colors.white12,
-                  width: hasFocus ? 2 : 1,
-                ),
-                boxShadow: hasFocus
-                    ? [
-                        BoxShadow(
-                          color: Colors.cyanAccent.withOpacity(0.3),
-                          blurRadius: 12,
-                        )
-                      ]
-                    : null,
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: disabled
-                      ? null
-                      : () {
-                          if (isDelete) {
-                            onDelete();
-                          } else {
-                            onDigit(label);
-                          }
-                        },
-                  child: Center(
-                    child: isDelete
-                        ? Icon(
-                            Icons.backspace_outlined,
-                            color: disabled ? Colors.white24 : Colors.white70,
-                            size: 24,
-                          )
-                        : Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w600,
-                              color: disabled ? Colors.white24 : Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
