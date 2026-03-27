@@ -12,12 +12,9 @@ import 'trade_screen.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
   final String childId;
-
   const ChildDashboardScreen({super.key, required this.childId});
-
   @override
-  State<ChildDashboardScreen> createState() =>
-      _ChildDashboardScreenState();
+  State<ChildDashboardScreen> createState() => _ChildDashboardScreenState();
 }
 
 class _ChildDashboardScreenState extends State<ChildDashboardScreen>
@@ -57,8 +54,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Scaffold(
               backgroundColor: Colors.transparent,
               body: const Center(
-                child: Text('Enfant introuvable',
-                    style: TextStyle(color: Colors.white54)),
+                child: Text('Enfant introuvable', style: TextStyle(color: Colors.white54)),
               ),
             ),
           );
@@ -104,27 +100,21 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Widget _buildProfileTab(
-      dynamic child, FamilyProvider provider, bool isParentMode) {
+  Widget _buildProfileTab(dynamic child, FamilyProvider provider, bool isParentMode) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Photo de profil en fond avec overlay
           GlassCard(
             child: Stack(
               children: [
-                // Fond avec photo floue si disponible
                 if (child.hasPhoto)
                   Positioned.fill(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Opacity(
                         opacity: 0.15,
-                        child: Image.memory(
-                          base64Decode(child.photoBase64),
-                          fit: BoxFit.cover,
-                        ),
+                        child: Image.memory(base64Decode(child.photoBase64), fit: BoxFit.cover),
                       ),
                     ),
                   ),
@@ -132,59 +122,33 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
-                      // Avatar avec photo de profil
                       Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.cyanAccent.withOpacity(0.5), width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.cyanAccent.withOpacity(0.2),
-                              blurRadius: 20,
-                              spreadRadius: -4,
-                            ),
-                          ],
+                          boxShadow: [BoxShadow(color: Colors.cyanAccent.withOpacity(0.2), blurRadius: 20, spreadRadius: -4)],
                         ),
                         child: CircleAvatar(
                           radius: 50,
                           backgroundColor: Colors.cyanAccent.withOpacity(0.3),
-                          backgroundImage: child.hasPhoto
-                              ? MemoryImage(base64Decode(child.photoBase64))
-                              : null,
+                          backgroundImage: child.hasPhoto ? MemoryImage(base64Decode(child.photoBase64)) : null,
                           child: !child.hasPhoto
-                              ? Text(
-                                  child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
+                              ? Text(child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+                                  style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold))
                               : null,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        child.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text(child.name, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text(
-                        'Niveau ${child.currentLevelNumber}',
-                        style: const TextStyle(color: Colors.white54, fontSize: 14),
-                      ),
+                      Text('Niveau ${child.currentLevelNumber}', style: const TextStyle(color: Colors.white54, fontSize: 14)),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _statChip(Icons.star, '${child.points}', 'Points', Colors.amberAccent),
                           const SizedBox(width: 24),
-                          _statChip(Icons.emoji_events,
-                              '${provider.getBadgesForChild(child.id).length}', 'Badges', Colors.purpleAccent),
+                          _statChip(Icons.emoji_events, '${provider.getBadgesForChild(child.id).length}', 'Badges', Colors.purpleAccent),
                         ],
                       ),
                     ],
@@ -198,51 +162,27 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             children: [
               Expanded(
                 child: TvFocusWrapper(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => SchoolNotesScreen(childId: child.id),
-                      ),
-                    );
-                  },
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SchoolNotesScreen(childId: child.id))),
                   child: _actionCard(Icons.school, 'Notes scolaires', Colors.orangeAccent),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TvFocusWrapper(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TradeScreen(childId: child.id),
-                      ),
-                    );
-                  },
-                  child: _actionCard(Icons.swap_horiz, 'Échanges', Colors.greenAccent),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TradeScreen(childId: child.id))),
+                  child: _actionCard(Icons.swap_horiz, 'Vente d\'immunité', Colors.greenAccent),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           TvFocusWrapper(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TribunalScreen()),
-              );
-            },
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TribunalScreen())),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.amberAccent.withOpacity(0.15),
-                    Colors.orangeAccent.withOpacity(0.05),
-                  ],
-                ),
+                gradient: LinearGradient(colors: [Colors.amberAccent.withOpacity(0.15), Colors.orangeAccent.withOpacity(0.05)]),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.amberAccent.withOpacity(0.3)),
               ),
@@ -251,38 +191,26 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 children: [
                   Icon(Icons.balance, color: Colors.amberAccent, size: 24),
                   SizedBox(width: 10),
-                  Text(
-                    'Demander un tribunal',
-                    style: TextStyle(
-                      color: Colors.amberAccent,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Text('Demander un tribunal', style: TextStyle(color: Colors.amberAccent, fontSize: 16, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
           _buildWeeklyStats(child, provider),
-          const SizedBox(height: 32),
+          const SizedBox(height: 100),
         ],
       ),
     );
   }
 
   Widget _statChip(IconData icon, String value, String label, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-      ],
-    );
+    return Column(children: [
+      Icon(icon, color: color, size: 24),
+      const SizedBox(height: 4),
+      Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+      Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+    ]);
   }
 
   Widget _actionCard(IconData icon, String label, Color color) {
@@ -293,223 +221,117 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+      child: Column(children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(height: 8),
+        Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+      ]),
     );
   }
 
   Widget _buildWeeklyStats(dynamic child, FamilyProvider provider) {
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekActivities = provider
-        .getHistoryForChild(child.id)
-        .where((a) => a.date.isAfter(weekStart))
-        .toList();
-
+    final weekActivities = provider.getHistoryForChild(child.id).where((a) => a.date.isAfter(weekStart)).toList();
     int bonusCount = 0;
     int penaltyCount = 0;
     for (final a in weekActivities) {
-      if (a.isBonus) {
-        bonusCount++;
-      } else {
-        penaltyCount++;
-      }
+      if (a.isBonus) { bonusCount++; } else { penaltyCount++; }
     }
-
     return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Cette semaine',
-              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _weekStatItem(Icons.thumb_up, '$bonusCount', 'Bonus', Colors.greenAccent),
-                _weekStatItem(Icons.thumb_down, '$penaltyCount', 'Pénalités', Colors.redAccent),
-                _weekStatItem(Icons.timeline, '${weekActivities.length}', 'Total', Colors.cyanAccent),
-              ],
-            ),
-          ],
-        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Cette semaine', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+            _weekStatItem(Icons.thumb_up, '$bonusCount', 'Bonus', Colors.greenAccent),
+            _weekStatItem(Icons.thumb_down, '$penaltyCount', 'Pénalités', Colors.redAccent),
+            _weekStatItem(Icons.timeline, '${weekActivities.length}', 'Total', Colors.cyanAccent),
+          ]),
+        ]),
       ),
     );
   }
 
   Widget _weekStatItem(IconData icon, String value, String label, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-      ],
-    );
+    return Column(children: [
+      Icon(icon, color: color, size: 20),
+      const SizedBox(height: 4),
+      Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+      Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+    ]);
   }
 
-  // ══════════════════════════════════════════
-  //  ONGLET ÉCRAN — Samedi + Dimanche séparés
-  // ══════════════════════════════════════════
-  Widget _buildScreenTimeTab(
-      dynamic child, FamilyProvider provider, int saturdayMinutes, int sundayMinutes, bool isParentMode) {
+  Widget _buildScreenTimeTab(dynamic child, FamilyProvider provider, int saturdayMinutes, int sundayMinutes, bool isParentMode) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // ══ FOND photo de profil ══
           Stack(
             children: [
               if (child.hasPhoto)
                 Positioned.fill(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                    child: Opacity(
-                      opacity: 0.08,
-                      child: Image.memory(
-                        base64Decode(child.photoBase64),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    child: Opacity(opacity: 0.08, child: Image.memory(base64Decode(child.photoBase64), fit: BoxFit.cover)),
                   ),
                 ),
-              Column(
-                children: [
-                  // ══ SAMEDI ══
-                  GlassCard(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.weekend, color: Colors.purpleAccent, size: 28),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'SAMEDI',
-                                style: TextStyle(
-                                  color: Colors.purpleAccent,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _formatMinutes(saturdayMinutes),
-                            style: const TextStyle(
-                              color: Colors.purpleAccent,
-                              fontSize: 44,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Temps d\'écran',
-                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
+              Column(children: [
+                GlassCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(children: [
+                      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.weekend, color: Colors.purpleAccent, size: 28),
+                        const SizedBox(width: 10),
+                        const Text('SAMEDI', style: TextStyle(color: Colors.purpleAccent, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      ]),
+                      const SizedBox(height: 12),
+                      Text(_formatMinutes(saturdayMinutes), style: const TextStyle(color: Colors.purpleAccent, fontSize: 44, fontWeight: FontWeight.bold)),
+                      Text('Temps d\'écran', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+                    ]),
                   ),
-                  const SizedBox(height: 12),
-
-                  // ══ DIMANCHE ══
-                  GlassCard(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.wb_sunny_rounded, color: Colors.blueAccent, size: 28),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'DIMANCHE',
-                                style: TextStyle(
-                                  color: Colors.blueAccent,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _formatMinutes(sundayMinutes),
-                            style: const TextStyle(
-                              color: Colors.blueAccent,
-                              fontSize: 44,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Temps d\'écran',
-                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
+                ),
+                const SizedBox(height: 12),
+                GlassCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(children: [
+                      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.wb_sunny_rounded, color: Colors.blueAccent, size: 28),
+                        const SizedBox(width: 10),
+                        const Text('DIMANCHE', style: TextStyle(color: Colors.blueAccent, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      ]),
+                      const SizedBox(height: 12),
+                      Text(_formatMinutes(sundayMinutes), style: const TextStyle(color: Colors.blueAccent, fontSize: 44, fontWeight: FontWeight.bold)),
+                      Text('Temps d\'écran', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+                    ]),
                   ),
-                ],
-              ),
+                ),
+              ]),
             ],
           ),
           const SizedBox(height: 16),
-
-          // ══ DÉTAIL DU CALCUL ══
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Détail du calcul',
-                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  _calcRow('Score global', '${provider.getWeeklyGlobalScore(child.id).toStringAsFixed(1)}/20'),
-                  _calcRow('Moyenne scolaire', provider.getWeeklySchoolAverage(child.id) < 0
-                      ? 'N/A'
-                      : '${provider.getWeeklySchoolAverage(child.id).toStringAsFixed(1)}/20'),
-                  _calcRow('Score comportement', '${provider.getWeeklyBehaviorScore(child.id).toStringAsFixed(1)}/20'),
-                  _calcRow('Bonus parent', '+${provider.getParentBonusMinutes(child.id)}min'),
-                  const Divider(color: Colors.white12),
-                  _calcRow('Samedi total', _formatMinutes(saturdayMinutes), bold: true, color: Colors.purpleAccent),
-                  _calcRow('Dimanche total', _formatMinutes(sundayMinutes), bold: true, color: Colors.blueAccent),
-                ],
-              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Détail du calcul', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                _calcRow('Score global', '${provider.getWeeklyGlobalScore(child.id).toStringAsFixed(1)}/20'),
+                _calcRow('Moyenne scolaire', provider.getWeeklySchoolAverage(child.id) < 0 ? 'N/A' : '${provider.getWeeklySchoolAverage(child.id).toStringAsFixed(1)}/20'),
+                _calcRow('Score comportement', '${provider.getWeeklyBehaviorScore(child.id).toStringAsFixed(1)}/20'),
+                _calcRow('Bonus parent', '+${provider.getParentBonusMinutes(child.id)}min'),
+                const Divider(color: Colors.white12),
+                _calcRow('Samedi total', _formatMinutes(saturdayMinutes), bold: true, color: Colors.purpleAccent),
+                _calcRow('Dimanche total', _formatMinutes(sundayMinutes), bold: true, color: Colors.blueAccent),
+              ]),
             ),
           ),
           const SizedBox(height: 16),
-
-          // ══ BONUS PARENT ══
           if (isParentMode) ...[
-            const Text(
-              'Bonus de temps',
-              style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
-            ),
+            const Text('Bonus de temps', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -519,24 +341,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   child: TvFocusWrapper(
                     onTap: () {
                       provider.addScreenTimeBonus(child.id, val, 'Bonus rapide +${val}min');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('+${val}min ajoutées'),
-                          backgroundColor: Colors.purpleAccent,
-                        ),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('+${val}min ajoutées'), backgroundColor: Colors.purpleAccent));
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.purpleAccent.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.purpleAccent.withOpacity(0.4)),
-                      ),
-                      child: Text(
-                        '+${val}min',
-                        style: const TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold),
-                      ),
+                      decoration: BoxDecoration(color: Colors.purpleAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.purpleAccent.withOpacity(0.4))),
+                      child: Text('+${val}min', style: const TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 );
@@ -549,15 +359,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 onPressed: () => _showCustomBonusDialog(child, provider),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Bonus personnalisé'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.purpleAccent,
-                  side: const BorderSide(color: Colors.purpleAccent),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.purpleAccent, side: const BorderSide(color: Colors.purpleAccent), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
               ),
             ),
           ],
-          const SizedBox(height: 32),
+          const SizedBox(height: 100),
         ],
       ),
     );
@@ -566,23 +372,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Widget _calcRow(String label, String value, {bool bold = false, Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 13,
-                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-              )),
-          Text(value,
-              style: TextStyle(
-                color: color ?? (bold ? Colors.purpleAccent : Colors.white),
-                fontSize: 13,
-                fontWeight: bold ? FontWeight.bold : FontWeight.w600,
-              )),
-        ],
-      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: TextStyle(color: Colors.white54, fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+        Text(value, style: TextStyle(color: color ?? (bold ? Colors.purpleAccent : Colors.white), fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.w600)),
+      ]),
     );
   }
 
@@ -591,135 +384,69 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     showDialog(
       context: context,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: Colors.grey[900],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('Bonus personnalisé', style: TextStyle(color: Colors.white)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TvFocusWrapper(
-                        onTap: () {
-                          if (customMinutes > 5) {
-                            setDialogState(() => customMinutes -= 5);
-                          }
-                        },
-                        child: const Icon(Icons.remove_circle_outline, color: Colors.white54, size: 32),
-                      ),
-                      const SizedBox(width: 20),
-                      Text(
-                        '${customMinutes}min',
-                        style: const TextStyle(
-                          color: Colors.purpleAccent,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      TvFocusWrapper(
-                        onTap: () {
-                          if (customMinutes < 240) {
-                            setDialogState(() => customMinutes += 5);
-                          }
-                        },
-                        child: const Icon(Icons.add_circle_outline, color: Colors.white54, size: 32),
-                      ),
-                    ],
-                  ),
-                ],
+        return StatefulBuilder(builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: Colors.grey[900],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Bonus personnalisé', style: TextStyle(color: Colors.white)),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                TvFocusWrapper(
+                  onTap: () { if (customMinutes > 5) setDialogState(() => customMinutes -= 5); },
+                  child: const Icon(Icons.remove_circle_outline, color: Colors.white54, size: 32),
+                ),
+                const SizedBox(width: 20),
+                Text('${customMinutes}min', style: const TextStyle(color: Colors.purpleAccent, fontSize: 32, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 20),
+                TvFocusWrapper(
+                  onTap: () { if (customMinutes < 240) setDialogState(() => customMinutes += 5); },
+                  child: const Icon(Icons.add_circle_outline, color: Colors.white54, size: 32),
+                ),
+              ]),
+            ]),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+              ElevatedButton(
+                onPressed: () {
+                  provider.addScreenTimeBonus(child.id, customMinutes, 'Bonus personnalisé +${customMinutes}min');
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('+${customMinutes}min ajoutées'), backgroundColor: Colors.purpleAccent));
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
+                child: const Text('Ajouter'),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    provider.addScreenTimeBonus(
-                        child.id, customMinutes, 'Bonus personnalisé +${customMinutes}min');
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                      SnackBar(
-                        content: Text('+${customMinutes}min ajoutées'),
-                        backgroundColor: Colors.purpleAccent,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-                  child: const Text('Ajouter'),
-                ),
-              ],
-            );
-          },
-        );
+            ],
+          );
+        });
       },
     );
   }
 
   Widget _buildHistoryTab(List<dynamic> history, FamilyProvider provider) {
     if (history.isEmpty) {
-      return const Center(
-        child: Text('Aucun historique', style: TextStyle(color: Colors.white38)),
-      );
+      return const Center(child: Text('Aucun historique', style: TextStyle(color: Colors.white38)));
     }
-
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       itemCount: history.length,
       itemBuilder: (context, index) {
         final activity = history[index];
         final isPositive = activity.isBonus;
-
         return TvFocusWrapper(
           onTap: () {},
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isPositive ? Icons.add_circle_outline : Icons.remove_circle_outline,
-                  color: isPositive ? Colors.greenAccent : Colors.redAccent,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        activity.reason ?? '',
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '${activity.date.day.toString().padLeft(2, '0')}/${activity.date.month.toString().padLeft(2, '0')}',
-                        style: const TextStyle(color: Colors.white38, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  '${isPositive ? '+' : '-'}${activity.points}',
-                  style: TextStyle(
-                    color: isPositive ? Colors.greenAccent : Colors.redAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
+            child: Row(children: [
+              Icon(isPositive ? Icons.add_circle_outline : Icons.remove_circle_outline, color: isPositive ? Colors.greenAccent : Colors.redAccent, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(activity.reason ?? '', style: const TextStyle(color: Colors.white, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text('${activity.date.day.toString().padLeft(2, '0')}/${activity.date.month.toString().padLeft(2, '0')}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+              ])),
+              Text('${isPositive ? '+' : '-'}${activity.points}', style: TextStyle(color: isPositive ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+            ]),
           ),
         );
       },
@@ -728,55 +455,27 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   Widget _buildBadgesTab(List<dynamic> badges) {
     if (badges.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.emoji_events, size: 64, color: Colors.white24),
-            const SizedBox(height: 12),
-            const Text('Aucun badge gagné', style: TextStyle(color: Colors.white38)),
-          ],
-        ),
-      );
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.emoji_events, size: 64, color: Colors.white24),
+        const SizedBox(height: 12),
+        const Text('Aucun badge gagné', style: TextStyle(color: Colors.white38)),
+      ]));
     }
-
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 12, mainAxisSpacing: 12),
       itemCount: badges.length,
       itemBuilder: (context, index) {
         final badge = badges[index];
-
         return TvFocusWrapper(
           onTap: () => _showBadgeDetail(badge),
           child: Container(
-            decoration: BoxDecoration(
-              color: Colors.amberAccent.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.amberAccent.withOpacity(0.3)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.emoji_events, color: Colors.amberAccent, size: 32),
-                const SizedBox(height: 6),
-                Text(
-                  badge.name ?? 'Badge',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+            decoration: BoxDecoration(color: Colors.amberAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amberAccent.withOpacity(0.3))),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.emoji_events, color: Colors.amberAccent, size: 32),
+              const SizedBox(height: 6),
+              Text(badge.name ?? 'Badge', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+            ]),
           ),
         );
       },
@@ -786,32 +485,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   void _showBadgeDetail(dynamic badge) {
     showDialog(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.emoji_events, color: Colors.amberAccent),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(badge.name ?? 'Badge',
-                    style: const TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-          content: Text(
-            badge.description ?? 'Aucune description',
-            style: const TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Fermer', style: TextStyle(color: Colors.cyanAccent)),
-            ),
-          ],
-        );
-      },
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(children: [
+          const Icon(Icons.emoji_events, color: Colors.amberAccent),
+          const SizedBox(width: 8),
+          Expanded(child: Text(badge.name ?? 'Badge', style: const TextStyle(color: Colors.white))),
+        ]),
+        content: Text(badge.description ?? 'Aucune description', style: const TextStyle(color: Colors.white70)),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fermer', style: TextStyle(color: Colors.cyanAccent)))],
+      ),
     );
   }
 }
