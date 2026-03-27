@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -63,7 +64,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           );
         }
 
-        final weekendMinutes = provider.getSaturdayMinutes(child.id);
+        final saturdayMinutes = provider.getSaturdayMinutes(child.id);
+        final sundayMinutes = provider.getSundayMinutes(child.id);
         final history = provider.getHistoryForChild(child.id);
         final badges = provider.getBadgesForChild(child.id);
 
@@ -91,7 +93,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               controller: _tabController,
               children: [
                 _buildProfileTab(child, provider, isParentMode),
-                _buildScreenTimeTab(child, provider, weekendMinutes, isParentMode),
+                _buildScreenTimeTab(child, provider, saturdayMinutes, sundayMinutes, isParentMode),
                 _buildHistoryTab(history, provider),
                 _buildBadgesTab(badges),
               ],
@@ -108,49 +110,87 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // Photo de profil en fond avec overlay
           GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.cyanAccent.withOpacity(0.3),
-                    child: Text(
-                      child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
+            child: Stack(
+              children: [
+                // Fond avec photo floue si disponible
+                if (child.hasPhoto)
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Opacity(
+                        opacity: 0.15,
+                        child: Image.memory(
+                          base64Decode(child.photoBase64),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    child.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Niveau ${child.level}',
-                    style: const TextStyle(color: Colors.white54, fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
                     children: [
-                      _statChip(Icons.star, '${child.points}', 'Points', Colors.amberAccent),
-                      const SizedBox(width: 24),
-                      _statChip(Icons.emoji_events,
-                          '${provider.getBadgesForChild(child.id).length}', 'Badges', Colors.purpleAccent),
+                      // Avatar avec photo de profil
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.cyanAccent.withOpacity(0.5), width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.cyanAccent.withOpacity(0.2),
+                              blurRadius: 20,
+                              spreadRadius: -4,
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.cyanAccent.withOpacity(0.3),
+                          backgroundImage: child.hasPhoto
+                              ? MemoryImage(base64Decode(child.photoBase64))
+                              : null,
+                          child: !child.hasPhoto
+                              ? Text(
+                                  child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 42,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        child.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Niveau ${child.currentLevelNumber}',
+                        style: const TextStyle(color: Colors.white54, fontSize: 14),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _statChip(Icons.star, '${child.points}', 'Points', Colors.amberAccent),
+                          const SizedBox(width: 24),
+                          _statChip(Icons.emoji_events,
+                              '${provider.getBadgesForChild(child.id).length}', 'Badges', Colors.purpleAccent),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -173,10 +213,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               Expanded(
                 child: TvFocusWrapper(
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Échanges bientôt disponibles'),
-                        backgroundColor: Colors.greenAccent,
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TradeScreen(childId: child.id),
                       ),
                     );
                   },
@@ -324,36 +364,120 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
+  // ══════════════════════════════════════════
+  //  ONGLET ÉCRAN — Samedi + Dimanche séparés
+  // ══════════════════════════════════════════
   Widget _buildScreenTimeTab(
-      dynamic child, FamilyProvider provider, int weekendMinutes, bool isParentMode) {
+      dynamic child, FamilyProvider provider, int saturdayMinutes, int sundayMinutes, bool isParentMode) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  const Icon(Icons.tv, color: Colors.purpleAccent, size: 48),
-                  const SizedBox(height: 12),
-                  Text(
-                    _formatMinutes(weekendMinutes),
-                    style: const TextStyle(
-                      color: Colors.purpleAccent,
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
+          // ══ FOND photo de profil ══
+          Stack(
+            children: [
+              if (child.hasPhoto)
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Opacity(
+                      opacity: 0.08,
+                      child: Image.memory(
+                        base64Decode(child.photoBase64),
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
-                  const Text(
-                    'Temps d\'écran weekend',
-                    style: TextStyle(color: Colors.white54, fontSize: 14),
+                ),
+              Column(
+                children: [
+                  // ══ SAMEDI ══
+                  GlassCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.weekend, color: Colors.purpleAccent, size: 28),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'SAMEDI',
+                                style: TextStyle(
+                                  color: Colors.purpleAccent,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _formatMinutes(saturdayMinutes),
+                            style: const TextStyle(
+                              color: Colors.purpleAccent,
+                              fontSize: 44,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Temps d\'écran',
+                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ══ DIMANCHE ══
+                  GlassCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.wb_sunny_rounded, color: Colors.blueAccent, size: 28),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'DIMANCHE',
+                                style: TextStyle(
+                                  color: Colors.blueAccent,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _formatMinutes(sundayMinutes),
+                            style: const TextStyle(
+                              color: Colors.blueAccent,
+                              fontSize: 44,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Temps d\'écran',
+                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
           const SizedBox(height: 16),
+
+          // ══ DÉTAIL DU CALCUL ══
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -365,15 +489,22 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
-                  _calcRow('Base weekend', '120 min'),
-                  _calcRow('Points (${child.points})', '+${child.points} min'),
+                  _calcRow('Score global', '${provider.getWeeklyGlobalScore(child.id).toStringAsFixed(1)}/20'),
+                  _calcRow('Moyenne scolaire', provider.getWeeklySchoolAverage(child.id) < 0
+                      ? 'N/A'
+                      : '${provider.getWeeklySchoolAverage(child.id).toStringAsFixed(1)}/20'),
+                  _calcRow('Score comportement', '${provider.getWeeklyBehaviorScore(child.id).toStringAsFixed(1)}/20'),
+                  _calcRow('Bonus parent', '+${provider.getParentBonusMinutes(child.id)}min'),
                   const Divider(color: Colors.white12),
-                  _calcRow('Total', _formatMinutes(weekendMinutes), bold: true),
+                  _calcRow('Samedi total', _formatMinutes(saturdayMinutes), bold: true, color: Colors.purpleAccent),
+                  _calcRow('Dimanche total', _formatMinutes(sundayMinutes), bold: true, color: Colors.blueAccent),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
+
+          // ══ BONUS PARENT ══
           if (isParentMode) ...[
             const Text(
               'Bonus de temps',
@@ -432,7 +563,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Widget _calcRow(String label, String value, {bool bold = false}) {
+  Widget _calcRow(String label, String value, {bool bold = false, Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -446,7 +577,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               )),
           Text(value,
               style: TextStyle(
-                color: bold ? Colors.purpleAccent : Colors.white,
+                color: color ?? (bold ? Colors.purpleAccent : Colors.white),
                 fontSize: 13,
                 fontWeight: bold ? FontWeight.bold : FontWeight.w600,
               )),
