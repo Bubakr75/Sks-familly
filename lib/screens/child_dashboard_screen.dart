@@ -15,7 +15,8 @@ class ChildDashboardScreen extends StatefulWidget {
   const ChildDashboardScreen({super.key, required this.childId});
 
   @override
-  State<ChildDashboardScreen> createState() => _ChildDashboardScreenState();
+  State<ChildDashboardScreen> createState() =>
+      _ChildDashboardScreenState();
 }
 
 class _ChildDashboardScreenState extends State<ChildDashboardScreen>
@@ -62,7 +63,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           );
         }
 
-        final screenTime = provider.getScreenTimeForChild(child.id);
+        final screenTime =
+            provider.getScreenTimeForChild(child.id);
         final weekendMinutes = screenTime?.weekendMinutes ?? 0;
         final history = provider.getActivitiesForChild(child.id);
         final badges = provider.getBadgesForChild(child.id);
@@ -82,24 +84,22 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 tabs: const [
                   Tab(icon: Icon(Icons.person), text: 'Profil'),
                   Tab(icon: Icon(Icons.tv), text: 'Écran'),
-                  Tab(icon: Icon(Icons.history), text: 'Historique'),
-                  Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
+                  Tab(
+                      icon: Icon(Icons.history),
+                      text: 'Historique'),
+                  Tab(
+                      icon: Icon(Icons.emoji_events),
+                      text: 'Badges'),
                 ],
               ),
             ),
             body: TabBarView(
               controller: _tabController,
               children: [
-                // ===== PROFIL TAB =====
                 _buildProfileTab(child, provider, isParentMode),
-
-                // ===== SCREEN TIME TAB =====
-                _buildScreenTimeTab(child, provider, weekendMinutes, isParentMode),
-
-                // ===== HISTORY TAB =====
+                _buildScreenTimeTab(
+                    child, provider, weekendMinutes, isParentMode),
                 _buildHistoryTab(history, provider),
-
-                // ===== BADGES TAB =====
                 _buildBadgesTab(badges),
               ],
             ),
@@ -109,14 +109,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ===== Profile Tab =====
   Widget _buildProfileTab(
       dynamic child, FamilyProvider provider, bool isParentMode) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Avatar + Info
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -124,9 +122,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 children: [
                   CircleAvatar(
                     radius: 40,
-                    backgroundColor: Colors.cyanAccent.withOpacity(0.3),
+                    backgroundColor:
+                        Colors.cyanAccent.withOpacity(0.3),
                     child: Text(
-                      child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+                      child.name.isNotEmpty
+                          ? child.name[0].toUpperCase()
+                          : '?',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 36,
@@ -146,17 +147,21 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   const SizedBox(height: 4),
                   Text(
                     'Niveau ${child.level}',
-                    style: const TextStyle(color: Colors.white54, fontSize: 14),
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _statChip(
-                          Icons.star, '${child.points}', 'Points', Colors.amberAccent),
+                      _statChip(Icons.star, '${child.points}',
+                          'Points', Colors.amberAccent),
                       const SizedBox(width: 24),
-                      _statChip(Icons.emoji_events,
-                          '${provider.getBadgesForChild(child.id).length}', 'Badges', Colors.purpleAccent),
+                      _statChip(
+                          Icons.emoji_events,
+                          '${provider.getBadgesForChild(child.id).length}',
+                          'Badges',
+                          Colors.purpleAccent),
                     ],
                   ),
                 ],
@@ -164,48 +169,46 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 16),
-
-          // Actions
           Row(
             children: [
               Expanded(
                 child: TvFocusWrapper(
-                  onSelect: () {
+                  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            SchoolNotesScreen(childId: child.id),
+                        builder: (_) => SchoolNotesScreen(
+                            childId: child.id),
                       ),
                     );
                   },
-                  child: _actionCard(
-                      Icons.school, 'Notes scolaires', Colors.orangeAccent),
+                  child: _actionCard(Icons.school,
+                      'Notes scolaires', Colors.orangeAccent),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TvFocusWrapper(
-                  onSelect: () {
+                  onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const TradeScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const TradeScreen()),
                     );
                   },
-                  child: _actionCard(
-                      Icons.swap_horiz, 'Échanges', Colors.greenAccent),
+                  child: _actionCard(Icons.swap_horiz,
+                      'Échanges', Colors.greenAccent),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-
-          // Tribunal – accessible sans PIN en mode enfant
           TvFocusWrapper(
-            onSelect: () {
+            onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const TribunalScreen()),
+                MaterialPageRoute(
+                    builder: (_) => const TribunalScreen()),
               );
             },
             child: Container(
@@ -219,12 +222,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.amberAccent.withOpacity(0.3)),
+                border: Border.all(
+                    color: Colors.amberAccent.withOpacity(0.3)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
-                  Icon(Icons.balance, color: Colors.amberAccent, size: 24),
+                  Icon(Icons.balance,
+                      color: Colors.amberAccent, size: 24),
                   SizedBox(width: 10),
                   Text(
                     'Demander un tribunal',
@@ -239,8 +244,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 16),
-
-          // Weekly stats
           _buildWeeklyStats(child, provider),
           const SizedBox(height: 32),
         ],
@@ -248,7 +251,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Widget _statChip(IconData icon, String value, String label, Color color) {
+  Widget _statChip(
+      IconData icon, String value, String label, Color color) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -261,12 +265,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white38, fontSize: 11)),
       ],
     );
   }
 
-  Widget _actionCard(IconData icon, String label, Color color) {
+  Widget _actionCard(
+      IconData icon, String label, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -292,12 +299,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Widget _buildWeeklyStats(dynamic child, FamilyProvider provider) {
+  Widget _buildWeeklyStats(
+      dynamic child, FamilyProvider provider) {
     final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekStart =
+        now.subtract(Duration(days: now.weekday - 1));
     final weekActivities = provider
         .getActivitiesForChild(child.id)
-        .where((a) => a.date != null && a.date.isAfter(weekStart))
+        .where(
+            (a) => a.date != null && a.date.isAfter(weekStart))
         .toList();
 
     int bonusCount = 0;
@@ -328,12 +338,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
+                _weekStatItem(Icons.thumb_up, '$bonusCount',
+                    'Bonus', Colors.greenAccent),
+                _weekStatItem(Icons.thumb_down,
+                    '$penaltyCount', 'Pénalités', Colors.redAccent),
                 _weekStatItem(
-                    Icons.thumb_up, '$bonusCount', 'Bonus', Colors.greenAccent),
-                _weekStatItem(Icons.thumb_down, '$penaltyCount', 'Pénalités',
-                    Colors.redAccent),
-                _weekStatItem(Icons.timeline, '${weekActivities.length}',
-                    'Total', Colors.cyanAccent),
+                    Icons.timeline,
+                    '${weekActivities.length}',
+                    'Total',
+                    Colors.cyanAccent),
               ],
             ),
           ],
@@ -356,14 +369,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white38, fontSize: 10)),
       ],
     );
   }
 
-  // ===== Screen Time Tab =====
-  Widget _buildScreenTimeTab(
-      dynamic child, FamilyProvider provider, int weekendMinutes, bool isParentMode) {
+  Widget _buildScreenTimeTab(dynamic child,
+      FamilyProvider provider, int weekendMinutes, bool isParentMode) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -373,7 +387,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  const Icon(Icons.tv, color: Colors.purpleAccent, size: 48),
+                  const Icon(Icons.tv,
+                      color: Colors.purpleAccent, size: 48),
                   const SizedBox(height: 12),
                   Text(
                     _formatMinutes(weekendMinutes),
@@ -385,15 +400,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ),
                   const Text(
                     'Temps d\'écran weekend',
-                    style: TextStyle(color: Colors.white54, fontSize: 14),
+                    style: TextStyle(
+                        color: Colors.white54, fontSize: 14),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
-
-          // Calcul
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -410,17 +424,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ),
                   const SizedBox(height: 12),
                   _calcRow('Base weekend', '120 min'),
-                  _calcRow('Points (${child.points})', '+${child.points} min'),
+                  _calcRow('Points (${child.points})',
+                      '+${child.points} min'),
                   const Divider(color: Colors.white12),
-                  _calcRow('Total', _formatMinutes(weekendMinutes),
+                  _calcRow(
+                      'Total', _formatMinutes(weekendMinutes),
                       bold: true),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
-
-          // Bonus buttons (parent only)
           if (isParentMode) ...[
             const Text(
               'Bonus de temps',
@@ -434,14 +448,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [15, 30, 60].map((val) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6),
                   child: TvFocusWrapper(
-                    onSelect: () {
-                      provider.addScreenTimeBonus(child.id, val);
+                    onTap: () {
+                      provider.addScreenTimeBonus(
+                          child.id, val);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('+${val}min ajoutées'),
-                          backgroundColor: Colors.purpleAccent,
+                          content:
+                              Text('+${val}min ajoutées'),
+                          backgroundColor:
+                              Colors.purpleAccent,
                         ),
                       );
                     },
@@ -449,10 +467,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.purpleAccent.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(14),
+                        color: Colors.purpleAccent
+                            .withOpacity(0.15),
+                        borderRadius:
+                            BorderRadius.circular(14),
                         border: Border.all(
-                            color: Colors.purpleAccent.withOpacity(0.4)),
+                            color: Colors.purpleAccent
+                                .withOpacity(0.4)),
                       ),
                       child: Text(
                         '+${val}min',
@@ -468,14 +489,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
             const SizedBox(height: 12),
             TvFocusWrapper(
-              onSelect: () => _showCustomBonusDialog(child, provider),
+              onTap: () =>
+                  _showCustomBonusDialog(child, provider),
               child: OutlinedButton.icon(
-                onPressed: () => _showCustomBonusDialog(child, provider),
+                onPressed: () =>
+                    _showCustomBonusDialog(child, provider),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Bonus personnalisé'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.purpleAccent,
-                  side: const BorderSide(color: Colors.purpleAccent),
+                  side: const BorderSide(
+                      color: Colors.purpleAccent),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -489,7 +513,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Widget _calcRow(String label, String value, {bool bold = false}) {
+  Widget _calcRow(String label, String value,
+      {bool bold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -499,20 +524,25 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               style: TextStyle(
                 color: Colors.white54,
                 fontSize: 13,
-                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+                fontWeight:
+                    bold ? FontWeight.bold : FontWeight.normal,
               )),
           Text(value,
               style: TextStyle(
-                color: bold ? Colors.purpleAccent : Colors.white,
+                color: bold
+                    ? Colors.purpleAccent
+                    : Colors.white,
                 fontSize: 13,
-                fontWeight: bold ? FontWeight.bold : FontWeight.w600,
+                fontWeight:
+                    bold ? FontWeight.bold : FontWeight.w600,
               )),
         ],
       ),
     );
   }
 
-  void _showCustomBonusDialog(dynamic child, FamilyProvider provider) {
+  void _showCustomBonusDialog(
+      dynamic child, FamilyProvider provider) {
     int customMinutes = 30;
     showDialog(
       context: context,
@@ -529,16 +559,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment:
+                        MainAxisAlignment.center,
                     children: [
                       TvFocusWrapper(
-                        onSelect: () {
+                        onTap: () {
                           if (customMinutes > 5) {
-                            setDialogState(() => customMinutes -= 5);
+                            setDialogState(
+                                () => customMinutes -= 5);
                           }
                         },
-                        child: const Icon(Icons.remove_circle_outline,
-                            color: Colors.white54, size: 32),
+                        child: const Icon(
+                            Icons.remove_circle_outline,
+                            color: Colors.white54,
+                            size: 32),
                       ),
                       const SizedBox(width: 20),
                       Text(
@@ -551,13 +585,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       ),
                       const SizedBox(width: 20),
                       TvFocusWrapper(
-                        onSelect: () {
+                        onTap: () {
                           if (customMinutes < 240) {
-                            setDialogState(() => customMinutes += 5);
+                            setDialogState(
+                                () => customMinutes += 5);
                           }
                         },
-                        child: const Icon(Icons.add_circle_outline,
-                            color: Colors.white54, size: 32),
+                        child: const Icon(
+                            Icons.add_circle_outline,
+                            color: Colors.white54,
+                            size: 32),
                       ),
                     ],
                   ),
@@ -567,27 +604,35 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text('Annuler',
-                      style: TextStyle(color: Colors.white54)),
+                      style:
+                          TextStyle(color: Colors.white54)),
                 ),
                 TvFocusWrapper(
-                  onSelect: () {
-                    provider.addScreenTimeBonus(child.id, customMinutes);
+                  onTap: () {
+                    provider.addScreenTimeBonus(
+                        child.id, customMinutes);
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(this.context).showSnackBar(
+                    ScaffoldMessenger.of(this.context)
+                        .showSnackBar(
                       SnackBar(
-                        content: Text('+${customMinutes}min ajoutées'),
+                        content: Text(
+                            '+${customMinutes}min ajoutées'),
                         backgroundColor: Colors.purpleAccent,
                       ),
                     );
                   },
                   child: ElevatedButton(
                     onPressed: () {
-                      provider.addScreenTimeBonus(child.id, customMinutes);
+                      provider.addScreenTimeBonus(
+                          child.id, customMinutes);
                       Navigator.pop(ctx);
-                      ScaffoldMessenger.of(this.context).showSnackBar(
+                      ScaffoldMessenger.of(this.context)
+                          .showSnackBar(
                         SnackBar(
-                          content: Text('+${customMinutes}min ajoutées'),
-                          backgroundColor: Colors.purpleAccent,
+                          content: Text(
+                              '+${customMinutes}min ajoutées'),
+                          backgroundColor:
+                              Colors.purpleAccent,
                         ),
                       );
                     },
@@ -605,8 +650,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ===== History Tab =====
-  Widget _buildHistoryTab(List<dynamic> history, FamilyProvider provider) {
+  Widget _buildHistoryTab(
+      List<dynamic> history, FamilyProvider provider) {
     if (history.isEmpty) {
       return const Center(
         child: Text('Aucun historique',
@@ -620,10 +665,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       itemBuilder: (context, index) {
         final activity = history[index];
         final isPositive =
-            (activity.points as int?) != null && activity.points > 0;
+            (activity.points as int?) != null &&
+                activity.points > 0;
 
         return TvFocusWrapper(
-          onSelect: () {},
+          onTap: () {},
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(14),
@@ -638,19 +684,22 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   isPositive
                       ? Icons.add_circle_outline
                       : Icons.remove_circle_outline,
-                  color:
-                      isPositive ? Colors.greenAccent : Colors.redAccent,
+                  color: isPositive
+                      ? Colors.greenAccent
+                      : Colors.redAccent,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
                     children: [
                       Text(
                         activity.reason ?? '',
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 14),
+                            color: Colors.white,
+                            fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -658,7 +707,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         Text(
                           '${activity.date.day.toString().padLeft(2, '0')}/${activity.date.month.toString().padLeft(2, '0')}',
                           style: const TextStyle(
-                              color: Colors.white38, fontSize: 11),
+                              color: Colors.white38,
+                              fontSize: 11),
                         ),
                     ],
                   ),
@@ -681,14 +731,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ===== Badges Tab =====
   Widget _buildBadgesTab(List<dynamic> badges) {
     if (badges.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.emoji_events, size: 64, color: Colors.white24),
+            Icon(Icons.emoji_events,
+                size: 64, color: Colors.white24),
             const SizedBox(height: 12),
             const Text('Aucun badge gagné',
                 style: TextStyle(color: Colors.white38)),
@@ -699,7 +749,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate:
+          const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
@@ -709,17 +760,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         final badge = badges[index];
 
         return TvFocusWrapper(
-          onSelect: () => _showBadgeDetail(badge),
+          onTap: () => _showBadgeDetail(badge),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.amberAccent.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.amberAccent.withOpacity(0.3)),
+              border: Border.all(
+                  color: Colors.amberAccent.withOpacity(0.3)),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.emoji_events,
                   color: Colors.amberAccent,
                   size: 32,
@@ -750,15 +802,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: Colors.grey[900],
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
-              const Icon(Icons.emoji_events, color: Colors.amberAccent),
+              const Icon(Icons.emoji_events,
+                  color: Colors.amberAccent),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(badge.name ?? 'Badge',
-                    style: const TextStyle(color: Colors.white)),
+                    style:
+                        const TextStyle(color: Colors.white)),
               ),
             ],
           ),
