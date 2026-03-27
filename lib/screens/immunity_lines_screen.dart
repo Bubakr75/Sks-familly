@@ -38,8 +38,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                 return Container(
                   decoration: BoxDecoration(
                     color: Colors.grey[900]?.withOpacity(0.95),
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24)),
                   ),
                   child: ListView(
                     controller: scrollController,
@@ -66,10 +66,9 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
-
-                      // Sélection enfant
                       const Text('Enfant',
-                          style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 14)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -78,7 +77,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                           final isSelected = selectedChildId == child.id;
                           return TvFocusWrapper(
                             autofocus: children.first.id == child.id,
-                            onSelect: () {
+                            onTap: () {
                               setModalState(
                                   () => selectedChildId = child.id);
                             },
@@ -111,10 +110,9 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                         }).toList(),
                       ),
                       const SizedBox(height: 20),
-
-                      // Raison
                       const Text('Raison',
-                          style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 14)),
                       const SizedBox(height: 8),
                       TextField(
                         controller: reasonController,
@@ -137,16 +135,15 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                         onChanged: (val) => reason = val,
                       ),
                       const SizedBox(height: 20),
-
-                      // Nombre de lignes
                       const Text('Nombre de lignes d\'immunité',
-                          style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 14)),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           TvFocusWrapper(
-                            onSelect: () {
+                            onTap: () {
                               if (lines > 1) setModalState(() => lines--);
                             },
                             child: Container(
@@ -172,7 +169,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                           ),
                           const SizedBox(width: 24),
                           TvFocusWrapper(
-                            onSelect: () {
+                            onTap: () {
                               if (lines < 20) setModalState(() => lines++);
                             },
                             child: Container(
@@ -183,21 +180,22 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                                 color: Colors.white.withOpacity(0.1),
                                 border: Border.all(color: Colors.white24),
                               ),
-                              child:
-                                  const Icon(Icons.add, color: Colors.white70),
+                              child: const Icon(Icons.add,
+                                  color: Colors.white70),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      // Raccourcis lignes
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [1, 3, 5, 10].map((val) {
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4),
                             child: OutlinedButton(
-                              onPressed: () => setModalState(() => lines = val),
+                              onPressed: () =>
+                                  setModalState(() => lines = val),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: lines == val
                                     ? Colors.cyanAccent
@@ -219,10 +217,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                         }).toList(),
                       ),
                       const SizedBox(height: 20),
-
-                      // Expiration
                       TvFocusWrapper(
-                        onSelect: () =>
+                        onTap: () =>
                             setModalState(() => hasExpiry = !hasExpiry),
                         child: Row(
                           children: [
@@ -275,13 +271,11 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                         ),
                       ],
                       const SizedBox(height: 28),
-
-                      // Bouton Créer
                       SizedBox(
                         width: double.infinity,
                         height: 52,
                         child: TvFocusWrapper(
-                          onSelect: () {
+                          onTap: () {
                             if (selectedChildId == null || reason.isEmpty) {
                               ScaffoldMessenger.of(ctx).showSnackBar(
                                 const SnackBar(
@@ -343,7 +337,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                             icon: const Icon(Icons.shield),
                             label: const Text('Créer l\'immunité',
                                 style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.cyanAccent.shade700,
                               foregroundColor: Colors.white,
@@ -428,8 +423,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: Colors.grey[900]?.withOpacity(0.95),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24)),
               ),
               child: ListView(
                 controller: scrollController,
@@ -480,14 +475,12 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                             ? Colors.redAccent
                             : Colors.orangeAccent),
                   const SizedBox(height: 24),
-
-                  // Actions
                   if (status == 'usable') ...[
                     Row(
                       children: [
                         Expanded(
                           child: TvFocusWrapper(
-                            onSelect: () {
+                            onTap: () {
                               Navigator.pop(ctx);
                               _confirmDelete(immunity);
                             },
@@ -496,12 +489,13 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                                 Navigator.pop(ctx);
                                 _confirmDelete(immunity);
                               },
-                              icon: const Icon(Icons.delete_outline, size: 18),
+                              icon: const Icon(Icons.delete_outline,
+                                  size: 18),
                               label: const Text('Supprimer'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.redAccent,
-                                side:
-                                    const BorderSide(color: Colors.redAccent),
+                                side: const BorderSide(
+                                    color: Colors.redAccent),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -512,7 +506,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: TvFocusWrapper(
-                            onSelect: () {
+                            onTap: () {
                               Navigator.pop(ctx);
                               _tradeImmunity(immunity, child);
                             },
@@ -521,7 +515,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                                 Navigator.pop(ctx);
                                 _tradeImmunity(immunity, child);
                               },
-                              icon: const Icon(Icons.swap_horiz, size: 18),
+                              icon:
+                                  const Icon(Icons.swap_horiz, size: 18),
                               label: const Text('Échanger'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
@@ -552,7 +547,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 14)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54, fontSize: 14)),
           Text(
             value,
             style: TextStyle(
@@ -578,8 +574,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
           backgroundColor: Colors.grey[900],
           title: const Text('Supprimer l\'immunité ?',
               style: TextStyle(color: Colors.white)),
-          content: const Text(
-              'Cette action est irréversible.',
+          content: const Text('Cette action est irréversible.',
               style: TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
@@ -588,14 +583,16 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                   style: TextStyle(color: Colors.white54)),
             ),
             TvFocusWrapper(
-              onSelect: () {
+              onTap: () {
                 context.read<FamilyProvider>().deleteImmunity(immunity.id);
                 Navigator.pop(ctx);
                 setState(() {});
               },
               child: ElevatedButton(
                 onPressed: () {
-                  context.read<FamilyProvider>().deleteImmunity(immunity.id);
+                  context
+                      .read<FamilyProvider>()
+                      .deleteImmunity(immunity.id);
                   Navigator.pop(ctx);
                   setState(() {});
                 },
@@ -637,7 +634,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
           elevation: 0,
         ),
         floatingActionButton: TvFocusWrapper(
-          onSelect: _showAddImmunity,
+          onTap: _showAddImmunity,
           child: FloatingActionButton.extended(
             onPressed: _showAddImmunity,
             backgroundColor: Colors.cyanAccent.shade700,
@@ -663,7 +660,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
               itemCount: children.length,
               itemBuilder: (context, index) {
                 final child = children[index];
-                final immunities = provider.getImmunitiesForChild(child.id);
+                final immunities =
+                    provider.getImmunitiesForChild(child.id);
 
                 final usable = immunities
                     .where((i) => _getImmunityStatus(i) == 'usable')
@@ -684,7 +682,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // En-tête enfant
                         Row(
                           children: [
                             CircleAvatar(
@@ -704,7 +701,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     child.name,
@@ -717,7 +715,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                                   Text(
                                     '${child.points} pts',
                                     style: const TextStyle(
-                                        color: Colors.white54, fontSize: 13),
+                                        color: Colors.white54,
+                                        fontSize: 13),
                                   ),
                                 ],
                               ),
@@ -726,10 +725,12 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.greenAccent.withOpacity(0.15),
+                                color:
+                                    Colors.greenAccent.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(20),
-                                border:
-                                    Border.all(color: Colors.greenAccent.withOpacity(0.5)),
+                                border: Border.all(
+                                    color: Colors.greenAccent
+                                        .withOpacity(0.5)),
                               ),
                               child: Text(
                                 '$totalLines lignes dispo',
@@ -742,7 +743,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                             ),
                           ],
                         ),
-
                         if (immunities.isEmpty)
                           const Padding(
                             padding: EdgeInsets.only(top: 16),
@@ -751,25 +751,20 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                               style: TextStyle(color: Colors.white38),
                             ),
                           ),
-
-                        // Utilisables
                         if (usable.isNotEmpty) ...[
                           const SizedBox(height: 16),
-                          _sectionChip('Disponibles', Colors.greenAccent,
-                              usable.length),
-                          ...usable.map((imm) => _buildImmunityTile(
-                              imm, child, 'usable')),
+                          _sectionChip(
+                              'Disponibles', Colors.greenAccent, usable.length),
+                          ...usable.map((imm) =>
+                              _buildImmunityTile(imm, child, 'usable')),
                         ],
-
-                        // Utilisées
                         if (used.isNotEmpty) ...[
                           const SizedBox(height: 12),
-                          _sectionChip('Utilisées', Colors.white38, used.length),
+                          _sectionChip(
+                              'Utilisées', Colors.white38, used.length),
                           ...used.map((imm) =>
                               _buildImmunityTile(imm, child, 'used')),
                         ],
-
-                        // Expirées
                         if (expired.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           _sectionChip(
@@ -797,7 +792,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+            decoration:
+                BoxDecoration(shape: BoxShape.circle, color: color),
           ),
           const SizedBox(width: 8),
           Text(
@@ -813,13 +809,14 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
     );
   }
 
-  Widget _buildImmunityTile(dynamic immunity, dynamic child, String status) {
+  Widget _buildImmunityTile(
+      dynamic immunity, dynamic child, String status) {
     final statusColor = _getStatusColor(status);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: TvFocusWrapper(
-        onSelect: () => _showImmunityDetail(immunity, child),
+        onTap: () => _showImmunityDetail(immunity, child),
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -845,15 +842,15 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                     if (immunity.expiryDate != null)
                       Text(
                         'Expire: ${_formatDate(immunity.expiryDate)}',
-                        style:
-                            const TextStyle(color: Colors.white38, fontSize: 11),
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11),
                       ),
                   ],
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
@@ -868,7 +865,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen> {
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.chevron_right, color: Colors.white24, size: 18),
+              const Icon(Icons.chevron_right,
+                  color: Colors.white24, size: 18),
             ],
           ),
         ),
