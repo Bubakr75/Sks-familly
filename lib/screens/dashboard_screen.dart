@@ -47,8 +47,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     provider.refreshActivity();
   }
 
-  // ===== Helpers =====
-
   String _formatMinutes(int minutes) {
     final h = minutes ~/ 60;
     final m = minutes % 60;
@@ -82,11 +80,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Quick actions
               _buildQuickActions(context),
               const SizedBox(height: 20),
-
-              // Active trades
               if (activeTrades.isNotEmpty) ...[
                 const Text(
                   'Échanges en cours',
@@ -111,8 +106,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 const SizedBox(height: 20),
               ],
-
-              // Enfants
               if (children.isEmpty)
                 GlassCard(
                   child: Padding(
@@ -124,15 +117,16 @@ class _DashboardScreenState extends State<DashboardScreen>
                         const SizedBox(height: 16),
                         const Text(
                           'Aucun enfant enregistré',
-                          style: TextStyle(color: Colors.white54, fontSize: 16),
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 16),
                         ),
                         const SizedBox(height: 16),
                         TvFocusWrapper(
-                          onSelect: () =>
-                              PinGuard.guardNavigation(context, const ManageChildrenScreen()),
+                          onTap: () => PinGuard.guardNavigation(
+                              context, const ManageChildrenScreen()),
                           child: ElevatedButton.icon(
-                            onPressed: () =>
-                                PinGuard.guardNavigation(context, const ManageChildrenScreen()),
+                            onPressed: () => PinGuard.guardNavigation(
+                                context, const ManageChildrenScreen()),
                             icon: const Icon(Icons.add),
                             label: const Text('Ajouter un enfant'),
                             style: ElevatedButton.styleFrom(
@@ -146,13 +140,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 )
               else
-                ...children.map((child) => _buildChildCard(child, provider)),
-
+                ...children
+                    .map((child) => _buildChildCard(child, provider)),
               const SizedBox(height: 24),
-
-              // Historique rapide
               TvFocusWrapper(
-                onSelect: () => _showFullHistory(provider),
+                onTap: () => _showFullHistory(provider),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -180,7 +172,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ===== Quick Actions =====
   Widget _buildQuickActions(BuildContext context) {
     final actions = [
       _QuickAction('Enfants', Icons.people, Colors.cyanAccent, () {
@@ -213,14 +204,15 @@ class _DashboardScreenState extends State<DashboardScreen>
           final action = actions[index];
           return TvFocusWrapper(
             autofocus: index == 0,
-            onSelect: action.onTap,
+            onTap: action.onTap,
             child: Container(
               width: 90,
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: action.color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: action.color.withOpacity(0.3)),
+                border:
+                    Border.all(color: action.color.withOpacity(0.3)),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -245,10 +237,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ===== Trade Card =====
-  Widget _buildInteractiveTradeCard(dynamic trade, FamilyProvider provider) {
+  Widget _buildInteractiveTradeCard(
+      dynamic trade, FamilyProvider provider) {
     return TvFocusWrapper(
-      onSelect: () => _showTradeDetail(trade, provider),
+      onTap: () => _showTradeDetail(trade, provider),
       child: Container(
         width: 200,
         padding: const EdgeInsets.all(14),
@@ -260,7 +252,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             ],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
+          border:
+              Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,7 +261,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             Row(
               children: [
-                const Icon(Icons.swap_horiz, color: Colors.orangeAccent, size: 18),
+                const Icon(Icons.swap_horiz,
+                    color: Colors.orangeAccent, size: 18),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -285,11 +279,13 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             Text(
               'De: ${provider.getChildName(trade.fromChildId)}',
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              style:
+                  const TextStyle(color: Colors.white70, fontSize: 12),
             ),
             Text(
               trade.status ?? 'En attente',
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
+              style:
+                  const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ],
         ),
@@ -317,14 +313,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               _infoRow('Type', trade.type ?? 'N/A'),
-              _infoRow('De', provider.getChildName(trade.fromChildId)),
+              _infoRow(
+                  'De', provider.getChildName(trade.fromChildId)),
               _infoRow('Statut', trade.status ?? 'En attente'),
               const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
                     child: TvFocusWrapper(
-                      onSelect: () {
+                      onTap: () {
                         provider.cancelTrade(trade.id);
                         Navigator.pop(ctx);
                       },
@@ -335,7 +332,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.redAccent,
-                          side: const BorderSide(color: Colors.redAccent),
+                          side:
+                              const BorderSide(color: Colors.redAccent),
                         ),
                         child: const Text('Annuler'),
                       ),
@@ -344,7 +342,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: TvFocusWrapper(
-                      onSelect: () {
+                      onTap: () {
                         provider.acceptTrade(trade.id);
                         Navigator.pop(ctx);
                       },
@@ -354,7 +352,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           Navigator.pop(ctx);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.greenAccent.shade700,
+                          backgroundColor:
+                              Colors.greenAccent.shade700,
                         ),
                         child: const Text('Accepter'),
                       ),
@@ -375,7 +374,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54)),
           Text(value,
               style: const TextStyle(
                   color: Colors.white, fontWeight: FontWeight.w600)),
@@ -384,7 +384,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ===== Child Card =====
   Widget _buildChildCard(dynamic child, FamilyProvider provider) {
     final weekNotes = _getWeeklySchoolNotes(provider, child.id);
     final screenTime = provider.getScreenTimeForChild(child.id);
@@ -393,11 +392,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TvFocusWrapper(
-        onSelect: () {
+        onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ChildDashboardScreen(childId: child.id),
+              builder: (_) =>
+                  ChildDashboardScreen(childId: child.id),
             ),
           );
         },
@@ -410,7 +410,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                   children: [
                     CircleAvatar(
                       radius: 24,
-                      backgroundColor: Colors.cyanAccent.withOpacity(0.3),
+                      backgroundColor:
+                          Colors.cyanAccent.withOpacity(0.3),
                       child: Text(
                         child.name.isNotEmpty
                             ? child.name[0].toUpperCase()
@@ -425,7 +426,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: [
                           Text(
                             child.name,
@@ -438,7 +440,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           Text(
                             'Niveau ${child.level}',
                             style: const TextStyle(
-                                color: Colors.white54, fontSize: 13),
+                                color: Colors.white54,
+                                fontSize: 13),
                           ),
                         ],
                       ),
@@ -456,7 +459,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                         const Text('points',
                             style: TextStyle(
-                                color: Colors.white38, fontSize: 11)),
+                                color: Colors.white38,
+                                fontSize: 11)),
                       ],
                     ),
                   ],
@@ -464,8 +468,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 const SizedBox(height: 12),
                 const Divider(color: Colors.white12, height: 1),
                 const SizedBox(height: 12),
-
-                // Mini stats
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -494,7 +496,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             fontSize: 13,
           ),
         ),
-        const Text('Écran', style: TextStyle(color: Colors.white38, fontSize: 10)),
+        const Text('Écran',
+            style: TextStyle(color: Colors.white38, fontSize: 10)),
       ],
     );
   }
@@ -518,7 +521,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ===== School Notes Picker =====
   void _showSchoolNotesChildPicker() {
     final provider = context.read<FamilyProvider>();
     final children = provider.children;
@@ -554,8 +556,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             return Container(
               decoration: BoxDecoration(
                 color: Colors.grey[900]?.withOpacity(0.95),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -582,40 +584,50 @@ class _DashboardScreenState extends State<DashboardScreen>
                     child: ListView.builder(
                       controller: scrollController,
                       itemCount: children.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16),
                       itemBuilder: (context, index) {
                         final child = children[index];
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+                          padding:
+                              const EdgeInsets.only(bottom: 8),
                           child: TvFocusWrapper(
                             autofocus: index == 0,
-                            onSelect: () {
+                            onTap: () {
                               Navigator.pop(context);
                               PinGuard.guardNavigation(
                                 this.context,
-                                SchoolNotesScreen(childId: child.id),
+                                SchoolNotesScreen(
+                                    childId: child.id),
                               );
                             },
                             child: Container(
-                              padding: const EdgeInsets.all(14),
+                              padding:
+                                  const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.white12),
+                                color: Colors.white
+                                    .withOpacity(0.06),
+                                borderRadius:
+                                    BorderRadius.circular(14),
+                                border: Border.all(
+                                    color: Colors.white12),
                               ),
                               child: Row(
                                 children: [
                                   CircleAvatar(
                                     radius: 20,
                                     backgroundColor:
-                                        Colors.orangeAccent.withOpacity(0.3),
+                                        Colors.orangeAccent
+                                            .withOpacity(0.3),
                                     child: Text(
                                       child.name.isNotEmpty
-                                          ? child.name[0].toUpperCase()
+                                          ? child.name[0]
+                                              .toUpperCase()
                                           : '?',
                                       style: const TextStyle(
                                           color: Colors.white,
-                                          fontWeight: FontWeight.bold),
+                                          fontWeight:
+                                              FontWeight.bold),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -625,11 +637,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 15,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight:
+                                            FontWeight.w600,
                                       ),
                                     ),
                                   ),
-                                  const Icon(Icons.chevron_right,
+                                  const Icon(
+                                      Icons.chevron_right,
                                       color: Colors.white38),
                                 ],
                               ),
@@ -648,7 +662,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ===== Full History =====
   void _showFullHistory(FamilyProvider provider) {
     final allActivities = provider.getAllActivities();
 
@@ -665,8 +678,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             return Container(
               decoration: BoxDecoration(
                 color: Colors.grey[900]?.withOpacity(0.95),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -694,37 +707,49 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ? const Center(
                             child: Text(
                               'Aucune activité',
-                              style: TextStyle(color: Colors.white38),
+                              style: TextStyle(
+                                  color: Colors.white38),
                             ),
                           )
                         : ListView.builder(
                             controller: scrollController,
                             itemCount: allActivities.length,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16),
                             itemBuilder: (context, index) {
-                              final activity = allActivities[index];
+                              final activity =
+                                  allActivities[index];
                               final isPositive =
-                                  (activity.points as int?) != null &&
+                                  (activity.points as int?) !=
+                                          null &&
                                       activity.points > 0;
 
                               return TvFocusWrapper(
-                                onSelect: () =>
-                                    _showHistoryDetail(activity, provider),
+                                onTap: () =>
+                                    _showHistoryDetail(
+                                        activity, provider),
                                 child: Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.all(14),
+                                  margin: const EdgeInsets.only(
+                                      bottom: 8),
+                                  padding:
+                                      const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.04),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border:
-                                        Border.all(color: Colors.white10),
+                                    color: Colors.white
+                                        .withOpacity(0.04),
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            12),
+                                    border: Border.all(
+                                        color: Colors.white10),
                                   ),
                                   child: Row(
                                     children: [
                                       Icon(
                                         isPositive
-                                            ? Icons.add_circle_outline
-                                            : Icons.remove_circle_outline,
+                                            ? Icons
+                                                .add_circle_outline
+                                            : Icons
+                                                .remove_circle_outline,
                                         color: isPositive
                                             ? Colors.greenAccent
                                             : Colors.redAccent,
@@ -734,22 +759,29 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                              CrossAxisAlignment
+                                                  .start,
                                           children: [
                                             Text(
-                                              activity.reason ?? '',
+                                              activity.reason ??
+                                                  '',
                                               style: const TextStyle(
-                                                  color: Colors.white,
+                                                  color: Colors
+                                                      .white,
                                                   fontSize: 14),
                                               maxLines: 1,
                                               overflow:
-                                                  TextOverflow.ellipsis,
+                                                  TextOverflow
+                                                      .ellipsis,
                                             ),
                                             Text(
-                                              provider.getChildName(
-                                                  activity.childId),
+                                              provider
+                                                  .getChildName(
+                                                      activity
+                                                          .childId),
                                               style: const TextStyle(
-                                                  color: Colors.white38,
+                                                  color: Colors
+                                                      .white38,
                                                   fontSize: 11),
                                             ),
                                           ],
@@ -759,9 +791,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         '${isPositive ? '+' : ''}${activity.points}',
                                         style: TextStyle(
                                           color: isPositive
-                                              ? Colors.greenAccent
-                                              : Colors.redAccent,
-                                          fontWeight: FontWeight.bold,
+                                              ? Colors
+                                                  .greenAccent
+                                              : Colors
+                                                  .redAccent,
+                                          fontWeight:
+                                              FontWeight.bold,
                                         ),
                                       ),
                                     ],
@@ -780,7 +815,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  void _showHistoryDetail(dynamic activity, FamilyProvider provider) {
+  void _showHistoryDetail(
+      dynamic activity, FamilyProvider provider) {
     showDialog(
       context: context,
       builder: (ctx) {
@@ -788,22 +824,25 @@ class _DashboardScreenState extends State<DashboardScreen>
             (activity.points as int?) != null && activity.points > 0;
         return AlertDialog(
           backgroundColor: Colors.grey[900],
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
               Icon(
                 isPositive
                     ? Icons.thumb_up_rounded
                     : Icons.thumb_down_rounded,
-                color: isPositive ? Colors.greenAccent : Colors.redAccent,
+                color: isPositive
+                    ? Colors.greenAccent
+                    : Colors.redAccent,
                 size: 22,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   activity.reason ?? 'Activité',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 16),
                 ),
               ),
             ],
@@ -811,10 +850,12 @@ class _DashboardScreenState extends State<DashboardScreen>
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _infoRow('Enfant', provider.getChildName(activity.childId)),
+              _infoRow('Enfant',
+                  provider.getChildName(activity.childId)),
+              _infoRow('Points',
+                  '${isPositive ? '+' : ''}${activity.points}'),
               _infoRow(
-                  'Points', '${isPositive ? '+' : ''}${activity.points}'),
-              _infoRow('Catégorie', activity.category ?? 'N/A'),
+                  'Catégorie', activity.category ?? 'N/A'),
               if (activity.date != null)
                 _infoRow(
                   'Date',
