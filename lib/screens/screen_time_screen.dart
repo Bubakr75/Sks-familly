@@ -410,7 +410,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.memory(
-                        base64Decode(child.photoBase64),
+                        base64Decode(child.photoBase64!),
                         width: 36,
                         height: 36,
                         fit: BoxFit.cover,
