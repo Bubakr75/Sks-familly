@@ -1,235 +1,349 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../providers/pin_provider.dart';
+import '../widgets/animated_background.dart';
 
-class ThemeProvider extends ChangeNotifier {
-  bool _isDark = true;
-  int _colorIndex = 0;
-  int _bgIndex = 0;
+class PinVerificationScreen extends StatefulWidget {
+  const PinVerificationScreen({super.key});
 
-  static const List<Color> accentColors = [
-    Color(0xFF7B68EE), // Bleu-violet
-    Color(0xFF00BCD4), // Cyan
-    Color(0xFFFF7043), // Orange chaud
-    Color(0xFF66BB6A), // Vert
-    Color(0xFFFFCA28), // Jaune doré
-    Color(0xFFEC407A), // Rose
-    Color(0xFF9575CD), // Violet
-    Color(0xFF26C6DA), // Turquoise
-  ];
+  @override
+  State<PinVerificationScreen> createState() => _PinVerificationScreenState();
+}
 
-  static const List<Map<String, dynamic>> backgroundColors = [
-    {'color': Color(0xFF0A0E21), 'label': 'Nuit'},
-    {'color': Color(0xFF121212), 'label': 'Noir'},
-    {'color': Color(0xFF1C1C2E), 'label': 'Ardoise'},
-    {'color': Color(0xFF1A0F2E), 'label': 'Violet'},
-    {'color': Color(0xFF0F1E17), 'label': 'Foret'},
-    {'color': Color(0xFF1E1114), 'label': 'Bordeaux'},
-    {'color': Color(0xFF0E1A2B), 'label': 'Ocean'},
-    {'color': Color(0xFF1E1B0F), 'label': 'Ambre'},
-  ];
+class _PinVerificationScreenState extends State<PinVerificationScreen>
+    with TickerProviderStateMixin {
+  String _enteredPin = '';
+  bool _isError = false;
+  int _attempts = 0;
+  static const int _maxAttempts = 5;
 
-  bool get isDark => _isDark;
-  int get colorIndex => _colorIndex;
-  int get bgIndex => _bgIndex;
-  Color get primaryColor => accentColors[_colorIndex];
-  Color get backgroundColor =>
-      _isDark ? (backgroundColors[_bgIndex]['color'] as Color) : const Color(0xFFF5F5FA);
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
 
-  ThemeData get theme {
-    final primary = accentColors[_colorIndex];
-    final bgColor = backgroundColor;
+  @override
+  void initState() {
+    super.initState();
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _shakeAnimation = Tween<double>(begin: 0, end: 24)
+        .chain(CurveTween(curve: Curves.elasticIn))
+        .animate(_shakeController)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _shakeController.reverse();
+        }
+      });
 
-    if (_isDark) {
-      return ThemeData(
-        brightness: Brightness.dark,
-        colorSchemeSeed: primary,
-        useMaterial3: true,
-        scaffoldBackgroundColor: bgColor,
-        canvasColor: bgColor,
-        cardColor: bgColor.withValues(alpha: 0.8),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFFE8E8F0)),
-          bodyMedium: TextStyle(color: Color(0xFFD0D0DC)),
-          bodySmall: TextStyle(color: Color(0xFFB0B0C0)),
-          titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(color: Color(0xFFF0F0FF), fontWeight: FontWeight.w600),
-        ),
-        appBarTheme: AppBarTheme(
-          backgroundColor: bgColor,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        dialogTheme: DialogTheme(
-          backgroundColor: Color.lerp(bgColor, Colors.white, 0.08)!,
-          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-          contentTextStyle: const TextStyle(color: Color(0xFFCCCCDD), fontSize: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.07),
-          labelStyle: const TextStyle(color: Color(0xFF9999AA)),
-          hintStyle: const TextStyle(color: Color(0xFF666680)),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: primary, width: 2)),
-        ),
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: bgColor,
-          selectedItemColor: primary,
-          unselectedItemColor: const Color(0xFF666680),
-        ),
-        snackBarTheme: SnackBarThemeData(
-          backgroundColor: Color.lerp(bgColor, Colors.white, 0.15),
-          contentTextStyle: const TextStyle(color: Colors.white),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          behavior: SnackBarBehavior.floating,
-        ),
-        switchTheme: SwitchThemeData(
-          thumbColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return primary;
-            return Colors.grey;
-          }),
-          trackColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return primary.withValues(alpha: 0.3);
-            return Colors.white.withValues(alpha: 0.1);
-          }),
-        ),
-      );
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _shakeController.dispose();
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  void _onDigitPressed(String digit) {
+    if (_attempts >= _maxAttempts) return;
+    if (_enteredPin.length >= 4) return;
+
+    HapticFeedback.lightImpact();
+    setState(() {
+      _enteredPin += digit;
+      _isError = false;
+    });
+
+    _scaleController.forward().then((_) => _scaleController.reverse());
+
+    if (_enteredPin.length == 4) {
+      _verifyPin();
+    }
+  }
+
+  void _onDeletePressed() {
+    if (_enteredPin.isEmpty) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
+      _isError = false;
+    });
+  }
+
+  Future<void> _verifyPin() async {
+    final pinProvider = context.read<PinProvider>();
+    final isCorrect = pinProvider.verifyPin(_enteredPin);
+
+    if (isCorrect) {
+      HapticFeedback.mediumImpact();
+      pinProvider.unlockParentMode();
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
     } else {
-      // ─── MODE CLAIR COMPLET ───
-      return ThemeData(
-        brightness: Brightness.light,
-        colorSchemeSeed: primary,
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F5FA),
-        canvasColor: Colors.white,
-        cardColor: Colors.white,
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFF1A1A2E)),
-          bodyMedium: TextStyle(color: Color(0xFF2E2E42)),
-          bodySmall: TextStyle(color: Color(0xFF5A5A72)),
-          titleLarge: TextStyle(color: Color(0xFF1A1A2E), fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(color: Color(0xFF2E2E42), fontWeight: FontWeight.w600),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF1A1A2E),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          titleTextStyle: TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        dialogTheme: DialogTheme(
-          backgroundColor: Colors.white,
-          titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.bold),
-          contentTextStyle: const TextStyle(color: Color(0xFF5A5A72), fontSize: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white,
-            backgroundColor: primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      HapticFeedback.heavyImpact();
+      _shakeController.forward(from: 0);
+      setState(() {
+        _isError = true;
+        _attempts++;
+        _enteredPin = '';
+      });
+
+      if (_attempts >= _maxAttempts) {
+        Future.delayed(const Duration(seconds: 30), () {
+          if (mounted) {
+            setState(() {
+              _attempts = 0;
+            });
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ignore: deprecated_member_use
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pop(false);
+        return false;
+      },
+      child: Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: Icon(
+                        _isError ? Icons.lock_outline : Icons.lock,
+                        size: 64,
+                        color: _isError ? Colors.redAccent : Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Code parental',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _attempts >= _maxAttempts
+                          ? 'Trop de tentatives. Patientez 30s.'
+                          : _isError
+                              ? 'Code incorrect (${_maxAttempts - _attempts} essais restants)'
+                              : 'Entrez votre code a 4 chiffres',
+                      style: TextStyle(
+                        color: _isError ? Colors.redAccent : Colors.white60,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    AnimatedBuilder(
+                      animation: _shakeAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(
+                            _shakeAnimation.value *
+                                ((_shakeController.value * 10).toInt().isEven
+                                    ? 1
+                                    : -1),
+                            0,
+                          ),
+                          child: child,
+                        );
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(4, (index) {
+                          final isFilled = index < _enteredPin.length;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.symmetric(horizontal: 12),
+                            width: isFilled ? 20 : 16,
+                            height: isFilled ? 20 : 16,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _isError
+                                  ? Colors.redAccent
+                                  : isFilled
+                                      ? Colors.cyanAccent
+                                      : Colors.white24,
+                              boxShadow: isFilled && !_isError
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.cyanAccent.withOpacity(0.5),
+                                        blurRadius: 8,
+                                      )
+                                    ]
+                                  : null,
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    _buildKeypad(),
+                    const SizedBox(height: 24),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text(
+                        'Annuler',
+                        style: TextStyle(color: Colors.white60, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: primary,
-            side: BorderSide(color: primary.withValues(alpha: 0.4)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
+  }
+
+  Widget _buildKeypad() {
+    final rows = [
+      ['1', '2', '3'],
+      ['4', '5', '6'],
+      ['7', '8', '9'],
+      ['', '0', 'del'],
+    ];
+
+    return Column(
+      children: rows.map((row) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: row.map((key) {
+              if (key.isEmpty) {
+                return const SizedBox(width: 80, height: 60);
+              }
+              return _KeyButton(
+                label: key,
+                onDigit: _onDigitPressed,
+                onDelete: _onDeletePressed,
+                disabled: _attempts >= _maxAttempts,
+              );
+            }).toList(),
           ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFFF0F0F8),
-          labelStyle: const TextStyle(color: Color(0xFF8888AA)),
-          hintStyle: const TextStyle(color: Color(0xFFAAAABB)),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1))),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1))),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: primary, width: 2)),
-        ),
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,
-          selectedItemColor: primary,
-          unselectedItemColor: const Color(0xFF999999),
-        ),
-        cardTheme: CardTheme(
-          color: Colors.white,
-          elevation: 2,
-          shadowColor: Colors.black.withValues(alpha: 0.08),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-        switchTheme: SwitchThemeData(
-          thumbColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return primary;
-            return Colors.grey[400];
-          }),
-          trackColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return primary.withValues(alpha: 0.3);
-            return Colors.grey.withValues(alpha: 0.2);
-          }),
-        ),
-      );
-    }
+        );
+      }).toList(),
+    );
   }
+}
 
-  Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _isDark = prefs.getBool('is_dark') ?? true;
-    _colorIndex = prefs.getInt('color_index') ?? 0;
-    _bgIndex = prefs.getInt('bg_index') ?? 0;
-    if (_colorIndex >= accentColors.length) _colorIndex = 0;
-    if (_bgIndex >= backgroundColors.length) _bgIndex = 0;
-    notifyListeners();
-  }
+class _KeyButton extends StatelessWidget {
+  final String label;
+  final Function(String) onDigit;
+  final VoidCallback onDelete;
+  final bool disabled;
 
-  Future<void> toggle() async {
-    _isDark = !_isDark;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_dark', _isDark);
-    notifyListeners();
-  }
+  const _KeyButton({
+    required this.label,
+    required this.onDigit,
+    required this.onDelete,
+    this.disabled = false,
+  });
 
-  Future<void> setColorIndex(int index) async {
-    if (index >= 0 && index < accentColors.length) {
-      _colorIndex = index;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('color_index', index);
-      notifyListeners();
-    }
-  }
+  @override
+  Widget build(BuildContext context) {
+    final isDelete = label == 'del';
 
-  Future<void> setBgIndex(int index) async {
-    if (index >= 0 && index < backgroundColors.length) {
-      _bgIndex = index;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('bg_index', index);
-      notifyListeners();
-    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Focus(
+        autofocus: label == '1',
+        onKeyEvent: (node, event) {
+          if (disabled) return KeyEventResult.ignored;
+          if (event is KeyDownEvent) {
+            final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.select ||
+                key == LogicalKeyboardKey.enter ||
+                key == LogicalKeyboardKey.gameButtonA ||
+                key == LogicalKeyboardKey.numpadEnter) {
+              if (isDelete) {
+                onDelete();
+              } else {
+                onDigit(label);
+              }
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Builder(
+          builder: (context) {
+            final hasFocus = Focus.of(context).hasFocus;
+            return GestureDetector(
+              onTap: disabled
+                  ? null
+                  : () {
+                      if (isDelete) {
+                        onDelete();
+                      } else {
+                        onDigit(label);
+                      }
+                    },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 80,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: disabled
+                      ? Colors.white10
+                      : hasFocus
+                          ? Colors.cyanAccent.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: disabled
+                        ? Colors.white10
+                        : hasFocus
+                            ? Colors.cyanAccent
+                            : Colors.white24,
+                  ),
+                ),
+                child: Center(
+                  child: isDelete
+                      ? Icon(Icons.backspace_outlined,
+                          color: disabled ? Colors.white24 : Colors.white70,
+                          size: 22)
+                      : Text(
+                          label,
+                          style: TextStyle(
+                            color: disabled ? Colors.white24 : Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 }
