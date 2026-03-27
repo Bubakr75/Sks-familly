@@ -26,7 +26,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _selectedDay = _focusedDay;
   }
 
-  List<dynamic> _getEventsForDay(DateTime day, FamilyProvider provider) {
+  List<dynamic> _getEventsForDay(
+      DateTime day, FamilyProvider provider) {
     return provider.getActivitiesForDate(day);
   }
 
@@ -41,8 +42,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _navigateWeek(int delta) {
     setState(() {
-      final newDay =
-          (_selectedDay ?? _focusedDay).add(Duration(days: delta * 7));
+      final newDay = (_selectedDay ?? _focusedDay)
+          .add(Duration(days: delta * 7));
       _selectedDay = newDay;
       _focusedDay = newDay;
     });
@@ -68,7 +69,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             body: Column(
               children: [
-                // Navigation TV pour le calendrier
                 Focus(
                   autofocus: true,
                   onKeyEvent: (node, event) {
@@ -77,13 +77,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       if (key == LogicalKeyboardKey.arrowLeft) {
                         _navigateDay(-1);
                         return KeyEventResult.handled;
-                      } else if (key == LogicalKeyboardKey.arrowRight) {
+                      } else if (key ==
+                          LogicalKeyboardKey.arrowRight) {
                         _navigateDay(1);
                         return KeyEventResult.handled;
-                      } else if (key == LogicalKeyboardKey.arrowUp) {
+                      } else if (key ==
+                          LogicalKeyboardKey.arrowUp) {
                         _navigateWeek(-1);
                         return KeyEventResult.handled;
-                      } else if (key == LogicalKeyboardKey.arrowDown) {
+                      } else if (key ==
+                          LogicalKeyboardKey.arrowDown) {
                         _navigateWeek(1);
                         return KeyEventResult.handled;
                       }
@@ -101,14 +104,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         calendarFormat: _calendarFormat,
                         selectedDayPredicate: (day) =>
                             isSameDay(_selectedDay, day),
-                        onDaySelected: (selectedDay, focusedDay) {
+                        onDaySelected:
+                            (selectedDay, focusedDay) {
                           setState(() {
                             _selectedDay = selectedDay;
                             _focusedDay = focusedDay;
                           });
                         },
                         onFormatChanged: (format) {
-                          setState(() => _calendarFormat = format);
+                          setState(
+                              () => _calendarFormat = format);
                         },
                         onPageChanged: (focusedDay) {
                           _focusedDay = focusedDay;
@@ -122,20 +127,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ),
                           selectedDecoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [primary, primary.withOpacity(0.6)],
+                              colors: [
+                                primary,
+                                primary.withOpacity(0.6)
+                              ],
                             ),
                             shape: BoxShape.circle,
                           ),
-                          todayTextStyle:
-                              const TextStyle(color: Colors.white),
-                          selectedTextStyle:
-                              const TextStyle(color: Colors.black),
-                          defaultTextStyle:
-                              const TextStyle(color: Colors.white70),
-                          weekendTextStyle:
-                              const TextStyle(color: Colors.white54),
-                          outsideTextStyle:
-                              const TextStyle(color: Colors.white24),
+                          todayTextStyle: const TextStyle(
+                              color: Colors.white),
+                          selectedTextStyle: const TextStyle(
+                              color: Colors.black),
+                          defaultTextStyle: const TextStyle(
+                              color: Colors.white70),
+                          weekendTextStyle: const TextStyle(
+                              color: Colors.white54),
+                          outsideTextStyle: const TextStyle(
+                              color: Colors.white24),
                           markerDecoration: BoxDecoration(
                             color: primary,
                             shape: BoxShape.circle,
@@ -146,43 +154,50 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         headerStyle: HeaderStyle(
                           formatButtonVisible: true,
                           titleCentered: true,
-                          titleTextStyle:
-                              const TextStyle(color: Colors.white, fontSize: 16),
+                          titleTextStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16),
                           leftChevronIcon: const Icon(
                               Icons.chevron_left,
                               color: Colors.white70),
                           rightChevronIcon: const Icon(
                               Icons.chevron_right,
                               color: Colors.white70),
-                          formatButtonTextStyle:
-                              TextStyle(color: primary, fontSize: 13),
+                          formatButtonTextStyle: TextStyle(
+                              color: primary, fontSize: 13),
                           formatButtonDecoration: BoxDecoration(
-                            border: Border.all(color: primary.withOpacity(0.5)),
-                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color:
+                                    primary.withOpacity(0.5)),
+                            borderRadius:
+                                BorderRadius.circular(12),
                           ),
                         ),
-                        daysOfWeekStyle: const DaysOfWeekStyle(
-                          weekdayStyle:
-                              TextStyle(color: Colors.white54, fontSize: 12),
-                          weekendStyle:
-                              TextStyle(color: Colors.white38, fontSize: 12),
+                        daysOfWeekStyle:
+                            const DaysOfWeekStyle(
+                          weekdayStyle: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12),
+                          weekendStyle: TextStyle(
+                              color: Colors.white38,
+                              fontSize: 12),
                         ),
                       ),
                     ),
                   ),
                 ),
-
-                // Date sélectionnée + compteur
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
-                      const Icon(Icons.event, color: Colors.cyanAccent, size: 18),
+                      const Icon(Icons.event,
+                          color: Colors.cyanAccent, size: 18),
                       const SizedBox(width: 8),
                       Text(
                         _selectedDay != null
-                            ? DateFormat('EEEE d MMMM yyyy', 'fr_FR')
+                            ? DateFormat(
+                                    'EEEE d MMMM yyyy', 'fr_FR')
                                 .format(_selectedDay!)
                             : 'Aucune date',
                         style: const TextStyle(
@@ -193,8 +208,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.cyanAccent.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.cyanAccent
+                              .withOpacity(0.15),
+                          borderRadius:
+                              BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${events.length} activité(s)',
@@ -208,45 +225,54 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ],
                   ),
                 ),
-
-                // Liste activités
                 Expanded(
                   child: events.isEmpty
                       ? Center(
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment:
+                                MainAxisAlignment.center,
                             children: [
                               Icon(Icons.event_busy,
-                                  size: 48, color: Colors.white24),
+                                  size: 48,
+                                  color: Colors.white24),
                               const SizedBox(height: 8),
                               const Text(
                                 'Aucune activité ce jour',
                                 style: TextStyle(
-                                    color: Colors.white38, fontSize: 14),
+                                    color: Colors.white38,
+                                    fontSize: 14),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16),
                           itemCount: events.length,
                           itemBuilder: (context, index) {
                             final activity = events[index];
                             final isPositive =
-                                (activity.points as int?) != null &&
+                                (activity.points as int?) !=
+                                        null &&
                                     activity.points > 0;
-                            final childName = provider
-                                .getChildName(activity.childId);
+                            final childName =
+                                provider.getChildName(
+                                    activity.childId);
 
                             return TvFocusWrapper(
-                              onSelect: () {},
+                              onTap: () {},
                               child: Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(14),
+                                margin: const EdgeInsets.only(
+                                    bottom: 8),
+                                padding:
+                                    const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.04),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.white10),
+                                  color: Colors.white
+                                      .withOpacity(0.04),
+                                  borderRadius:
+                                      BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.white10),
                                 ),
                                 child: Row(
                                   children: [
@@ -256,14 +282,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: (isPositive
-                                                ? Colors.greenAccent
-                                                : Colors.redAccent)
+                                                ? Colors
+                                                    .greenAccent
+                                                : Colors
+                                                    .redAccent)
                                             .withOpacity(0.15),
                                       ),
                                       child: Icon(
                                         isPositive
-                                            ? Icons.add_circle_outline
-                                            : Icons.remove_circle_outline,
+                                            ? Icons
+                                                .add_circle_outline
+                                            : Icons
+                                                .remove_circle_outline,
                                         color: isPositive
                                             ? Colors.greenAccent
                                             : Colors.redAccent,
@@ -274,46 +304,65 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                            CrossAxisAlignment
+                                                .start,
                                         children: [
                                           Text(
-                                            activity.reason ?? '',
-                                            style: const TextStyle(
-                                              color: Colors.white,
+                                            activity.reason ??
+                                                '',
+                                            style:
+                                                const TextStyle(
+                                              color:
+                                                  Colors.white,
                                               fontSize: 14,
                                             ),
                                             maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                            overflow:
+                                                TextOverflow
+                                                    .ellipsis,
                                           ),
-                                          const SizedBox(height: 2),
+                                          const SizedBox(
+                                              height: 2),
                                           Row(
                                             children: [
                                               Text(
                                                 childName,
                                                 style: const TextStyle(
-                                                    color: Colors.white38,
-                                                    fontSize: 12),
+                                                    color: Colors
+                                                        .white38,
+                                                    fontSize:
+                                                        12),
                                               ),
-                                              if (activity.category !=
+                                              if (activity
+                                                      .category !=
                                                   null) ...[
-                                                const SizedBox(width: 8),
+                                                const SizedBox(
+                                                    width: 8),
                                                 Container(
                                                   padding: const EdgeInsets
                                                       .symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white
-                                                        .withOpacity(0.06),
+                                                      horizontal:
+                                                          6,
+                                                      vertical:
+                                                          2),
+                                                  decoration:
+                                                      BoxDecoration(
+                                                    color: Colors
+                                                        .white
+                                                        .withOpacity(
+                                                            0.06),
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                            6),
+                                                        BorderRadius
+                                                            .circular(6),
                                                   ),
                                                   child: Text(
-                                                    activity.category,
+                                                    activity
+                                                        .category,
                                                     style: const TextStyle(
-                                                        color: Colors.white30,
-                                                        fontSize: 10),
+                                                        color: Colors
+                                                            .white30,
+                                                        fontSize:
+                                                            10),
                                                   ),
                                                 ),
                                               ],
@@ -326,9 +375,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       '${isPositive ? '+' : ''}${activity.points}',
                                       style: TextStyle(
                                         color: isPositive
-                                            ? Colors.greenAccent
+                                            ? Colors
+                                                .greenAccent
                                             : Colors.redAccent,
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight:
+                                            FontWeight.bold,
                                         fontSize: 16,
                                       ),
                                     ),
