@@ -551,4 +551,166 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         style: TextStyle(
                             color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                             fontWeight: FontWeight.w600)),
-                    subtitle: Text('<span class="cursor">█</span>
+                    subtitle: Text('${provider.getNotesForChild(child.id).length} notes',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                    trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  void _showFullHistoryPage(BuildContext context, FamilyProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF0D1B2A) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.8, expand: false,
+        builder: (_, sc) => Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 12),
+            Text('Historique complet',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+            const SizedBox(height: 8),
+            Expanded(
+              child: provider.history.isEmpty
+                  ? Center(child: Text('Aucune activite', style: TextStyle(color: Colors.grey[600])))
+                  : ListView.builder(
+                      controller: sc,
+                      itemCount: provider.history.length,
+                      itemBuilder: (_, i) {
+                        final h = provider.history[i];
+                        final child = provider.getChild(h.childId);
+                        final parLabel = (h.actionBy != null && h.actionBy!.isNotEmpty) ? ' - Par ${h.actionBy}' : '';
+                        return TvFocusWrapper(
+                          onTap: () {},
+                          child: ListTile(
+                            leading: Container(
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: h.isBonus
+                                    ? const Color(0xFF00E676).withValues(alpha: 0.12)
+                                    : const Color(0xFFFF1744).withValues(alpha: 0.12),
+                                border: Border.all(
+                                  color: h.isBonus
+                                      ? const Color(0xFF00E676).withValues(alpha: 0.3)
+                                      : const Color(0xFFFF1744).withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Icon(
+                                h.isBonus ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                                color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744),
+                                size: 20,
+                              ),
+                            ),
+                            title: Text(child?.name ?? 'Inconnu',
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+                            subtitle: Text(
+                              '${h.reason}$parLabel\n${h.date.day}/${h.date.month}/${h.date.year} ${h.date.hour}:${h.date.minute.toString().padLeft(2, '0')}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                            ),
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: h.isBonus
+                                    ? const Color(0xFF00E676).withValues(alpha: 0.12)
+                                    : const Color(0xFFFF1744).withValues(alpha: 0.12),
+                              ),
+                              child: Text(
+                                '${h.isBonus ? '+' : '-'}${h.points}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: h.isBonus ? const Color(0xFF00E676) : const Color(0xFFFF1744),
+                                ),
+                              ),
+                            ),
+                            isThreeLine: true,
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    switch (_currentIndex) {
+      case 0:
+        return const DashboardScreen();
+      case 1:
+        return const AddPointsScreen();
+      case 2:
+        return const CalendarScreen();
+      case 3:
+        return const StatsScreen();
+      case 4:
+        return const SettingsScreen();
+      default:
+        return const DashboardScreen();
+    }
+  }
+}
+
+class _NavItem {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool locked;
+  const _NavItem(this.icon, this.activeIcon, this.label, {this.locked = false});
+}
+
+class _DrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  const _DrawerItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return TvFocusWrapper(
+      onTap: onTap,
+      borderRadius: const BorderRadius.all(Radius.circular(12)),
+      child: ListTile(
+        leading: Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+            boxShadow: isDark
+                ? [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 8, spreadRadius: -2)]
+                : null,
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        title: Text(label,
+            style: TextStyle(fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        trailing: Icon(Icons.chevron_right, size: 20, color: Colors.grey[700]),
+      ),
+    );
+  }
+}
