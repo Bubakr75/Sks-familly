@@ -132,7 +132,6 @@ class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver
       final familyProvider = context.read<FamilyProvider>();
       familyProvider.reconnectFirestore();
 
-      // ─── CORRIGÉ : Verrouiller automatiquement le mode parent ───
       final pin = context.read<PinProvider>();
       if (pin.isPinSet && pin.isParentMode) {
         pin.lockParentMode();
@@ -172,7 +171,6 @@ class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver
   }
 }
 
-// ─── CORRIGÉ : Toujours afficher WelcomeScreen ───
 class _StartupRouter extends StatefulWidget {
   const _StartupRouter();
   @override
@@ -196,23 +194,6 @@ class _StartupRouterState extends State<_StartupRouter> {
 
   @override
   Widget build(BuildContext context) {
-    // ─── Toujours WelcomeScreen pour que les enfants ne puissent pas ───
-    // ─── accéder au mode parent directement ───
-    return WelcomeScreen(
-      onEnter: () {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const HomeScreen(),
-            transitionsBuilder: (_, anim, __, child) {
-              return FadeTransition(
-                opacity: CurvedAnimation(parent: anim, curve: Curves.easeIn),
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 600),
-          ),
-        );
-      },
-    );
+    return const WelcomeScreen();
   }
 }
