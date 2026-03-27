@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -82,7 +83,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     if (children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Aucun enfant enregistré. Passez en mode parent d\'abord.'),
+          content:
+              Text('Aucun enfant enregistré. Passez en mode parent d\'abord.'),
           backgroundColor: Colors.orangeAccent,
         ),
       );
@@ -154,7 +156,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           padding: const EdgeInsets.only(bottom: 8),
                           child: TvFocusWrapper(
                             autofocus: index == 0,
-                            onSelect: () {
+                            onTap: () {
                               Navigator.pop(context);
                               Navigator.pushReplacement(
                                 this.context,
@@ -178,8 +180,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     backgroundColor:
                                         Colors.cyanAccent.withOpacity(0.3),
                                     backgroundImage: child.photoPath != null
-                                        ? FileImage(
-                                            File(child.photoPath!))
+                                        ? FileImage(File(child.photoPath!))
                                         : null,
                                     child: child.photoPath == null
                                         ? Text(
@@ -252,8 +253,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Spacer(flex: 2),
-
-                  // Logo / Titre
                   ScaleTransition(
                     scale: _pulseAnimation,
                     child: Container(
@@ -299,13 +298,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       fontSize: 16,
                     ),
                   ),
-
                   const Spacer(flex: 2),
-
-                  // Bouton Parent
                   TvFocusWrapper(
                     autofocus: true,
-                    onSelect: _enterParentMode,
+                    onTap: _enterParentMode,
                     child: SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -314,7 +310,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         icon: const Icon(Icons.admin_panel_settings, size: 24),
                         label: const Text(
                           'Mode Parent',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.cyanAccent.shade700,
@@ -328,10 +325,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Bouton Enfant
                   TvFocusWrapper(
-                    onSelect: _enterChildMode,
+                    onTap: _enterChildMode,
                     child: SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -340,7 +335,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         icon: const Icon(Icons.child_care, size: 24),
                         label: const Text(
                           'Mode Enfant',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.purpleAccent,
@@ -353,9 +349,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                     ),
                   ),
-
                   const Spacer(),
-
                   Text(
                     'v4.8.0',
                     style: TextStyle(
