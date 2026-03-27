@@ -57,23 +57,264 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     if (pinProvider.isPinSet) {
       final result = await Navigator.push<bool>(
         context,
-        // ← supprimé le "const" ici
         MaterialPageRoute(builder: (_) => PinVerificationScreen()),
       );
       if (result == true && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        _showParentProfilePicker();
       }
     } else {
       pinProvider.unlockParentMode();
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        _showParentProfilePicker();
       }
+    }
+  }
+
+  /// Écran obligatoire : choisir quel parent utilise l'appli
+  void _showParentProfilePicker() {
+    final familyProvider = context.read<FamilyProvider>();
+    final currentName = familyProvider.currentParentName;
+
+    // Profils prédéfinis
+    final profiles = [
+      {'name': 'Papa', 'icon': Icons.face, 'color': Colors.cyanAccent},
+      {'name': 'Maman', 'icon': Icons.face_3, 'color': Colors.pinkAccent},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          decoration: BoxDecoration(
+            color: Colors.grey[900]?.withOpacity(0.97),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Icon(Icons.person_pin, color: Colors.cyanAccent, size: 48),
+              const SizedBox(height: 12),
+              const Text(
+                'Qui êtes-vous ?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Vos actions seront signées avec ce profil',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.5),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Profils prédéfinis
+              Row(
+                children: profiles.map((profile) {
+                  final name = profile['name'] as String;
+                  final icon = profile['icon'] as IconData;
+                  final color = profile['color'] as Color;
+                  final isSelected = currentName == name;
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: TvFocusWrapper(
+                        autofocus: name == 'Papa',
+                        onTap: () {
+                          familyProvider.setCurrentParent(name);
+                          Navigator.pop(ctx);
+                          _goToHomeScreen();
+                        },
+                        child: GestureDetector(
+                          onTap: () {
+                            familyProvider.setCurrentParent(name);
+                            Navigator.pop(ctx);
+                            _goToHomeScreen();
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? color.withOpacity(0.15)
+                                  : Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isSelected
+                                    ? color.withOpacity(0.6)
+                                    : Colors.white12,
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(icon, color: color, size: 40),
+                                const SizedBox(height: 10),
+                                Text(
+                                  name,
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              // Bouton profil personnalisé
+              TvFocusWrapper(
+                onTap: () => _showCustomParentName(ctx, familyProvider),
+                child: GestureDetector(
+                  onTap: () => _showCustomParentName(ctx, familyProvider),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.edit, color: Colors.white.withOpacity(0.6), size: 20),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Autre profil...',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCustomParentName(BuildContext bottomSheetCtx, FamilyProvider provider) {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: bottomSheetCtx,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Profil personnalisé', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Entrez votre nom ou surnom',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  hintText: 'Ex: Tonton, Tata, Nounou...',
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.08),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Colors.cyanAccent),
+                  ),
+                ),
+                onSubmitted: (val) {
+                  if (val.trim().isNotEmpty) {
+                    provider.setCurrentParent(val.trim());
+                    Navigator.pop(dialogCtx);
+                    Navigator.pop(bottomSheetCtx);
+                    _goToHomeScreen();
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+            ),
+            TvFocusWrapper(
+              onTap: () {
+                if (controller.text.trim().isNotEmpty) {
+                  provider.setCurrentParent(controller.text.trim());
+                  Navigator.pop(dialogCtx);
+                  Navigator.pop(bottomSheetCtx);
+                  _goToHomeScreen();
+                }
+              },
+              child: ElevatedButton(
+                onPressed: () {
+                  if (controller.text.trim().isNotEmpty) {
+                    provider.setCurrentParent(controller.text.trim());
+                    Navigator.pop(dialogCtx);
+                    Navigator.pop(bottomSheetCtx);
+                    _goToHomeScreen();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyanAccent.shade700,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Valider'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _goToHomeScreen() {
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     }
   }
 
@@ -84,8 +325,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     if (children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content:
-              Text('Aucun enfant enregistré. Passez en mode parent d\'abord.'),
+          content: Text('Aucun enfant enregistré. Passez en mode parent d\'abord.'),
           backgroundColor: Colors.orangeAccent,
         ),
       );
@@ -122,8 +362,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             return Container(
               decoration: BoxDecoration(
                 color: Colors.grey[900]?.withOpacity(0.95),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -162,8 +401,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               Navigator.pushReplacement(
                                 this.context,
                                 MaterialPageRoute(
-                                  builder: (_) => ChildDashboardScreen(
-                                      childId: child.id),
+                                  builder: (_) => ChildDashboardScreen(childId: child.id),
                                 ),
                               );
                             },
@@ -178,19 +416,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 children: [
                                   CircleAvatar(
                                     radius: 24,
-                                    backgroundColor:
-                                        Colors.cyanAccent.withOpacity(0.3),
+                                    backgroundColor: Colors.cyanAccent.withOpacity(0.3),
                                     backgroundImage: child.hasPhoto
-                                        ? MemoryImage(
-                                            base64Decode(child.photoBase64!))
+                                        ? MemoryImage(base64Decode(child.photoBase64!))
                                         : null,
                                     child: !child.hasPhoto
                                         ? Text(
                                             child.avatar.isNotEmpty
                                                 ? child.avatar
                                                 : (child.name.isNotEmpty
-                                                    ? child.name[0]
-                                                        .toUpperCase()
+                                                    ? child.name[0].toUpperCase()
                                                     : '?'),
                                             style: const TextStyle(
                                               color: Colors.white,
@@ -203,8 +438,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           child.name,
@@ -225,8 +459,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       ],
                                     ),
                                   ),
-                                  const Icon(Icons.chevron_right,
-                                      color: Colors.white38),
+                                  const Icon(Icons.chevron_right, color: Colors.white38),
                                 ],
                               ),
                             ),
@@ -315,8 +548,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         icon: const Icon(Icons.admin_panel_settings, size: 24),
                         label: const Text(
                           'Mode Parent',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.cyanAccent.shade700,
@@ -340,13 +572,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         icon: const Icon(Icons.child_care, size: 24),
                         label: const Text(
                           'Mode Enfant',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.purpleAccent,
-                          side: const BorderSide(
-                              color: Colors.purpleAccent, width: 2),
+                          side: const BorderSide(color: Colors.purpleAccent, width: 2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
