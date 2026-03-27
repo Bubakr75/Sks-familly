@@ -60,13 +60,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         final children = provider.childrenSorted;
         final allTrades = provider.trades;
         final activeTrades = allTrades.where((t) => t.isActive).toList();
-        final todayHistory = provider.getHistoryForDate(DateTime.now());
-        final todayPoints = todayHistory.fold<int>(
-            0, (sum, h) => sum + (h.isBonus ? h.points : -h.points));
-        final totalPoints =
-            children.fold<int>(0, (sum, c) => sum + c.points);
-        final totalBadges =
-            children.fold<int>(0, (sum, c) => sum + c.badgeIds.length);
 
         return FadeTransition(
           opacity: _fadeAnim,
@@ -76,21 +69,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ══════════════════════════════
-                //  HEADER SKS FAMILY
+                //  HEADER SKS FAMILY (interactif)
                 // ══════════════════════════════
                 _buildHeader(provider),
-                const SizedBox(height: 16),
-
-                // ══════════════════════════════
-                //  STATS RAPIDES
-                // ══════════════════════════════
-                _buildStatsRow(totalPoints, children.length, totalBadges),
-                const SizedBox(height: 12),
-
-                // ══════════════════════════════
-                //  ACTIVITÉS DU JOUR
-                // ══════════════════════════════
-                _buildTodayBanner(todayHistory.length, todayPoints),
                 const SizedBox(height: 20),
 
                 // ══════════════════════════════
@@ -196,39 +177,60 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // ══════════════════════════════════════════
-  //  HEADER
+  //  HEADER — bouton interactif pour le drawer
   // ══════════════════════════════════════════
   Widget _buildHeader(FamilyProvider provider) {
     return Row(
       children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF7C4DFF),
-                const Color(0xFF536DFE),
+        // Bouton SKS interactif pour ouvrir le drawer
+        TvFocusWrapper(
+          onTap: () => Scaffold.of(context).openDrawer(),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF7C4DFF),
+                  const Color(0xFF536DFE),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF7C4DFF).withOpacity(0.4),
+                  blurRadius: 12,
+                  spreadRadius: -2,
+                ),
               ],
             ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF7C4DFF).withOpacity(0.4),
-                blurRadius: 12,
-                spreadRadius: -2,
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Text(
-              'SKS',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-                letterSpacing: 1,
-              ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Text(
+                  'SKS',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    letterSpacing: 1,
+                  ),
+                ),
+                // Petit indicateur "menu" en bas
+                Positioned(
+                  bottom: 4,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(width: 4, height: 2, decoration: BoxDecoration(color: Colors.white70, borderRadius: BorderRadius.circular(1))),
+                      const SizedBox(width: 2),
+                      Container(width: 8, height: 2, decoration: BoxDecoration(color: Colors.white70, borderRadius: BorderRadius.circular(1))),
+                      const SizedBox(width: 2),
+                      Container(width: 4, height: 2, decoration: BoxDecoration(color: Colors.white70, borderRadius: BorderRadius.circular(1))),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -256,6 +258,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ],
           ),
         ),
+        // Bouton sync interactif
         TvFocusWrapper(
           onTap: () => provider.reconnectFirestore(),
           child: Container(
@@ -292,132 +295,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // ══════════════════════════════════════════
-  //  STATS ROW
-  // ══════════════════════════════════════════
-  Widget _buildStatsRow(int totalPoints, int childCount, int totalBadges) {
-    return Row(
-      children: [
-        _buildStatCard(
-          Icons.star_rounded,
-          '$totalPoints',
-          'Points Totaux',
-          const Color(0xFFFFD740),
-          const Color(0xFFFFD740),
-        ),
-        const SizedBox(width: 10),
-        _buildStatCard(
-          Icons.people_alt_rounded,
-          '$childCount',
-          'Membres Actifs',
-          Colors.cyanAccent,
-          Colors.cyanAccent,
-        ),
-        const SizedBox(width: 10),
-        _buildStatCard(
-          Icons.emoji_events_rounded,
-          '$totalBadges',
-          'Badges Gagnés',
-          const Color(0xFFFFAB40),
-          const Color(0xFFFFAB40),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(
-      IconData icon, String value, String label, Color iconColor, Color borderColor) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: borderColor.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor.withOpacity(0.25)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: iconColor, size: 22),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                color: iconColor,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════
-  //  TODAY BANNER
-  // ══════════════════════════════════════════
-  Widget _buildTodayBanner(int activityCount, int todayPoints) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.cyanAccent.withOpacity(0.15),
-            Colors.cyanAccent.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.cyanAccent.withOpacity(0.35)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.calendar_today_rounded,
-              color: Colors.cyanAccent, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$activityCount activités aujourd\'hui',
-                  style: const TextStyle(
-                    color: Colors.cyanAccent,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  '${todayPoints >= 0 ? '+' : ''}$todayPoints pts',
-                  style: TextStyle(
-                    color: Colors.cyanAccent.withOpacity(0.7),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════
-  //  CLASSEMENT PODIUM
+  //  CLASSEMENT PODIUM — avec photo de profil
   // ══════════════════════════════════════════
   Widget _buildPodium(List<ChildModel> children, FamilyProvider provider) {
     if (children.isEmpty) return const SizedBox.shrink();
 
-    // Premier (le plus grand)
     final first = children[0];
     final second = children.length > 1 ? children[1] : null;
     final third = children.length > 2 ? children[2] : null;
@@ -425,7 +307,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     return Column(
       children: [
-        // 1er place — carte large dorée
+        // 1er place
         TvFocusWrapper(
           autofocus: true,
           onTap: () => Navigator.push(
@@ -456,7 +338,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             child: Row(
               children: [
-                _buildRankAvatar(first, 1, 44, provider),
+                _buildRankAvatar(first, 1, 44),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -476,6 +358,23 @@ class _DashboardScreenState extends State<DashboardScreen>
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.5),
                             fontSize: 13),
+                      ),
+                      const SizedBox(height: 4),
+                      // Samedi + Dimanche
+                      Row(
+                        children: [
+                          Icon(Icons.tv, color: Colors.purpleAccent.withOpacity(0.7), size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Sam ${_formatMinutes(provider.getSaturdayMinutes(first.id))}',
+                            style: TextStyle(color: Colors.purpleAccent.withOpacity(0.8), fontSize: 11),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Dim ${_formatMinutes(provider.getSundayMinutes(first.id))}',
+                            style: TextStyle(color: Colors.blueAccent.withOpacity(0.8), fontSize: 11),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -501,7 +400,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
         const SizedBox(height: 10),
 
-        // 2ème et 3ème côte à côte
+        // 2ème et 3ème
         if (second != null)
           Row(
             children: [
@@ -518,7 +417,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         if (second != null) const SizedBox(height: 10),
 
-        // 4ème+ en liste simple
+        // 4ème+
         ...rest.asMap().entries.map((entry) {
           final rank = entry.key + 4;
           final child = entry.value;
@@ -552,7 +451,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
         child: Column(
           children: [
-            _buildRankAvatar(child, rank, 36, provider),
+            _buildRankAvatar(child, rank, 36),
             const SizedBox(height: 10),
             Text(
               child.name.toUpperCase(),
@@ -569,6 +468,16 @@ class _DashboardScreenState extends State<DashboardScreen>
               'Niveau ${child.currentLevelNumber}',
               style: TextStyle(
                   color: Colors.white.withOpacity(0.4), fontSize: 11),
+            ),
+            const SizedBox(height: 4),
+            // Samedi + Dimanche
+            Text(
+              'Sam ${_formatMinutes(provider.getSaturdayMinutes(child.id))}',
+              style: TextStyle(color: Colors.purpleAccent.withOpacity(0.7), fontSize: 10),
+            ),
+            Text(
+              'Dim ${_formatMinutes(provider.getSundayMinutes(child.id))}',
+              style: TextStyle(color: Colors.blueAccent.withOpacity(0.7), fontSize: 10),
             ),
             const SizedBox(height: 6),
             Row(
@@ -628,7 +537,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
             const SizedBox(width: 12),
-            _buildChildAvatar(child, 20, provider),
+            _buildChildAvatar(child, 20),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -646,13 +555,22 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ],
               ),
             ),
-            Text(
-              '${child.points} pts',
-              style: const TextStyle(
-                color: Colors.cyanAccent,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${child.points} pts',
+                  style: const TextStyle(
+                    color: Colors.cyanAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                Text(
+                  'Sam ${_formatMinutes(provider.getSaturdayMinutes(child.id))} • Dim ${_formatMinutes(provider.getSundayMinutes(child.id))}',
+                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 9),
+                ),
+              ],
             ),
           ],
         ),
@@ -660,8 +578,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildRankAvatar(
-      ChildModel child, int rank, double radius, FamilyProvider provider) {
+  Widget _buildRankAvatar(ChildModel child, int rank, double radius) {
     final Color rankColor;
     switch (rank) {
       case 1:
@@ -692,7 +609,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ],
           ),
-          child: _buildChildAvatar(child, radius, provider),
+          child: _buildChildAvatar(child, radius),
         ),
         Positioned(
           top: -6,
@@ -724,8 +641,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildChildAvatar(
-      ChildModel child, double radius, FamilyProvider provider) {
+  Widget _buildChildAvatar(ChildModel child, double radius) {
     return CircleAvatar(
       radius: radius,
       backgroundColor: Colors.cyanAccent.withOpacity(0.2),
@@ -875,9 +791,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               Row(
                 children: [
-                  // Avatar du vendeur
                   if (fromChild != null)
-                    _buildChildAvatar(fromChild, 18, provider)
+                    _buildChildAvatar(fromChild, 18)
                   else
                     const Icon(Icons.person, color: Colors.white38, size: 20),
                   const SizedBox(width: 8),
@@ -888,18 +803,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                       color: Colors.white.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${fromName.toUpperCase()} → ${toName.toUpperCase()}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      '${fromName.toUpperCase()} → ${toName.toUpperCase()}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const Spacer(),
@@ -1147,8 +1057,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ),
                           child: Row(
                             children: [
-                              _buildChildAvatar(
-                                  child, 20, provider),
+                              _buildChildAvatar(child, 20),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(child.name,
