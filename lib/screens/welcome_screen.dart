@@ -57,7 +57,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     if (pinProvider.isPinSet) {
       final result = await Navigator.push<bool>(
         context,
-        MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
+        // ← supprimé le "const" ici
+        MaterialPageRoute(builder: (_) => PinVerificationScreen()),
       );
       if (result == true && mounted) {
         Navigator.pushReplacement(
