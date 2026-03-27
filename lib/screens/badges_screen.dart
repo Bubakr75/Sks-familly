@@ -389,9 +389,10 @@ class BadgesScreen extends StatelessWidget {
                   final provider = context.read<FamilyProvider>();
                   provider.addCustomBadge(
                     nameCtrl.text,
-                    descCtrl.text,
                     selectedPower,
+                    descCtrl.text,
                     int.tryParse(pointsCtrl.text) ?? 50,
+                    powerType: selectedPower,
                   );
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
