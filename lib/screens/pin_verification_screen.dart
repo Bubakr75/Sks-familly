@@ -129,7 +129,6 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Lock icon animé
                     AnimatedBuilder(
                       animation: _scaleAnimation,
                       builder: (context, child) {
@@ -166,8 +165,6 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
-
-                    // PIN dots
                     AnimatedBuilder(
                       animation: _shakeAnimation,
                       builder: (context, child) {
@@ -212,10 +209,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                       ),
                     ),
                     const SizedBox(height: 48),
-
-                    // Clavier numérique
                     _buildKeypad(),
-
                     const SizedBox(height: 24),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
@@ -283,7 +277,6 @@ class _KeyButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDelete = label == 'del';
 
-    // Wrappé dans Focus pour la navigation TV
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Focus(
