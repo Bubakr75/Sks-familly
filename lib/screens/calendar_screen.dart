@@ -85,45 +85,59 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     selectedDecoration: BoxDecoration(gradient: LinearGradient(colors: [primary, primary.withOpacity(0.6)]), shape: BoxShape.circle),
                     todayTextStyle: const TextStyle(color: Colors.white), selectedTextStyle: const TextStyle(color: Colors.black),
                     defaultTextStyle: const TextStyle(color: Colors.white70), weekendTextStyle: const TextStyle(color: Colors.white54),
-                    outsideTextStyle: const TextStyle(color: Colors.white24), markerDecoration: BoxDecoration(color: primary, shape: BoxShape.circle), markerSize: 6, markersMaxCount: 3),
-                  headerStyle: HeaderStyle(formatButtonVisible: true, titleCentered: true, titleTextStyle: const TextStyle(color: Colors.white, fontSize: 16),
-                    leftChevronIcon: const Icon(Icons.chevron_left, color: Colors.white70), rightChevronIcon: const Icon(Icons.chevron_right, color: Colors.white70),
-                    formatButtonTextStyle: TextStyle(color: primary, fontSize: 13), formatButtonDecoration: BoxDecoration(border: Border.all(color: primary.withOpacity(0.5)), borderRadius: BorderRadius.circular(12))),
-                  daysOfWeekStyle: const DaysOfWeekStyle(weekdayStyle: TextStyle(color: Colors.white54, fontSize: 12), weekendStyle: TextStyle(color: Colors.white38, fontSize: 12)),
+                    outsideTextStyle: const TextStyle(color: Colors.white24),
+                    markerDecoration: BoxDecoration(color: primary, shape: BoxShape.circle), markerSize: 6, markersMaxCount: 3),
+                  headerStyle: HeaderStyle(formatButtonVisible: true, titleCentered: true,
+                    titleTextStyle: const TextStyle(color: Colors.white, fontSize: 16),
+                    leftChevronIcon: const Icon(Icons.chevron_left, color: Colors.white70),
+                    rightChevronIcon: const Icon(Icons.chevron_right, color: Colors.white70),
+                    formatButtonTextStyle: TextStyle(color: primary, fontSize: 13),
+                    formatButtonDecoration: BoxDecoration(border: Border.all(color: primary.withOpacity(0.5)), borderRadius: BorderRadius.circular(12))),
+                  daysOfWeekStyle: const DaysOfWeekStyle(
+                    weekdayStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                    weekendStyle: TextStyle(color: Colors.white38, fontSize: 12)),
                 ))),
               ),
               Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: Row(children: [
                 const Icon(Icons.event, color: Colors.cyanAccent, size: 18), const SizedBox(width: 8),
-                Text(_selectedDay != null ? DateFormat('EEEE d MMMM yyyy', 'fr_FR').format(_selectedDay!) : 'Aucune date', style: const TextStyle(color: Colors.white, fontSize: 14)),
+                Text(_selectedDay != null ? DateFormat('EEEE d MMMM yyyy', 'fr_FR').format(_selectedDay!) : 'Aucune date',
+                  style: const TextStyle(color: Colors.white, fontSize: 14)),
                 const Spacer(),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.cyanAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.cyanAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
                   child: Text('${events.length} activite(s)', style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold))),
               ])),
               Expanded(child: events.isEmpty
-                ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.event_busy, size: 48, color: Colors.white24), const SizedBox(height: 8), const Text('Aucune activite ce jour', style: TextStyle(color: Colors.white38, fontSize: 14))]))
-                : ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: events.length, itemBuilder: (context, index) {
-                    final activity = events[index];
-                    final isPositive = activity.isBonus;
-                    final childName = _getChildName(provider, activity.childId);
-                    return TvFocusWrapper(onTap: () {}, child: Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-                      child: Row(children: [
-                        Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: (isPositive ? Colors.greenAccent : Colors.redAccent).withOpacity(0.15)),
-                          child: Icon(isPositive ? Icons.add_circle_outline : Icons.remove_circle_outline, color: isPositive ? Colors.greenAccent : Colors.redAccent, size: 20)),
-                        const SizedBox(width: 12),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(activity.reason, style: const TextStyle(color: Colors.white, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          const SizedBox(height: 2),
-                          Row(children: [
-                            Text(childName, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                            const SizedBox(width: 8),
-                            Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(6)),
-                              child: Text(activity.category, style: const TextStyle(color: Colors.white30, fontSize: 10))),
-                          ]),
-                        ])),
-                        Text('${isPositive ? '+' : '-'}${activity.points}', style: TextStyle(color: isPositive ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
-                      ])));
-                  })),
+                ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.event_busy, size: 48, color: Colors.white24), const SizedBox(height: 8),
+                    const Text('Aucune activite ce jour', style: TextStyle(color: Colors.white38, fontSize: 14))]))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: events.length,
+                    itemBuilder: (context, index) {
+                      final activity = events[index];
+                      final isPositive = activity.isBonus;
+                      final childName = _getChildName(provider, activity.childId);
+                      return TvFocusWrapper(onTap: () {}, child: Container(
+                        margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
+                        child: Row(children: [
+                          Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: (isPositive ? Colors.greenAccent : Colors.redAccent).withOpacity(0.15)),
+                            child: Icon(isPositive ? Icons.add_circle_outline : Icons.remove_circle_outline, color: isPositive ? Colors.greenAccent : Colors.redAccent, size: 20)),
+                          const SizedBox(width: 12),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(activity.reason, style: const TextStyle(color: Colors.white, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 2),
+                            Row(children: [
+                              Text(childName, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                              const SizedBox(width: 8),
+                              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(6)),
+                                child: Text(activity.category, style: const TextStyle(color: Colors.white30, fontSize: 10))),
+                            ]),
+                          ])),
+                          Text('${isPositive ? '+' : '-'}${activity.points}', style: TextStyle(color: isPositive ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ])));
+                    })),
             ]),
           ),
         );
