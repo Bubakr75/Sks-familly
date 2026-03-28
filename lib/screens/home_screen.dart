@@ -35,8 +35,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late Animation<Offset> _slideAnim;
   final Set<int> _protectedTabs = {1, 4};
 
-  final FocusScopeNode _navBarFocusScope = FocusScopeNode(debugLabel: 'NavBar');
-
   @override
   void initState() {
     super.initState();
@@ -54,16 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _animController.dispose();
-    _navBarFocusScope.dispose();
     super.dispose();
-  }
-
-  void _restoreFocusToNavBar() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _navBarFocusScope.requestFocus();
-      }
-    });
   }
 
   void _onTabSelected(int index) {
@@ -71,15 +60,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (_protectedTabs.contains(index) && pinProvider.pin != null && pinProvider.pin!.isNotEmpty && !pinProvider.isParentMode) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => const PinVerificationScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
       ).then((success) {
         if (success == true) {
           setState(() => _currentIndex = index);
           _refreshActivity();
         }
-        _restoreFocusToNavBar();
       });
     } else {
       setState(() => _currentIndex = index);
@@ -94,7 +80,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<bool> _onWillPop() async {
     if (_currentIndex != 0) {
       setState(() => _currentIndex = 0);
-      _restoreFocusToNavBar();
       return false;
     }
     Navigator.pushReplacement(
@@ -133,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (children.length == 1) {
       Navigator.push(context, MaterialPageRoute(
         builder: (_) => SchoolNotesScreen(childId: children.first.id),
-      )).then((_) => _restoreFocusToNavBar());
+      ));
       return;
     }
     showModalBottomSheet(
@@ -162,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   Navigator.pop(ctx);
                   Navigator.push(context, MaterialPageRoute(
                     builder: (_) => SchoolNotesScreen(childId: child.id),
-                  )).then((_) => _restoreFocusToNavBar());
+                  ));
                 },
               ),
             )),
@@ -184,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (children.length == 1) {
       Navigator.push(context, MaterialPageRoute(
         builder: (_) => NotesScreen(childId: children.first.id, childName: children.first.name),
-      )).then((_) => _restoreFocusToNavBar());
+      ));
       return;
     }
     showModalBottomSheet(
@@ -213,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   Navigator.pop(ctx);
                   Navigator.push(context, MaterialPageRoute(
                     builder: (_) => NotesScreen(childId: child.id, childName: child.name),
-                  )).then((_) => _restoreFocusToNavBar());
+                  ));
                 },
               ),
             )),
@@ -319,9 +304,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _navigateToScreen(Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen)).then((_) {
-      _restoreFocusToNavBar();
-    });
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
   void _navigateWithPinGuard(Widget screen) {
@@ -333,8 +316,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ).then((success) {
         if (success == true) {
           _navigateToScreen(screen);
-        } else {
-          _restoreFocusToNavBar();
         }
       });
     } else {
@@ -365,20 +346,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ],
             ),
-            child: FocusScope(
-              node: _navBarFocusScope,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(0, Icons.home_rounded, 'Accueil'),
-                    _buildNavItem(1, Icons.add_circle_rounded, 'Points'),
-                    _buildNavItem(2, Icons.calendar_month_rounded, 'Calendrier'),
-                    _buildNavItem(3, Icons.bar_chart_rounded, 'Stats'),
-                    _buildNavItem(4, Icons.settings_rounded, 'Réglages'),
-                  ],
-                ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(0, Icons.home_rounded, 'Accueil'),
+                  _buildNavItem(1, Icons.add_circle_rounded, 'Points'),
+                  _buildNavItem(2, Icons.calendar_month_rounded, 'Calendrier'),
+                  _buildNavItem(3, Icons.bar_chart_rounded, 'Stats'),
+                  _buildNavItem(4, Icons.settings_rounded, 'Réglages'),
+                ],
               ),
             ),
           ),
