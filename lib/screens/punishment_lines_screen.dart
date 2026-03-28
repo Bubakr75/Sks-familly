@@ -1,747 +1,621 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' as math;
+import '../models/punishment_lines.dart';
 import '../providers/family_provider.dart';
-import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
 
 class PunishmentLinesScreen extends StatefulWidget {
-  const PunishmentLinesScreen({super.key});
+  const PunishmentLinesScreen({Key? key}) : super(key: key);
+
   @override
   State<PunishmentLinesScreen> createState() => _PunishmentLinesScreenState();
 }
 
 class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     with TickerProviderStateMixin {
+  late AnimationController _listController;
+  late AnimationController _progressController;
+  String? _selectedChildId;
+
+  @override
+  void initState() {
+    super.initState();
+    _listController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..forward();
+
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..forward();
+
+    final provider = context.read<FamilyProvider>();
+    if (provider.children.isNotEmpty) {
+      _selectedChildId = provider.children.first.id;
+    }
+  }
+
+  @override
+  void dispose() {
+    _listController.dispose();
+    _progressController.dispose();
+    super.dispose();
+  }
+
+  List<PunishmentLines> _getPunishments(FamilyProvider provider) {
+    if (_selectedChildId == null) return [];
+    final box = provider.punishmentsBox;
+    if (box == null || !box.isOpen) return [];
+    return box.values
+        .where((e) => e.childId == _selectedChildId)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  void _showAddPunishmentSheet() {
+    final textCtrl = TextEditingController();
+    int totalLines = 10;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade900,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 20),
+              const Text('📝 Nouvelle Punition',
+                  style: TextStyle(
+                      color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              TextField(
+                controller: textCtrl,
+                style: const TextStyle(color: Colors.white),
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Texte à copier',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  hintText: 'Ex: Je dois être poli avec mes frères et sœurs.',
+                  hintStyle: TextStyle(color: Colors.white30),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Colors.redAccent),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text('Nombre de lignes',
+                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      if (totalLines > 1) setSheetState(() => totalLines--);
+                    },
+                    icon: const Icon(Icons.remove_circle, color: Colors.redAccent, size: 32),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      '$totalLines',
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => setSheetState(() => totalLines++),
+                    icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 32),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [5, 10, 20, 50].map((n) {
+                  return TvFocusWrapper(
+                    onSelect: () => setSheetState(() => totalLines = n),
+                    child: Chip(
+                      label: Text('$n',
+                          style: TextStyle(
+                            color: totalLines == n ? Colors.white : Colors.white70,
+                            fontWeight: totalLines == n ? FontWeight.bold : FontWeight.normal,
+                          )),
+                      backgroundColor: totalLines == n
+                          ? Colors.redAccent.withValues(alpha: 0.4)
+                          : Colors.white.withValues(alpha: 0.1),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () {
+                    if (textCtrl.text.trim().isEmpty || _selectedChildId == null) return;
+                    final provider = context.read<FamilyProvider>();
+                    final punishment = PunishmentLines(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      childId: _selectedChildId!,
+                      text: textCtrl.text.trim(),
+                      totalLines: totalLines,
+                    );
+                    provider.punishmentsBox?.put(punishment.id, punishment);
+                    provider.notifyListeners();
+                    Navigator.pop(ctx);
+                    _listController.forward(from: 0);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('📝 Punition de $totalLines lignes ajoutée'),
+                        backgroundColor: Colors.red.shade700,
+                      ),
+                    );
+                  },
+                  child: const Text('Créer la punition',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPunishmentDetail(PunishmentLines punishment) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade900,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Text(punishment.isCompleted ? '✅' : '📝', style: const TextStyle(fontSize: 28)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      punishment.text,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Progress bar
+              AnimatedBuilder(
+                animation: _progressController,
+                builder: (ctx, _) {
+                  final progress = punishment.progress * _progressController.value;
+                  return Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 12,
+                          backgroundColor: Colors.white.withValues(alpha: 0.1),
+                          valueColor: AlwaysStoppedAnimation(
+                            punishment.isCompleted ? Colors.greenAccent : Colors.redAccent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${punishment.completedLines}/${punishment.totalLines} lignes',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            '${(punishment.progress * 100).toInt()}%',
+                            style: TextStyle(
+                              color: punishment.isCompleted
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              if (!punishment.isCompleted) ...[
+                const Text('Ajouter des lignes complétées',
+                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [1, 5, 10].map((n) {
+                    return TvFocusWrapper(
+                      onSelect: () {
+                        final provider = context.read<FamilyProvider>();
+                        final newCompleted =
+                            (punishment.completedLines + n).clamp(0, punishment.totalLines);
+                        final updated = PunishmentLines(
+                          id: punishment.id,
+                          childId: punishment.childId,
+                          text: punishment.text,
+                          totalLines: punishment.totalLines,
+                          completedLines: newCompleted,
+                          createdAt: punishment.createdAt,
+                          photoUrls: punishment.photoUrls,
+                        );
+                        provider.punishmentsBox?.put(punishment.id, updated);
+                        provider.notifyListeners();
+                        _progressController.forward(from: 0);
+                        setSheetState(() {});
+                        if (newCompleted >= punishment.totalLines) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('🎉 Punition terminée !'),
+                              backgroundColor: Colors.green.shade700,
+                            ),
+                          );
+                        }
+                      },
+                      child: Chip(
+                        label: Text('+$n',
+                            style: const TextStyle(
+                                color: Colors.white, fontWeight: FontWeight.bold)),
+                        backgroundColor: Colors.redAccent.withValues(alpha: 0.3),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+              Row(
+                children: [
+                  Expanded(
+                    child: TvFocusWrapper(
+                      onSelect: () {
+                        final provider = context.read<FamilyProvider>();
+                        provider.punishmentsBox?.delete(punishment.id);
+                        provider.notifyListeners();
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('🗑️ Punition supprimée'),
+                            backgroundColor: Colors.red.shade700,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade900.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+                        ),
+                        child: const Center(
+                          child: Text('🗑️ Supprimer',
+                              style: TextStyle(
+                                  color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
-      builder: (context, fp, _) {
-        final children = fp.children;
+      builder: (context, provider, _) {
+        final children = provider.children;
+        final punishments = _getPunishments(provider);
+        final activeCount = punishments.where((e) => !e.isCompleted).length;
+        final completedCount = punishments.where((e) => e.isCompleted).length;
 
-        return AnimatedBackground(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: TvFocusWrapper(
-                onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.arrow_back, color: Colors.white),
-              ),
-              title: ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Colors.red, Colors.orange],
-                ).createShader(bounds),
-                child: const Text(
-                  '📕 Lignes de Punition',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-              actions: [
-                TvFocusWrapper(
-                  onTap: () => _showAddPunishment(fp),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.add, color: Colors.red),
-                  ),
-                ),
-              ],
-            ),
-            body: children.isEmpty
-                ? Center(
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 800),
-                      builder: (context, value, child) {
-                        return Opacity(
-                          opacity: value,
-                          child: Transform.scale(scale: value, child: child),
-                        );
-                      },
-                      child: const Text('Aucun enfant enregistré',
-                          style:
-                              TextStyle(color: Colors.white54, fontSize: 16)),
-                    ),
-                  )
-                : ListView.builder(
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: AnimatedBackground(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // ── Header ──
+                  Padding(
                     padding: const EdgeInsets.all(16),
-                    itemCount: children.length,
-                    itemBuilder: (context, index) {
-                      final child = children[index];
-                      final punishments =
-                          fp.getPunishmentsForChild(child.id);
-
-                      return TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        duration:
-                            Duration(milliseconds: 500 + index * 200),
-                        curve: Curves.easeOutBack,
-                        builder: (context, value, w) {
-                          return Transform.translate(
-                            offset: Offset(0, 30 * (1 - value)),
-                            child: Opacity(opacity: value, child: w),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: GlassCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      children: [
+                        TvFocusWrapper(
+                          onSelect: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.arrow_back, color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('📝', style: TextStyle(fontSize: 28)),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text('Punitions',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                        TvFocusWrapper(
+                          onSelect: _showAddPunishmentSheet,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                  colors: [Colors.redAccent.shade700, Colors.red.shade700]),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 20,
-                                      backgroundColor:
-                                          Colors.red.withOpacity(0.2),
-                                      child: Text(
-                                        child.name.isNotEmpty
-                                            ? child.name[0].toUpperCase()
-                                            : '?',
-                                        style: const TextStyle(
-                                            color: Colors.red,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(child.name,
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold)),
-                                    ),
-                                    Text(
-                                      '${punishments.length} punition${punishments.length > 1 ? 's' : ''}',
-                                      style: const TextStyle(
-                                          color: Colors.white38,
-                                          fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                                if (punishments.isNotEmpty) ...[
-                                  const SizedBox(height: 12),
-                                  const Divider(color: Colors.white12),
-                                  const SizedBox(height: 8),
-                                  ...punishments
-                                      .asMap()
-                                      .entries
-                                      .map((entry) {
-                                    final i = entry.key;
-                                    final p = entry.value;
-                                    final progress =
-                                        (p['completed'] as int? ?? 0) /
-                                            (p['lineCount'] as int? ?? 1);
-                                    final isDone = progress >= 1.0;
-
-                                    return TweenAnimationBuilder<double>(
-                                      tween: Tween(begin: 0.0, end: 1.0),
-                                      duration: Duration(
-                                          milliseconds: 300 + i * 100),
-                                      curve: Curves.easeOutCubic,
-                                      builder: (context, value, child) {
-                                        return Transform.translate(
-                                          offset: Offset(
-                                              20 * (1 - value), 0),
-                                          child: Opacity(
-                                              opacity: value,
-                                              child: child),
-                                        );
-                                      },
-                                      child: TvFocusWrapper(
-                                        onTap: () =>
-                                            _showPunishmentDetail(
-                                                p, child, fp),
-                                        child: Container(
-                                          margin: const EdgeInsets.only(
-                                              bottom: 8),
-                                          padding:
-                                              const EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            color: isDone
-                                                ? Colors.green
-                                                    .withOpacity(0.08)
-                                                : Colors.red
-                                                    .withOpacity(0.08),
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            border: Border.all(
-                                              color: isDone
-                                                  ? Colors.green
-                                                      .withOpacity(0.2)
-                                                  : Colors.red
-                                                      .withOpacity(0.2),
-                                            ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    isDone
-                                                        ? Icons.check_circle
-                                                        : Icons.menu_book,
-                                                    color: isDone
-                                                        ? Colors.green
-                                                        : Colors.red,
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Text(
-                                                      p['reason'] ??
-                                                          'Punition',
-                                                      style:
-                                                          const TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 13,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    '${p['completed'] ?? 0}/${p['lineCount'] ?? 0}',
-                                                    style: TextStyle(
-                                                      color: isDone
-                                                          ? Colors.green
-                                                          : Colors.red[300],
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 6),
-                                              // Animated progress bar
-                                              TweenAnimationBuilder<double>(
-                                                tween: Tween(
-                                                    begin: 0.0,
-                                                    end: progress
-                                                        .clamp(0.0, 1.0)),
-                                                duration: const Duration(
-                                                    milliseconds: 800),
-                                                curve: Curves.easeOutCubic,
-                                                builder:
-                                                    (context, val, _) {
-                                                  return ClipRRect(
-                                                    borderRadius:
-                                                        BorderRadius
-                                                            .circular(4),
-                                                    child: Stack(
-                                                      children: [
-                                                        Container(
-                                                          height: 8,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: Colors
-                                                                .white
-                                                                .withOpacity(
-                                                                    0.08),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        4),
-                                                          ),
-                                                        ),
-                                                        FractionallySizedBox(
-                                                          widthFactor: val,
-                                                          child: Container(
-                                                            height: 8,
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              gradient:
-                                                                  LinearGradient(
-                                                                colors: isDone
-                                                                    ? [
-                                                                        Colors.green,
-                                                                        Colors.green.shade700
-                                                                      ]
-                                                                    : [
-                                                                        Colors.red,
-                                                                        Colors.red.shade700
-                                                                      ],
-                                                              ),
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          4),
-                                                              boxShadow: [
-                                                                BoxShadow(
-                                                                  color: (isDone
-                                                                          ? Colors.green
-                                                                          : Colors.red)
-                                                                      .withOpacity(0.4),
-                                                                  blurRadius:
-                                                                      4,
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                ],
+                                Icon(Icons.add, color: Colors.white, size: 20),
+                                SizedBox(width: 4),
+                                Text('Ajouter',
+                                    style: TextStyle(
+                                        color: Colors.white, fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-          ),
-        );
-      },
-    );
-  }
 
-  void _showAddPunishment(FamilyProvider fp) {
-    String? selectedChildId;
-    final reasonController = TextEditingController();
-    int lineCount = 10;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1A1A2E),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Notebook animation
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: -0.5, end: 0.0),
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform(
-                          alignment: Alignment.centerLeft,
-                          transform: Matrix4.identity()
-                            ..setEntry(3, 2, 0.002)
-                            ..rotateY(value),
-                          child: child,
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Colors.red.withOpacity(0.3)),
-                        ),
-                        child: const Icon(Icons.menu_book,
-                            color: Colors.red, size: 40),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Nouvelle Punition',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 20),
-
-                    // Child picker
-                    Wrap(
-                      spacing: 8,
-                      children: fp.children.map((child) {
-                        final selected = selectedChildId == child.id;
-                        return TvFocusWrapper(
-                          onTap: () => setSheetState(
-                              () => selectedChildId = child.id),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? Colors.red.withOpacity(0.2)
-                                  : Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: selected
-                                    ? Colors.red
-                                    : Colors.white12,
-                                width: selected ? 2 : 1,
-                              ),
-                            ),
-                            child: Text(child.name,
-                                style: TextStyle(
+                  // ── Child selector ──
+                  if (children.length > 1)
+                    SizedBox(
+                      height: 50,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: children.length,
+                        itemBuilder: (ctx, i) {
+                          final child = children[i];
+                          final selected = child.id == _selectedChildId;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: TvFocusWrapper(
+                              onSelect: () {
+                                setState(() => _selectedChildId = child.id);
+                                _listController.forward(from: 0);
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
                                   color: selected
-                                      ? Colors.red
-                                      : Colors.white54,
-                                  fontWeight: selected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                )),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Reason
-                    TextField(
-                      controller: reasonController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Raison de la punition',
-                        hintStyle: const TextStyle(color: Colors.white38),
-                        prefixIcon: const Icon(Icons.edit,
-                            color: Colors.red, size: 18),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                              color: Colors.red.withOpacity(0.3)),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: Colors.red),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Line count
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Lignes: ',
-                            style: TextStyle(color: Colors.white54)),
-                        TvFocusWrapper(
-                          onTap: () {
-                            if (lineCount > 1) {
-                              setSheetState(() => lineCount--);
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                            child: const Icon(Icons.remove,
-                                color: Colors.white, size: 18),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        TweenAnimationBuilder<int>(
-                          tween: IntTween(begin: 0, end: lineCount),
-                          duration: const Duration(milliseconds: 300),
-                          builder: (context, val, _) {
-                            return Text('$val',
-                                style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold));
-                          },
-                        ),
-                        const SizedBox(width: 16),
-                        TvFocusWrapper(
-                          onTap: () => setSheetState(() => lineCount++),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                            child: const Icon(Icons.add,
-                                color: Colors.white, size: 18),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Submit
-                    TvFocusWrapper(
-                      onTap: () {
-                        if (selectedChildId == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Sélectionne un enfant'),
-                                backgroundColor: Colors.orange),
-                          );
-                          return;
-                        }
-                        fp.addPunishment(
-                          selectedChildId!,
-                          reason: reasonController.text.isNotEmpty
-                              ? reasonController.text
-                              : 'Punition',
-                          lineCount: lineCount,
-                        );
-                        Navigator.pop(ctx);
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.red, Colors.red.shade700],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withOpacity(0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Text('📕 Créer la punition',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showPunishmentDetail(
-      Map<String, dynamic> p, ChildModel child, FamilyProvider fp) {
-    final completed = p['completed'] as int? ?? 0;
-    final total = p['lineCount'] as int? ?? 1;
-    final progress = (completed / total).clamp(0.0, 1.0);
-    final isDone = progress >= 1.0;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutBack,
-          builder: (context, value, child) {
-            return Transform.translate(
-              offset: Offset(0, 30 * (1 - value)),
-              child: Opacity(opacity: value, child: child),
-            );
-          },
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(p['reason'] ?? 'Punition',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                _detailRow('Enfant', child.name),
-                _detailRow('Progrès', '$completed / $total lignes'),
-                _detailRow(
-                    'Statut', isDone ? 'Terminé ✅' : 'En cours',
-                    color: isDone ? Colors.green : Colors.orange),
-                const SizedBox(height: 12),
-
-                // Progress bar
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: progress),
-                  duration: const Duration(milliseconds: 1000),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, val, _) {
-                    return Column(
-                      children: [
-                        Text(
-                          '${(val * 100).round()}%',
-                          style: TextStyle(
-                            color: isDone ? Colors.green : Colors.red,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: val,
-                            minHeight: 10,
-                            backgroundColor: Colors.white.withOpacity(0.1),
-                            valueColor: AlwaysStoppedAnimation(
-                                isDone ? Colors.green : Colors.red),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TvFocusWrapper(
-                        onTap: () {
-                          fp.deletePunishment(child.id, p['id']);
-                          Navigator.pop(ctx);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: Colors.red.withOpacity(0.3)),
-                          ),
-                          child: const Center(
-                            child: Text('🗑️ Supprimer',
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (!isDone) ...[
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TvFocusWrapper(
-                          onTap: () {
-                            fp.completePunishment(child.id, p['id']);
-                            Navigator.pop(ctx);
-                            _showCompleteAnimation();
-                          },
-                          child: Container(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Colors.green, Colors.teal],
+                                      ? Colors.redAccent.withValues(alpha: 0.3)
+                                      : Colors.white.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: selected
+                                      ? Border.all(color: Colors.redAccent, width: 2)
+                                      : null,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${child.avatar.isNotEmpty ? child.avatar : '👤'} ${child.name}',
+                                    style: TextStyle(
+                                      color: selected ? Colors.redAccent : Colors.white70,
+                                      fontWeight:
+                                          selected ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
                               ),
-                              borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Center(
-                              child: Text('✅ Terminé',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+                    ),
 
-  void _showCompleteAnimation() {
-    showDialog(
-      context: context,
-      barrierColor: Colors.transparent,
-      builder: (context) {
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          if (Navigator.of(context).canPop()) Navigator.pop(context);
-        });
-        return Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.elasticOut,
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: value,
-                child: Opacity(
-                  opacity: value.clamp(0.0, 1.0),
-                  child: child,
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.9),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.6),
-                    blurRadius: 40,
-                    spreadRadius: 10,
+                  const SizedBox(height: 8),
+
+                  // ── Stats bar ──
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GlassCard(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _statChip('En cours', '$activeCount', Colors.redAccent),
+                          Container(width: 1, height: 30, color: Colors.white24),
+                          _statChip('Terminées', '$completedCount', Colors.greenAccent),
+                          Container(width: 1, height: 30, color: Colors.white24),
+                          _statChip('Total', '${punishments.length}', Colors.white70),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // ── List ──
+                  Expanded(
+                    child: punishments.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('📝', style: TextStyle(fontSize: 64)),
+                                const SizedBox(height: 16),
+                                const Text('Aucune punition',
+                                    style: TextStyle(color: Colors.white54, fontSize: 18)),
+                                const SizedBox(height: 8),
+                                const Text('Espérons que ça dure !',
+                                    style: TextStyle(color: Colors.white38, fontSize: 14)),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: punishments.length,
+                            itemBuilder: (ctx, index) {
+                              final p = punishments[index];
+                              final delay = index * 0.1;
+                              return AnimatedBuilder(
+                                animation: _listController,
+                                builder: (ctx, child) {
+                                  final t = Curves.elasticOut.transform(
+                                    ((_listController.value - delay) / (1 - delay))
+                                        .clamp(0.0, 1.0),
+                                  );
+                                  return Transform.translate(
+                                    offset: Offset(0, 50 * (1 - t)),
+                                    child: Opacity(opacity: t, child: child),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: TvFocusWrapper(
+                                    onSelect: () {
+                                      _progressController.forward(from: 0);
+                                      _showPunishmentDetail(p);
+                                    },
+                                    child: GlassCard(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                p.isCompleted ? '✅' : '📝',
+                                                style: const TextStyle(fontSize: 24),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      p.text,
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 15,
+                                                        decoration: p.isCompleted
+                                                            ? TextDecoration.lineThrough
+                                                            : null,
+                                                      ),
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      '${p.completedLines}/${p.totalLines} lignes • ${(p.progress * 100).toInt()}%',
+                                                      style: TextStyle(
+                                                        color: p.isCompleted
+                                                            ? Colors.greenAccent
+                                                            : Colors.white54,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const Icon(Icons.chevron_right,
+                                                  color: Colors.white38, size: 20),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: LinearProgressIndicator(
+                                              value: p.progress,
+                                              minHeight: 6,
+                                              backgroundColor:
+                                                  Colors.white.withValues(alpha: 0.1),
+                                              valueColor: AlwaysStoppedAnimation(
+                                                p.isCompleted
+                                                    ? Colors.greenAccent
+                                                    : Colors.redAccent,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
-              child: const Icon(Icons.check, color: Colors.white, size: 60),
             ),
           ),
         );
@@ -749,19 +623,15 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  Widget _detailRow(String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white54)),
-          Text(value,
-              style: TextStyle(
-                  color: color ?? Colors.white,
-                  fontWeight: FontWeight.bold)),
-        ],
-      ),
+  Widget _statChip(String label, String value, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value,
+            style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+      ],
     );
   }
 }
