@@ -6,7 +6,8 @@ import '../providers/theme_provider.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import '../screens/family_screen.dart';
+import '../widgets/animated_page_transition.dart';
+import 'family_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,12 +24,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   void initState() {
     super.initState();
-
     _sectionController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-
     _dangerShakeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -51,6 +50,46 @@ class _SettingsScreenState extends State<SettingsScreen>
     super.dispose();
   }
 
+  Widget _animatedSection({
+    required int index,
+    required String title,
+    required List<Widget> children,
+    bool isDanger = false,
+  }) {
+    final delay = index * 0.15;
+    return AnimatedBuilder(
+      animation: _sectionController,
+      builder: (context, child) {
+        final progress =
+            ((_sectionController.value - delay) / (1.0 - delay))
+                .clamp(0.0, 1.0);
+        final curved = Curves.easeOutCubic.transform(progress);
+        return Transform.translate(
+          offset: Offset(0, 30 * (1 - curved)),
+          child: Opacity(opacity: curved, child: child),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 6),
+              child: Text(title,
+                  style: TextStyle(
+                    color: isDanger ? Colors.red[300] : Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  )),
+            ),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer3<ThemeProvider, PinProvider, FamilyProvider>(
@@ -61,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             body: SafeArea(
               child: Column(
                 children: [
-                  // Animated header
+                  // Header
                   TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0.0, end: 1.0),
                     duration: const Duration(milliseconds: 800),
@@ -76,41 +115,32 @@ class _SettingsScreenState extends State<SettingsScreen>
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          TvFocusWrapper(
-                            onTap: () => Navigator.pop(context),
-                            child:
-                                const Icon(Icons.arrow_back, color: Colors.white),
-                          ),
-                          const SizedBox(width: 12),
                           ShaderMask(
-                            shaderCallback: (bounds) => const LinearGradient(
+                            shaderCallback: (bounds) =>
+                                const LinearGradient(
                               colors: [Colors.cyan, Colors.purple],
                             ).createShader(bounds),
-                            child: const Text(
-                              '⚙️ Paramètres',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            child: const Text('⚙️ Paramètres',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                  // Settings list
                   Expanded(
                     child: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: [
-                        // Section 0: Appearance
-                        _buildAnimatedSection(
+                        // ── Apparence ──
+                        _animatedSection(
                           index: 0,
                           title: '🎨 Apparence',
                           children: [
-                            _GlassSettingsTile(
+                            _settingsTile(
                               icon: Icons.dark_mode,
                               iconColor: Colors.indigo,
                               title: 'Mode sombre',
@@ -121,8 +151,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                               ),
                             ),
                             TvFocusWrapper(
-                              onTap: () => _showAccentColorPicker(theme),
-                              child: _GlassSettingsTile(
+                              onTap: () => _showColorPicker(theme),
+                              child: _settingsTile(
                                 icon: Icons.color_lens,
                                 iconColor: Colors.pink,
                                 title: 'Couleur d\'accent',
@@ -136,10 +166,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                                         color: Colors.white38, width: 2),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: theme.accentColor
-                                            .withOpacity(0.5),
-                                        blurRadius: 6,
-                                      ),
+                                          color: theme.accentColor
+                                              .withOpacity(0.5),
+                                          blurRadius: 6),
                                     ],
                                   ),
                                 ),
@@ -148,30 +177,28 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ],
                         ),
 
-                        // Section 1: Family
-                        _buildAnimatedSection(
+                        // ── Famille ──
+                        _animatedSection(
                           index: 1,
                           title: '👨‍👩‍👧‍👦 Famille',
                           children: [
                             TvFocusWrapper(
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => const FamilyScreen()),
-                                );
+                                // ★ TRANSITION SLIDE vers FamilyScreen
+                                Navigator.push(context,
+                                    SlidePageRoute(page: const FamilyScreen()));
                               },
-                              child: const _GlassSettingsTile(
+                              child: _settingsTile(
                                 icon: Icons.sync,
                                 iconColor: Colors.cyan,
                                 title: 'Synchronisation famille',
-                                trailing: Icon(Icons.chevron_right,
+                                trailing: const Icon(Icons.chevron_right,
                                     color: Colors.white38),
                               ),
                             ),
                             TvFocusWrapper(
-                              onTap: () => _showEditParentDialog(fp),
-                              child: _GlassSettingsTile(
+                              onTap: () => _showEditParent(fp),
+                              child: _settingsTile(
                                 icon: Icons.person,
                                 iconColor: Colors.green,
                                 title: 'Profil parent',
@@ -183,14 +210,14 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ],
                         ),
 
-                        // Section 2: Security
-                        _buildAnimatedSection(
+                        // ── Sécurité ──
+                        _animatedSection(
                           index: 2,
                           title: '🔒 Sécurité',
                           children: [
                             TvFocusWrapper(
                               onTap: () => _showPinDialog(pin),
-                              child: _GlassSettingsTile(
+                              child: _settingsTile(
                                 icon: Icons.lock,
                                 iconColor: Colors.amber,
                                 title: 'PIN parental',
@@ -204,8 +231,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                     color: pin.hasPin
                                         ? Colors.green.withOpacity(0.2)
                                         : Colors.red.withOpacity(0.2),
-                                    borderRadius:
-                                        BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     pin.hasPin ? 'ON' : 'OFF',
@@ -223,8 +249,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ],
                         ),
 
-                        // Section 3: Danger zone
-                        _buildAnimatedSection(
+                        // ── Zone Danger ──
+                        _animatedSection(
                           index: 3,
                           title: '⚠️ Zone Danger',
                           isDanger: true,
@@ -233,23 +259,20 @@ class _SettingsScreenState extends State<SettingsScreen>
                               animation: _shakeAnim,
                               builder: (context, child) {
                                 return Transform.translate(
-                                  offset:
-                                      Offset(_shakeAnim.value, 0),
+                                  offset: Offset(_shakeAnim.value, 0),
                                   child: child,
                                 );
                               },
                               child: TvFocusWrapper(
                                 onTap: () {
-                                  _dangerShakeController.forward(
-                                      from: 0.0);
+                                  _dangerShakeController.forward(from: 0.0);
                                   _showResetConfirm(fp, 'scores');
                                 },
-                                child: const _GlassSettingsTile(
+                                child: _settingsTile(
                                   icon: Icons.refresh,
                                   iconColor: Colors.orange,
                                   title: 'Réinitialiser les scores',
-                                  subtitle:
-                                      'Remet tous les scores à zéro',
+                                  subtitle: 'Remet tous les scores à zéro',
                                 ),
                               ),
                             ),
@@ -257,72 +280,68 @@ class _SettingsScreenState extends State<SettingsScreen>
                               animation: _shakeAnim,
                               builder: (context, child) {
                                 return Transform.translate(
-                                  offset:
-                                      Offset(_shakeAnim.value, 0),
+                                  offset: Offset(_shakeAnim.value, 0),
                                   child: child,
                                 );
                               },
                               child: TvFocusWrapper(
                                 onTap: () {
-                                  _dangerShakeController.forward(
-                                      from: 0.0);
+                                  _dangerShakeController.forward(from: 0.0);
                                   _showResetConfirm(fp, 'history');
                                 },
-                                child: const _GlassSettingsTile(
+                                child: _settingsTile(
                                   icon: Icons.delete_forever,
                                   iconColor: Colors.red,
                                   title: 'Effacer l\'historique',
-                                  subtitle:
-                                      'Supprime toutes les activités',
+                                  subtitle: 'Supprime toutes les activités',
                                 ),
                               ),
                             ),
                           ],
                         ),
 
-                        // Section 4: About
-                        _buildAnimatedSection(
+                        // ── À propos ──
+                        _animatedSection(
                           index: 4,
                           title: 'ℹ️ À propos',
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                children: [
-                                  // Spinning logo
-                                  TweenAnimationBuilder<double>(
-                                    tween: Tween(begin: 0.0, end: 6.2832),
-                                    duration:
-                                        const Duration(milliseconds: 2000),
-                                    builder: (context, value, child) {
-                                      return Transform.rotate(
-                                        angle: value,
-                                        child: child,
-                                      );
-                                    },
-                                    child: const Text('👨‍👩‍👧‍👦',
-                                        style: TextStyle(fontSize: 40)),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Family Points TV',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                            GlassCard(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    TweenAnimationBuilder<double>(
+                                      tween:
+                                          Tween(begin: 0.0, end: 6.2832),
+                                      duration:
+                                          const Duration(milliseconds: 2000),
+                                      builder: (context, value, child) {
+                                        return Transform.rotate(
+                                          angle: value,
+                                          child: child,
+                                        );
+                                      },
+                                      child: const Text('👨‍👩‍👧‍👦',
+                                          style: TextStyle(fontSize: 40)),
                                     ),
-                                  ),
-                                  const Text('v4.9.0',
-                                      style: TextStyle(
-                                          color: Colors.white38)),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} enregistré${fp.children.length > 1 ? 's' : ''}',
-                                    style: const TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 12),
-                                  ),
-                                ],
+                                    const SizedBox(height: 8),
+                                    const Text('Family Points TV',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16)),
+                                    const Text('v4.9.0',
+                                        style: TextStyle(
+                                            color: Colors.white38)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} enregistré${fp.children.length > 1 ? 's' : ''}',
+                                      style: const TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 12),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -341,63 +360,61 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildAnimatedSection({
-    required int index,
+  Widget _settingsTile({
+    required IconData icon,
+    required Color iconColor,
     required String title,
-    required List<Widget> children,
-    bool isDanger = false,
+    String? subtitle,
+    Widget? trailing,
   }) {
-    final delay = index * 0.15;
-
-    return AnimatedBuilder(
-      animation: _sectionController,
-      builder: (context, child) {
-        final progress =
-            ((_sectionController.value - delay) / (1.0 - delay))
-                .clamp(0.0, 1.0);
-        final curved = Curves.easeOutCubic.transform(progress);
-
-        return Transform.translate(
-          offset: Offset(0, 30 * (1 - curved)),
-          child: Opacity(opacity: curved, child: child),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: GlassCard(
+        child: Row(
           children: [
-            _GlassSectionTitle(title: title, isDanger: isDanger),
-            const SizedBox(height: 8),
-            ...children,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: iconColor.withOpacity(0.15),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 14)),
+                  if (subtitle != null)
+                    Text(subtitle,
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11)),
+                ],
+              ),
+            ),
+            if (trailing != null) trailing,
           ],
         ),
       ),
     );
   }
 
-  void _showAccentColorPicker(ThemeProvider theme) {
+  void _showColorPicker(ThemeProvider theme) {
     final colors = [
-      Colors.cyan,
-      Colors.blue,
-      Colors.purple,
-      Colors.pink,
-      Colors.red,
-      Colors.orange,
-      Colors.amber,
-      Colors.green,
-      Colors.teal,
+      Colors.cyan, Colors.blue, Colors.purple, Colors.pink,
+      Colors.red, Colors.orange, Colors.amber, Colors.green, Colors.teal,
     ];
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -413,15 +430,14 @@ class _SettingsScreenState extends State<SettingsScreen>
                 spacing: 12,
                 runSpacing: 12,
                 children: colors.asMap().entries.map((entry) {
-                  final i = entry.key;
                   final c = entry.value;
                   return TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0.0, end: 1.0),
-                    duration: Duration(milliseconds: 300 + i * 80),
+                    duration:
+                        Duration(milliseconds: 300 + entry.key * 80),
                     curve: Curves.elasticOut,
                     builder: (context, value, child) {
-                      return Transform.scale(
-                          scale: value, child: child);
+                      return Transform.scale(scale: value, child: child);
                     },
                     child: TvFocusWrapper(
                       onTap: () {
@@ -442,9 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: c.withOpacity(0.5),
-                              blurRadius: 8,
-                            ),
+                                color: c.withOpacity(0.5), blurRadius: 8),
                           ],
                         ),
                       ),
@@ -459,7 +473,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  void _showEditParentDialog(FamilyProvider fp) {
+  void _showEditParent(FamilyProvider fp) {
     final controller = TextEditingController(text: fp.activeParent ?? '');
     showDialog(
       context: context,
@@ -489,8 +503,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child:
-                  const Text('Annuler', style: TextStyle(color: Colors.white54)),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -499,9 +513,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                 }
                 Navigator.pop(context);
               },
-              style:
-                  ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
-              child: const Text('Enregistrer'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+              child: const Text('OK'),
             ),
           ],
         );
@@ -518,10 +531,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           backgroundColor: const Color(0xFF1A1A2E),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            pin.hasPin ? 'Modifier le PIN' : 'Créer un PIN',
-            style: const TextStyle(color: Colors.white),
-          ),
+          title: Text(pin.hasPin ? 'Modifier le PIN' : 'Créer un PIN',
+              style: const TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -555,7 +566,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                     pin.removePin();
                     Navigator.pop(context);
                   },
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                  icon:
+                      const Icon(Icons.delete, color: Colors.red, size: 18),
                   label: const Text('Supprimer le PIN',
                       style: TextStyle(color: Colors.red)),
                 ),
@@ -565,8 +577,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child:
-                  const Text('Annuler', style: TextStyle(color: Colors.white54)),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -575,9 +587,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                   Navigator.pop(context);
                 }
               },
-              style:
-                  ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
-              child: const Text('Enregistrer'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+              child: const Text('OK'),
             ),
           ],
         );
@@ -603,24 +614,23 @@ class _SettingsScreenState extends State<SettingsScreen>
                 borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
-                Icon(Icons.warning_amber,
-                    color: Colors.red[400], size: 28),
+                Icon(Icons.warning_amber, color: Colors.red[400], size: 28),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     isScore
                         ? 'Réinitialiser les scores ?'
                         : 'Effacer l\'historique ?',
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 16),
+                    style:
+                        const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
               ],
             ),
             content: Text(
               isScore
-                  ? 'Tous les scores seront remis à zéro. Cette action est irréversible.'
-                  : 'Tout l\'historique sera supprimé. Cette action est irréversible.',
+                  ? 'Tous les scores seront remis à zéro. Irréversible.'
+                  : 'Tout l\'historique sera supprimé. Irréversible.',
               style: const TextStyle(color: Colors.white54),
             ),
             actions: [
@@ -646,91 +656,14 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red),
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 child: const Text('Confirmer'),
               ),
             ],
           ),
         );
       },
-    );
-  }
-}
-
-// ─── Helper widgets ───
-
-class _GlassSectionTitle extends StatelessWidget {
-  final String title;
-  final bool isDanger;
-  const _GlassSectionTitle(
-      {required this.title, this.isDanger = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isDanger ? Colors.red[300] : Colors.white70,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassSettingsTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-
-  const _GlassSettingsTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: GlassCard(
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: iconColor.withOpacity(0.15),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 14)),
-                  if (subtitle != null)
-                    Text(subtitle!,
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
-                ],
-              ),
-            ),
-            if (trailing != null) trailing!,
-          ],
-        ),
-      ),
     );
   }
 }
