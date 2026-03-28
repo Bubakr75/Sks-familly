@@ -34,44 +34,34 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void initState() {
     super.initState();
-
     _podiumController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    );
+        vsync: this, duration: const Duration(milliseconds: 1800));
     _podium2Anim = CurvedAnimation(
-      parent: _podiumController,
-      curve: const Interval(0.0, 0.5, curve: Curves.bounceOut),
-    );
+        parent: _podiumController,
+        curve: const Interval(0.0, 0.5, curve: Curves.bounceOut));
     _podium1Anim = CurvedAnimation(
-      parent: _podiumController,
-      curve: const Interval(0.2, 0.7, curve: Curves.bounceOut),
-    );
+        parent: _podiumController,
+        curve: const Interval(0.2, 0.7, curve: Curves.bounceOut));
     _podium3Anim = CurvedAnimation(
-      parent: _podiumController,
-      curve: const Interval(0.4, 0.9, curve: Curves.bounceOut),
-    );
+        parent: _podiumController,
+        curve: const Interval(0.4, 0.9, curve: Curves.bounceOut));
 
     _actionsController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
+        vsync: this, duration: const Duration(milliseconds: 1500));
     for (int i = 0; i < 6; i++) {
       final start = i * 0.12;
       final end = (start + 0.4).clamp(0.0, 1.0);
       _actionAnims.add(CurvedAnimation(
-        parent: _actionsController,
-        curve: Interval(start, end, curve: Curves.elasticOut),
-      ));
+          parent: _actionsController,
+          curve: Interval(start, end, curve: Curves.elasticOut)));
     }
 
     _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
+        vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+        CurvedAnimation(
+            parent: _pulseController, curve: Curves.easeInOut));
 
     _podiumController.forward();
     Future.delayed(const Duration(milliseconds: 600), () {
@@ -92,7 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Consumer<FamilyProvider>(
       builder: (context, fp, _) {
         final sorted = List<ChildModel>.from(fp.children)
-          ..sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
+          ..sort((a, b) => b.points.compareTo(a.points));
 
         return AnimatedBackground(
           child: Scaffold(
@@ -144,15 +134,17 @@ class _DashboardScreenState extends State<DashboardScreen>
                         fontSize: 22,
                         fontWeight: FontWeight.bold)),
                 Text(
-                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.activeParent ?? 'Parent'}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName}',
+                  style: const TextStyle(
+                      color: Colors.white54, fontSize: 13),
                 ),
               ],
             ),
           ),
           TvFocusWrapper(
             onTap: () => Scaffold.of(context).openDrawer(),
-            child: const Icon(Icons.menu, color: Colors.white, size: 28),
+            child:
+                const Icon(Icons.menu, color: Colors.white, size: 28),
           ),
         ],
       ),
@@ -179,24 +171,26 @@ class _DashboardScreenState extends State<DashboardScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (sorted.length >= 2)
-                  AnimatedBuilder(
-                    animation: _podium2Anim,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(0, 50 * (1 - _podium2Anim.value)),
-                        child: Opacity(
-                            opacity: _podium2Anim.value,
-                            child: _podiumCard(sorted[1], 2)),
-                      );
-                    },
-                  ),
-                const SizedBox(width: 8),
                 AnimatedBuilder(
-                  animation: Listenable.merge([_podium1Anim, _pulseAnim]),
+                  animation: _podium2Anim,
                   builder: (context, child) {
                     return Transform.translate(
-                      offset: Offset(0, 60 * (1 - _podium1Anim.value)),
+                      offset:
+                          Offset(0, 50 * (1 - _podium2Anim.value)),
+                      child: Opacity(
+                          opacity: _podium2Anim.value,
+                          child: _podiumCard(sorted[1], 2)),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+                AnimatedBuilder(
+                  animation:
+                      Listenable.merge([_podium1Anim, _pulseAnim]),
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset:
+                          Offset(0, 60 * (1 - _podium1Anim.value)),
                       child: Opacity(
                         opacity: _podium1Anim.value,
                         child: Transform.scale(
@@ -213,7 +207,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                     animation: _podium3Anim,
                     builder: (context, child) {
                       return Transform.translate(
-                        offset: Offset(0, 40 * (1 - _podium3Anim.value)),
+                        offset: Offset(
+                            0, 40 * (1 - _podium3Anim.value)),
                         child: Opacity(
                             opacity: _podium3Anim.value,
                             child: _podiumCard(sorted[2], 3)),
@@ -231,14 +226,19 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _podiumCard(ChildModel child, int rank) {
     final heights = {1: 110.0, 2: 85.0, 3: 65.0};
-    final colors = {1: Colors.amber, 2: Colors.grey, 3: Colors.orange};
+    final colors = {
+      1: Colors.amber,
+      2: Colors.grey,
+      3: Colors.orange
+    };
     final medals = {1: '🥇', 2: '🥈', 3: '🥉'};
 
     return TvFocusWrapper(
       onTap: () {
-        // ★ TRANSITION ZOOM vers le profil enfant
-        Navigator.push(context,
-            ZoomPageRoute(page: ChildDashboardScreen(childId: child.id)));
+        Navigator.push(
+            context,
+            ZoomPageRoute(
+                page: ChildDashboardScreen(childId: child.id)));
       },
       child: Column(
         children: [
@@ -248,7 +248,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             radius: rank == 1 ? 26 : 20,
             backgroundColor: Colors.cyan.withOpacity(0.3),
             child: Text(
-              child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+              child.name.isNotEmpty
+                  ? child.name[0].toUpperCase()
+                  : '?',
               style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -262,7 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   fontWeight: FontWeight.bold,
                   fontSize: 12)),
           TweenAnimationBuilder<int>(
-            tween: IntTween(begin: 0, end: child.totalPoints),
+            tween: IntTween(begin: 0, end: child.points),
             duration: const Duration(milliseconds: 1500),
             builder: (context, val, _) {
               return Text('$val pts',
@@ -285,8 +287,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                   colors[rank]!.withOpacity(0.3),
                 ],
               ),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(8)),
             ),
             child: Center(
               child: Text('#$rank',
@@ -303,30 +305,36 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildQuickActions(FamilyProvider fp) {
     final actions = [
-      // ★ Chaque action avec sa transition unique
       _Act('Punition', Icons.menu_book, Colors.red, () {
-        Navigator.push(context, SlidePageRoute(
-          page: const PunishmentLinesScreen(),
-          direction: SlideDirection.up,
-        ));
+        Navigator.push(
+            context,
+            SlidePageRoute(
+              page: const PunishmentLinesScreen(),
+              direction: SlideDirection.up,
+            ));
       }),
       _Act('Immunité', Icons.shield, Colors.amber, () {
         Navigator.push(context,
             SpinPageRoute(page: const ImmunityLinesScreen()));
       }),
       _Act('Écran', Icons.tv, Colors.blue, () {
-        _showChildPickerForScreen(fp);
+        _showChildPickerForNav(fp, (childId) {
+          Navigator.push(
+              context,
+              ZoomPageRoute(
+                  page: ChildDashboardScreen(childId: childId)));
+        });
       }),
-      _Act('Tribunal', Icons.gavel, Colors.purple, () {
-        // TODO
-      }),
+      _Act('Tribunal', Icons.gavel, Colors.purple, () {}),
       _Act('Badges', Icons.emoji_events, Colors.orange, () {
-        Navigator.push(context,
-            ZoomPageRoute(page: const BadgesScreen()));
+        Navigator.push(
+            context, ZoomPageRoute(page: const BadgesScreen()));
       }),
       _Act('Ventes', Icons.store, Colors.green, () {
-        Navigator.push(context,
-            DoorPageRoute(page: const TradeScreen()));
+        _showChildPickerForNav(fp, (childId) {
+          Navigator.push(context,
+              DoorPageRoute(page: TradeScreen(childId: childId)));
+        });
       }),
     ];
 
@@ -340,9 +348,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             return Opacity(
               opacity: value,
               child: Transform.translate(
-                offset: Offset(-20 * (1 - value), 0),
-                child: child,
-              ),
+                  offset: Offset(-20 * (1 - value), 0),
+                  child: child),
             );
           },
           child: const Text('⚡ Actions Rapides',
@@ -363,16 +370,15 @@ class _DashboardScreenState extends State<DashboardScreen>
             final action = actions[i];
             final anim =
                 i < _actionAnims.length ? _actionAnims[i] : null;
-            if (anim == null) {
-              return _actionTile(action);
-            }
+            if (anim == null) return _actionTile(action);
             return AnimatedBuilder(
               animation: anim,
               builder: (context, child) {
                 return Transform.scale(
                   scale: anim.value.clamp(0.0, 1.0),
                   child: Opacity(
-                      opacity: anim.value.clamp(0.0, 1.0), child: child),
+                      opacity: anim.value.clamp(0.0, 1.0),
+                      child: child),
                 );
               },
               child: _actionTile(action),
@@ -397,13 +403,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                 color: action.color.withOpacity(0.15),
                 boxShadow: [
                   BoxShadow(
-                    color: action.color.withOpacity(0.3),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                  ),
+                      color: action.color.withOpacity(0.3),
+                      blurRadius: 12,
+                      spreadRadius: 2),
                 ],
               ),
-              child: Icon(action.icon, color: action.color, size: 26),
+              child:
+                  Icon(action.icon, color: action.color, size: 26),
             ),
             const SizedBox(height: 8),
             Text(action.label,
@@ -420,7 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildActiveTrades(FamilyProvider fp) {
     final active =
-        fp.trades.where((t) => t.status == TradeStatus.active).toList();
+        fp.trades.where((t) => t.isActive).toList();
     if (active.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -434,9 +440,14 @@ class _DashboardScreenState extends State<DashboardScreen>
         const SizedBox(height: 8),
         ...active.asMap().entries.map((entry) {
           final trade = entry.value;
+          final sellerName =
+              fp.getChild(trade.fromChildId)?.name ?? '?';
+          final buyerName =
+              fp.getChild(trade.toChildId)?.name ?? '?';
           return TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.0, end: 1.0),
-            duration: Duration(milliseconds: 500 + entry.key * 200),
+            duration:
+                Duration(milliseconds: 500 + entry.key * 200),
             curve: Curves.easeOutCubic,
             builder: (context, value, child) {
               return Transform.translate(
@@ -448,9 +459,11 @@ class _DashboardScreenState extends State<DashboardScreen>
               padding: const EdgeInsets.only(bottom: 8),
               child: TvFocusWrapper(
                 onTap: () {
-                  // ★ TRANSITION PORTE vers TradeScreen
-                  Navigator.push(context,
-                      DoorPageRoute(page: const TradeScreen()));
+                  Navigator.push(
+                      context,
+                      DoorPageRoute(
+                          page: TradeScreen(
+                              childId: trade.fromChildId)));
                 },
                 child: GlassCard(
                   child: Row(
@@ -463,28 +476,37 @@ class _DashboardScreenState extends State<DashboardScreen>
                           color: Colors.cyan,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.cyan.withOpacity(0.5),
-                              blurRadius: 6,
-                            ),
+                                color:
+                                    Colors.cyan.withOpacity(0.5),
+                                blurRadius: 6),
                           ],
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
-                            Text(trade.serviceDescription ?? 'Échange',
+                            Text(
+                                '$sellerName → $buyerName',
                                 style: const TextStyle(
                                     color: Colors.white,
-                                    fontWeight: FontWeight.bold)),
-                            Text('${trade.lineCount} lignes',
+                                    fontWeight:
+                                        FontWeight.bold)),
+                            Text(
+                                '${trade.immunityLines} lignes • ${trade.serviceDescription}',
                                 style: const TextStyle(
-                                    color: Colors.white54, fontSize: 12)),
+                                    color: Colors.white54,
+                                    fontSize: 12),
+                                maxLines: 1,
+                                overflow:
+                                    TextOverflow.ellipsis),
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right, color: Colors.white38),
+                      const Icon(Icons.chevron_right,
+                          color: Colors.white38),
                     ],
                   ),
                 ),
@@ -496,15 +518,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  void _showChildPickerForScreen(FamilyProvider fp) {
+  void _showChildPickerForNav(
+      FamilyProvider fp, Function(String) onSelected) {
     if (fp.children.isEmpty) return;
     if (fp.children.length == 1) {
-      // ★ TRANSITION ZOOM
-      Navigator.push(
-        context,
-        ZoomPageRoute(
-            page: ChildDashboardScreen(childId: fp.children.first.id)),
-      );
+      onSelected(fp.children.first.id);
       return;
     }
     showModalBottomSheet(
@@ -514,7 +532,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         return Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius:
+                BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -530,23 +549,25 @@ class _DashboardScreenState extends State<DashboardScreen>
                 return TvFocusWrapper(
                   onTap: () {
                     Navigator.pop(ctx);
-                    // ★ TRANSITION ZOOM
-                    Navigator.push(
-                      context,
-                      ZoomPageRoute(
-                          page: ChildDashboardScreen(childId: child.id)),
-                    );
+                    onSelected(child.id);
                   },
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: Colors.cyan.withOpacity(0.3),
+                      backgroundColor:
+                          Colors.cyan.withOpacity(0.3),
                       child: Text(
-                        child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white),
-                      ),
+                          child.name.isNotEmpty
+                              ? child.name[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                              color: Colors.white)),
                     ),
                     title: Text(child.name,
-                        style: const TextStyle(color: Colors.white)),
+                        style: const TextStyle(
+                            color: Colors.white)),
+                    subtitle: Text('${child.points} pts',
+                        style: const TextStyle(
+                            color: Colors.white54)),
                   ),
                 );
               }),
