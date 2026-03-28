@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:intl/intl.dart';
 import '../providers/family_provider.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
@@ -14,154 +12,566 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarScreenState extends State<CalendarScreen>
+    with TickerProviderStateMixin {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   CalendarFormat _calendarFormat = CalendarFormat.month;
 
+  late AnimationController _calendarController;
+  late AnimationController _eventsController;
+  late AnimationController _selectPulseController;
+  late Animation<double> _selectPulseAnim;
+
   @override
-  void initState() { super.initState(); _selectedDay = _focusedDay; }
+  void initState() {
+    super.initState();
+    _selectedDay = DateTime.now();
 
-  List<dynamic> _getEventsForDay(DateTime day, FamilyProvider provider) => provider.getHistoryForDate(day);
-
-  String _getChildName(FamilyProvider provider, String childId) {
-    final child = provider.getChild(childId);
-    return child?.name ?? 'Inconnu';
-  }
-
-  void _navigateDay(int delta) { setState(() { final newDay = (_selectedDay ?? _focusedDay).add(Duration(days: delta)); _selectedDay = newDay; _focusedDay = newDay; }); }
-  void _navigateWeek(int delta) { setState(() { final newDay = (_selectedDay ?? _focusedDay).add(Duration(days: delta * 7)); _selectedDay = newDay; _focusedDay = newDay; }); }
-
-  void _showActivityDetail(dynamic activity, FamilyProvider provider) {
-    final childName = _getChildName(provider, activity.childId);
-    showModalBottomSheet(
-      context: context, backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          Icon(activity.isBonus ? Icons.add_circle : Icons.remove_circle, color: activity.isBonus ? Colors.greenAccent : Colors.redAccent, size: 48),
-          const SizedBox(height: 16),
-          Text(activity.reason, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          _detailRow('Enfant', childName),
-          _detailRow('Points', '${activity.isBonus ? '+' : '-'}${activity.points}'),
-          _detailRow('Catégorie', activity.category ?? 'N/A'),
-          _detailRow('Heure', '${activity.date.hour.toString().padLeft(2, '0')}:${activity.date.minute.toString().padLeft(2, '0')}'),
-          if (activity.actionBy != null && activity.actionBy!.isNotEmpty)
-            _detailRow('Par', activity.actionBy!),
-          const SizedBox(height: 20),
-          TvFocusWrapper(onTap: () => Navigator.pop(ctx), child: SizedBox(width: double.infinity,
-            child: OutlinedButton(onPressed: () => Navigator.pop(ctx),
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.cyanAccent, side: const BorderSide(color: Colors.cyanAccent), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: const Text('Fermer')))),
-        ]),
-      ),
+    _calendarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
     );
+
+    _eventsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _selectPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _selectPulseAnim = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(
+          parent: _selectPulseController, curve: Curves.elasticOut),
+    );
+
+    _calendarController.forward();
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) _eventsController.forward();
+    });
   }
 
-  Widget _detailRow(String label, String value) {
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Text(label, style: const TextStyle(color: Colors.white54, fontSize: 14)),
-      Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-    ]));
+  @override
+  void dispose() {
+    _calendarController.dispose();
+    _eventsController.dispose();
+    _selectPulseController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> _getEventsForDay(
+      DateTime day, FamilyProvider fp) {
+    final events = <Map<String, dynamic>>[];
+    for (final child in fp.children) {
+      for (final h in fp.getHistoryForChild(child.id)) {
+        final ts = h['timestamp'] as DateTime?;
+        if (ts != null && isSameDay(ts, day)) {
+          events.add({...h, 'childName': child.name});
+        }
+      }
+    }
+    return events;
+  }
+
+  void _onDaySelected(DateTime selected, DateTime focused) {
+    setState(() {
+      _selectedDay = selected;
+      _focusedDay = focused;
+    });
+    // Trigger pulse animation
+    _selectPulseController.forward(from: 0.0);
+    // Reset and play events animation
+    _eventsController.reset();
+    _eventsController.forward();
+  }
+
+  void _navigateDay(int delta) {
+    setState(() {
+      _focusedDay = _focusedDay.add(Duration(days: delta));
+      _selectedDay = _focusedDay;
+    });
+    _selectPulseController.forward(from: 0.0);
+    _eventsController.reset();
+    _eventsController.forward();
+  }
+
+  void _navigateWeek(int delta) {
+    setState(() {
+      _focusedDay = _focusedDay.add(Duration(days: 7 * delta));
+      _selectedDay = _focusedDay;
+    });
+    _eventsController.reset();
+    _eventsController.forward();
   }
 
   @override
   Widget build(BuildContext context) {
-    final primary = Colors.cyanAccent;
     return Consumer<FamilyProvider>(
-      builder: (context, provider, _) {
-        final events = _selectedDay != null ? _getEventsForDay(_selectedDay!, provider) : <dynamic>[];
+      builder: (context, fp, _) {
+        final selectedEvents =
+            _selectedDay != null ? _getEventsForDay(_selectedDay!, fp) : [];
+
         return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            appBar: AppBar(title: const Text('Calendrier'), backgroundColor: Colors.transparent, elevation: 0),
-            body: Column(children: [
-              Focus(
-                autofocus: true,
-                onKeyEvent: (node, event) {
-                  if (event is KeyDownEvent) {
-                    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) { _navigateDay(-1); return KeyEventResult.handled; }
-                    if (event.logicalKey == LogicalKeyboardKey.arrowRight) { _navigateDay(1); return KeyEventResult.handled; }
-                    if (event.logicalKey == LogicalKeyboardKey.arrowUp) { _navigateWeek(-1); return KeyEventResult.handled; }
-                    if (event.logicalKey == LogicalKeyboardKey.arrowDown) { _navigateWeek(1); return KeyEventResult.handled; }
-                  }
-                  return KeyEventResult.ignored;
-                },
-                child: GlassCard(child: Padding(padding: const EdgeInsets.all(8), child: TableCalendar(
-                  locale: 'fr_FR', firstDay: DateTime.utc(2020, 1, 1), lastDay: DateTime.utc(2030, 12, 31),
-                  focusedDay: _focusedDay, calendarFormat: _calendarFormat,
-                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                  onDaySelected: (selectedDay, focusedDay) { setState(() { _selectedDay = selectedDay; _focusedDay = focusedDay; }); },
-                  onFormatChanged: (format) => setState(() => _calendarFormat = format),
-                  onPageChanged: (focusedDay) => _focusedDay = focusedDay,
-                  eventLoader: (day) => _getEventsForDay(day, provider),
-                  calendarStyle: CalendarStyle(
-                    todayDecoration: BoxDecoration(color: primary.withOpacity(0.3), shape: BoxShape.circle),
-                    selectedDecoration: BoxDecoration(gradient: LinearGradient(colors: [primary, primary.withOpacity(0.6)]), shape: BoxShape.circle),
-                    todayTextStyle: const TextStyle(color: Colors.white), selectedTextStyle: const TextStyle(color: Colors.black),
-                    defaultTextStyle: const TextStyle(color: Colors.white70), weekendTextStyle: const TextStyle(color: Colors.white54),
-                    outsideTextStyle: const TextStyle(color: Colors.white24),
-                    markerDecoration: BoxDecoration(color: primary, shape: BoxShape.circle), markerSize: 6, markersMaxCount: 3),
-                  headerStyle: HeaderStyle(formatButtonVisible: true, titleCentered: true,
-                    titleTextStyle: const TextStyle(color: Colors.white, fontSize: 16),
-                    leftChevronIcon: const Icon(Icons.chevron_left, color: Colors.white70),
-                    rightChevronIcon: const Icon(Icons.chevron_right, color: Colors.white70),
-                    formatButtonTextStyle: TextStyle(color: primary, fontSize: 13),
-                    formatButtonDecoration: BoxDecoration(border: Border.all(color: primary.withOpacity(0.5)), borderRadius: BorderRadius.circular(12))),
-                  daysOfWeekStyle: const DaysOfWeekStyle(weekdayStyle: TextStyle(color: Colors.white54, fontSize: 12), weekendStyle: TextStyle(color: Colors.white38, fontSize: 12)),
-                ))),
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Colors.cyan, Colors.blue],
+                ).createShader(bounds),
+                child: const Text(
+                  '📅 Calendrier',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.white),
+                ),
               ),
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: Row(children: [
-                const Icon(Icons.event, color: Colors.cyanAccent, size: 18), const SizedBox(width: 8),
-                Text(_selectedDay != null ? DateFormat('EEEE d MMMM yyyy', 'fr_FR').format(_selectedDay!) : 'Aucune date',
-                  style: const TextStyle(color: Colors.white, fontSize: 14)),
-                const Spacer(),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.cyanAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-                  child: Text('${events.length} activite(s)', style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold))),
-              ])),
-              Expanded(child: events.isEmpty
-                ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.event_busy, size: 48, color: Colors.white24), const SizedBox(height: 8),
-                    const Text('Aucune activite ce jour', style: TextStyle(color: Colors.white38, fontSize: 14))]))
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100), itemCount: events.length,
-                    itemBuilder: (context, index) {
-                      final activity = events[index];
-                      final isPositive = activity.isBonus;
-                      final childName = _getChildName(provider, activity.childId);
-                      return TvFocusWrapper(
-                        autofocus: index == 0,
-                        onTap: () => _showActivityDetail(activity, provider),
+            ),
+            body: Focus(
+              onKey: (node, event) {
+                if (event is RawKeyDownEvent) {
+                  if (event.logicalKey ==
+                      LogicalKeyboardKey.arrowLeft) {
+                    _navigateDay(-1);
+                    return KeyEventResult.handled;
+                  }
+                  if (event.logicalKey ==
+                      LogicalKeyboardKey.arrowRight) {
+                    _navigateDay(1);
+                    return KeyEventResult.handled;
+                  }
+                  if (event.logicalKey ==
+                      LogicalKeyboardKey.arrowUp) {
+                    _navigateWeek(-1);
+                    return KeyEventResult.handled;
+                  }
+                  if (event.logicalKey ==
+                      LogicalKeyboardKey.arrowDown) {
+                    _navigateWeek(1);
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: Column(
+                children: [
+                  // Calendar with fade-in
+                  FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: _calendarController,
+                      curve: Curves.easeIn,
+                    ),
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, -0.1),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(
+                        parent: _calendarController,
+                        curve: Curves.easeOutCubic,
+                      )),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: TableCalendar(
+                          locale: 'fr_FR',
+                          firstDay: DateTime(2020),
+                          lastDay: DateTime(2030),
+                          focusedDay: _focusedDay,
+                          selectedDayPredicate: (day) =>
+                              isSameDay(_selectedDay, day),
+                          calendarFormat: _calendarFormat,
+                          onFormatChanged: (format) {
+                            setState(() => _calendarFormat = format);
+                          },
+                          onDaySelected: _onDaySelected,
+                          onPageChanged: (focused) {
+                            _focusedDay = focused;
+                          },
+                          eventLoader: (day) =>
+                              _getEventsForDay(day, fp),
+                          calendarStyle: CalendarStyle(
+                            defaultTextStyle:
+                                const TextStyle(color: Colors.white70),
+                            weekendTextStyle:
+                                TextStyle(color: Colors.cyan[200]),
+                            outsideTextStyle:
+                                const TextStyle(color: Colors.white24),
+                            todayDecoration: BoxDecoration(
+                              color: Colors.cyan.withOpacity(0.3),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: Colors.cyan, width: 1.5),
+                            ),
+                            selectedDecoration: const BoxDecoration(
+                              color: Colors.cyan,
+                              shape: BoxShape.circle,
+                            ),
+                            markerDecoration: BoxDecoration(
+                              color: Colors.amber,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.amber.withOpacity(0.5),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            markerSize: 6,
+                            markersMaxCount: 3,
+                          ),
+                          headerStyle: const HeaderStyle(
+                            titleCentered: true,
+                            formatButtonVisible: true,
+                            titleTextStyle: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                            leftChevronIcon: Icon(Icons.chevron_left,
+                                color: Colors.cyan),
+                            rightChevronIcon: Icon(Icons.chevron_right,
+                                color: Colors.cyan),
+                            formatButtonTextStyle:
+                                TextStyle(color: Colors.cyan, fontSize: 12),
+                            formatButtonDecoration: BoxDecoration(
+                              border: BorderSide(color: Colors.cyan),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(8)),
+                            ),
+                          ),
+                          daysOfWeekStyle: const DaysOfWeekStyle(
+                            weekdayStyle: TextStyle(
+                                color: Colors.white54, fontSize: 12),
+                            weekendStyle: TextStyle(
+                                color: Colors.cyan, fontSize: 12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Selected date header with pulse
+                  if (_selectedDay != null)
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: AnimatedBuilder(
+                        animation: _selectPulseAnim,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _selectPulseAnim.value,
+                            child: child,
+                          );
+                        },
                         child: Container(
-                          margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-                          child: Row(children: [
-                            Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: (isPositive ? Colors.greenAccent : Colors.redAccent).withOpacity(0.15)),
-                              child: Icon(isPositive ? Icons.add_circle_outline : Icons.remove_circle_outline, color: isPositive ? Colors.greenAccent : Colors.redAccent, size: 20)),
-                            const SizedBox(width: 12),
-                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(activity.reason, style: const TextStyle(color: Colors.white, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              const SizedBox(height: 2),
-                              Row(children: [
-                                Text(childName, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                                const SizedBox(width: 8),
-                                Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(6)),
-                                  child: Text(activity.category, style: const TextStyle(color: Colors.white30, fontSize: 10))),
-                              ]),
-                            ])),
-                            Text('${isPositive ? '+' : '-'}${activity.points}', style: TextStyle(color: isPositive ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
-                          ])));
-                    })),
-            ]),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.cyan.withOpacity(0.2),
+                                Colors.blue.withOpacity(0.2),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: Colors.cyan.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            '${_selectedDay!.day.toString().padLeft(2, '0')}/${_selectedDay!.month.toString().padLeft(2, '0')}/${_selectedDay!.year} — ${selectedEvents.length} activité${selectedEvents.length > 1 ? 's' : ''}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Events list with cascade
+                  Expanded(
+                    child: selectedEvents.isEmpty
+                        ? FadeTransition(
+                            opacity: _eventsController,
+                            child: const Center(
+                              child: Text(
+                                'Aucune activité ce jour',
+                                style: TextStyle(
+                                    color: Colors.white38, fontSize: 14),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12),
+                            itemCount: selectedEvents.length,
+                            itemBuilder: (context, index) {
+                              final event = selectedEvents[index];
+                              final pts =
+                                  event['points'] as int? ?? 0;
+                              final isPositive = pts >= 0;
+
+                              // Staggered animation per item
+                              final delay = index * 0.1;
+                              return AnimatedBuilder(
+                                animation: _eventsController,
+                                builder: (context, child) {
+                                  final progress =
+                                      ((_eventsController.value - delay) /
+                                              (1.0 - delay))
+                                          .clamp(0.0, 1.0);
+                                  return Transform.translate(
+                                    offset:
+                                        Offset(50 * (1 - progress), 0),
+                                    child: Opacity(
+                                      opacity: progress,
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: TvFocusWrapper(
+                                  onTap: () =>
+                                      _showEventDetail(event),
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.only(bottom: 8),
+                                    child: GlassCard(
+                                      child: Row(
+                                        children: [
+                                          // Points badge
+                                          Container(
+                                            width: 44,
+                                            height: 44,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              gradient: LinearGradient(
+                                                colors: isPositive
+                                                    ? [
+                                                        Colors.green,
+                                                        Colors
+                                                            .green.shade700
+                                                      ]
+                                                    : [
+                                                        Colors.red,
+                                                        Colors
+                                                            .red.shade700
+                                                      ],
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: (isPositive
+                                                          ? Colors.green
+                                                          : Colors.red)
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 6,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                isPositive
+                                                    ? '+$pts'
+                                                    : '$pts',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight:
+                                                      FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment
+                                                      .start,
+                                              children: [
+                                                Text(
+                                                  event['reason'] ??
+                                                      'Activité',
+                                                  style:
+                                                      const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                    height: 2),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      event['childName'] ??
+                                                          '',
+                                                      style: TextStyle(
+                                                          color: Colors
+                                                              .cyan[300],
+                                                          fontSize: 11),
+                                                    ),
+                                                    if (event[
+                                                            'category'] !=
+                                                        null) ...[
+                                                      const Text(' • ',
+                                                          style: TextStyle(
+                                                              color: Colors
+                                                                  .white24)),
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 1,
+                                                        ),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors
+                                                              .cyan
+                                                              .withOpacity(
+                                                                  0.1),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      6),
+                                                        ),
+                                                        child: Text(
+                                                          event['category']
+                                                              as String,
+                                                          style: const TextStyle(
+                                                              color: Colors
+                                                                  .white38,
+                                                              fontSize:
+                                                                  10),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          // Time
+                                          if (event['timestamp'] != null)
+                                            Text(
+                                              _formatTime(
+                                                  event['timestamp']
+                                                      as DateTime),
+                                              style: const TextStyle(
+                                                  color: Colors.white38,
+                                                  fontSize: 11),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
     );
   }
+
+  String _formatTime(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+  void _showEventDetail(Map<String, dynamic> event) {
+    final pts = event['points'] as int? ?? 0;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.translate(
+              offset: Offset(0, 30 * (1 - value)),
+              child: Opacity(opacity: value, child: child),
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A2E),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.cyan.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  event['reason'] ?? 'Activité',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _detailRow('Enfant', event['childName'] ?? ''),
+                _detailRow('Points',
+                    '${pts >= 0 ? '+' : ''}$pts',
+                    color: pts >= 0 ? Colors.green : Colors.red),
+                if (event['category'] != null)
+                  _detailRow('Catégorie', event['category'] as String),
+                if (event['timestamp'] != null)
+                  _detailRow(
+                    'Date & Heure',
+                    _formatDateTime(event['timestamp'] as DateTime),
+                  ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailRow(String label, String value, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white54)),
+          Text(
+            value,
+            style: TextStyle(
+              color: color ?? Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateTime(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} à ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 }
