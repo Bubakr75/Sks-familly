@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -11,7 +12,7 @@ import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
-import 'badges_screen.dart';
+import 'tribunal_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -48,7 +49,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     _actionsController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500));
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 5; i++) {
       final start = i * 0.12;
       final end = (start + 0.4).clamp(0.0, 1.0);
       _actionAnims.add(CurvedAnimation(
@@ -60,8 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 1.0, end: 1.08).animate(
-        CurvedAnimation(
-            parent: _pulseController, curve: Curves.easeInOut));
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
     _podiumController.forward();
     Future.delayed(const Duration(milliseconds: 600), () {
@@ -75,6 +75,63 @@ class _DashboardScreenState extends State<DashboardScreen>
     _actionsController.dispose();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  /// Build child avatar widget — shows photo if available, otherwise initials
+  Widget _buildChildAvatar(ChildModel child, double radius) {
+    if (child.hasPhoto) {
+      try {
+        final bytes = base64Decode(child.photoBase64);
+        return Container(
+          width: radius * 2,
+          height: radius * 2,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.amber.withOpacity(0.6), width: 3),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.amber.withOpacity(0.3),
+                  blurRadius: 16,
+                  spreadRadius: 2),
+            ],
+            image: DecorationImage(
+              image: MemoryImage(bytes),
+              fit: BoxFit.cover,
+            ),
+          ),
+        );
+      } catch (_) {}
+    }
+
+    // Fallback: avatar emoji or initial
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [Colors.cyan.withOpacity(0.4), Colors.purple.withOpacity(0.3)],
+        ),
+        border: Border.all(color: Colors.cyan.withOpacity(0.5), width: 2),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.cyan.withOpacity(0.2),
+              blurRadius: 12,
+              spreadRadius: 2),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          child.avatar.isNotEmpty
+              ? child.avatar
+              : (child.name.isNotEmpty ? child.name[0].toUpperCase() : '?'),
+          style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: radius * 0.7),
+        ),
+      ),
+    );
   }
 
   @override
@@ -122,7 +179,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       },
       child: Row(
         children: [
-          const Text('👨‍👩‍👧‍👦', style: TextStyle(fontSize: 28)),
+          const Text('🏠', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -135,16 +192,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                         fontWeight: FontWeight.bold)),
                 Text(
                   '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName}',
-                  style: const TextStyle(
-                      color: Colors.white54, fontSize: 13),
+                  style: const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],
             ),
           ),
           TvFocusWrapper(
             onTap: () => Scaffold.of(context).openDrawer(),
-            child:
-                const Icon(Icons.menu, color: Colors.white, size: 28),
+            child: const Icon(Icons.menu, color: Colors.white, size: 28),
           ),
         ],
       ),
@@ -165,32 +220,31 @@ class _DashboardScreenState extends State<DashboardScreen>
                     fontWeight: FontWeight.bold,
                     color: Colors.white)),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           if (sorted.length >= 2)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                // #2
                 AnimatedBuilder(
                   animation: _podium2Anim,
                   builder: (context, child) {
                     return Transform.translate(
-                      offset:
-                          Offset(0, 50 * (1 - _podium2Anim.value)),
+                      offset: Offset(0, 50 * (1 - _podium2Anim.value)),
                       child: Opacity(
                           opacity: _podium2Anim.value,
                           child: _podiumCard(sorted[1], 2)),
                     );
                   },
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
+                // #1
                 AnimatedBuilder(
-                  animation:
-                      Listenable.merge([_podium1Anim, _pulseAnim]),
+                  animation: Listenable.merge([_podium1Anim, _pulseAnim]),
                   builder: (context, child) {
                     return Transform.translate(
-                      offset:
-                          Offset(0, 60 * (1 - _podium1Anim.value)),
+                      offset: Offset(0, 60 * (1 - _podium1Anim.value)),
                       child: Opacity(
                         opacity: _podium1Anim.value,
                         child: Transform.scale(
@@ -201,14 +255,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                     );
                   },
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
+                // #3
                 if (sorted.length >= 3)
                   AnimatedBuilder(
                     animation: _podium3Anim,
                     builder: (context, child) {
                       return Transform.translate(
-                        offset: Offset(
-                            0, 40 * (1 - _podium3Anim.value)),
+                        offset: Offset(0, 40 * (1 - _podium3Anim.value)),
                         child: Opacity(
                             opacity: _podium3Anim.value,
                             child: _podiumCard(sorted[2], 3)),
@@ -219,6 +273,43 @@ class _DashboardScreenState extends State<DashboardScreen>
             )
           else
             _podiumCard(sorted[0], 1),
+          // Remaining children below podium
+          if (sorted.length > 3) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white12),
+            ...sorted.skip(3).toList().asMap().entries.map((entry) {
+              final child = entry.value;
+              final rank = entry.key + 4;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: TvFocusWrapper(
+                  onTap: () => Navigator.push(context,
+                      ZoomPageRoute(page: ChildDashboardScreen(childId: child.id))),
+                  child: Row(
+                    children: [
+                      Text('#$rank',
+                          style: const TextStyle(
+                              color: Colors.white38,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14)),
+                      const SizedBox(width: 10),
+                      _buildChildAvatar(child, 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(child.name,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 14)),
+                      ),
+                      Text('${child.points} pts',
+                          style: const TextStyle(
+                              color: Colors.white54,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );
@@ -226,43 +317,27 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _podiumCard(ChildModel child, int rank) {
     final heights = {1: 110.0, 2: 85.0, 3: 65.0};
-    final colors = {
-      1: Colors.amber,
-      2: Colors.grey,
-      3: Colors.orange
-    };
+    final colors = {1: Colors.amber, 2: Colors.grey, 3: Colors.orange};
     final medals = {1: '🥇', 2: '🥈', 3: '🥉'};
+    final avatarRadius = rank == 1 ? 36.0 : 26.0;
 
     return TvFocusWrapper(
       onTap: () {
-        Navigator.push(
-            context,
-            ZoomPageRoute(
-                page: ChildDashboardScreen(childId: child.id)));
+        Navigator.push(context,
+            ZoomPageRoute(page: ChildDashboardScreen(childId: child.id)));
       },
       child: Column(
         children: [
-          Text(medals[rank]!, style: const TextStyle(fontSize: 22)),
-          const SizedBox(height: 4),
-          CircleAvatar(
-            radius: rank == 1 ? 26 : 20,
-            backgroundColor: Colors.cyan.withOpacity(0.3),
-            child: Text(
-              child.name.isNotEmpty
-                  ? child.name[0].toUpperCase()
-                  : '?',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: rank == 1 ? 20 : 16),
-            ),
-          ),
-          const SizedBox(height: 4),
+          Text(medals[rank]!, style: const TextStyle(fontSize: 24)),
+          const SizedBox(height: 6),
+          // Big photo avatar
+          _buildChildAvatar(child, avatarRadius),
+          const SizedBox(height: 6),
           Text(child.name,
               style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12)),
+                  fontSize: 13)),
           TweenAnimationBuilder<int>(
             tween: IntTween(begin: 0, end: child.points),
             duration: const Duration(milliseconds: 1500),
@@ -271,12 +346,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                   style: TextStyle(
                       color: colors[rank],
                       fontWeight: FontWeight.bold,
-                      fontSize: 13));
+                      fontSize: 14));
             },
           ),
+          Text(child.levelTitle,
+              style: TextStyle(
+                  color: colors[rank]!.withOpacity(0.7), fontSize: 10)),
           const SizedBox(height: 4),
           Container(
-            width: 65,
+            width: 70,
             height: heights[rank],
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -287,15 +365,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                   colors[rank]!.withOpacity(0.3),
                 ],
               ),
-              borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(8)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(8)),
             ),
             child: Center(
               child: Text('#$rank',
                   style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontWeight: FontWeight.bold,
-                      fontSize: 18)),
+                      fontSize: 20)),
             ),
           ),
         ],
@@ -304,36 +382,33 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildQuickActions(FamilyProvider fp) {
+    // 5 actions: no badges
     final actions = [
-      _Act('Punition', Icons.menu_book, Colors.red, () {
+      _Act('📝 Punition', Icons.menu_book, Colors.red, () {
         Navigator.push(
             context,
             SlidePageRoute(
-              page: const PunishmentLinesScreen(),
-              direction: SlideDirection.up,
-            ));
+                page: const PunishmentLinesScreen(),
+                direction: SlideDirection.up));
       }),
-      _Act('Immunité', Icons.shield, Colors.amber, () {
-        Navigator.push(context,
-            SpinPageRoute(page: const ImmunityLinesScreen()));
-      }),
-      _Act('Écran', Icons.tv, Colors.blue, () {
-        _showChildPickerForNav(fp, (childId) {
-          Navigator.push(
-              context,
-              ZoomPageRoute(
-                  page: ChildDashboardScreen(childId: childId)));
-        });
-      }),
-      _Act('Tribunal', Icons.gavel, Colors.purple, () {}),
-      _Act('Badges', Icons.emoji_events, Colors.orange, () {
+      _Act('🛡️ Immunité', Icons.shield, Colors.amber, () {
         Navigator.push(
-            context, ZoomPageRoute(page: const BadgesScreen()));
+            context, SpinPageRoute(page: const ImmunityLinesScreen()));
       }),
-      _Act('Ventes', Icons.store, Colors.green, () {
+      _Act('📺 Écran', Icons.tv, Colors.blue, () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(context,
-              DoorPageRoute(page: TradeScreen(childId: childId)));
+              ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
+        });
+      }),
+      _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, () {
+        Navigator.push(
+            context, SlidePageRoute(page: const TribunalScreen()));
+      }),
+      _Act('🏪 Ventes', Icons.storefront, Colors.green, () {
+        _showChildPickerForNav(fp, (childId) {
+          Navigator.push(
+              context, DoorPageRoute(page: TradeScreen(childId: childId)));
         });
       }),
     ];
@@ -348,8 +423,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             return Opacity(
               opacity: value,
               child: Transform.translate(
-                  offset: Offset(-20 * (1 - value), 0),
-                  child: child),
+                  offset: Offset(-20 * (1 - value), 0), child: child),
             );
           },
           child: const Text('⚡ Actions Rapides',
@@ -368,8 +442,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           childAspectRatio: 1.1,
           children: List.generate(actions.length, (i) {
             final action = actions[i];
-            final anim =
-                i < _actionAnims.length ? _actionAnims[i] : null;
+            final anim = i < _actionAnims.length ? _actionAnims[i] : null;
             if (anim == null) return _actionTile(action);
             return AnimatedBuilder(
               animation: anim,
@@ -377,8 +450,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 return Transform.scale(
                   scale: anim.value.clamp(0.0, 1.0),
                   child: Opacity(
-                      opacity: anim.value.clamp(0.0, 1.0),
-                      child: child),
+                      opacity: anim.value.clamp(0.0, 1.0), child: child),
                 );
               },
               child: _actionTile(action),
@@ -408,8 +480,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       spreadRadius: 2),
                 ],
               ),
-              child:
-                  Icon(action.icon, color: action.color, size: 26),
+              child: Icon(action.icon, color: action.color, size: 26),
             ),
             const SizedBox(height: 8),
             Text(action.label,
@@ -425,14 +496,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildActiveTrades(FamilyProvider fp) {
-    final active =
-        fp.trades.where((t) => t.isActive).toList();
+    final active = fp.trades.where((t) => t.isActive).toList();
     if (active.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('🔄 Échanges en cours',
+        const Text('🏪 Ventes en cours',
             style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -440,14 +510,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         const SizedBox(height: 8),
         ...active.asMap().entries.map((entry) {
           final trade = entry.value;
-          final sellerName =
-              fp.getChild(trade.fromChildId)?.name ?? '?';
-          final buyerName =
-              fp.getChild(trade.toChildId)?.name ?? '?';
+          final sellerName = fp.getChild(trade.fromChildId)?.name ?? '?';
+          final buyerName = fp.getChild(trade.toChildId)?.name ?? '?';
           return TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.0, end: 1.0),
-            duration:
-                Duration(milliseconds: 500 + entry.key * 200),
+            duration: Duration(milliseconds: 500 + entry.key * 200),
             curve: Curves.easeOutCubic,
             builder: (context, value, child) {
               return Transform.translate(
@@ -462,8 +529,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   Navigator.push(
                       context,
                       DoorPageRoute(
-                          page: TradeScreen(
-                              childId: trade.fromChildId)));
+                          page: TradeScreen(childId: trade.fromChildId)));
                 },
                 child: GlassCard(
                   child: Row(
@@ -473,11 +539,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                         height: 10,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.cyan,
+                          color: Colors.greenAccent,
                           boxShadow: [
                             BoxShadow(
-                                color:
-                                    Colors.cyan.withOpacity(0.5),
+                                color: Colors.greenAccent.withOpacity(0.5),
                                 blurRadius: 6),
                           ],
                         ),
@@ -485,26 +550,33 @@ class _DashboardScreenState extends State<DashboardScreen>
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                                '$sellerName → $buyerName',
+                            Text('$sellerName → $buyerName',
                                 style: const TextStyle(
                                     color: Colors.white,
-                                    fontWeight:
-                                        FontWeight.bold)),
+                                    fontWeight: FontWeight.bold)),
                             Text(
                                 '${trade.immunityLines} lignes • ${trade.serviceDescription}',
                                 style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12),
+                                    color: Colors.white54, fontSize: 12),
                                 maxLines: 1,
-                                overflow:
-                                    TextOverflow.ellipsis),
+                                overflow: TextOverflow.ellipsis),
                           ],
                         ),
                       ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.greenAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(trade.statusLabel,
+                            style: const TextStyle(
+                                color: Colors.greenAccent, fontSize: 11)),
+                      ),
+                      const SizedBox(width: 4),
                       const Icon(Icons.chevron_right,
                           color: Colors.white38),
                     ],
@@ -532,8 +604,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         return Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1A1A2E),
-            borderRadius:
-                BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -552,22 +623,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                     onSelected(child.id);
                   },
                   child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor:
-                          Colors.cyan.withOpacity(0.3),
-                      child: Text(
-                          child.name.isNotEmpty
-                              ? child.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                              color: Colors.white)),
-                    ),
+                    leading: _buildChildAvatar(child, 20),
                     title: Text(child.name,
-                        style: const TextStyle(
-                            color: Colors.white)),
-                    subtitle: Text('${child.points} pts',
-                        style: const TextStyle(
-                            color: Colors.white54)),
+                        style: const TextStyle(color: Colors.white)),
+                    subtitle: Text('${child.points} pts • ${child.levelTitle}',
+                        style: const TextStyle(color: Colors.white54)),
                   ),
                 );
               }),
