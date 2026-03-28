@@ -31,23 +31,18 @@ class _HomeScreenState extends State<HomeScreen>
   int _currentIndex = 0;
   late AnimationController _navBarController;
   late Animation<Offset> _navBarSlide;
-
-  final _protectedTabs = [1, 4]; // AddPoints, Settings
+  final _protectedTabs = [1, 4];
 
   @override
   void initState() {
     super.initState();
     _navBarController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
+        vsync: this, duration: const Duration(milliseconds: 800));
     _navBarSlide = Tween<Offset>(
       begin: const Offset(0, 1),
       end: Offset.zero,
     ).animate(CurvedAnimation(
-      parent: _navBarController,
-      curve: Curves.easeOutCubic,
-    ));
+        parent: _navBarController, curve: Curves.easeOutCubic));
     _navBarController.forward();
   }
 
@@ -60,9 +55,9 @@ class _HomeScreenState extends State<HomeScreen>
   void _onTabSelected(int index) {
     if (_protectedTabs.contains(index)) {
       final pin = Provider.of<PinProvider>(context, listen: false);
-      if (pin.hasPin && !pin.isParentMode) {
+      if (pin.isPinSet && !pin.isParentMode) {
         _showPinCheck(() {
-          pin.enterParentMode();
+          pin.unlockParentMode();
           setState(() => _currentIndex = index);
         });
         return;
@@ -74,13 +69,13 @@ class _HomeScreenState extends State<HomeScreen>
   void _showPinCheck(VoidCallback onSuccess) {
     final controller = TextEditingController();
     final pin = Provider.of<PinProvider>(context, listen: false);
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
           title: const Text('🔒 PIN requis',
               style: TextStyle(color: Colors.white)),
           content: TextField(
@@ -97,7 +92,8 @@ class _HomeScreenState extends State<HomeScreen>
               hintText: '• • • •',
               hintStyle: const TextStyle(color: Colors.white24),
               enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                borderSide:
+                    BorderSide(color: Colors.cyan.withOpacity(0.3)),
                 borderRadius: BorderRadius.circular(10),
               ),
               focusedBorder: OutlineInputBorder(
@@ -125,7 +121,8 @@ class _HomeScreenState extends State<HomeScreen>
                   );
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyan),
               child: const Text('OK'),
             ),
           ],
@@ -194,10 +191,9 @@ class _HomeScreenState extends State<HomeScreen>
                   color: const Color(0xFF0D1B2E).withOpacity(0.95),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.cyan.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, -5),
-                    ),
+                        color: Colors.cyan.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, -5)),
                   ],
                 ),
                 child: SafeArea(
@@ -209,7 +205,8 @@ class _HomeScreenState extends State<HomeScreen>
                       children: [
                         _buildNavItem(0, Icons.dashboard, 'Accueil'),
                         _buildNavItem(1, Icons.add_circle, 'Points'),
-                        _buildNavItem(2, Icons.calendar_month, 'Calendrier'),
+                        _buildNavItem(
+                            2, Icons.calendar_month, 'Calendrier'),
                         _buildNavItem(3, Icons.bar_chart, 'Stats'),
                         _buildNavItem(4, Icons.settings, 'Réglages'),
                       ],
@@ -232,11 +229,11 @@ class _HomeScreenState extends State<HomeScreen>
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 16 : 10,
-          vertical: 8,
-        ),
+            horizontal: isSelected ? 16 : 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.cyan.withOpacity(0.15) : Colors.transparent,
+          color: isSelected
+              ? Colors.cyan.withOpacity(0.15)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -245,11 +242,9 @@ class _HomeScreenState extends State<HomeScreen>
             AnimatedScale(
               scale: isSelected ? 1.2 : 1.0,
               duration: const Duration(milliseconds: 300),
-              child: Icon(
-                icon,
-                color: isSelected ? Colors.cyan : Colors.white38,
-                size: 24,
-              ),
+              child: Icon(icon,
+                  color: isSelected ? Colors.cyan : Colors.white38,
+                  size: 24),
             ),
             const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
@@ -257,7 +252,8 @@ class _HomeScreenState extends State<HomeScreen>
               style: TextStyle(
                 color: isSelected ? Colors.cyan : Colors.white38,
                 fontSize: isSelected ? 11 : 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight:
+                    isSelected ? FontWeight.bold : FontWeight.normal,
               ),
               child: Text(label),
             ),
@@ -284,106 +280,108 @@ class _HomeScreenState extends State<HomeScreen>
                 },
                 child: Column(
                   children: [
-                    const Text('👨‍👩‍👧‍👦', style: TextStyle(fontSize: 40)),
+                    const Text('👨‍👩‍👧‍👦',
+                        style: TextStyle(fontSize: 40)),
                     const SizedBox(height: 8),
                     ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
+                      shaderCallback: (bounds) =>
+                          const LinearGradient(
                         colors: [Colors.cyan, Colors.purple],
                       ).createShader(bounds),
-                      child: const Text(
-                        'Family Points',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: const Text('Family Points',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
                     ),
-                    Text(
-                      fp.activeParent ?? '',
-                      style: const TextStyle(color: Colors.white38),
-                    ),
+                    Text(fp.currentParentName,
+                        style:
+                            const TextStyle(color: Colors.white38)),
                   ],
                 ),
               ),
             ),
             const Divider(color: Colors.white12),
-
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  // ★ Badges → ZoomPageRoute
-                  _drawerItem(Icons.emoji_events, Colors.amber, 'Badges', () {
+                  _drawerItem(
+                      Icons.emoji_events, Colors.amber, 'Badges', () {
                     Navigator.pop(context);
-                    Navigator.push(context, ZoomPageRoute(page: const BadgesScreen()));
+                    Navigator.push(context,
+                        ZoomPageRoute(page: const BadgesScreen()));
                   }),
-
-                  // ★ Notes Scolaires → SlidePageRoute
-                  _drawerItem(Icons.school, Colors.blue, 'Notes Scolaires', () {
+                  _drawerItem(Icons.school, Colors.blue,
+                      'Notes Scolaires', () {
                     Navigator.pop(context);
                     _showChildPicker(fp, (childId) {
-                      Navigator.push(context,
-                          SlidePageRoute(page: SchoolNotesScreen(childId: childId)));
+                      Navigator.push(
+                          context,
+                          SlidePageRoute(
+                              page: SchoolNotesScreen(
+                                  childId: childId)));
                     });
                   }),
-
-                  // ★ Punition → SlidePageRoute UP
-                  _drawerItem(Icons.menu_book, Colors.red, 'Lignes de Punition', () {
+                  _drawerItem(Icons.menu_book, Colors.red,
+                      'Lignes de Punition', () {
                     Navigator.pop(context);
-                    Navigator.push(context, SlidePageRoute(
-                      page: const PunishmentLinesScreen(),
-                      direction: SlideDirection.up,
-                    ));
+                    Navigator.push(
+                        context,
+                        SlidePageRoute(
+                          page: const PunishmentLinesScreen(),
+                          direction: SlideDirection.up,
+                        ));
                   }),
-
-                  // ★ Immunité → SpinPageRoute
-                  _drawerItem(Icons.shield, Colors.amber, 'Lignes d\'Immunité', () {
+                  _drawerItem(Icons.shield, Colors.amber,
+                      'Lignes d\'Immunité', () {
                     Navigator.pop(context);
-                    Navigator.push(context,
-                        SpinPageRoute(page: const ImmunityLinesScreen()));
+                    Navigator.push(
+                        context,
+                        SpinPageRoute(
+                            page: const ImmunityLinesScreen()));
                   }),
-
-                  // ★ Ventes → DoorPageRoute
-                  _drawerItem(Icons.store, Colors.green, 'Ventes / Échanges', () {
+                  _drawerItem(Icons.store, Colors.green,
+                      'Ventes / Échanges', () {
                     Navigator.pop(context);
-                    Navigator.push(context,
-                        DoorPageRoute(page: const TradeScreen()));
+                    _showChildPicker(fp, (childId) {
+                      Navigator.push(
+                          context,
+                          DoorPageRoute(
+                              page:
+                                  TradeScreen(childId: childId)));
+                    });
                   }),
-
-                  // ★ Gérer Enfants → SlidePageRoute
-                  _drawerItem(Icons.people, Colors.cyan, 'Gérer les Enfants', () {
+                  _drawerItem(Icons.people, Colors.cyan,
+                      'Gérer les Enfants', () {
                     Navigator.pop(context);
-                    Navigator.push(context,
-                        SlidePageRoute(page: const FamilyScreen()));
+                    Navigator.push(
+                        context,
+                        SlidePageRoute(
+                            page: const FamilyScreen()));
                   }),
-
-                  // ★ Sync
-                  _drawerItem(Icons.sync, Colors.teal, 'Synchronisation', () {
+                  _drawerItem(Icons.sync, Colors.teal,
+                      'Synchronisation', () {
                     Navigator.pop(context);
-                    fp.syncData();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('🔄 Synchronisation...'),
-                        backgroundColor: Colors.teal,
-                      ),
-                    );
+                    Navigator.push(
+                        context,
+                        SlidePageRoute(
+                            page: const FamilyScreen()));
                   }),
-
-                  // ★ Historique
-                  _drawerItem(Icons.history, Colors.orange, 'Historique Complet', () {
+                  _drawerItem(Icons.history, Colors.orange,
+                      'Historique Complet', () {
                     Navigator.pop(context);
                     _showFullHistory(fp);
                   }),
                 ],
               ),
             ),
-
             const Divider(color: Colors.white12),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text('v4.9.0',
-                  style: TextStyle(color: Colors.white24, fontSize: 12)),
+                  style: TextStyle(
+                      color: Colors.white24, fontSize: 12)),
             ),
           ],
         ),
@@ -399,20 +397,21 @@ class _HomeScreenState extends State<HomeScreen>
         leading: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withOpacity(0.15),
-          ),
+              shape: BoxShape.circle,
+              color: color.withOpacity(0.15)),
           child: Icon(icon, color: color, size: 20),
         ),
         title: Text(label,
-            style: const TextStyle(color: Colors.white, fontSize: 14)),
-        trailing:
-            const Icon(Icons.chevron_right, color: Colors.white24, size: 18),
+            style:
+                const TextStyle(color: Colors.white, fontSize: 14)),
+        trailing: const Icon(Icons.chevron_right,
+            color: Colors.white24, size: 18),
       ),
     );
   }
 
-  void _showChildPicker(FamilyProvider fp, Function(String) onSelected) {
+  void _showChildPicker(
+      FamilyProvider fp, Function(String) onSelected) {
     if (fp.children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -425,7 +424,6 @@ class _HomeScreenState extends State<HomeScreen>
       onSelected(fp.children.first.id);
       return;
     }
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -433,7 +431,8 @@ class _HomeScreenState extends State<HomeScreen>
         return Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius:
+                BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -453,16 +452,22 @@ class _HomeScreenState extends State<HomeScreen>
                   },
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: Colors.cyan.withOpacity(0.3),
+                      backgroundColor:
+                          Colors.cyan.withOpacity(0.3),
                       child: Text(
-                        child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white),
+                        child.name.isNotEmpty
+                            ? child.name[0].toUpperCase()
+                            : '?',
+                        style:
+                            const TextStyle(color: Colors.white),
                       ),
                     ),
                     title: Text(child.name,
-                        style: const TextStyle(color: Colors.white)),
-                    subtitle: Text('${child.totalPoints} pts',
-                        style: const TextStyle(color: Colors.white54)),
+                        style:
+                            const TextStyle(color: Colors.white)),
+                    subtitle: Text('${child.points} pts',
+                        style: const TextStyle(
+                            color: Colors.white54)),
                   ),
                 );
               }),
@@ -474,15 +479,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _showFullHistory(FamilyProvider fp) {
-    final allHistory = <Map<String, dynamic>>[];
-    for (final child in fp.children) {
-      for (final h in fp.getHistoryForChild(child.id)) {
-        allHistory.add({...h, 'childName': child.name});
-      }
-    }
-    allHistory.sort((a, b) =>
-        (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -494,7 +490,8 @@ class _HomeScreenState extends State<HomeScreen>
             return Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(20)),
               ),
               child: Column(
                 children: [
@@ -503,9 +500,8 @@ class _HomeScreenState extends State<HomeScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2)),
                   ),
                   const Padding(
                     padding: EdgeInsets.all(16),
@@ -518,30 +514,35 @@ class _HomeScreenState extends State<HomeScreen>
                   Expanded(
                     child: ListView.builder(
                       controller: scrollController,
-                      itemCount: allHistory.length,
+                      itemCount: fp.history.length,
                       itemBuilder: (context, index) {
-                        final h = allHistory[index];
-                        final pts = h['points'] as int? ?? 0;
+                        final h = fp.history[index];
+                        final pts = h.isBonus ? h.points : -h.points;
+                        final childName = fp.getChild(h.childId)?.name ?? '?';
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: pts >= 0
+                            backgroundColor: h.isBonus
                                 ? Colors.green.withOpacity(0.2)
                                 : Colors.red.withOpacity(0.2),
                             child: Text(
-                              pts >= 0 ? '+$pts' : '$pts',
+                              h.isBonus ? '+${h.points}' : '-${h.points}',
                               style: TextStyle(
-                                color: pts >= 0 ? Colors.green : Colors.red,
+                                color: h.isBonus
+                                    ? Colors.green
+                                    : Colors.red,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11,
                               ),
                             ),
                           ),
-                          title: Text(h['reason'] ?? '',
-                              style: const TextStyle(color: Colors.white)),
+                          title: Text(h.reason,
+                              style: const TextStyle(
+                                  color: Colors.white)),
                           subtitle: Text(
-                            '${h['childName']} • ${h['category'] ?? ''}',
+                            '$childName • ${h.category}',
                             style: const TextStyle(
-                                color: Colors.white54, fontSize: 11),
+                                color: Colors.white54,
+                                fontSize: 11),
                           ),
                         );
                       },
