@@ -259,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   : ListView.builder(
                       itemCount: allHistory.length,
                       itemBuilder: (_, i) {
-                        final HistoryEntry activity = allHistory[allHistory.length - 1 - i];
+                        final HistoryEntry activity = allHistory[i];
                         final childName = provider.children
                             .where((c) => c.id == activity.childId)
                             .map((c) => c.name)
@@ -267,6 +267,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         final points = activity.points;
                         final reason = activity.reason;
                         final date = activity.date;
+                        final isPositive = activity.isBonus;
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
@@ -277,8 +278,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           child: Row(
                             children: [
                               Icon(
-                                points >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                                color: points >= 0 ? Colors.green : Colors.red,
+                                isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+                                color: isPositive ? Colors.green : Colors.red,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
@@ -286,19 +287,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(childName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    Text(childName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                    const SizedBox(height: 2),
                                     Text(reason, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+                                    const SizedBox(height: 2),
                                     Text(
-                                      '${date.day}/${date.month}/${date.year}',
+                                      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}',
                                       style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
                                     ),
                                   ],
                                 ),
                               ),
                               Text(
-                                '${points >= 0 ? '+' : ''}$points',
+                                '${isPositive ? '+' : '-'}$points',
                                 style: TextStyle(
-                                  color: points >= 0 ? Colors.green : Colors.red,
+                                  color: isPositive ? Colors.green : Colors.red,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -432,11 +435,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              child: const Column(
+              child: Column(
                 children: [
-                  Icon(Icons.family_restroom, color: Colors.blue, size: 48),
-                  SizedBox(height: 8),
-                  Text(
+                  const Icon(Icons.family_restroom, color: Colors.blue, size: 48),
+                  const SizedBox(height: 8),
+                  const Text(
                     'SKS Family',
                     style: TextStyle(
                       color: Colors.white,
@@ -444,10 +447,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Gestion familiale',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  const SizedBox(height: 4),
+                  Consumer<FamilyProvider>(
+                    builder: (_, provider, __) => Text(
+                      provider.isSyncEnabled ? 'Connecté' : 'Hors ligne',
+                      style: TextStyle(
+                        color: provider.isSyncEnabled ? Colors.green[300] : Colors.orange[300],
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -523,11 +531,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   _buildDrawerItem(
                     icon: Icons.sync_rounded,
                     title: 'Synchronisation',
-                    subtitle: 'Sync données',
+                    subtitle: 'Reconnecter Firestore',
                     onTap: () {
                       Navigator.pop(context);
+                      final provider = Provider.of<FamilyProvider>(context, listen: false);
+                      provider.reconnectFirestore();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Synchronisation lancée...')),
+                        const SnackBar(content: Text('Reconnexion Firestore lancée...')),
                       );
                     },
                   ),
