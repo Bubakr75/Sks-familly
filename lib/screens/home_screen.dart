@@ -13,7 +13,6 @@ import 'add_points_screen.dart';
 import 'calendar_screen.dart';
 import 'stats_screen.dart';
 import 'settings_screen.dart';
-import 'badge_screen.dart';
 import 'school_notes_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
@@ -152,8 +151,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               onPressed: () {
                 final pin = pinController.text.trim();
                 final pinProvider = context.read<PinProvider>();
-                if (pinProvider.checkPin(pin)) {
-                  pinProvider.enterParentMode();
+                if (pinProvider.verifyPin(pin)) {
                   Navigator.pop(ctx);
                   onSuccess();
                 } else {
@@ -564,7 +562,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ─── DRAWER ───────────────────────────────────────────────────
   Widget _buildDrawer(BuildContext context) {
-    final provider = context.read<FamilyProvider>();
     const drawerBg = Color(0xFF0D1B2E);
     const accentColor = Colors.cyanAccent;
 
@@ -652,7 +649,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       _showChildPicker(context, (child) {
                         Navigator.push(
                           context,
-                          SlidePageRoute(page: SchoolNotesScreen(child: child)),
+                          SlidePageRoute(
+                            page: SchoolNotesScreen(childId: child.id),
+                          ),
                         );
                       });
                     },
@@ -699,22 +698,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     color: Colors.tealAccent,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        DoorPageRoute(page: const TradeScreen()),
-                      );
-                    },
-                  ),
-                  _drawerItem(
-                    icon: Icons.emoji_events_rounded,
-                    label: 'Badges',
-                    color: Colors.yellowAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        ZoomPageRoute(page: const BadgeScreen()),
-                      );
+                      _showChildPicker(context, (child) {
+                        Navigator.push(
+                          context,
+                          DoorPageRoute(
+                            page: TradeScreen(childId: child.id),
+                          ),
+                        );
+                      });
                     },
                   ),
                   _drawerItem(
