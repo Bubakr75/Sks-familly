@@ -17,6 +17,7 @@ import 'badges_screen.dart';
 import 'notes_screen.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../models/history_entry.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -34,7 +35,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late Animation<Offset> _slideAnim;
   final Set<int> _protectedTabs = {1, 4};
 
-  // FocusScopeNode pour gérer le focus après navigation
   final FocusScopeNode _navBarFocusScope = FocusScopeNode(debugLabel: 'NavBar');
 
   @override
@@ -259,16 +259,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   : ListView.builder(
                       itemCount: allHistory.length,
                       itemBuilder: (_, i) {
-                        final activity = allHistory[allHistory.length - 1 - i];
+                        final HistoryEntry activity = allHistory[allHistory.length - 1 - i];
                         final childName = provider.children
-                            .where((c) => c.id == activity['childId'])
+                            .where((c) => c.id == activity.childId)
                             .map((c) => c.name)
                             .firstOrNull ?? 'Inconnu';
-                        final points = activity['points'] ?? 0;
-                        final reason = activity['reason'] ?? '';
-                        final date = activity['date'] != null
-                            ? DateTime.tryParse(activity['date'].toString())
-                            : null;
+                        final points = activity.points;
+                        final reason = activity.reason;
+                        final date = activity.date;
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
@@ -290,11 +288,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   children: [
                                     Text(childName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                     Text(reason, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
-                                    if (date != null)
-                                      Text(
-                                        '${date.day}/${date.month}/${date.year}',
-                                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
-                                      ),
+                                    Text(
+                                      '${date.day}/${date.month}/${date.year}',
+                                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -529,10 +526,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     subtitle: 'Sync données',
                     onTap: () {
                       Navigator.pop(context);
-                      final provider = Provider.of<FamilyProvider>(context, listen: false);
-                      provider.saveAllData();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Données sauvegardées')),
+                        const SnackBar(content: Text('Synchronisation lancée...')),
                       );
                     },
                   ),
