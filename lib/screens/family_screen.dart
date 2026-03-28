@@ -20,7 +20,6 @@ class _FamilyScreenState extends State<FamilyScreen> {
   final _customCodeController = TextEditingController();
   bool _useCustomCode = false;
 
-  // FocusNodes pour gerer la navigation TV sur les TextFields
   final _joinFocusNode = FocusNode();
   final _customCodeFocusNode = FocusNode();
 
@@ -32,8 +31,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   Future<void> _loadFamilyCode() async {
     final provider = context.read<FamilyProvider>();
-    final code = await provider.getFamilyCode();
-    if (mounted) setState(() => _familyCode = code);
+    final code = provider.getFamilyCode();
+    if (mounted) setState(() => _familyCode = code.isNotEmpty ? code : null);
   }
 
   @override
@@ -51,13 +50,17 @@ class _FamilyScreenState extends State<FamilyScreen> {
       customCode = _customCodeController.text.trim().toUpperCase();
       if (customCode.length < 4) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Le code doit avoir au moins 4 caracteres'), backgroundColor: Colors.orange),
+          const SnackBar(
+              content: Text('Le code doit avoir au moins 4 caracteres'),
+              backgroundColor: Colors.orange),
         );
         return;
       }
       if (customCode.length > 10) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Le code ne doit pas depasser 10 caracteres'), backgroundColor: Colors.orange),
+          const SnackBar(
+              content: Text('Le code ne doit pas depasser 10 caracteres'),
+              backgroundColor: Colors.orange),
         );
         return;
       }
@@ -68,15 +71,22 @@ class _FamilyScreenState extends State<FamilyScreen> {
       final provider = context.read<FamilyProvider>();
       final code = await provider.createFamily(customCode: customCode);
       if (!mounted) return;
-      setState(() { _familyCode = code; _isLoading = false; });
+      setState(() {
+        _familyCode = code;
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Famille creee ! Code : $code'), backgroundColor: const Color(0xFF00C853)),
+        SnackBar(
+            content: Text('Famille creee ! Code : $code'),
+            backgroundColor: const Color(0xFF00C853)),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e'), backgroundColor: const Color(0xFFFF1744)),
+        SnackBar(
+            content: Text('$e'),
+            backgroundColor: const Color(0xFFFF1744)),
       );
     }
   }
@@ -85,7 +95,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
     final code = _joinController.text.trim().toUpperCase();
     if (code.isEmpty || code.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrez le code famille (4 a 10 caracteres)'), backgroundColor: Colors.orange),
+        const SnackBar(
+            content: Text('Entrez le code famille (4 a 10 caracteres)'),
+            backgroundColor: Colors.orange),
       );
       return;
     }
@@ -99,11 +111,15 @@ class _FamilyScreenState extends State<FamilyScreen> {
       if (success) {
         setState(() => _familyCode = code);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connecte a la famille !'), backgroundColor: Color(0xFF00C853)),
+          const SnackBar(
+              content: Text('Connecte a la famille !'),
+              backgroundColor: Color(0xFF00C853)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Code non trouve'), backgroundColor: Color(0xFFFF1744)),
+          const SnackBar(
+              content: Text('Code non trouve'),
+              backgroundColor: Color(0xFFFF1744)),
         );
       }
     } catch (e) {
@@ -113,24 +129,34 @@ class _FamilyScreenState extends State<FamilyScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: const Color(0xFF0D1B2A),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Row(
             children: [
               Icon(Icons.error, color: Color(0xFFFF1744)),
               SizedBox(width: 8),
-              Text('Erreur Firebase', style: TextStyle(color: Colors.white)),
+              Text('Erreur Firebase',
+                  style: TextStyle(color: Colors.white)),
             ],
           ),
-          content: Text('$e', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          content: Text('$e',
+              style:
+                  const TextStyle(color: Colors.white70, fontSize: 13)),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const FirebaseDiagnosticScreen()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            const FirebaseDiagnosticScreen()));
               },
               child: const Text('Diagnostic'),
             ),
-            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK')),
           ],
         ),
       );
@@ -142,7 +168,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0D1B2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange),
@@ -150,11 +177,16 @@ class _FamilyScreenState extends State<FamilyScreen> {
             Text('Deconnecter', style: TextStyle(color: Colors.white)),
           ],
         ),
-        content: const Text('Les donnees locales seront conservees. Continuer ?', style: TextStyle(color: Colors.white70)),
+        content: const Text(
+            'Les donnees locales seront conservees. Continuer ?',
+            style: TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            style:
+                FilledButton.styleFrom(backgroundColor: Colors.orange),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Deconnecter'),
           ),
@@ -166,7 +198,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
       if (!mounted) return;
       await context.read<FamilyProvider>().disconnectFamily();
       if (!mounted) return;
-      setState(() { _familyCode = null; _useCustomCode = false; });
+      setState(() {
+        _familyCode = null;
+        _useCustomCode = false;
+      });
     }
   }
 
@@ -174,23 +209,26 @@ class _FamilyScreenState extends State<FamilyScreen> {
     if (_familyCode == null) return;
     Clipboard.setData(ClipboardData(text: _familyCode!));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Code "$_familyCode" copie !'), backgroundColor: const Color(0xFF00C853)),
+      SnackBar(
+          content: Text('Code "$_familyCode" copie !'),
+          backgroundColor: const Color(0xFF00C853)),
     );
   }
 
   Future<void> _showChangeCodeDialog() async {
     final controller = TextEditingController(text: _familyCode);
-    final primary = Theme.of(context).colorScheme.primary;
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0D1B2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Row(
           children: [
             Icon(Icons.edit_rounded, color: Color(0xFF448AFF)),
             SizedBox(width: 8),
-            Text('Modifier le code', style: TextStyle(color: Colors.white)),
+            Text('Modifier le code',
+                style: TextStyle(color: Colors.white)),
           ],
         ),
         content: Column(
@@ -206,14 +244,20 @@ class _FamilyScreenState extends State<FamilyScreen> {
               textCapitalization: TextCapitalization.characters,
               textAlign: TextAlign.center,
               maxLength: 10,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.white),
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 4,
+                  color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'NOUVEAU CODE',
                 counterText: '',
                 helperText: '4 a 10 caracteres',
                 helperStyle: TextStyle(color: Colors.grey[600]),
               ),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]'))],
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]'))
+              ],
             ),
           ],
         ),
@@ -223,7 +267,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
             child: const Text('Annuler'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim().toUpperCase()),
+            onPressed: () => Navigator.pop(
+                ctx, controller.text.trim().toUpperCase()),
             child: const Text('Valider'),
           ),
         ],
@@ -241,20 +286,21 @@ class _FamilyScreenState extends State<FamilyScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Code change en "$result" !'), backgroundColor: const Color(0xFF00C853)),
+        SnackBar(
+            content: Text('Code change en "$result" !'),
+            backgroundColor: const Color(0xFF00C853)),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e'), backgroundColor: const Color(0xFFFF1744)),
+        SnackBar(
+            content: Text('$e'),
+            backgroundColor: const Color(0xFFFF1744)),
       );
     }
   }
 
-  /// Helper pour creer un TextField compatible telecommande TV
-  /// Quand l'utilisateur appuie sur fleche bas, le focus passe au widget suivant
-  /// Quand il appuie sur fleche haut, le focus passe au widget precedent
   Widget _buildTvTextField({
     required TextEditingController controller,
     required FocusNode focusNode,
@@ -270,7 +316,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
     String? counterText,
   }) {
     return KeyboardListener(
-      focusNode: FocusNode(), // listener externe
+      focusNode: FocusNode(),
       onKeyEvent: (event) {
         if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
@@ -288,7 +334,12 @@ class _FamilyScreenState extends State<FamilyScreen> {
         maxLength: maxLength,
         keyboardType: keyboardType,
         obscureText: obscureText,
-        style: style ?? const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.white),
+        style: style ??
+            const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+                color: Colors.white),
         decoration: InputDecoration(
           hintText: hintText,
           counterText: counterText ?? '',
@@ -297,7 +348,6 @@ class _FamilyScreenState extends State<FamilyScreen> {
           suffixIcon: suffixIcon,
         ),
         inputFormatters: inputFormatters,
-        // Quand l'utilisateur valide dans le TextField, on passe au focus suivant
         onSubmitted: (_) => focusNode.nextFocus(),
       ),
     );
@@ -320,7 +370,19 @@ class _FamilyScreenState extends State<FamilyScreen> {
                     children: [
                       CircularProgressIndicator(color: primary),
                       const SizedBox(height: 16),
-                      NeonText(text: 'Connexion en cours...', fontSize: 16, color: primary),
+                      Text(
+                        'Connexion en cours...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: primary,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                                color: primary.withValues(alpha: 0.5),
+                                blurRadius: 10),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 )
@@ -330,51 +392,76 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
+                      // ── Header ──
                       Row(
                         children: [
                           TvFocusWrapper(
                             onTap: () => Navigator.pop(context),
-                            borderRadius: BorderRadius.circular(12),
                             child: Container(
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
-                                color: Colors.white.withValues(alpha: 0.06),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                                color:
+                                    Colors.white.withValues(alpha: 0.06),
+                                border: Border.all(
+                                    color: Colors.white
+                                        .withValues(alpha: 0.08)),
                               ),
-                              child: const Icon(Icons.arrow_back_rounded, color: Colors.white70, size: 20),
+                              child: const Icon(
+                                  Icons.arrow_back_rounded,
+                                  color: Colors.white70,
+                                  size: 20),
                             ),
                           ),
                           const SizedBox(width: 14),
-                          GlowIcon(icon: Icons.cloud_sync_rounded, color: primary, size: 26),
+                          Icon(Icons.cloud_sync_rounded,
+                              color: primary, size: 26),
                           const SizedBox(width: 10),
-                          NeonText(text: 'Synchronisation', fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, glowIntensity: 0.2),
+                          Text(
+                            'Synchronisation',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(
+                                    color: Colors.white
+                                        .withValues(alpha: 0.2),
+                                    blurRadius: 8),
+                              ],
+                            ),
+                          ),
                           const Spacer(),
                           TvFocusWrapper(
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FirebaseDiagnosticScreen())),
-                            borderRadius: BorderRadius.circular(18),
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const FirebaseDiagnosticScreen())),
                             child: Container(
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.06),
+                                color:
+                                    Colors.white.withValues(alpha: 0.06),
                               ),
-                              child: Icon(Icons.bug_report_rounded, color: primary, size: 18),
+                              child: Icon(Icons.bug_report_rounded,
+                                  color: primary, size: 18),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
 
-                      // Status card
+                      // ── Status card ──
                       GlassCard(
-                        margin: EdgeInsets.zero,
                         padding: const EdgeInsets.all(20),
                         borderRadius: 20,
-                        glowColor: isConnected ? const Color(0xFF00E676) : null,
+                        glowColor: isConnected
+                            ? const Color(0xFF00E676)
+                            : null,
                         child: Row(
                           children: [
                             Container(
@@ -382,32 +469,64 @@ class _FamilyScreenState extends State<FamilyScreen> {
                               height: 56,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: (isConnected ? const Color(0xFF00E676) : Colors.grey).withValues(alpha: 0.12),
+                                color: (isConnected
+                                        ? const Color(0xFF00E676)
+                                        : Colors.grey)
+                                    .withValues(alpha: 0.12),
                                 boxShadow: isConnected
-                                    ? [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.2), blurRadius: 12)]
+                                    ? [
+                                        BoxShadow(
+                                            color: const Color(0xFF00E676)
+                                                .withValues(alpha: 0.2),
+                                            blurRadius: 12)
+                                      ]
                                     : null,
                               ),
                               child: Icon(
-                                isConnected ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-                                color: isConnected ? const Color(0xFF00E676) : Colors.grey,
+                                isConnected
+                                    ? Icons.cloud_done_rounded
+                                    : Icons.cloud_off_rounded,
+                                color: isConnected
+                                    ? const Color(0xFF00E676)
+                                    : Colors.grey,
                                 size: 28,
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
-                                  NeonText(
-                                    text: isConnected ? 'Synchronise' : 'Mode local',
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: isConnected ? const Color(0xFF00E676) : Colors.grey,
+                                  Text(
+                                    isConnected
+                                        ? 'Synchronise'
+                                        : 'Mode local',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: isConnected
+                                          ? const Color(0xFF00E676)
+                                          : Colors.grey,
+                                      shadows: [
+                                        Shadow(
+                                            color: (isConnected
+                                                    ? const Color(
+                                                        0xFF00E676)
+                                                    : Colors.grey)
+                                                .withValues(alpha: 0.5),
+                                            blurRadius: 8),
+                                      ],
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    isConnected ? 'Donnees partagees en temps reel' : 'Les donnees restent sur cet appareil',
-                                    style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                                    isConnected
+                                        ? 'Donnees partagees en temps reel'
+                                        : 'Les donnees restent sur cet appareil',
+                                    style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 13),
                                   ),
                                 ],
                               ),
@@ -439,34 +558,56 @@ class _FamilyScreenState extends State<FamilyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NeonText(text: 'Code famille', fontSize: 13, fontWeight: FontWeight.w700, color: primary, glowIntensity: 0.3),
+        _neonLabel('Code famille', primary),
         const SizedBox(height: 8),
         GlassCard(
-          margin: EdgeInsets.zero,
           padding: const EdgeInsets.all(20),
           borderRadius: 20,
           glowColor: primary,
           child: Column(
             children: [
-              const Text('Partagez ce code avec votre conjoint(e) :', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.white70)),
+              const Text(
+                'Partagez ce code avec votre conjoint(e) :',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.white70),
+              ),
               const SizedBox(height: 16),
               TvFocusWrapper(
                 onTap: _copyCode,
-                borderRadius: BorderRadius.circular(18),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 20),
                   decoration: BoxDecoration(
                     color: primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: primary.withValues(alpha: 0.3), width: 2),
-                    boxShadow: [BoxShadow(color: primary.withValues(alpha: 0.15), blurRadius: 16)],
+                    border: Border.all(
+                        color: primary.withValues(alpha: 0.3), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                          color: primary.withValues(alpha: 0.15),
+                          blurRadius: 16)
+                    ],
                   ),
                   child: Column(
                     children: [
-                      NeonText(text: _familyCode ?? '...', fontSize: 36, fontWeight: FontWeight.w900, color: primary),
+                      Text(
+                        _familyCode ?? '...',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: primary,
+                          shadows: [
+                            Shadow(
+                                color: primary.withValues(alpha: 0.5),
+                                blurRadius: 12),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 6),
-                      Text('Appuyez pour copier', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                      Text('Appuyez pour copier',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey[500])),
                     ],
                   ),
                 ),
@@ -478,7 +619,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   onPressed: _copyCode,
                   icon: const Icon(Icons.copy_rounded),
                   label: const Text('Copier le code'),
-                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  style: FilledButton.styleFrom(
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 14)),
                 ),
               ),
               const SizedBox(height: 10),
@@ -487,10 +630,12 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _showChangeCodeDialog,
                   icon: Icon(Icons.edit_rounded, color: primary),
-                  label: Text('Modifier le code', style: TextStyle(color: primary)),
+                  label: Text('Modifier le code',
+                      style: TextStyle(color: primary)),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: primary),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
@@ -499,11 +644,14 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _disconnect,
-                  icon: const Icon(Icons.link_off_rounded, color: Colors.orange),
-                  label: const Text('Deconnecter', style: TextStyle(color: Colors.orange)),
+                  icon: const Icon(Icons.link_off_rounded,
+                      color: Colors.orange),
+                  label: const Text('Deconnecter',
+                      style: TextStyle(color: Colors.orange)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.orange),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
@@ -518,34 +666,46 @@ class _FamilyScreenState extends State<FamilyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NeonText(text: 'Creer une famille', fontSize: 13, fontWeight: FontWeight.w700, color: primary, glowIntensity: 0.3),
+        _neonLabel('Creer une famille', primary),
         const SizedBox(height: 8),
         GlassCard(
-          margin: EdgeInsets.zero,
           padding: const EdgeInsets.all(20),
           borderRadius: 20,
           child: Column(
             children: [
               Container(
-                width: 64, height: 64,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: primary.withValues(alpha: 0.12),
-                  boxShadow: [BoxShadow(color: primary.withValues(alpha: 0.15), blurRadius: 12)],
+                  boxShadow: [
+                    BoxShadow(
+                        color: primary.withValues(alpha: 0.15),
+                        blurRadius: 12)
+                  ],
                 ),
-                child: Icon(Icons.group_add_rounded, color: primary, size: 32),
+                child: Icon(Icons.group_add_rounded,
+                    color: primary, size: 32),
               ),
               const SizedBox(height: 16),
-              const Text('Creez une famille et obtenez un code.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+              const Text(
+                'Creez une famille et obtenez un code.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70),
+              ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Expanded(
-                    child: Text('Code personnalise', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  const Expanded(
+                    child: Text('Code personnalise',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 14)),
                   ),
                   Switch(
                     value: _useCustomCode,
-                    onChanged: (v) => setState(() => _useCustomCode = v),
+                    onChanged: (v) =>
+                        setState(() => _useCustomCode = v),
                   ),
                 ],
               ),
@@ -558,7 +718,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   maxLength: 10,
                   textCapitalization: TextCapitalization.characters,
                   helperText: '4 a 10 caracteres',
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]'))],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'[A-Za-z0-9]'))
+                  ],
                 ),
                 const SizedBox(height: 8),
               ],
@@ -568,8 +731,14 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 child: FilledButton.icon(
                   onPressed: _createFamily,
                   icon: const Icon(Icons.add_rounded),
-                  label: Text(_useCustomCode ? 'Creer avec mon code' : 'Creer ma famille', style: const TextStyle(fontSize: 16)),
-                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  label: Text(
+                      _useCustomCode
+                          ? 'Creer avec mon code'
+                          : 'Creer ma famille',
+                      style: const TextStyle(fontSize: 16)),
+                  style: FilledButton.styleFrom(
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 14)),
                 ),
               ),
             ],
@@ -583,26 +752,35 @@ class _FamilyScreenState extends State<FamilyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NeonText(text: 'Rejoindre une famille', fontSize: 13, fontWeight: FontWeight.w700, color: Colors.orange, glowIntensity: 0.3),
+        _neonLabel('Rejoindre une famille', Colors.orange),
         const SizedBox(height: 8),
         GlassCard(
-          margin: EdgeInsets.zero,
           padding: const EdgeInsets.all(20),
           borderRadius: 20,
           glowColor: Colors.orange,
           child: Column(
             children: [
               Container(
-                width: 64, height: 64,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.orange.withValues(alpha: 0.12),
-                  boxShadow: [BoxShadow(color: Colors.orange.withValues(alpha: 0.15), blurRadius: 12)],
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.orange.withValues(alpha: 0.15),
+                        blurRadius: 12)
+                  ],
                 ),
-                child: const Icon(Icons.people_rounded, color: Colors.orange, size: 32),
+                child: const Icon(Icons.people_rounded,
+                    color: Colors.orange, size: 32),
               ),
               const SizedBox(height: 16),
-              const Text('Entrez le code pour rejoindre.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+              const Text(
+                'Entrez le code pour rejoindre.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70),
+              ),
               const SizedBox(height: 16),
               _buildTvTextField(
                 controller: _joinController,
@@ -610,12 +788,19 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 hintText: 'CODE',
                 maxLength: 10,
                 textCapitalization: TextCapitalization.characters,
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]'))],
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                      RegExp(r'[A-Za-z0-9]'))
+                ],
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.paste_rounded),
                   onPressed: () async {
-                    final data = await Clipboard.getData(Clipboard.kTextPlain);
-                    if (data?.text != null) _joinController.text = data!.text!.toUpperCase().trim();
+                    final data =
+                        await Clipboard.getData(Clipboard.kTextPlain);
+                    if (data?.text != null) {
+                      _joinController.text =
+                          data!.text!.toUpperCase().trim();
+                    }
                   },
                 ),
               ),
@@ -625,10 +810,12 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 child: FilledButton.icon(
                   onPressed: _joinFamily,
                   icon: const Icon(Icons.login_rounded),
-                  label: const Text('Rejoindre', style: TextStyle(fontSize: 16)),
+                  label: const Text('Rejoindre',
+                      style: TextStyle(fontSize: 16)),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
@@ -641,7 +828,6 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   Widget _buildInfoCard(Color primary) {
     return GlassCard(
-      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(16),
       borderRadius: 18,
       child: Column(
@@ -649,9 +835,22 @@ class _FamilyScreenState extends State<FamilyScreen> {
         children: [
           Row(
             children: [
-              GlowIcon(icon: Icons.info_outline_rounded, size: 18, color: primary),
+              Icon(Icons.info_outline_rounded,
+                  size: 18, color: primary),
               const SizedBox(width: 8),
-              NeonText(text: 'Comment ca marche ?', fontSize: 14, fontWeight: FontWeight.w700, color: primary, glowIntensity: 0.3),
+              Text(
+                'Comment ca marche ?',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: primary,
+                  shadows: [
+                    Shadow(
+                        color: primary.withValues(alpha: 0.3),
+                        blurRadius: 8),
+                  ],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -659,18 +858,38 @@ class _FamilyScreenState extends State<FamilyScreen> {
             (Icons.looks_one_rounded, 'Un parent cree la famille'),
             (Icons.looks_two_rounded, 'Il copie et partage le code'),
             (Icons.looks_3_rounded, 'L\'autre parent colle le code'),
-            (Icons.looks_4_rounded, 'Les donnees se synchronisent !'),
+            (Icons.looks_4_rounded,
+                'Les donnees se synchronisent !'),
           ].map((item) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(item.$1, size: 20, color: primary),
-                const SizedBox(width: 10),
-                Expanded(child: Text(item.$2, style: TextStyle(fontSize: 13, color: Colors.grey[400]))),
-              ],
-            ),
-          )),
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(item.$1, size: 20, color: primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: Text(item.$2,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[400]))),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  /// Helper widget that replaces NeonText — just a styled Text with glow shadow
+  Widget _neonLabel(String text, Color color) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: color,
+        shadows: [
+          Shadow(color: color.withValues(alpha: 0.3), blurRadius: 8),
         ],
       ),
     );
