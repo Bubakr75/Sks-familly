@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:math' as math;
 
-/// Widget pour rendre n'importe quel element focusable et activable
-/// avec une telecommande TV (D-pad + bouton OK/Select/Enter)
-class TvFocusWrapper extends StatelessWidget {
+class TvFocusWrapper extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
   final double focusBorderWidth;
   final Color focusBorderColor;
-  final BorderRadius borderRadius;
+  final double borderRadius;
   final bool autofocus;
+  final double focusScale;
 
   const TvFocusWrapper({
     super.key,
@@ -17,53 +17,127 @@ class TvFocusWrapper extends StatelessWidget {
     this.onTap,
     this.focusBorderWidth = 2.5,
     this.focusBorderColor = const Color(0xFF448AFF),
-    this.borderRadius = const BorderRadius.all(Radius.circular(14)),
+    this.borderRadius = 14,
     this.autofocus = false,
+    this.focusScale = 1.04,
   });
+
+  @override
+  State<TvFocusWrapper> createState() => _TvFocusWrapperState();
+}
+
+class _TvFocusWrapperState extends State<TvFocusWrapper>
+    with SingleTickerProviderStateMixin {
+  bool _isFocused = false;
+  late AnimationController _glowController;
+  late Animation<double> _glowAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _glowAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _glowController.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChange(bool hasFocus) {
+    setState(() => _isFocused = hasFocus);
+    if (hasFocus) {
+      _glowController.repeat(reverse: true);
+    } else {
+      _glowController.stop();
+      _glowController.value = 0.0;
+    }
+  }
+
+  KeyEventResult _handleKey(FocusNode node, RawKeyEvent event) {
+    if (event is RawKeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.select ||
+          event.logicalKey == LogicalKeyboardKey.enter ||
+          event.logicalKey == LogicalKeyboardKey.gameButtonA ||
+          event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+        widget.onTap?.call();
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Focus(
-      autofocus: autofocus,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.select ||
-             event.logicalKey == LogicalKeyboardKey.enter ||
-             event.logicalKey == LogicalKeyboardKey.gameButtonA ||
-             event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-          onTap?.call();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Builder(
-        builder: (context) {
-          final hasFocus = Focus.of(context).hasFocus;
-          return GestureDetector(
-            onTap: onTap,
-            child: AnimatedContainer(
+      autofocus: widget.autofocus,
+      onFocusChange: _handleFocusChange,
+      onKey: _handleKey,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedBuilder(
+          animation: _glowAnim,
+          builder: (context, child) {
+            return AnimatedScale(
+              scale: _isFocused ? widget.focusScale : 1.0,
               duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                borderRadius: borderRadius,
-                border: hasFocus
-                    ? Border.all(color: focusBorderColor, width: focusBorderWidth)
-                    : Border.all(color: Colors.transparent, width: focusBorderWidth),
-                boxShadow: hasFocus
-                    ? [BoxShadow(color: focusBorderColor.withValues(alpha: 0.3), blurRadius: 12)]
-                    : [],
+              curve: Curves.easeOutCubic,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(widget.borderRadius),
+                  border: _isFocused
+                      ? Border.all(
+                          color: widget.focusBorderColor
+                              .withOpacity(_glowAnim.value),
+                          width: widget.focusBorderWidth,
+                        )
+                      : Border.all(
+                          color: Colors.transparent,
+                          width: widget.focusBorderWidth,
+                        ),
+                  boxShadow: _isFocused
+                      ? [
+                          // Inner glow
+                          BoxShadow(
+                            color: widget.focusBorderColor
+                                .withOpacity(0.2 * _glowAnim.value),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                          // Outer glow
+                          BoxShadow(
+                            color: widget.focusBorderColor
+                                .withOpacity(0.15 * _glowAnim.value),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ]
+                      : [],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(
+                      widget.borderRadius - widget.focusBorderWidth),
+                  child: child,
+                ),
               ),
-              child: child,
-            ),
-          );
-        },
+            );
+          },
+          child: widget.child,
+        ),
       ),
     );
   }
 }
 
-/// Intercepteur global de touches TV
-/// A placer dans le builder de MaterialApp pour que
-/// TOUS les boutons/champs repondent au bouton OK de la telecommande
+/// Keyboard handler pour la racine de l'app TV
 class TvKeyboardHandler extends StatelessWidget {
   final Widget child;
 
@@ -71,14 +145,11 @@ class TvKeyboardHandler extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
+    return RawKeyboardListener(
       focusNode: FocusNode(),
-      autofocus: false,
-      onKeyEvent: (event) {
-        // On ne fait rien ici, le vrai travail est dans _TvActionDispatcher
-      },
+      onKey: (_) {},
       child: Actions(
-        actions: <Type, Action<Intent>>{
+        actions: {
           ActivateIntent: _TvActivateAction(),
           ButtonActivateIntent: _TvButtonActivateAction(),
         },
@@ -88,26 +159,18 @@ class TvKeyboardHandler extends StatelessWidget {
   }
 }
 
-/// Action qui s'execute quand l'utilisateur appuie sur Enter/Select
-/// sur un widget focusable (bouton, checkbox, switch, etc.)
 class _TvActivateAction extends Action<ActivateIntent> {
   @override
-  Object? invoke(ActivateIntent intent) {
-    // Laisse Flutter gerer normalement l'activation
-    // Ceci garantit que les boutons natifs repondent au Enter/Select
-    return null;
-  }
+  bool isEnabled(ActivateIntent intent) => true;
 
   @override
-  bool isEnabled(ActivateIntent intent) => true;
+  Object? invoke(ActivateIntent intent) => null;
 }
 
 class _TvButtonActivateAction extends Action<ButtonActivateIntent> {
   @override
-  Object? invoke(ButtonActivateIntent intent) {
-    return null;
-  }
+  bool isEnabled(ButtonActivateIntent intent) => true;
 
   @override
-  bool isEnabled(ButtonActivateIntent intent) => true;
+  Object? invoke(ButtonActivateIntent intent) => null;
 }
