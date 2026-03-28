@@ -35,7 +35,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void initState() {
     super.initState();
 
-    // Logo fade + scale
     _logoController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -49,7 +48,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       curve: const Interval(0.1, 0.7, curve: Curves.elasticOut),
     );
 
-    // Pulse glow
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -58,7 +56,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Buttons slide up
     _buttonController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -72,7 +69,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       curve: const Interval(0.2, 0.8, curve: Curves.easeOutBack),
     );
 
-    // Converging particles
     _particleController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10),
@@ -81,7 +77,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       _particles.add(_WelcomeParticle(_rng));
     }
 
-    // Start sequence
     _logoController.forward();
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) _buttonController.forward();
@@ -104,7 +99,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         backgroundColor: Colors.transparent,
         body: Stack(
           children: [
-            // Converging particles
             AnimatedBuilder(
               animation: _particleController,
               builder: (context, _) {
@@ -117,8 +111,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 );
               },
             ),
-
-            // Main content
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
@@ -127,10 +119,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const SizedBox(height: 40),
-
-                      // Logo with glow
                       AnimatedBuilder(
-                        animation: Listenable.merge([_logoScale, _pulseAnim]),
+                        animation:
+                            Listenable.merge([_logoScale, _pulseAnim]),
                         builder: (context, child) {
                           return Transform.scale(
                             scale: _logoScale.value.clamp(0.0, 1.0),
@@ -154,18 +145,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     ),
                                   ],
                                 ),
-                                child: const Text(
-                                  '👨‍👩‍👧‍👦',
-                                  style: TextStyle(fontSize: 80),
-                                ),
+                                child: const Text('👨‍👩‍👧‍👦',
+                                    style: TextStyle(fontSize: 80)),
                               ),
                             ),
                           );
                         },
                       ),
                       const SizedBox(height: 24),
-
-                      // Title with shimmer
                       FadeTransition(
                         opacity: _logoFade,
                         child: ShaderMask(
@@ -174,7 +161,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               Colors.cyan,
                               Colors.white,
                               Colors.purple,
-                              Colors.cyan,
+                              Colors.cyan
                             ],
                           ).createShader(bounds),
                           child: const Text(
@@ -188,29 +175,22 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         ),
                       ),
                       const SizedBox(height: 8),
-
                       FadeTransition(
                         opacity: _logoFade,
-                        child: Text(
-                          'v4.9.0',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
-                            fontSize: 13,
-                          ),
-                        ),
+                        child: Text('v4.9.0',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.4),
+                                fontSize: 13)),
                       ),
                       const SizedBox(height: 60),
-
-                      // Parent button
                       AnimatedBuilder(
                         animation: _btn1Slide,
                         builder: (context, child) {
                           return Transform.translate(
-                            offset: Offset(0, 50 * (1 - _btn1Slide.value)),
+                            offset:
+                                Offset(0, 50 * (1 - _btn1Slide.value)),
                             child: Opacity(
-                              opacity: _btn1Slide.value,
-                              child: child,
-                            ),
+                                opacity: _btn1Slide.value, child: child),
                           );
                         },
                         child: TvFocusWrapper(
@@ -218,18 +198,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           onTap: () => _handleParentMode(),
                           child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 18),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF00BCD4), Color(0xFF0097A7)],
-                              ),
+                              gradient: const LinearGradient(colors: [
+                                Color(0xFF00BCD4),
+                                Color(0xFF0097A7)
+                              ]),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.cyan.withOpacity(0.4),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
+                                    color: Colors.cyan.withOpacity(0.4),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4)),
                               ],
                             ),
                             child: const Row(
@@ -238,52 +219,44 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 Icon(Icons.admin_panel_settings,
                                     color: Colors.white, size: 24),
                                 SizedBox(width: 10),
-                                Text(
-                                  'Mode Parent',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                Text('Mode Parent',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      // Child button
                       AnimatedBuilder(
                         animation: _btn2Slide,
                         builder: (context, child) {
                           return Transform.translate(
-                            offset: Offset(0, 50 * (1 - _btn2Slide.value)),
+                            offset:
+                                Offset(0, 50 * (1 - _btn2Slide.value)),
                             child: Opacity(
-                              opacity: _btn2Slide.value,
-                              child: child,
-                            ),
+                                opacity: _btn2Slide.value, child: child),
                           );
                         },
                         child: TvFocusWrapper(
                           onTap: () => _handleChildMode(),
                           child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 18),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.purple.shade400,
-                                  Colors.purple.shade700,
-                                ],
-                              ),
+                              gradient: LinearGradient(colors: [
+                                Colors.purple.shade400,
+                                Colors.purple.shade700,
+                              ]),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.purple.withOpacity(0.4),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
+                                    color: Colors.purple.withOpacity(0.4),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4)),
                               ],
                             ),
                             child: const Row(
@@ -292,14 +265,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 Icon(Icons.child_care,
                                     color: Colors.white, size: 24),
                                 SizedBox(width: 10),
-                                Text(
-                                  'Mode Enfant',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                Text('Mode Enfant',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ),
@@ -318,7 +288,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   void _handleParentMode() {
     final pin = Provider.of<PinProvider>(context, listen: false);
-    if (pin.hasPin) {
+    if (pin.isPinSet) {
       _showPinDialog(() => _showParentPicker());
     } else {
       _showParentPicker();
@@ -328,13 +298,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void _showPinDialog(VoidCallback onSuccess) {
     final controller = TextEditingController();
     final pin = Provider.of<PinProvider>(context, listen: false);
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
           title: const Text('🔒 PIN Parental',
               style: TextStyle(color: Colors.white)),
           content: TextField(
@@ -351,7 +321,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               hintText: '• • • •',
               hintStyle: const TextStyle(color: Colors.white24),
               enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                borderSide:
+                    BorderSide(color: Colors.cyan.withOpacity(0.3)),
                 borderRadius: BorderRadius.circular(10),
               ),
               focusedBorder: OutlineInputBorder(
@@ -374,13 +345,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('❌ PIN incorrect'),
-                      backgroundColor: Colors.red,
-                    ),
+                        content: Text('❌ PIN incorrect'),
+                        backgroundColor: Colors.red),
                   );
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyan),
               child: const Text('Valider'),
             ),
           ],
@@ -391,7 +362,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   void _showParentPicker() {
     final presets = ['Papa', 'Maman'];
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -399,7 +369,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         return Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius:
+                BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -409,9 +380,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 16),
               const Text('Qui es-tu ?',
@@ -435,10 +405,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
-                      child: Text(name,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 16)),
-                    ),
+                        child: Text(name,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 16))),
                   ),
                 );
               }),
@@ -451,13 +420,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+                    border:
+                        Border.all(color: Colors.cyan.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Center(
-                    child: Text('+ Autre',
-                        style: TextStyle(color: Colors.cyan, fontSize: 16)),
-                  ),
+                      child: Text('+ Autre',
+                          style: TextStyle(
+                              color: Colors.cyan, fontSize: 16))),
                 ),
               ),
             ],
@@ -474,7 +444,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
           title: const Text('Nom du parent',
               style: TextStyle(color: Colors.white)),
           content: TextField(
@@ -485,7 +456,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               hintText: 'Ex: Tonton, Mamie...',
               hintStyle: const TextStyle(color: Colors.white38),
               enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                borderSide:
+                    BorderSide(color: Colors.cyan.withOpacity(0.3)),
                 borderRadius: BorderRadius.circular(10),
               ),
               focusedBorder: OutlineInputBorder(
@@ -507,7 +479,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   _navigateToHome(controller.text.trim());
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyan),
               child: const Text('OK'),
             ),
           ],
@@ -518,39 +491,35 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   void _navigateToHome(String parentName) {
     final fp = Provider.of<FamilyProvider>(context, listen: false);
-    fp.setActiveParent(parentName);
-
-    // ★ TRANSITION CIRCULAIRE vers HomeScreen
+    fp.setCurrentParent(parentName);
     Navigator.pushReplacement(
       context,
-      CircularRevealPageRoute(page: HomeScreen(parentName: parentName)),
+      CircularRevealPageRoute(
+          page: HomeScreen(parentName: parentName)),
     );
   }
 
   void _handleChildMode() {
     final fp = Provider.of<FamilyProvider>(context, listen: false);
     final children = fp.children;
-
     if (children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Aucun enfant enregistré. Connectez-vous en mode Parent.'),
-          backgroundColor: Colors.orange,
-        ),
+            content: Text(
+                'Aucun enfant enregistré. Connectez-vous en mode Parent.'),
+            backgroundColor: Colors.orange),
       );
       return;
     }
-
     if (children.length == 1) {
-      // ★ TRANSITION ZOOM vers ChildDashboard
       Navigator.pushReplacement(
         context,
-        ZoomPageRoute(page: ChildDashboardScreen(childId: children.first.id)),
+        ZoomPageRoute(
+            page: ChildDashboardScreen(
+                childId: children.first.id)),
       );
       return;
     }
-
-    // Multiple children - show picker
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -558,7 +527,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         return Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius:
+                BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -568,9 +538,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 16),
               const Text('Qui es-tu ?',
@@ -583,11 +552,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 return TvFocusWrapper(
                   onTap: () {
                     Navigator.pop(ctx);
-                    // ★ TRANSITION ZOOM
                     Navigator.pushReplacement(
                       context,
                       ZoomPageRoute(
-                          page: ChildDashboardScreen(childId: child.id)),
+                          page: ChildDashboardScreen(
+                              childId: child.id)),
                     );
                   },
                   child: Container(
@@ -603,7 +572,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       children: [
                         CircleAvatar(
                           radius: 18,
-                          backgroundColor: Colors.purple.withOpacity(0.3),
+                          backgroundColor:
+                              Colors.purple.withOpacity(0.3),
                           child: Text(
                             child.name.isNotEmpty
                                 ? child.name[0].toUpperCase()
@@ -618,8 +588,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             style: const TextStyle(
                                 color: Colors.white, fontSize: 16)),
                         const Spacer(),
-                        Text('${child.totalPoints} pts',
-                            style: TextStyle(color: Colors.cyan[300])),
+                        Text('${child.points} pts',
+                            style:
+                                TextStyle(color: Colors.cyan[300])),
                       ],
                     ),
                   ),
@@ -633,11 +604,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 }
 
-// Particules convergentes
 class _WelcomeParticle {
   late double startX, startY, speed, size, phase;
   late Color color;
-
   _WelcomeParticle(math.Random rng) {
     startX = rng.nextDouble();
     startY = rng.nextDouble();
@@ -656,27 +625,23 @@ class _WelcomeParticle {
 class _WelcomeParticlePainter extends CustomPainter {
   final List<_WelcomeParticle> particles;
   final double time;
-
   _WelcomeParticlePainter({required this.particles, required this.time});
-
   @override
   void paint(Canvas canvas, Size size) {
     final centerX = size.width / 2;
     final centerY = size.height * 0.32;
-
     for (final p in particles) {
       final t = (time * p.speed + p.phase) % 1.0;
       final ease = 1.0 - t;
-      final px = p.startX * size.width + (centerX - p.startX * size.width) * (1 - ease);
-      final py = p.startY * size.height + (centerY - p.startY * size.height) * (1 - ease);
+      final px =
+          p.startX * size.width + (centerX - p.startX * size.width) * (1 - ease);
+      final py =
+          p.startY * size.height + (centerY - p.startY * size.height) * (1 - ease);
       final currentSize = p.size * ease;
-
       if (currentSize < 0.5) continue;
-
       final paint = Paint()
         ..color = p.color.withOpacity((ease * 0.8).clamp(0.0, 1.0))
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, currentSize);
-
       canvas.drawCircle(Offset(px, py), currentSize, paint);
     }
   }
