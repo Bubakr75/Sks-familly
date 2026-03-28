@@ -157,26 +157,10 @@ class _TribunalScreenState extends State<TribunalScreen>
   Widget _buildCaseCard(FamilyProvider fp, TribunalCase tc) {
     final plaintiff = fp.getChild(tc.plaintiffId)?.name ?? '?';
     final accused = fp.getChild(tc.accusedId)?.name ?? '?';
-    final Color statusColor;
-    final String statusText;
 
-    switch (tc.status) {
-      case TribunalStatus.filed:
-        statusColor = Colors.orange;
-        statusText = 'Déposée';
-      case TribunalStatus.scheduled:
-        statusColor = Colors.blue;
-        statusText = 'Programmée';
-      case TribunalStatus.inProgress:
-        statusColor = Colors.amber;
-        statusText = 'En audience';
-      case TribunalStatus.deliberation:
-        statusColor = Colors.purple;
-        statusText = 'Délibération';
-      case TribunalStatus.closed:
-        statusColor = Colors.grey;
-        statusText = 'Classée';
-    }
+    // Utiliser les getters du modèle directement
+    final statusColor = tc.statusColor;
+    final statusText = tc.statusLabel;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -203,11 +187,8 @@ class _TribunalScreenState extends State<TribunalScreen>
                   ),
                   const Spacer(),
                   if (tc.verdict != null)
-                    Text(tc.verdict == TribunalVerdict.guilty
-                        ? '⚠️ Coupable'
-                        : tc.verdict == TribunalVerdict.notGuilty
-                            ? '✅ Non coupable'
-                            : '🔄 Classée',
+                    Text(
+                        '${tc.verdictEmoji} ${tc.verdictLabel}',
                         style: TextStyle(
                             color: statusColor,
                             fontSize: 12,
@@ -290,8 +271,11 @@ class _TribunalScreenState extends State<TribunalScreen>
             const SizedBox(height: 16),
             _infoRow('Plaignant', plaintiff, Colors.amber),
             _infoRow('Accusé', accused, Colors.redAccent),
-            if (tc.verdictReason != null)
-              _infoRow('Verdict', tc.verdictReason!, Colors.purple),
+            _infoRow('Statut', '${tc.statusEmoji} ${tc.statusLabel}', tc.statusColor),
+            if (tc.verdict != null)
+              _infoRow('Verdict', '${tc.verdictEmoji} ${tc.verdictLabel}', Colors.purple),
+            if (tc.verdictReason != null && tc.verdictReason!.isNotEmpty)
+              _infoRow('Raison', tc.verdictReason!, Colors.purple),
             const SizedBox(height: 20),
             if (isParent && !tc.isClosed) ...[
               if (tc.status == TribunalStatus.filed)
@@ -307,13 +291,13 @@ class _TribunalScreenState extends State<TribunalScreen>
                 }),
               if (tc.status == TribunalStatus.deliberation) ...[
                 _actionButton('⚠️ Coupable', Colors.red, () {
-                  _showVerdictDialog(fp, tc, TribunalVerdict.guilty);
                   Navigator.pop(ctx);
+                  _showVerdictDialog(fp, tc, TribunalVerdict.guilty);
                 }),
                 const SizedBox(height: 8),
-                _actionButton('✅ Non coupable', Colors.green, () {
-                  _showVerdictDialog(fp, tc, TribunalVerdict.notGuilty);
+                _actionButton('✅ Innocent', Colors.green, () {
                   Navigator.pop(ctx);
+                  _showVerdictDialog(fp, tc, TribunalVerdict.innocent);
                 }),
               ],
               const SizedBox(height: 8),
@@ -322,6 +306,19 @@ class _TribunalScreenState extends State<TribunalScreen>
                 Navigator.pop(ctx);
               }),
             ],
+            if (!isParent && !tc.isClosed)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                  child: Text(
+                    '🔒 Mode parent requis pour agir',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.4),
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
           ],
         ),
@@ -383,7 +380,7 @@ class _TribunalScreenState extends State<TribunalScreen>
         title: Text(
           verdict == TribunalVerdict.guilty
               ? '⚠️ Verdict: Coupable'
-              : '✅ Verdict: Non coupable',
+              : '✅ Verdict: Innocent',
           style: const TextStyle(color: Colors.white),
         ),
         content: Column(
@@ -444,7 +441,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                     ? reasonCtrl.text.trim()
                     : (verdict == TribunalVerdict.guilty
                         ? 'Coupable'
-                        : 'Non coupable'),
+                        : 'Innocent'),
                 accusedPoints: pts,
               );
               Navigator.pop(ctx);
