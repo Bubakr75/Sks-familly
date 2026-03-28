@@ -1,43 +1,141 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/tv_focus_wrapper.dart';
 
-class StatsScreen extends StatelessWidget {
+class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
+  @override
+  State<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends State<StatsScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _barController;
+  late AnimationController _cardController;
+  late AnimationController _chartController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _barController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _cardController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _chartController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+
+    // Stagger start
+    _barController.forward();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) _chartController.forward();
+    });
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) _cardController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _barController.dispose();
+    _cardController.dispose();
+    _chartController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
-      builder: (context, provider, _) {
-        if (provider.children.isEmpty) {
+      builder: (context, fp, _) {
+        final children = fp.children;
+
+        if (children.isEmpty) {
           return AnimatedBackground(
             child: Scaffold(
               backgroundColor: Colors.transparent,
+              appBar: AppBar(
+                title: const Text('Statistiques'),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+              ),
               body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.bar_chart_rounded,
-                        size: 80, color: Colors.white24),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Aucun enfant enregistré',
-                      style: TextStyle(color: Colors.white54, fontSize: 16),
-                    ),
-                  ],
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 800),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.scale(scale: value, child: child),
+                    );
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('📊', style: TextStyle(fontSize: 60)),
+                      const SizedBox(height: 12),
+                      Text('Aucun enfant enregistré',
+                          style: TextStyle(
+                              color: Colors.white54, fontSize: 16)),
+                    ],
+                  ),
                 ),
               ),
             ),
           );
         }
 
+        // Calculate stats
+        final sorted = List<ChildModel>.from(children)
+          ..sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
+        final maxPoints =
+            sorted.isNotEmpty ? sorted.first.totalPoints : 1;
+
+        int totalActivities = 0;
+        int totalBonus = 0;
+        int totalPenalty = 0;
+        int totalPoints = 0;
+        for (final child in children) {
+          final history = fp.getHistoryForChild(child.id);
+          totalActivities += history.length;
+          for (final h in history) {
+            final pts = h['points'] as int? ?? 0;
+            if (pts > 0) {
+              totalBonus++;
+            } else if (pts < 0) {
+              totalPenalty++;
+            }
+            totalPoints += pts;
+          }
+        }
+
         return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(
-              title: const Text('Statistiques'),
+              title: ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Colors.cyan, Colors.blue, Colors.purple],
+                ).createShader(bounds),
+                child: const Text(
+                  '📊 Statistiques',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
               backgroundColor: Colors.transparent,
               elevation: 0,
             ),
@@ -46,19 +144,22 @@ class StatsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(context),
+                  // Score comparison
+                  _buildScoreComparison(sorted, maxPoints),
                   const SizedBox(height: 20),
-                  _buildScoreComparison(context, provider),
-                  const SizedBox(height: 20),
-                  ...provider.children.map(
-                    (child) => Padding(
+
+                  // Weekly charts
+                  ...children.asMap().entries.map((entry) {
+                    return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: _buildWeeklyChart(context, provider, child),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildSummaryCards(context, provider),
-                  const SizedBox(height: 32),
+                      child: _buildWeeklyChart(fp, entry.value, entry.key),
+                    );
+                  }),
+                  const SizedBox(height: 10),
+
+                  // Summary cards
+                  _buildSummaryCards(
+                      totalPoints, totalActivities, totalBonus, totalPenalty),
                 ],
               ),
             ),
@@ -68,83 +169,124 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Text(
-      'Vue d\'ensemble',
-      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-    );
-  }
-
-  Widget _buildScoreComparison(BuildContext context, FamilyProvider provider) {
-    final children = provider.children;
-    final maxPoints = children.fold<int>(
-      1,
-      (max, c) => c.points > max ? c.points : max,
-    );
-
-    return GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+  Widget _buildScoreComparison(List<ChildModel> sorted, int maxPoints) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.8 + 0.2 * value,
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: GlassCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Comparaison des scores',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                const Text('🏅',
+                    style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Comparaison des scores',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            ...children.map((child) {
-              final ratio = maxPoints > 0 ? child.points / maxPoints : 0.0;
+            ...sorted.asMap().entries.map((entry) {
+              final index = entry.key;
+              final child = entry.value;
+              final ratio =
+                  maxPoints > 0 ? child.totalPoints / maxPoints : 0.0;
               final colors = [
-                Colors.cyanAccent,
-                Colors.purpleAccent,
-                Colors.orangeAccent,
-                Colors.greenAccent,
-                Colors.pinkAccent,
+                Colors.cyan,
+                Colors.purple,
+                Colors.orange,
+                Colors.green,
+                Colors.pink,
               ];
-              final colorIndex = children.indexOf(child) % colors.length;
+              final color = colors[index % colors.length];
 
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 70,
-                      child: Text(
-                        child.name,
-                        style:
-                            const TextStyle(color: Colors.white70, fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: ratio.clamp(0.0, 1.0),
-                          minHeight: 18,
-                          backgroundColor: Colors.white10,
-                          valueColor:
-                              AlwaysStoppedAnimation(colors[colorIndex]),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(child.name,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 13)),
+                        // Animated counter
+                        AnimatedBuilder(
+                          animation: _barController,
+                          builder: (context, _) {
+                            final val =
+                                (child.totalPoints * _barController.value)
+                                    .round();
+                            return Text(
+                              '$val pts',
+                              style: TextStyle(
+                                color: color,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            );
+                          },
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${child.points}',
-                      style: TextStyle(
-                        color: colors[colorIndex],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                    const SizedBox(height: 6),
+                    // Animated bar
+                    AnimatedBuilder(
+                      animation: _barController,
+                      builder: (context, _) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Stack(
+                            children: [
+                              Container(
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                              FractionallySizedBox(
+                                widthFactor:
+                                    (ratio * _barController.value)
+                                        .clamp(0.0, 1.0),
+                                child: Container(
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        color,
+                                        color.withOpacity(0.6),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: color.withOpacity(0.4),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -156,104 +298,139 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  // ── FIXED: replaced getActivitiesForChildOnDate with getHistoryForChild + date filter ──
-  Widget _buildWeeklyChart(
-      BuildContext context, FamilyProvider provider, dynamic child) {
+  Widget _buildWeeklyChart(FamilyProvider fp, ChildModel child, int childIndex) {
+    final history = fp.getHistoryForChild(child.id);
     final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final childHistory = provider.getHistoryForChild(child.id);
+    final weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-    final dailyPoints = List.generate(7, (i) {
-      final day = weekStart.add(Duration(days: i));
-      int total = 0;
-      for (final h in childHistory) {
-        if (h.date.year == day.year &&
-            h.date.month == day.month &&
-            h.date.day == day.day) {
-          total += h.isBonus ? h.points : -h.points;
-        }
+    // Calculate daily points for the week
+    final dailyPoints = List<int>.filled(7, 0);
+    for (final h in history) {
+      final date = h['timestamp'] as DateTime?;
+      if (date == null) continue;
+      final diff = now.difference(date).inDays;
+      if (diff < 7 && diff >= 0) {
+        final dayIndex = date.weekday - 1; // 0 = Monday
+        dailyPoints[dayIndex] += (h['points'] as int? ?? 0);
       }
-      return total;
-    });
+    }
 
-    final maxDaily =
-        dailyPoints.fold<int>(1, (m, v) => v.abs() > m ? v.abs() : m);
-    final days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    final maxVal =
+        dailyPoints.map((e) => e.abs()).fold<int>(1, (a, b) => a > b ? a : b);
 
-    return GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    final colors = [
+      Colors.cyan,
+      Colors.purple,
+      Colors.orange,
+      Colors.green,
+      Colors.pink,
+    ];
+    final color = colors[childIndex % colors.length];
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 800 + childIndex * 200),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 30 * (1 - value)),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: GlassCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${child.name} – Semaine',
+              '📅 ${child.name} - Cette semaine',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 120,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(7, (i) {
-                  final val = dailyPoints[i];
-                  final height =
-                      maxDaily > 0 ? (val.abs() / maxDaily) * 100 : 0.0;
-                  final isPositive = val >= 0;
+              height: 130,
+              child: AnimatedBuilder(
+                animation: _chartController,
+                builder: (context, _) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(7, (i) {
+                      final pts = dailyPoints[i];
+                      final barRatio = maxVal > 0
+                          ? (pts.abs() / maxVal * _chartController.value)
+                          : 0.0;
+                      final barHeight = (barRatio * 80).clamp(4.0, 80.0);
+                      final isPositive = pts >= 0;
 
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      child: Column(
+                      return Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          // Value
                           Text(
-                            '$val',
+                            pts != 0
+                                ? '${(pts * _chartController.value).round()}'
+                                : '',
                             style: TextStyle(
                               color: isPositive
-                                  ? Colors.greenAccent
-                                  : Colors.redAccent,
+                                  ? Colors.green[300]
+                                  : Colors.red[300],
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Container(
-                            height: height.clamp(4.0, 100.0),
+                          // Bar
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: 28,
+                            height: barHeight,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4),
                               gradient: LinearGradient(
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,
                                 colors: isPositive
                                     ? [
-                                        Colors.cyanAccent.withOpacity(0.4),
-                                        Colors.cyanAccent
+                                        color.withOpacity(0.4),
+                                        color,
                                       ]
                                     : [
-                                        Colors.redAccent.withOpacity(0.4),
-                                        Colors.redAccent
+                                        Colors.red.withOpacity(0.4),
+                                        Colors.red,
                                       ],
                               ),
+                              borderRadius: BorderRadius.circular(4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (isPositive ? color : Colors.red)
+                                      .withOpacity(0.3),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 6),
+                          // Day label
                           Text(
-                            days[i],
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 11,
+                            weekDays[i],
+                            style: TextStyle(
+                              color: i == now.weekday - 1
+                                  ? Colors.white
+                                  : Colors.white38,
+                              fontSize: 10,
+                              fontWeight: i == now.weekday - 1
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         ],
-                      ),
-                    ),
+                      );
+                    }),
                   );
-                }),
+                },
               ),
             ),
           ],
@@ -262,104 +439,95 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  // ── FIXED: replaced getActivitiesForChild with getHistoryForChild ──
-  Widget _buildSummaryCards(BuildContext context, FamilyProvider provider) {
-    int totalPoints = 0;
-    int totalActivities = 0;
-    int bonusCount = 0;
-    int penaltyCount = 0;
+  Widget _buildSummaryCards(
+      int totalPts, int totalAct, int totalBonus, int totalPenalty) {
+    final cards = [
+      _SummaryData('Total Points', '$totalPts', Icons.stars, Colors.amber),
+      _SummaryData(
+          'Activités', '$totalAct', Icons.timeline, Colors.cyan),
+      _SummaryData('Bonus', '$totalBonus', Icons.thumb_up, Colors.green),
+      _SummaryData(
+          'Pénalités', '$totalPenalty', Icons.thumb_down, Colors.red),
+    ];
 
-    for (final child in provider.children) {
-      totalPoints += child.points;
-      final history = provider.getHistoryForChild(child.id);
-      totalActivities += history.length;
-      for (final h in history) {
-        if (h.isBonus) {
-          bonusCount++;
-        } else {
-          penaltyCount++;
-        }
-      }
-    }
+    return AnimatedBuilder(
+      animation: _cardController,
+      builder: (context, _) {
+        return GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.6,
+          children: List.generate(cards.length, (i) {
+            final card = cards[i];
+            final delay = i * 0.2;
+            final progress =
+                ((_cardController.value - delay) / (1.0 - delay))
+                    .clamp(0.0, 1.0);
+            final curved =
+                Curves.elasticOut.transform(progress.toDouble());
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        _NeonStatCard(
-          icon: Icons.star_rounded,
-          value: '$totalPoints',
-          label: 'Points totaux',
-          color: Colors.amberAccent,
-        ),
-        _NeonStatCard(
-          icon: Icons.timeline_rounded,
-          value: '$totalActivities',
-          label: 'Activités',
-          color: Colors.cyanAccent,
-        ),
-        _NeonStatCard(
-          icon: Icons.thumb_up_rounded,
-          value: '$bonusCount',
-          label: 'Bonus',
-          color: Colors.greenAccent,
-        ),
-        _NeonStatCard(
-          icon: Icons.thumb_down_rounded,
-          value: '$penaltyCount',
-          label: 'Pénalités',
-          color: Colors.redAccent,
-        ),
-      ],
+            return Transform.scale(
+              scale: curved.clamp(0.0, 1.2),
+              child: Opacity(
+                opacity: progress,
+                child: GlassCard(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: card.color.withOpacity(0.15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: card.color.withOpacity(0.3),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Icon(card.icon,
+                            color: card.color, size: 22),
+                      ),
+                      const SizedBox(height: 6),
+                      // Animated value
+                      TweenAnimationBuilder<int>(
+                        tween: IntTween(
+                            begin: 0,
+                            end: int.tryParse(card.value) ?? 0),
+                        duration: const Duration(milliseconds: 1500),
+                        builder: (context, value, _) {
+                          return Text(
+                            '$value',
+                            style: TextStyle(
+                              color: card.color,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        },
+                      ),
+                      Text(card.label,
+                          style: const TextStyle(
+                              color: Colors.white54, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }
 
-class _NeonStatCard extends StatelessWidget {
+class _SummaryData {
+  final String label, value;
   final IconData icon;
-  final String value;
-  final String label;
   final Color color;
-
-  const _NeonStatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final width = (MediaQuery.of(context).size.width - 44) / 2;
-    return GlassCard(
-      child: SizedBox(
-        width: width,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 32),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(color: color.withOpacity(0.5), blurRadius: 12),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  _SummaryData(this.label, this.value, this.icon, this.color);
 }
