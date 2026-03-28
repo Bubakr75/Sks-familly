@@ -15,7 +15,6 @@ import 'immunity_lines_screen.dart';
 import 'manage_children_screen.dart';
 import 'badges_screen.dart';
 import 'notes_screen.dart';
-import 'history_screen.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../widgets/animated_background.dart';
@@ -35,10 +34,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late Animation<Offset> _slideAnim;
   final Set<int> _protectedTabs = {1, 4};
 
-  // FocusNodes pour chaque élément de la barre de navigation
-  final List<FocusNode> _navFocusNodes = List.generate(5, (_) => FocusNode());
-  // FocusNode pour le contenu principal
-  final FocusNode _contentFocusNode = FocusNode();
+  // FocusScopeNode pour gérer le focus après navigation
+  final FocusScopeNode _navBarFocusScope = FocusScopeNode(debugLabel: 'NavBar');
 
   @override
   void initState() {
@@ -57,16 +54,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _animController.dispose();
-    for (final node in _navFocusNodes) {
-      node.dispose();
-    }
-    _contentFocusNode.dispose();
+    _navBarFocusScope.dispose();
     super.dispose();
+  }
+
+  void _restoreFocusToNavBar() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _navBarFocusScope.requestFocus();
+      }
+    });
   }
 
   void _onTabSelected(int index) {
     final pinProvider = Provider.of<PinProvider>(context, listen: false);
-    if (_protectedTabs.contains(index) && pinProvider.hasPin && !pinProvider.isParentMode) {
+    if (_protectedTabs.contains(index) && pinProvider.pin != null && pinProvider.pin!.isNotEmpty && !pinProvider.isParentMode) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -76,19 +78,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         if (success == true) {
           setState(() => _currentIndex = index);
           _refreshActivity();
-          // Redonner le focus au contenu après changement d'onglet
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _contentFocusNode.requestFocus();
-          });
         }
+        _restoreFocusToNavBar();
       });
     } else {
       setState(() => _currentIndex = index);
       _refreshActivity();
-      // Redonner le focus au contenu après changement d'onglet
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _contentFocusNode.requestFocus();
-      });
     }
   }
 
@@ -99,10 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<bool> _onWillPop() async {
     if (_currentIndex != 0) {
       setState(() => _currentIndex = 0);
-      // Redonner le focus au contenu
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _contentFocusNode.requestFocus();
-      });
+      _restoreFocusToNavBar();
       return false;
     }
     Navigator.pushReplacement(
@@ -141,12 +133,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (children.length == 1) {
       Navigator.push(context, MaterialPageRoute(
         builder: (_) => SchoolNotesScreen(childId: children.first.id),
-      )).then((_) {
-        // Restaurer le focus après retour
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _navFocusNodes[_currentIndex].requestFocus();
-        });
-      });
+      )).then((_) => _restoreFocusToNavBar());
       return;
     }
     showModalBottomSheet(
@@ -175,11 +162,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   Navigator.pop(ctx);
                   Navigator.push(context, MaterialPageRoute(
                     builder: (_) => SchoolNotesScreen(childId: child.id),
-                  )).then((_) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _navFocusNodes[_currentIndex].requestFocus();
-                    });
-                  });
+                  )).then((_) => _restoreFocusToNavBar());
                 },
               ),
             )),
@@ -200,12 +183,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
     if (children.length == 1) {
       Navigator.push(context, MaterialPageRoute(
-        builder: (_) => NotesScreen(childId: children.first.id),
-      )).then((_) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _navFocusNodes[_currentIndex].requestFocus();
-        });
-      });
+        builder: (_) => NotesScreen(childId: children.first.id, childName: children.first.name),
+      )).then((_) => _restoreFocusToNavBar());
       return;
     }
     showModalBottomSheet(
@@ -233,12 +212,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => NotesScreen(childId: child.id),
-                  )).then((_) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _navFocusNodes[_currentIndex].requestFocus();
-                    });
-                  });
+                    builder: (_) => NotesScreen(childId: child.id, childName: child.name),
+                  )).then((_) => _restoreFocusToNavBar());
                 },
               ),
             )),
@@ -249,33 +224,117 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _showFullHistory() {
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => const HistoryScreen(),
-    )).then((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navFocusNodes[_currentIndex].requestFocus();
-      });
-    });
+    final provider = Provider.of<FamilyProvider>(context, listen: false);
+    final allHistory = provider.history;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(ctx).size.height * 0.8,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey[900]!.withOpacity(0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Historique complet', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                TvFocusWrapper(
+                  autofocus: true,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: allHistory.isEmpty
+                  ? const Center(child: Text('Aucun historique', style: TextStyle(color: Colors.white54)))
+                  : ListView.builder(
+                      itemCount: allHistory.length,
+                      itemBuilder: (_, i) {
+                        final activity = allHistory[allHistory.length - 1 - i];
+                        final childName = provider.children
+                            .where((c) => c.id == activity['childId'])
+                            .map((c) => c.name)
+                            .firstOrNull ?? 'Inconnu';
+                        final points = activity['points'] ?? 0;
+                        final reason = activity['reason'] ?? '';
+                        final date = activity['date'] != null
+                            ? DateTime.tryParse(activity['date'].toString())
+                            : null;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                points >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                                color: points >= 0 ? Colors.green : Colors.red,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(childName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    Text(reason, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+                                    if (date != null)
+                                      Text(
+                                        '${date.day}/${date.month}/${date.year}',
+                                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '${points >= 0 ? '+' : ''}$points',
+                                style: TextStyle(
+                                  color: points >= 0 ? Colors.green : Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _navigateToScreen(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen)).then((_) {
-      // Restaurer le focus sur la barre de nav après retour d'un écran
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navFocusNodes[_currentIndex].requestFocus();
-      });
+      _restoreFocusToNavBar();
     });
   }
 
   void _navigateWithPinGuard(Widget screen) {
     final pinProvider = Provider.of<PinProvider>(context, listen: false);
-    if (pinProvider.hasPin && !pinProvider.isParentMode) {
+    if (pinProvider.pin != null && pinProvider.pin!.isNotEmpty && !pinProvider.isParentMode) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
       ).then((success) {
         if (success == true) {
           _navigateToScreen(screen);
+        } else {
+          _restoreFocusToNavBar();
         }
       });
     } else {
@@ -289,10 +348,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       onWillPop: _onWillPop,
       child: Scaffold(
         drawer: _buildDrawer(),
-        body: Focus(
-          focusNode: _contentFocusNode,
-          child: _buildBody(),
-        ),
+        body: _buildBody(),
         bottomNavigationBar: SlideTransition(
           position: _slideAnim,
           child: Container(
@@ -309,17 +365,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(0, Icons.home_rounded, 'Accueil'),
-                  _buildNavItem(1, Icons.add_circle_rounded, 'Points'),
-                  _buildNavItem(2, Icons.calendar_month_rounded, 'Calendrier'),
-                  _buildNavItem(3, Icons.bar_chart_rounded, 'Stats'),
-                  _buildNavItem(4, Icons.settings_rounded, 'Réglages'),
-                ],
+            child: FocusScope(
+              node: _navBarFocusScope,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(0, Icons.home_rounded, 'Accueil'),
+                    _buildNavItem(1, Icons.add_circle_rounded, 'Points'),
+                    _buildNavItem(2, Icons.calendar_month_rounded, 'Calendrier'),
+                    _buildNavItem(3, Icons.bar_chart_rounded, 'Stats'),
+                    _buildNavItem(4, Icons.settings_rounded, 'Réglages'),
+                  ],
+                ),
               ),
             ),
           ),
@@ -331,37 +390,38 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _currentIndex == index;
     return TvFocusWrapper(
-      focusNode: _navFocusNodes[index],
       autofocus: index == 0,
-      onSelect: () => _onTabSelected(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withOpacity(0.3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: isSelected
-              ? Border.all(color: Colors.blue.withOpacity(0.5), width: 1)
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.blue[300] : Colors.white54,
-              size: isSelected ? 26 : 22,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
+      child: GestureDetector(
+        onTap: () => _onTabSelected(index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.blue.withOpacity(0.3) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: isSelected
+                ? Border.all(color: Colors.blue.withOpacity(0.5), width: 1)
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
                 color: isSelected ? Colors.blue[300] : Colors.white54,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                size: isSelected ? 26 : 22,
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue[300] : Colors.white54,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -375,11 +435,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              child: Column(
+              child: const Column(
                 children: [
-                  const Icon(Icons.family_restroom, color: Colors.blue, size: 48),
-                  const SizedBox(height: 8),
-                  const Text(
+                  Icon(Icons.family_restroom, color: Colors.blue, size: 48),
+                  SizedBox(height: 8),
+                  Text(
                     'SKS Family',
                     style: TextStyle(
                       color: Colors.white,
@@ -387,15 +447,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Consumer<FamilyProvider>(
-                    builder: (_, provider, __) => Text(
-                      provider.isSyncing ? 'Synchronisation...' : 'Synchronisé',
-                      style: TextStyle(
-                        color: provider.isSyncing ? Colors.orange[300] : Colors.green[300],
-                        fontSize: 12,
-                      ),
-                    ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Gestion familiale',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                 ],
               ),
@@ -471,13 +526,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   _buildDrawerItem(
                     icon: Icons.sync_rounded,
                     title: 'Synchronisation',
-                    subtitle: 'Sync Firestore',
+                    subtitle: 'Sync données',
                     onTap: () {
                       Navigator.pop(context);
                       final provider = Provider.of<FamilyProvider>(context, listen: false);
-                      provider.syncToFirestore();
+                      provider.saveAllData();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Synchronisation lancée...')),
+                        const SnackBar(content: Text('Données sauvegardées')),
                       );
                     },
                   ),
@@ -506,7 +561,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     required VoidCallback onTap,
   }) {
     return TvFocusWrapper(
-      onSelect: onTap,
       child: ListTile(
         leading: Icon(icon, color: Colors.blue[300], size: 24),
         title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
