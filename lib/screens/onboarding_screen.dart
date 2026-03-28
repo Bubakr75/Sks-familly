@@ -10,7 +10,8 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> with TickerProviderStateMixin {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with TickerProviderStateMixin {
   final _pageController = PageController();
   int _currentPage = 0;
   late AnimationController _fadeCtrl;
@@ -29,25 +30,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
     _OnboardPage(
       emoji: '\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}',
       title: 'Bienvenue dans\nSKS Family !',
-      desc: 'Le systeme de points et recompenses\npour toute la famille par SKS',
+      desc:
+          'Le systeme de points et recompenses\npour toute la famille par SKS',
       colorIndex: 0,
     ),
     _OnboardPage(
       emoji: '\u{2B50}',
       title: 'Points & Niveaux',
-      desc: 'Attribuez des points pour les bons\ncomportements et suivez la progression',
+      desc:
+          'Attribuez des points pour les bons\ncomportements et suivez la progression',
       colorIndex: 1,
     ),
     _OnboardPage(
       emoji: '\u{1F3C6}',
       title: 'Badges & Objectifs',
-      desc: 'Debloquez des badges, fixez des objectifs\net motivez vos enfants !',
+      desc:
+          'Debloquez des badges, fixez des objectifs\net motivez vos enfants !',
       colorIndex: 2,
     ),
     _OnboardPage(
       emoji: '\u{1F512}',
       title: 'Code Parental',
-      desc: 'Protegez les reglages avec un code PIN\npour que seuls les parents modifient les scores',
+      desc:
+          'Protegez les reglages avec un code PIN\npour que seuls les parents modifient les scores',
       colorIndex: 3,
     ),
   ];
@@ -55,10 +60,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _scaleCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _fadeCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _scaleCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeIn);
-    _scaleAnim = CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
+    _scaleAnim =
+        CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
     _fadeCtrl.forward();
     _scaleCtrl.forward();
   }
@@ -73,7 +81,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
 
   void _nextPage() {
     if (_currentPage < _pages.length - 1) {
-      _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+      _pageController.nextPage(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut);
     } else {
       _finish();
     }
@@ -87,7 +97,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
         context,
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const HomeScreen(),
-          transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 500),
         ),
       );
@@ -108,7 +119,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                 alignment: Alignment.topRight,
                 child: TextButton(
                   onPressed: _finish,
-                  child: Text('Passer', style: TextStyle(fontSize: 16, color: Colors.grey[500])),
+                  child: Text('Passer',
+                      style:
+                          TextStyle(fontSize: 16, color: Colors.grey[500])),
                 ),
               ),
               Expanded(
@@ -138,27 +151,47 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                                 decoration: BoxDecoration(
                                   color: pageColor.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: pageColor.withValues(alpha: 0.3), width: 2),
+                                  border: Border.all(
+                                      color:
+                                          pageColor.withValues(alpha: 0.3),
+                                      width: 2),
                                   boxShadow: [
-                                    BoxShadow(color: pageColor.withValues(alpha: 0.2), blurRadius: 24),
+                                    BoxShadow(
+                                        color: pageColor.withValues(
+                                            alpha: 0.2),
+                                        blurRadius: 24),
                                   ],
                                 ),
-                                child: Center(child: Text(page.emoji, style: const TextStyle(fontSize: 72))),
+                                child: Center(
+                                    child: Text(page.emoji,
+                                        style: const TextStyle(
+                                            fontSize: 72))),
                               ),
                             ),
                             const SizedBox(height: 40),
-                            NeonText(
-                              text: page.title,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: pageColor,
-                              glowIntensity: 0.4,
+                            // FIXED: NeonText replaced with ShaderMask Text
+                            ShaderMask(
+                              shaderCallback: (bounds) => LinearGradient(
+                                colors: [pageColor, pageColor.withValues(alpha: 0.7)],
+                              ).createShader(bounds),
+                              child: Text(
+                                page.title,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               page.desc,
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 16, color: Colors.grey[400], height: 1.5),
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[400],
+                                  height: 1.5),
                             ),
                           ],
                         ),
@@ -179,10 +212,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                       height: 8,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                        color: _currentPage == i ? dotColor : Colors.white.withValues(alpha: 0.15),
+                        color: _currentPage == i
+                            ? dotColor
+                            : Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
                         boxShadow: _currentPage == i
-                            ? [BoxShadow(color: dotColor.withValues(alpha: 0.4), blurRadius: 8)]
+                            ? [
+                                BoxShadow(
+                                    color:
+                                        dotColor.withValues(alpha: 0.4),
+                                    blurRadius: 8)
+                              ]
                             : null,
                       ),
                     );
@@ -197,8 +237,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
-                      gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
-                      boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 16)],
+                      gradient: LinearGradient(
+                          colors: [color, color.withValues(alpha: 0.7)]),
+                      boxShadow: [
+                        BoxShadow(
+                            color: color.withValues(alpha: 0.3),
+                            blurRadius: 16)
+                      ],
                     ),
                     child: Material(
                       color: Colors.transparent,
@@ -207,8 +252,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                         onTap: _nextPage,
                         child: Center(
                           child: Text(
-                            _currentPage == _pages.length - 1 ? 'Commencer !' : 'Suivant',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black),
+                            _currentPage == _pages.length - 1
+                                ? 'Commencer !'
+                                : 'Suivant',
+                            style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black),
                           ),
                         ),
                       ),
@@ -229,5 +279,9 @@ class _OnboardPage {
   final String title;
   final String desc;
   final int colorIndex;
-  const _OnboardPage({required this.emoji, required this.title, required this.desc, required this.colorIndex});
+  const _OnboardPage(
+      {required this.emoji,
+      required this.title,
+      required this.desc,
+      required this.colorIndex});
 }
