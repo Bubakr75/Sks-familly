@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../providers/family_provider.dart';
+import '../models/history_entry.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -61,14 +63,21 @@ class _CalendarScreenState extends State<CalendarScreen>
     super.dispose();
   }
 
+  /// Returns a list of maps with event data for a given day.
+  /// HistoryEntry is a class, so we convert to map for display.
   List<Map<String, dynamic>> _getEventsForDay(
       DateTime day, FamilyProvider fp) {
     final events = <Map<String, dynamic>>[];
     for (final child in fp.children) {
       for (final h in fp.getHistoryForChild(child.id)) {
-        final ts = h['timestamp'] as DateTime?;
-        if (ts != null && isSameDay(ts, day)) {
-          events.add({...h, 'childName': child.name});
+        if (isSameDay(h.date, day)) {
+          events.add({
+            'points': h.points * (h.isBonus ? 1 : -1),
+            'reason': h.reason,
+            'category': h.category,
+            'timestamp': h.date,
+            'childName': child.name,
+          });
         }
       }
     }
@@ -80,9 +89,7 @@ class _CalendarScreenState extends State<CalendarScreen>
       _selectedDay = selected;
       _focusedDay = focused;
     });
-    // Trigger pulse animation
     _selectPulseController.forward(from: 0.0);
-    // Reset and play events animation
     _eventsController.reset();
     _eventsController.forward();
   }
@@ -111,7 +118,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     return Consumer<FamilyProvider>(
       builder: (context, fp, _) {
         final selectedEvents =
-            _selectedDay != null ? _getEventsForDay(_selectedDay!, fp) : [];
+            _selectedDay != null ? _getEventsForDay(_selectedDay!, fp) : <Map<String, dynamic>>[];
 
         return AnimatedBackground(
           child: Scaffold(
@@ -131,25 +138,21 @@ class _CalendarScreenState extends State<CalendarScreen>
               ),
             ),
             body: Focus(
-              onKey: (node, event) {
-                if (event is RawKeyDownEvent) {
-                  if (event.logicalKey ==
-                      LogicalKeyboardKey.arrowLeft) {
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
                     _navigateDay(-1);
                     return KeyEventResult.handled;
                   }
-                  if (event.logicalKey ==
-                      LogicalKeyboardKey.arrowRight) {
+                  if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
                     _navigateDay(1);
                     return KeyEventResult.handled;
                   }
-                  if (event.logicalKey ==
-                      LogicalKeyboardKey.arrowUp) {
+                  if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
                     _navigateWeek(-1);
                     return KeyEventResult.handled;
                   }
-                  if (event.logicalKey ==
-                      LogicalKeyboardKey.arrowDown) {
+                  if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
                     _navigateWeek(1);
                     return KeyEventResult.handled;
                   }
@@ -221,22 +224,24 @@ class _CalendarScreenState extends State<CalendarScreen>
                             markerSize: 6,
                             markersMaxCount: 3,
                           ),
-                          headerStyle: const HeaderStyle(
+                          headerStyle: HeaderStyle(
                             titleCentered: true,
                             formatButtonVisible: true,
-                            titleTextStyle: TextStyle(
+                            titleTextStyle: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold),
-                            leftChevronIcon: Icon(Icons.chevron_left,
+                            leftChevronIcon: const Icon(
+                                Icons.chevron_left,
                                 color: Colors.cyan),
-                            rightChevronIcon: Icon(Icons.chevron_right,
+                            rightChevronIcon: const Icon(
+                                Icons.chevron_right,
                                 color: Colors.cyan),
-                            formatButtonTextStyle:
-                                TextStyle(color: Colors.cyan, fontSize: 12),
+                            formatButtonTextStyle: const TextStyle(
+                                color: Colors.cyan, fontSize: 12),
                             formatButtonDecoration: BoxDecoration(
-                              border: BorderSide(color: Colors.cyan),
+                              border: Border.all(color: Colors.cyan),
                               borderRadius:
-                                  BorderRadius.all(Radius.circular(8)),
+                                  const BorderRadius.all(Radius.circular(8)),
                             ),
                           ),
                           daysOfWeekStyle: const DaysOfWeekStyle(
@@ -287,7 +292,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                       ),
                     ),
 
-                  // Events list with cascade
+                  // Events list
                   Expanded(
                     child: selectedEvents.isEmpty
                         ? FadeTransition(
@@ -306,11 +311,9 @@ class _CalendarScreenState extends State<CalendarScreen>
                             itemCount: selectedEvents.length,
                             itemBuilder: (context, index) {
                               final event = selectedEvents[index];
-                              final pts =
-                                  event['points'] as int? ?? 0;
+                              final pts = event['points'] as int? ?? 0;
                               final isPositive = pts >= 0;
 
-                              // Staggered animation per item
                               final delay = index * 0.1;
                               return AnimatedBuilder(
                                 animation: _eventsController,
@@ -329,15 +332,13 @@ class _CalendarScreenState extends State<CalendarScreen>
                                   );
                                 },
                                 child: TvFocusWrapper(
-                                  onTap: () =>
-                                      _showEventDetail(event),
+                                  onTap: () => _showEventDetail(event),
                                   child: Padding(
                                     padding:
                                         const EdgeInsets.only(bottom: 8),
                                     child: GlassCard(
                                       child: Row(
                                         children: [
-                                          // Points badge
                                           Container(
                                             width: 44,
                                             height: 44,
@@ -345,104 +346,50 @@ class _CalendarScreenState extends State<CalendarScreen>
                                               shape: BoxShape.circle,
                                               gradient: LinearGradient(
                                                 colors: isPositive
-                                                    ? [
-                                                        Colors.green,
-                                                        Colors
-                                                            .green.shade700
-                                                      ]
-                                                    : [
-                                                        Colors.red,
-                                                        Colors
-                                                            .red.shade700
-                                                      ],
+                                                    ? [Colors.green, Colors.green.shade700]
+                                                    : [Colors.red, Colors.red.shade700],
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: (isPositive
-                                                          ? Colors.green
-                                                          : Colors.red)
-                                                      .withOpacity(0.3),
+                                                  color: (isPositive ? Colors.green : Colors.red).withOpacity(0.3),
                                                   blurRadius: 6,
                                                 ),
                                               ],
                                             ),
                                             child: Center(
                                               child: Text(
-                                                isPositive
-                                                    ? '+$pts'
-                                                    : '$pts',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight:
-                                                      FontWeight.bold,
-                                                  fontSize: 12,
-                                                ),
+                                                isPositive ? '+$pts' : '$pts',
+                                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                                               ),
                                             ),
                                           ),
                                           const SizedBox(width: 12),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment
-                                                      .start,
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  event['reason'] ??
-                                                      'Activité',
-                                                  style:
-                                                      const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight:
-                                                        FontWeight.bold,
-                                                    fontSize: 13,
-                                                  ),
+                                                  event['reason'] as String? ?? 'Activité',
+                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                                                 ),
-                                                const SizedBox(
-                                                    height: 2),
+                                                const SizedBox(height: 2),
                                                 Row(
                                                   children: [
                                                     Text(
-                                                      event['childName'] ??
-                                                          '',
-                                                      style: TextStyle(
-                                                          color: Colors
-                                                              .cyan[300],
-                                                          fontSize: 11),
+                                                      event['childName'] as String? ?? '',
+                                                      style: TextStyle(color: Colors.cyan[300], fontSize: 11),
                                                     ),
-                                                    if (event[
-                                                            'category'] !=
-                                                        null) ...[
-                                                      const Text(' • ',
-                                                          style: TextStyle(
-                                                              color: Colors
-                                                                  .white24)),
+                                                    if (event['category'] != null) ...[
+                                                      const Text(' • ', style: TextStyle(color: Colors.white24)),
                                                       Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                          horizontal: 6,
-                                                          vertical: 1,
-                                                        ),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: Colors
-                                                              .cyan
-                                                              .withOpacity(
-                                                                  0.1),
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(
-                                                                      6),
+                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.cyan.withOpacity(0.1),
+                                                          borderRadius: BorderRadius.circular(6),
                                                         ),
                                                         child: Text(
-                                                          event['category']
-                                                              as String,
-                                                          style: const TextStyle(
-                                                              color: Colors
-                                                                  .white38,
-                                                              fontSize:
-                                                                  10),
+                                                          event['category'] as String,
+                                                          style: const TextStyle(color: Colors.white38, fontSize: 10),
                                                         ),
                                                       ),
                                                     ],
@@ -451,15 +398,10 @@ class _CalendarScreenState extends State<CalendarScreen>
                                               ],
                                             ),
                                           ),
-                                          // Time
                                           if (event['timestamp'] != null)
                                             Text(
-                                              _formatTime(
-                                                  event['timestamp']
-                                                      as DateTime),
-                                              style: const TextStyle(
-                                                  color: Colors.white38,
-                                                  fontSize: 11),
+                                              _formatTime(event['timestamp'] as DateTime),
+                                              style: const TextStyle(color: Colors.white38, fontSize: 11),
                                             ),
                                         ],
                                       ),
@@ -501,49 +443,25 @@ class _CalendarScreenState extends State<CalendarScreen>
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF1A1A2E),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.cyan.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
-                ),
+                BoxShadow(color: Colors.cyan.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5)),
               ],
             ),
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 20),
-                Text(
-                  event['reason'] ?? 'Activité',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(event['reason'] as String? ?? 'Activité', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
-                _detailRow('Enfant', event['childName'] ?? ''),
-                _detailRow('Points',
-                    '${pts >= 0 ? '+' : ''}$pts',
-                    color: pts >= 0 ? Colors.green : Colors.red),
+                _detailRow('Enfant', event['childName'] as String? ?? ''),
+                _detailRow('Points', '${pts >= 0 ? '+' : ''}$pts', color: pts >= 0 ? Colors.green : Colors.red),
                 if (event['category'] != null)
                   _detailRow('Catégorie', event['category'] as String),
                 if (event['timestamp'] != null)
-                  _detailRow(
-                    'Date & Heure',
-                    _formatDateTime(event['timestamp'] as DateTime),
-                  ),
+                  _detailRow('Date & Heure', _formatDateTime(event['timestamp'] as DateTime)),
                 const SizedBox(height: 16),
               ],
             ),
@@ -560,13 +478,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: Colors.white54)),
-          Text(
-            value,
-            style: TextStyle(
-              color: color ?? Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(value, style: TextStyle(color: color ?? Colors.white, fontWeight: FontWeight.bold)),
         ],
       ),
     );
