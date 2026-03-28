@@ -1,14 +1,12 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'dart:ui';
+import 'dart:math' as math;
 
-/// Glassmorphism card with frosted glass effect
-class GlassCard extends StatelessWidget {
+class GlassCard extends StatefulWidget {
   final Widget child;
-  final EdgeInsets? padding;
-  final EdgeInsets? margin;
+  final EdgeInsetsGeometry? padding;
   final double borderRadius;
-  final Color? borderColor;
-  final double blur;
+  final bool animate;
   final Color? glowColor;
   final VoidCallback? onTap;
 
@@ -16,77 +14,133 @@ class GlassCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding,
-    this.margin,
-    this.borderRadius = 20,
-    this.borderColor,
-    this.blur = 10,
+    this.borderRadius = 16,
+    this.animate = true,
     this.glowColor,
     this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final glow = glowColor ?? theme.colorScheme.primary;
+  State<GlassCard> createState() => _GlassCardState();
+}
 
-    if (!isDark) {
-      // Light mode: regular card
-      return Card(
-        margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(borderRadius),
-          onTap: onTap,
-          child: Padding(
-            padding: padding ?? const EdgeInsets.all(16),
-            child: child,
-          ),
-        ),
+class _GlassCardState extends State<GlassCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shimmerController;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    );
+    if (widget.animate) {
+      Future.delayed(
+        Duration(milliseconds: math.Random().nextInt(2000)),
+        () {
+          if (mounted) _shimmerController.repeat();
+        },
       );
     }
+  }
 
-    return Container(
-      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: glowColor != null
-            ? [
-                BoxShadow(
-                  color: glow.withValues(alpha: 0.15),
-                  blurRadius: 20,
-                  spreadRadius: -2,
-                ),
-              ]
-            : null,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(borderRadius),
-              onTap: onTap,
-              child: Container(
-                padding: padding ?? const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(borderRadius),
-                  color: Colors.white.withValues(alpha: 0.05),
-                  border: Border.all(
-                    color: borderColor ?? Colors.white.withValues(alpha: 0.08),
-                    width: 1,
-                  ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.08),
-                      Colors.white.withValues(alpha: 0.02),
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails _) {
+    setState(() => _isPressed = true);
+  }
+
+  void _onTapUp(TapUpDetails _) {
+    setState(() => _isPressed = false);
+    widget.onTap?.call();
+  }
+
+  void _onTapCancel() {
+    setState(() => _isPressed = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutBack,
+      builder: (context, enterValue, child) {
+        return Transform.scale(
+          scale: 0.85 + 0.15 * enterValue,
+          child: Opacity(
+            opacity: enterValue.clamp(0.0, 1.0),
+            child: child,
+          ),
+        );
+      },
+      child: GestureDetector(
+        onTapDown: widget.onTap != null ? _onTapDown : null,
+        onTapUp: widget.onTap != null ? _onTapUp : null,
+        onTapCancel: widget.onTap != null ? _onTapCancel : null,
+        child: AnimatedScale(
+          scale: _isPressed ? 0.96 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          child: AnimatedBuilder(
+            animation: _shimmerController,
+            builder: (context, child) {
+              return CustomPaint(
+                foregroundPainter: widget.animate
+                    ? _ShimmerPainter(
+                        progress: _shimmerController.value,
+                        borderRadius: widget.borderRadius,
+                        glowColor: widget.glowColor ?? Colors.cyan,
+                      )
+                    : null,
+                child: child,
+              );
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  padding: widget.padding ??
+                      const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        BorderRadius.circular(widget.borderRadius),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withOpacity(0.12),
+                        Colors.white.withOpacity(0.05),
+                        Colors.white.withOpacity(0.02),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: (widget.glowColor ?? Colors.cyan)
+                          .withOpacity(0.12),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                      BoxShadow(
+                        color: (widget.glowColor ?? Colors.cyan)
+                            .withOpacity(0.05),
+                        blurRadius: 20,
+                        spreadRadius: -2,
+                      ),
                     ],
                   ),
+                  child: widget.child,
                 ),
-                child: child,
               ),
             ),
           ),
@@ -96,111 +150,76 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-/// Neon glow text widget
-class NeonText extends StatelessWidget {
-  final String text;
-  final double fontSize;
-  final FontWeight fontWeight;
-  final Color? color;
-  final double glowIntensity;
-
-  const NeonText({
-    super.key,
-    required this.text,
-    this.fontSize = 16,
-    this.fontWeight = FontWeight.bold,
-    this.color,
-    this.glowIntensity = 0.6,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final neonColor = color ?? Theme.of(context).colorScheme.primary;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (!isDark) {
-      return Text(text, style: TextStyle(fontSize: fontSize, fontWeight: fontWeight, color: neonColor));
-    }
-
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: fontSize,
-        fontWeight: fontWeight,
-        color: neonColor,
-        shadows: [
-          Shadow(color: neonColor.withValues(alpha: glowIntensity), blurRadius: 12),
-          Shadow(color: neonColor.withValues(alpha: glowIntensity * 0.5), blurRadius: 24),
-        ],
-      ),
-    );
-  }
-}
-
-/// Animated neon border container
-class NeonBorder extends StatelessWidget {
-  final Widget child;
-  final Color? color;
+/// Peint un reflet lumineux qui glisse en diagonale sur la carte
+class _ShimmerPainter extends CustomPainter {
+  final double progress;
   final double borderRadius;
-  final double width;
+  final Color glowColor;
 
-  const NeonBorder({
-    super.key,
-    required this.child,
-    this.color,
-    this.borderRadius = 20,
-    this.width = 1.5,
+  _ShimmerPainter({
+    required this.progress,
+    required this.borderRadius,
+    required this.glowColor,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final neonColor = color ?? Theme.of(context).colorScheme.primary;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (!isDark) {
-      return Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(borderRadius),
-          border: Border.all(color: neonColor.withValues(alpha: 0.3), width: width),
-        ),
-        child: child,
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: neonColor.withValues(alpha: 0.5), width: width),
-        boxShadow: [
-          BoxShadow(color: neonColor.withValues(alpha: 0.2), blurRadius: 8, spreadRadius: -2),
-          BoxShadow(color: neonColor.withValues(alpha: 0.1), blurRadius: 16, spreadRadius: -4),
-        ],
-      ),
-      child: child,
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(borderRadius),
     );
+
+    // Clip to card shape
+    canvas.save();
+    canvas.clipRRect(rrect);
+
+    // Moving shimmer band
+    final shimmerWidth = size.width * 0.35;
+    final totalTravel = size.width + shimmerWidth * 2;
+    final xPos = -shimmerWidth + totalTravel * progress;
+
+    final shimmerPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          Colors.transparent,
+          glowColor.withOpacity(0.06),
+          Colors.white.withOpacity(0.1),
+          glowColor.withOpacity(0.06),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.3, 0.5, 0.7, 1.0],
+      ).createShader(
+        Rect.fromLTWH(xPos, 0, shimmerWidth, size.height),
+      );
+
+    canvas.drawRect(
+      Rect.fromLTWH(xPos, 0, shimmerWidth, size.height),
+      shimmerPaint,
+    );
+
+    canvas.restore();
+
+    // Animated border glow (subtle)
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..shader = SweepGradient(
+        center: Alignment.center,
+        startAngle: progress * 6.2832,
+        colors: [
+          Colors.transparent,
+          glowColor.withOpacity(0.15),
+          Colors.transparent,
+          glowColor.withOpacity(0.08),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    canvas.drawRRect(rrect, borderPaint);
   }
-}
-
-/// Glowing icon widget
-class GlowIcon extends StatelessWidget {
-  final IconData icon;
-  final double size;
-  final Color? color;
-
-  const GlowIcon({super.key, required this.icon, this.size = 24, this.color});
 
   @override
-  Widget build(BuildContext context) {
-    final iconColor = color ?? Theme.of(context).colorScheme.primary;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Icon(
-      icon,
-      size: size,
-      color: iconColor,
-      shadows: isDark
-          ? [Shadow(color: iconColor.withValues(alpha: 0.6), blurRadius: 12)]
-          : null,
-    );
-  }
+  bool shouldRepaint(covariant _ShimmerPainter old) =>
+      progress != old.progress;
 }
