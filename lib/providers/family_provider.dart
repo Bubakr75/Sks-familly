@@ -477,3 +477,14 @@ void _removeImmunity(String childId, String immunityId) {
 }
 
 }
+/// Mettre à jour la photo de profil d'un enfant
+void updateChildPhoto({
+  required String childId,
+  required String photoBase64,
+}) {
+  final child = getChild(childId);
+  if (child == null) return;
+  final updated = child.copyWith(photoBase64: photoBase64);
+  _saveChild(updated);
+  notifyListeners();
+}
