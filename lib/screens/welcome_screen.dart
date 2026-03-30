@@ -323,9 +323,160 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ==================== TES AUTRES MÉTHODES (à remettre ci-dessous) ====================
-  // Colle ici toutes tes autres méthodes (_showParentPicker, _showCustomParentDialog, _navigateToHome, _handleChildMode, etc.)
-  // Elles étaient dans ton ancien fichier.
+  void _showParentPicker() {
+    final presets = ['Papa', 'Maman'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 16),
+              const Text('Qui es-tu ?',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ...presets.map((name) {
+                return TvFocusWrapper(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _navigateToHome(name);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                        child: Text(name,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 16))),
+                  ),
+                );
+              }),
+              TvFocusWrapper(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCustomParentDialog();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                      child: Text('+ Autre',
+                          style: TextStyle(
+                              color: Colors.cyan, fontSize: 16))),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCustomParentDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Nom du parent', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Ex: Tonton, Mamie...',
+              hintStyle: const TextStyle(color: Colors.white38),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.cyan),
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) {
+                  Navigator.pop(context);
+                  _navigateToHome(controller.text.trim());
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _navigateToHome(String parentName) {
+    final fp = Provider.of<FamilyProvider>(context, listen: false);
+    fp.setCurrentParent(parentName);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => HomeScreen(parentName: parentName)),
+    );
+  }
+
+  void _handleChildMode() {
+    final fp = Provider.of<FamilyProvider>(context, listen: false);
+    final children = fp.children;
+    if (children.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Aucun enfant enregistré. Connectez-vous en mode Parent.'),
+            backgroundColor: Colors.orange),
+      );
+      return;
+    }
+    if (children.length == 1) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (_) => ChildDashboardScreen(childId: children.first.id)),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Plusieurs enfants - fonctionnalité en cours')),
+    );
+  }
 }
 
 class _WelcomeParticle {
@@ -357,58 +508,4 @@ class _WelcomeParticlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-  void _handleChildMode() {
-    final fp = Provider.of<FamilyProvider>(context, listen: false);
-    final children = fp.children;
-    if (children.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Aucun enfant enregistré. Connectez-vous en mode Parent.'),
-            backgroundColor: Colors.orange),
-      );
-      return;
-    }
-    if (children.length == 1) {
-      Navigator.pushReplacement(
-        context,
-        ZoomPageRoute(page: ChildDashboardScreen(childId: children.first.id)),
-      );
-      return;
-    }
-    // Le reste de la méthode (si tu l'avais avant, colle-le ici)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Plusieurs enfants - fonctionnalité en cours')),
-    );
-  }
-
-  void _showParentPicker() {
-    final presets = ['Papa', 'Maman'];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Qui es-tu ?', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              ...presets.map((name) => ListTile(
-                    title: Text(name, style: const TextStyle(color: Colors.white)),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _navigateToHome(name);
-                    },
-                  )),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }
