@@ -53,6 +53,8 @@ void main() async {
     }
   }
 
+  if (!firebaseReady && kDebugMode) debugPrint('WARNING: Firebase not initialized after 3 attempts');
+
   if (firebaseReady) {
     try {
       await FcmService().init();
@@ -103,4 +105,95 @@ void main() async {
   );
 }
 
-// Le reste de ton ancien main.dart (la classe SKSFamilyApp, _StartupRouter, etc.) reste tel quel.
+class SKSFamilyApp extends StatefulWidget {
+  final bool showOnboarding;
+  const SKSFamilyApp({super.key, required this.showOnboarding});
+  @override
+  State<SKSFamilyApp> createState() => _SKSFamilyAppState();
+}
+
+class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (kDebugMode) debugPrint('App resumed - reconnecting Firestore...');
+      final familyProvider = context.read<FamilyProvider>();
+      familyProvider.reconnectFirestore();
+
+      final pin = context.read<PinProvider>();
+      if (pin.isPinSet && pin.isParentMode) {
+        pin.lockParentMode();
+        if (kDebugMode) debugPrint('Parent mode locked on resume');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ThemeProvider>(
+      builder: (_, themeProvider, __) => MaterialApp(
+        navigatorKey: NotificationService.navigatorKey,
+        title: 'SKS-Familly',
+        debugShowCheckedModeBanner: false,
+        builder: (context, child) {
+          return Shortcuts(
+            shortcuts: <ShortcutActivator, Intent>{
+              const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.numpadEnter): const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.gameButtonA): const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.goBack): const DismissIntent(),
+              const SingleActivator(LogicalKeyboardKey.browserBack): const DismissIntent(),
+              const SingleActivator(LogicalKeyboardKey.escape): const DismissIntent(),
+            },
+            child: FocusTraversalGroup(
+              policy: ReadingOrderTraversalPolicy(),
+              child: child ?? const SizedBox(),
+            ),
+          );
+        },
+        theme: themeProvider.theme,
+        home: widget.showOnboarding ? const OnboardingScreen() : const _StartupRouter(),
+      ),
+    );
+  }
+}
+
+class _StartupRouter extends StatefulWidget {
+  const _StartupRouter();
+  @override
+  State<_StartupRouter> createState() => _StartupRouterState();
+}
+
+class _StartupRouterState extends State<_StartupRouter> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      UpdateService.checkForUpdate(context);
+      try {
+        context.read<FamilyProvider>().reconnectFirestore();
+      } catch (e) {
+        if (kDebugMode) debugPrint('Reconnect Firestore error: $e');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const WelcomeScreen();
+  }
+}
