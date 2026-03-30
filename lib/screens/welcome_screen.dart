@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart';           // ← Important
+import 'package:flutter/foundation.dart';
 import 'dart:math' as math;
 
 import '../providers/family_provider.dart';
@@ -102,15 +102,158 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         backgroundColor: Colors.transparent,
         body: Stack(
           children: [
-            // ... (le reste du build reste identique, je ne le recopie pas pour gagner de la place)
-            // Tu peux garder tout le build tel quel à partir d'ici
+            AnimatedBuilder(
+              animation: _particleController,
+              builder: (context, _) {
+                return CustomPaint(
+                  size: MediaQuery.of(context).size,
+                  painter: _WelcomeParticlePainter(
+                    particles: _particles,
+                    time: _particleController.value,
+                  ),
+                );
+              },
+            ),
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 40),
+                      AnimatedBuilder(
+                        animation: Listenable.merge([_logoScale, _pulseAnim]),
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _logoScale.value.clamp(0.0, 1.0),
+                            child: Opacity(
+                              opacity: _logoFade.value,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.cyan.withOpacity(0.3 * _pulseAnim.value),
+                                      blurRadius: 40,
+                                      spreadRadius: 10,
+                                    ),
+                                    BoxShadow(
+                                      color: Colors.purple.withOpacity(0.2 * _pulseAnim.value),
+                                      blurRadius: 60,
+                                      spreadRadius: 20,
+                                    ),
+                                  ],
+                                ),
+                                child: const Text('👨‍👩‍👧‍👦', style: TextStyle(fontSize: 80)),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      FadeTransition(
+                        opacity: _logoFade,
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Colors.cyan, Colors.white, Colors.purple, Colors.cyan],
+                          ).createShader(bounds),
+                          child: const Text(
+                            'Family Points',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FadeTransition(
+                        opacity: _logoFade,
+                        child: Text('v4.9.0',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.4),
+                                fontSize: 13)),
+                      ),
+                      const SizedBox(height: 60),
+                      AnimatedBuilder(
+                        animation: _btn1Slide,
+                        builder: (context, child) {
+                          return Transform.translate(
+                            offset: Offset(0, 50 * (1 - _btn1Slide.value)),
+                            child: Opacity(opacity: _btn1Slide.value, child: child),
+                          );
+                        },
+                        child: TvFocusWrapper(
+                          autofocus: true,
+                          onTap: () => _handleParentMode(),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF00BCD4), Color(0xFF0097A7)]),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(color: Colors.cyan.withOpacity(0.4), blurRadius: 16, offset: const Offset(0, 4)),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.admin_panel_settings, color: Colors.white, size: 24),
+                                SizedBox(width: 10),
+                                Text('Mode Parent',
+                                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      AnimatedBuilder(
+                        animation: _btn2Slide,
+                        builder: (context, child) {
+                          return Transform.translate(
+                            offset: Offset(0, 50 * (1 - _btn2Slide.value)),
+                            child: Opacity(opacity: _btn2Slide.value, child: child),
+                          );
+                        },
+                        child: TvFocusWrapper(
+                          onTap: () => _handleChildMode(),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [Colors.purple.shade400, Colors.purple.shade700]),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(color: Colors.purple.withOpacity(0.4), blurRadius: 16, offset: const Offset(0, 4)),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.child_care, color: Colors.white, size: 24),
+                                SizedBox(width: 10),
+                                Text('Mode Enfant',
+                                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ==================== MÉTHODE CORRIGÉE ====================
   void _handleParentMode() {
     final pin = Provider.of<PinProvider>(context, listen: false);
     if (pin.isPinSet) {
@@ -180,6 +323,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // Garde tes autres méthodes (_showParentPicker, _navigateToHome, _handleChildMode, etc.) telles quelles
-  // ... (le reste de ton code)
+  // ==================== GARDE TOUTES TES AUTRES MÉTHODES CI-DESSOUS ====================
+  // Copie-colle ici toutes tes autres méthodes (_showParentPicker, _showCustomParentDialog, _navigateToHome, _handleChildMode, etc.)
+  // Elles sont dans ton ancien fichier, tu peux les remettre telles quelles.
 }
