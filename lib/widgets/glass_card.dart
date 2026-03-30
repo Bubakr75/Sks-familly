@@ -5,18 +5,22 @@ import 'dart:math' as math;
 class GlassCard extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
   final double borderRadius;
   final bool animate;
   final Color? glowColor;
+  final Color? borderColor;
   final VoidCallback? onTap;
 
   const GlassCard({
     super.key,
     required this.child,
     this.padding,
+    this.margin,
     this.borderRadius = 16,
     this.animate = true,
     this.glowColor,
+    this.borderColor,
     this.onTap,
   });
 
@@ -52,94 +56,89 @@ class _GlassCardState extends State<GlassCard>
     super.dispose();
   }
 
-  void _onTapDown(TapDownDetails _) {
-    setState(() => _isPressed = true);
-  }
-
+  void _onTapDown(TapDownDetails _) => setState(() => _isPressed = true);
   void _onTapUp(TapUpDetails _) {
     setState(() => _isPressed = false);
     widget.onTap?.call();
   }
-
-  void _onTapCancel() {
-    setState(() => _isPressed = false);
-  }
+  void _onTapCancel() => setState(() => _isPressed = false);
 
   @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOutBack,
-      builder: (context, enterValue, child) {
-        return Transform.scale(
-          scale: 0.85 + 0.15 * enterValue,
-          child: Opacity(
-            opacity: enterValue.clamp(0.0, 1.0),
-            child: child,
-          ),
-        );
-      },
-      child: GestureDetector(
-        onTapDown: widget.onTap != null ? _onTapDown : null,
-        onTapUp: widget.onTap != null ? _onTapUp : null,
-        onTapCancel: widget.onTap != null ? _onTapCancel : null,
-        child: AnimatedScale(
-          scale: _isPressed ? 0.96 : 1.0,
-          duration: const Duration(milliseconds: 120),
-          child: AnimatedBuilder(
-            animation: _shimmerController,
-            builder: (context, child) {
-              return CustomPaint(
-                foregroundPainter: widget.animate
-                    ? _ShimmerPainter(
-                        progress: _shimmerController.value,
-                        borderRadius: widget.borderRadius,
-                        glowColor: widget.glowColor ?? Colors.cyan,
-                      )
-                    : null,
-                child: child,
-              );
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(widget.borderRadius),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  padding: widget.padding ??
-                      const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    borderRadius:
-                        BorderRadius.circular(widget.borderRadius),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.white.withOpacity(0.12),
-                        Colors.white.withOpacity(0.05),
-                        Colors.white.withOpacity(0.02),
+    return Container(
+      margin: widget.margin,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutBack,
+        builder: (context, enterValue, child) {
+          return Transform.scale(
+            scale: 0.85 + 0.15 * enterValue,
+            child: Opacity(
+              opacity: enterValue.clamp(0.0, 1.0),
+              child: child,
+            ),
+          );
+        },
+        child: GestureDetector(
+          onTapDown: widget.onTap != null ? _onTapDown : null,
+          onTapUp: widget.onTap != null ? _onTapUp : null,
+          onTapCancel: widget.onTap != null ? _onTapCancel : null,
+          child: AnimatedScale(
+            scale: _isPressed ? 0.96 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            child: AnimatedBuilder(
+              animation: _shimmerController,
+              builder: (context, child) {
+                return CustomPaint(
+                  foregroundPainter: widget.animate
+                      ? _ShimmerPainter(
+                          progress: _shimmerController.value,
+                          borderRadius: widget.borderRadius,
+                          glowColor: widget.glowColor ?? Colors.cyan,
+                        )
+                      : null,
+                  child: child,
+                );
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    padding: widget.padding ?? const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(widget.borderRadius),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white.withOpacity(0.12),
+                          Colors.white.withOpacity(0.05),
+                          Colors.white.withOpacity(0.02),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: widget.borderColor ??
+                            (widget.glowColor ?? Colors.cyan).withOpacity(0.12),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                        BoxShadow(
+                          color: (widget.glowColor ?? Colors.cyan)
+                              .withOpacity(0.05),
+                          blurRadius: 20,
+                          spreadRadius: -2,
+                        ),
                       ],
                     ),
-                    border: Border.all(
-                      color: (widget.glowColor ?? Colors.cyan)
-                          .withOpacity(0.12),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                      BoxShadow(
-                        color: (widget.glowColor ?? Colors.cyan)
-                            .withOpacity(0.05),
-                        blurRadius: 20,
-                        spreadRadius: -2,
-                      ),
-                    ],
+                    child: widget.child,
                   ),
-                  child: widget.child,
                 ),
               ),
             ),
@@ -150,7 +149,6 @@ class _GlassCardState extends State<GlassCard>
   }
 }
 
-/// Peint un reflet lumineux qui glisse en diagonale sur la carte
 class _ShimmerPainter extends CustomPainter {
   final double progress;
   final double borderRadius;
@@ -169,11 +167,9 @@ class _ShimmerPainter extends CustomPainter {
       Radius.circular(borderRadius),
     );
 
-    // Clip to card shape
     canvas.save();
     canvas.clipRRect(rrect);
 
-    // Moving shimmer band
     final shimmerWidth = size.width * 0.35;
     final totalTravel = size.width + shimmerWidth * 2;
     final xPos = -shimmerWidth + totalTravel * progress;
@@ -199,7 +195,6 @@ class _ShimmerPainter extends CustomPainter {
 
     canvas.restore();
 
-    // Animated border glow (subtle)
     final borderPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0
@@ -222,31 +217,4 @@ class _ShimmerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ShimmerPainter old) =>
       progress != old.progress;
-/// Icône avec effet de lueur (glow)
-class GlowIcon extends StatelessWidget {
-  final IconData icon;
-  final double size;
-  final Color? color;
-
-  const GlowIcon({
-    super.key,
-    required this.icon,
-    this.size = 24,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = color ?? Theme.of(context).colorScheme.primary;
-    return Icon(
-      icon,
-      size: size,
-      color: c,
-      shadows: [
-        Shadow(color: c.withOpacity(0.6), blurRadius: 12),
-        Shadow(color: c.withOpacity(0.3), blurRadius: 24),
-      ],
-    );
-  }
-}
 }
