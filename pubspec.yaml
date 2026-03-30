@@ -43,6 +43,9 @@ dependencies:
   open_filex: ^4.5.0
   http: ^1.2.0
 
+  dependencies:
+  crypto: ^3.0.3   # ← AJOUTER cette ligne
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
