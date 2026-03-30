@@ -11,7 +11,6 @@ import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
 import 'home_screen.dart';
 import 'child_dashboard_screen.dart';
-import 'package:flutter/foundation.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -324,7 +323,38 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ==================== GARDE TOUTES TES AUTRES MÉTHODES CI-DESSOUS ====================
-  // Copie-colle ici toutes tes autres méthodes (_showParentPicker, _showCustomParentDialog, _navigateToHome, _handleChildMode, etc.)
-  // Elles sont dans ton ancien fichier, tu peux les remettre telles quelles.
+  // ==================== TES AUTRES MÉTHODES (à remettre ci-dessous) ====================
+  // Colle ici toutes tes autres méthodes (_showParentPicker, _showCustomParentDialog, _navigateToHome, _handleChildMode, etc.)
+  // Elles étaient dans ton ancien fichier.
+}
+
+class _WelcomeParticle {
+  final math.Random rng;
+  late double x, y, speed, size;
+
+  _WelcomeParticle(this.rng) {
+    x = rng.nextDouble() * 400;
+    y = rng.nextDouble() * 800;
+    speed = rng.nextDouble() * 0.5 + 0.2;
+    size = rng.nextDouble() * 3 + 1;
+  }
+}
+
+class _WelcomeParticlePainter extends CustomPainter {
+  final List<_WelcomeParticle> particles;
+  final double time;
+
+  _WelcomeParticlePainter({required this.particles, required this.time});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withOpacity(0.15);
+    for (var p in particles) {
+      final yPos = (p.y + time * p.speed * 50) % (size.height + 50);
+      canvas.drawCircle(Offset(p.x, yPos), p.size, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
