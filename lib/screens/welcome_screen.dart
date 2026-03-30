@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 void _showPinDialog(VoidCallback onSuccess) {
   final controller = TextEditingController();
 
