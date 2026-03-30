@@ -222,4 +222,31 @@ class _ShimmerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ShimmerPainter old) =>
       progress != old.progress;
+/// Icône avec effet de lueur (glow)
+class GlowIcon extends StatelessWidget {
+  final IconData icon;
+  final double size;
+  final Color? color;
+
+  const GlowIcon({
+    super.key,
+    required this.icon,
+    this.size = 24,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? Theme.of(context).colorScheme.primary;
+    return Icon(
+      icon,
+      size: size,
+      color: c,
+      shadows: [
+        Shadow(color: c.withOpacity(0.6), blurRadius: 12),
+        Shadow(color: c.withOpacity(0.3), blurRadius: 24),
+      ],
+    );
+  }
+}
 }
