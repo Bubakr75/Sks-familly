@@ -8,6 +8,8 @@ import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
 import 'trade_screen.dart';
+import '../widgets/page_transitions.dart';
+
 
 class ImmunityLinesScreen extends StatefulWidget {
   const ImmunityLinesScreen({super.key});
