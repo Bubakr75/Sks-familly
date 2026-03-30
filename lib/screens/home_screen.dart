@@ -319,7 +319,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showInteractiveHelp() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
