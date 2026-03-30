@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -10,12 +11,12 @@ import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
+import '../widgets/celebration_overlay.dart';
 import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'tribunal_screen.dart';
-import 'screen_time_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,12 +29,14 @@ class _DashboardScreenState extends State<DashboardScreen>
   late AnimationController _podiumController;
   late AnimationController _actionsController;
   late AnimationController _pulseController;
+  late AnimationController _floatingController;
 
   late Animation<double> _podium1Anim;
   late Animation<double> _podium2Anim;
   late Animation<double> _podium3Anim;
   final List<Animation<double>> _actionAnims = [];
   late Animation<double> _pulseAnim;
+  late Animation<double> _floatingAnim;
 
   @override
   void initState() {
@@ -66,6 +69,13 @@ class _DashboardScreenState extends State<DashboardScreen>
     _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
         CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
+    // Floating animation pour les éléments décoratifs
+    _floatingController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 3000))
+      ..repeat(reverse: true);
+    _floatingAnim = Tween<double>(begin: -8, end: 8).animate(
+        CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut));
+
     _podiumController.forward();
     Future.delayed(const Duration(milliseconds: 600), () {
       if (mounted) _actionsController.forward();
@@ -77,10 +87,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     _podiumController.dispose();
     _actionsController.dispose();
     _pulseController.dispose();
+    _floatingController.dispose();
     super.dispose();
   }
 
-  /// Avatar avec photo grande taille
   Widget _buildChildAvatar(ChildModel child, double radius) {
     if (child.hasPhoto) {
       try {
@@ -111,7 +121,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [Colors.cyan.withOpacity(0.4), Colors.purple.withOpacity(0.3)],
+          colors: [
+            Colors.cyan.withOpacity(0.4),
+            Colors.purple.withOpacity(0.3),
+          ],
         ),
         border: Border.all(color: Colors.cyan.withOpacity(0.5), width: 2),
         boxShadow: [
@@ -135,10 +148,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  /// Vérifie si on est réellement en mode parent (avec timeout)
   bool _isParentMode() {
-    final pin = context.read<PinProvider>();
-    return pin.canPerformParentAction();
+    return context.read<PinProvider>().canPerformParentAction();
   }
 
   @override
@@ -164,6 +175,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     _buildQuickActions(fp),
                     const SizedBox(height: 20),
                     _buildActiveTrades(fp),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -178,25 +190,41 @@ class _DashboardScreenState extends State<DashboardScreen>
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutBack,
       builder: (context, value, child) {
         return Transform.translate(
-          offset: Offset(0, -20 * (1 - value)),
+          offset: Offset(0, -30 * (1 - value)),
           child: Opacity(opacity: value, child: child),
         );
       },
       child: Row(
         children: [
-          const Text('🏠', style: TextStyle(fontSize: 28)),
+          // Emoji flottant
+          AnimatedBuilder(
+            animation: _floatingAnim,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, _floatingAnim.value),
+                child: child,
+              );
+            },
+            child: const Text('🏠', style: TextStyle(fontSize: 28)),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Tableau de Bord',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold)),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Colors.white, Colors.cyanAccent],
+                  ).createShader(bounds),
+                  child: const Text('Tableau de Bord',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold)),
+                ),
                 Text(
                   '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName}',
                   style: const TextStyle(color: Colors.white54, fontSize: 13),
@@ -204,45 +232,54 @@ class _DashboardScreenState extends State<DashboardScreen>
               ],
             ),
           ),
-          // Indicateur mode parent
+          // Mode indicator
           Consumer<PinProvider>(
             builder: (context, pin, _) {
               final isParent = pin.canPerformParentAction();
               return TvFocusWrapper(
                 onTap: () {
                   if (!isParent && pin.isPinSet) {
-                    PinGuard.guardAction(context, () {
-                      setState(() {});
-                    });
+                    PinGuard.guardAction(context, () => setState(() {}));
                   }
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
                     color: isParent
                         ? Colors.greenAccent.withOpacity(0.15)
                         : Colors.redAccent.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isParent
                           ? Colors.greenAccent.withOpacity(0.4)
                           : Colors.redAccent.withOpacity(0.4),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isParent ? Colors.greenAccent : Colors.redAccent)
+                            .withOpacity(0.15),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         isParent ? Icons.lock_open : Icons.lock,
-                        color: isParent ? Colors.greenAccent : Colors.redAccent,
+                        color:
+                            isParent ? Colors.greenAccent : Colors.redAccent,
                         size: 14,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         isParent ? 'Parent' : 'Enfant',
                         style: TextStyle(
-                          color: isParent ? Colors.greenAccent : Colors.redAccent,
+                          color:
+                              isParent ? Colors.greenAccent : Colors.redAccent,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -255,7 +292,14 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
           TvFocusWrapper(
             onTap: () => Scaffold.of(context).openDrawer(),
-            child: const Icon(Icons.menu, color: Colors.white, size: 28),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.menu, color: Colors.white, size: 24),
+            ),
           ),
         ],
       ),
@@ -266,15 +310,25 @@ class _DashboardScreenState extends State<DashboardScreen>
     return GlassCard(
       child: Column(
         children: [
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [Colors.amber, Colors.orange, Colors.amber],
-            ).createShader(bounds),
-            child: const Text('🏆 CLASSEMENT',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+          // Titre animé avec shimmer
+          AnimatedBuilder(
+            animation: _floatingAnim,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, _floatingAnim.value * 0.3),
+                child: child,
+              );
+            },
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Colors.amber, Colors.orange, Colors.amber],
+              ).createShader(bounds),
+              child: const Text('🏆 CLASSEMENT',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
+            ),
           ),
           const SizedBox(height: 20),
           if (sorted.length >= 2)
@@ -294,8 +348,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                     );
                   },
                 ),
-                const SizedBox(width: 12),
-                // #1 — avec pulse SEULEMENT sur le socle, pas sur la photo
+                const SizedBox(width: 8),
+                // #1
                 AnimatedBuilder(
                   animation: _podium1Anim,
                   builder: (context, child) {
@@ -308,7 +362,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     );
                   },
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 // #3
                 if (sorted.length >= 3)
                   AnimatedBuilder(
@@ -326,38 +380,51 @@ class _DashboardScreenState extends State<DashboardScreen>
             )
           else
             _podiumCard(sorted[0], 1),
-          // Remaining children below podium
+          // Remaining
           if (sorted.length > 3) ...[
             const SizedBox(height: 16),
             const Divider(color: Colors.white12),
             ...sorted.skip(3).toList().asMap().entries.map((entry) {
               final child = entry.value;
               final rank = entry.key + 4;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: TvFocusWrapper(
-                  onTap: () => Navigator.push(context,
-                      ZoomPageRoute(page: ChildDashboardScreen(childId: child.id))),
-                  child: Row(
-                    children: [
-                      Text('#$rank',
-                          style: const TextStyle(
-                              color: Colors.white38,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14)),
-                      const SizedBox(width: 10),
-                      _buildChildAvatar(child, 18),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(child.name,
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: Duration(milliseconds: 600 + entry.key * 150),
+                curve: Curves.easeOutBack,
+                builder: (context, value, ch) {
+                  return Transform.translate(
+                    offset: Offset(30 * (1 - value), 0),
+                    child: Opacity(opacity: value, child: ch),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: TvFocusWrapper(
+                    onTap: () => Navigator.push(
+                        context,
+                        ZoomPageRoute(
+                            page: ChildDashboardScreen(childId: child.id))),
+                    child: Row(
+                      children: [
+                        Text('#$rank',
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 14)),
-                      ),
-                      Text('${child.points} pts',
-                          style: const TextStyle(
-                              color: Colors.white54,
-                              fontWeight: FontWeight.bold)),
-                    ],
+                                color: Colors.white38,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14)),
+                        const SizedBox(width: 10),
+                        _buildChildAvatar(child, 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(child.name,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 14)),
+                        ),
+                        Text('${child.points} pts',
+                            style: const TextStyle(
+                                color: Colors.white54,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -372,7 +439,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     final heights = {1: 110.0, 2: 85.0, 3: 65.0};
     final colors = {1: Colors.amber, 2: Colors.grey, 3: Colors.orange};
     final medals = {1: '🥇', 2: '🥈', 3: '🥉'};
-    // Photo plus grande pour le #1
     final avatarRadius = rank == 1 ? 40.0 : 28.0;
 
     return TvFocusWrapper(
@@ -381,13 +447,33 @@ class _DashboardScreenState extends State<DashboardScreen>
             ZoomPageRoute(page: ChildDashboardScreen(childId: child.id)));
       },
       child: SizedBox(
-        width: rank == 1 ? 110 : 90,
+        width: rank == 1 ? 115 : 90,
         child: Column(
           children: [
-            Text(medals[rank]!, style: const TextStyle(fontSize: 24)),
+            // Médaille flottante
+            AnimatedBuilder(
+              animation: _floatingAnim,
+              builder: (context, ch) {
+                return Transform.translate(
+                  offset: Offset(0, rank == 1 ? _floatingAnim.value * 0.5 : 0),
+                  child: ch,
+                );
+              },
+              child: Text(medals[rank]!, style: const TextStyle(fontSize: 24)),
+            ),
             const SizedBox(height: 6),
-            // Photo avatar — PAS de pulse sur la photo
-            _buildChildAvatar(child, avatarRadius),
+            // Photo — neon ring pour #1
+            if (rank == 1)
+              NeonPulseRing(
+                color: Colors.amber,
+                radius: avatarRadius + 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: _buildChildAvatar(child, avatarRadius),
+                ),
+              )
+            else
+              _buildChildAvatar(child, avatarRadius),
             const SizedBox(height: 6),
             Text(child.name,
                 style: const TextStyle(
@@ -411,7 +497,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 style: TextStyle(
                     color: colors[rank]!.withOpacity(0.7), fontSize: 10)),
             const SizedBox(height: 4),
-            // Socle animé avec pulse pour #1
+            // Socle avec pulse pour #1
             AnimatedBuilder(
               animation: _pulseAnim,
               builder: (context, ch) {
@@ -434,6 +520,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(8)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors[rank]!.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Center(
                   child: Text('#$rank',
@@ -453,7 +546,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildQuickActions(FamilyProvider fp) {
     final isParent = _isParentMode();
 
-    // 6 actions — Punition et Immunité protégées par PIN
     final actions = [
       _Act('📝 Punition', Icons.menu_book, Colors.red, true, () {
         PinGuard.guardAction(context, () {
@@ -502,6 +594,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),
           duration: const Duration(milliseconds: 800),
+          curve: Curves.easeOutBack,
           builder: (context, value, child) {
             return Opacity(
               opacity: value,
@@ -522,7 +615,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.1,
+          childAspectRatio: 1.05,
           children: List.generate(actions.length, (i) {
             final action = actions[i];
             final anim = i < _actionAnims.length ? _actionAnims[i] : null;
@@ -564,7 +657,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       spreadRadius: 2),
                 ],
               ),
-              child: Icon(action.icon, color: action.color, size: 26),
+              child: Icon(action.icon, color: action.color, size: 24),
             ),
             const SizedBox(height: 6),
             Text(action.label,
@@ -573,11 +666,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                     fontSize: 11,
                     fontWeight: FontWeight.w600),
                 textAlign: TextAlign.center),
-            // Cadenas si action parent-only et pas en mode parent
             if (action.parentOnly && !isParent)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: Icon(Icons.lock, color: Colors.white.withOpacity(0.3), size: 12),
+                child: Icon(Icons.lock,
+                    color: Colors.white.withOpacity(0.3), size: 12),
               ),
           ],
         ),
@@ -592,11 +685,18 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('🏪 Ventes en cours',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 800),
+          builder: (context, value, child) {
+            return Opacity(opacity: value, child: child);
+          },
+          child: const Text('🏪 Ventes en cours',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
+        ),
         const SizedBox(height: 8),
         ...active.asMap().entries.map((entry) {
           final trade = entry.value;
@@ -667,8 +767,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 color: Colors.greenAccent, fontSize: 11)),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right,
-                          color: Colors.white38),
+                      const Icon(Icons.chevron_right, color: Colors.white38),
                     ],
                   ),
                 ),
@@ -704,7 +803,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
               padding: const EdgeInsets.all(20),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 40,
@@ -727,20 +825,55 @@ class _DashboardScreenState extends State<DashboardScreen>
                       itemCount: fp.children.length,
                       itemBuilder: (_, i) {
                         final child = fp.children[i];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: TvFocusWrapper(
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              onSelected(child.id);
-                            },
-                            child: ListTile(
-                              leading: _buildChildAvatar(child, 20),
-                              title: Text(child.name,
-                                  style: const TextStyle(color: Colors.white)),
-                              subtitle: Text('${child.points} pts • ${child.levelTitle}',
-                                  style: const TextStyle(color: Colors.white54)),
-                              trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                        return TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: Duration(milliseconds: 300 + i * 100),
+                          curve: Curves.easeOutBack,
+                          builder: (context, value, ch) {
+                            return Transform.translate(
+                              offset: Offset(30 * (1 - value), 0),
+                              child: Opacity(opacity: value, child: ch),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: TvFocusWrapper(
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                onSelected(child.id);
+                              },
+                              child: GlassCard(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 4, horizontal: 4),
+                                  child: Row(
+                                    children: [
+                                      _buildChildAvatar(child, 22),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(child.name,
+                                                style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight:
+                                                        FontWeight.bold)),
+                                            Text(
+                                                '${child.points} pts • ${child.levelTitle}',
+                                                style: const TextStyle(
+                                                    color: Colors.white54,
+                                                    fontSize: 12)),
+                                          ],
+                                        ),
+                                      ),
+                                      const Icon(Icons.chevron_right,
+                                          color: Colors.white38),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         );
