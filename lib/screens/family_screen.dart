@@ -1,897 +1,521 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../providers/family_provider.dart';
-import '../widgets/glass_card.dart';
-import '../widgets/animated_background.dart';
-import '../widgets/tv_focus_wrapper.dart';
-import 'firebase_diagnostic_screen.dart';
 
-class FamilyScreen extends StatefulWidget {
-  const FamilyScreen({super.key});
+import '../providers/family_provider.dart';
+import '../providers/pin_provider.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/animated_background.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/tv_focus_wrapper.dart';
+import '../widgets/animated_page_transition.dart';
+
+import 'dashboard_screen.dart';
+import 'add_points_screen.dart';
+import 'calendar_screen.dart';
+import 'stats_screen.dart';
+import 'settings_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  final String parentName;
+  const HomeScreen({super.key, this.parentName = 'Parent'});
+
   @override
-  State<FamilyScreen> createState() => _FamilyScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _FamilyScreenState extends State<FamilyScreen> {
-  bool _isLoading = false;
-  String? _familyCode;
-  final _joinController = TextEditingController();
-  final _customCodeController = TextEditingController();
-  bool _useCustomCode = false;
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  int _currentIndex = 0;
+  late AnimationController _navBarController;
 
-  final _joinFocusNode = FocusNode();
-  final _customCodeFocusNode = FocusNode();
+  // Indices protégés par le PIN parental
+  static const List<int> _protectedIndices = [1, 4];
+
+  // Icônes et labels de la barre de navigation
+  static const _navIcons = [
+    Icons.home_rounded,
+    Icons.stars_rounded,
+    Icons.calendar_month_rounded,
+    Icons.bar_chart_rounded,
+    Icons.settings_rounded,
+  ];
+  static const _navLabels = [
+    'Accueil',
+    'Points',
+    'Calendrier',
+    'Stats',
+    'Réglages',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadFamilyCode();
-  }
+    _navBarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..forward();
 
-  Future<void> _loadFamilyCode() async {
-    final provider = context.read<FamilyProvider>();
-    final code = provider.getFamilyCode();
-    if (mounted) setState(() => _familyCode = code.isNotEmpty ? code : null);
+    // Définir le nom du parent courant
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.parentName.isNotEmpty && mounted) {
+        context.read<FamilyProvider>().setCurrentParent(widget.parentName);
+      }
+    });
   }
 
   @override
   void dispose() {
-    _joinController.dispose();
-    _customCodeController.dispose();
-    _joinFocusNode.dispose();
-    _customCodeFocusNode.dispose();
+    _navBarController.dispose();
     super.dispose();
   }
 
-  Future<void> _createFamily() async {
-    String? customCode;
-    if (_useCustomCode) {
-      customCode = _customCodeController.text.trim().toUpperCase();
-      if (customCode.length < 4) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Le code doit avoir au moins 4 caracteres'),
-              backgroundColor: Colors.orange),
-        );
+  // ─── Écran courant ─────────────────────────────────────────
+  Widget _getScreen() {
+    switch (_currentIndex) {
+      case 0: return const DashboardScreen();
+      case 1: return const AddPointsScreen();
+      case 2: return const CalendarScreen();
+      case 3: return const StatsScreen();
+      case 4: return const SettingsScreen();
+      default: return const DashboardScreen();
+    }
+  }
+
+  // ─── Navigation avec protection PIN ─────────────────────────
+  void _onTabTapped(int index) {
+    if (index == _currentIndex) return; // évite les rebuilds inutiles
+
+    if (_protectedIndices.contains(index)) {
+      final pin = context.read<PinProvider>();
+      if (pin.isPinSet && !pin.canPerformParentAction()) {
+        _showPinCheck(() => setState(() => _currentIndex = index));
         return;
       }
-      if (customCode.length > 10) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Le code ne doit pas depasser 10 caracteres'),
-              backgroundColor: Colors.orange),
-        );
-        return;
-      }
     }
-
-    setState(() => _isLoading = true);
-    try {
-      final provider = context.read<FamilyProvider>();
-      final code = await provider.createFamily(customCode: customCode);
-      if (!mounted) return;
-      setState(() {
-        _familyCode = code;
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Famille creee ! Code : $code'),
-            backgroundColor: const Color(0xFF00C853)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('$e'),
-            backgroundColor: const Color(0xFFFF1744)),
-      );
-    }
+    setState(() => _currentIndex = index);
   }
 
-  Future<void> _joinFamily() async {
-    final code = _joinController.text.trim().toUpperCase();
-    if (code.isEmpty || code.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Entrez le code famille (4 a 10 caracteres)'),
-            backgroundColor: Colors.orange),
-      );
-      return;
-    }
+  // ─── Dialog PIN ─────────────────────────────────────────────
+  void _showPinCheck(VoidCallback onSuccess) {
+    final pinController = TextEditingController();
+    bool _obscure = true;
 
-    setState(() => _isLoading = true);
-    try {
-      final provider = context.read<FamilyProvider>();
-      final success = await provider.joinFamily(code);
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      if (success) {
-        setState(() => _familyCode = code);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Connecte a la famille !'),
-              backgroundColor: Color(0xFF00C853)),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Code non trouve'),
-              backgroundColor: Color(0xFFFF1744)),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF0D1B2A),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Row(
-            children: [
-              Icon(Icons.error, color: Color(0xFFFF1744)),
-              SizedBox(width: 8),
-              Text('Erreur Firebase',
-                  style: TextStyle(color: Colors.white)),
-            ],
-          ),
-          content: Text('$e',
-              style:
-                  const TextStyle(color: Colors.white70, fontSize: 13)),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            const FirebaseDiagnosticScreen()));
-              },
-              child: const Text('Diagnostic'),
-            ),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK')),
-          ],
-        ),
-      );
-    }
-  }
-
-  Future<void> _disconnect() async {
-    final confirmed = await showDialog<bool>(
+    showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D1B2A),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Deconnecter', style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: const Text(
-            'Les donnees locales seront conservees. Continuer ?',
-            style: TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
-          FilledButton(
-            style:
-                FilledButton.styleFrom(backgroundColor: Colors.orange),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Deconnecter'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      if (!mounted) return;
-      await context.read<FamilyProvider>().disconnectFamily();
-      if (!mounted) return;
-      setState(() {
-        _familyCode = null;
-        _useCustomCode = false;
-      });
-    }
-  }
-
-  void _copyCode() {
-    if (_familyCode == null) return;
-    Clipboard.setData(ClipboardData(text: _familyCode!));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text('Code "$_familyCode" copie !'),
-          backgroundColor: const Color(0xFF00C853)),
-    );
-  }
-
-  Future<void> _showChangeCodeDialog() async {
-    final controller = TextEditingController(text: _familyCode);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D1B2A),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
-          children: [
-            Icon(Icons.edit_rounded, color: Color(0xFF448AFF)),
-            SizedBox(width: 8),
-            Text('Modifier le code',
-                style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Attention : les autres appareils devront utiliser le nouveau code pour rejoindre.',
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              textCapitalization: TextCapitalization.characters,
-              textAlign: TextAlign.center,
-              maxLength: 10,
-              style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 4,
-                  color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'NOUVEAU CODE',
-                counterText: '',
-                helperText: '4 a 10 caracteres',
-                helperStyle: TextStyle(color: Colors.grey[600]),
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]'))
+      barrierDismissible: true,
+      builder: (ctx) {
+        final primary = Theme.of(ctx).colorScheme.primary;
+        return StatefulBuilder(
+          builder: (ctx, setStateDialog) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.lock_rounded, color: Colors.amber),
+                SizedBox(width: 8),
+                Text('Code Parental'),
               ],
             ),
-          ],
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Entrez votre code PIN pour accéder à cette section.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: pinController,
+                  obscureText: _obscure,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  autofocus: true,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, letterSpacing: 8),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '• • • •',
+                    hintStyle: const TextStyle(fontSize: 24, letterSpacing: 8),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscure
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded),
+                      onPressed: () =>
+                          setStateDialog(() => _obscure = !_obscure),
+                    ),
+                  ),
+                  // ✅ Validation au clavier Enter/Done
+                  onSubmitted: (_) {
+                    _validatePin(ctx, pinController, onSuccess);
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  pinController.dispose();
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Annuler'),
+              ),
+              FilledButton(
+                onPressed: () => _validatePin(ctx, pinController, onSuccess),
+                child: const Text('Valider', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      },
+    ).then((_) => pinController.dispose());
+  }
+
+  void _validatePin(
+    BuildContext ctx,
+    TextEditingController controller,
+    VoidCallback onSuccess,
+  ) {
+    final rawPin = controller.text.trim();
+    final pin = context.read<PinProvider>();
+    if (pin.verifyPin(rawPin)) {
+      Navigator.pop(ctx);
+      onSuccess();
+    } else {
+      // Vide le champ et vibre
+      controller.clear();
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Code PIN incorrect'),
+            ],
+          ),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 2),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(
-                ctx, controller.text.trim().toUpperCase()),
-            child: const Text('Valider'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == null || result.isEmpty || result == _familyCode) return;
-
-    setState(() => _isLoading = true);
-    try {
-      await context.read<FamilyProvider>().changeFamilyCode(result);
-      if (!mounted) return;
-      setState(() {
-        _familyCode = result;
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Code change en "$result" !'),
-            backgroundColor: const Color(0xFF00C853)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('$e'),
-            backgroundColor: const Color(0xFFFF1744)),
       );
     }
   }
 
-  Widget _buildTvTextField({
-    required TextEditingController controller,
-    required FocusNode focusNode,
-    String? hintText,
-    int? maxLength,
-    TextInputType? keyboardType,
-    bool obscureText = false,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-    List<TextInputFormatter>? inputFormatters,
-    Widget? suffixIcon,
-    TextStyle? style,
-    String? helperText,
-    String? counterText,
-  }) {
-    return KeyboardListener(
-      focusNode: FocusNode(),
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-            focusNode.nextFocus();
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-            focusNode.previousFocus();
-          }
-        }
+  // ─── Aide interactive ───────────────────────────────────────
+  void _showInteractiveHelp() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final primary = Theme.of(context).colorScheme.primary;
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.help_outline_rounded, color: Colors.amber),
+              SizedBox(width: 8),
+              Text('Aide — Onglets'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                _HelpTile(
+                  icon: Icons.home_rounded,
+                  color: Colors.cyan,
+                  title: 'Accueil',
+                  subtitle: 'Tableau de bord général et résumé de la famille',
+                ),
+                _HelpTile(
+                  icon: Icons.stars_rounded,
+                  color: Colors.amber,
+                  title: 'Points',
+                  subtitle: 'Ajouter ou retirer des points aux enfants',
+                ),
+                _HelpTile(
+                  icon: Icons.calendar_month_rounded,
+                  color: Colors.green,
+                  title: 'Calendrier',
+                  subtitle: 'Événements, anniversaires et planning',
+                ),
+                _HelpTile(
+                  icon: Icons.bar_chart_rounded,
+                  color: Colors.purple,
+                  title: 'Stats',
+                  subtitle: 'Statistiques détaillées et progrès des enfants',
+                ),
+                _HelpTile(
+                  icon: Icons.settings_rounded,
+                  color: Colors.grey,
+                  title: 'Réglages',
+                  subtitle: 'Paramètres, PIN, famille et compte',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Compris !'),
+            ),
+          ],
+        );
       },
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        textCapitalization: textCapitalization,
-        textAlign: TextAlign.center,
-        maxLength: maxLength,
-        keyboardType: keyboardType,
-        obscureText: obscureText,
-        style: style ??
-            const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 4,
-                color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hintText,
-          counterText: counterText ?? '',
-          helperText: helperText,
-          helperStyle: TextStyle(color: Colors.grey[600]),
-          suffixIcon: suffixIcon,
-        ),
-        inputFormatters: inputFormatters,
-        onSubmitted: (_) => focusNode.nextFocus(),
-      ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<FamilyProvider>();
-    final isConnected = provider.isSyncEnabled;
-    final primary = Theme.of(context).colorScheme.primary;
+  // ─── Drawer latéral ─────────────────────────────────────────
+  Widget _buildDrawer(BuildContext context) {
+    final primary  = Theme.of(context).colorScheme.primary;
+    final fp       = context.watch<FamilyProvider>();
+    final pin      = context.watch<PinProvider>();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0E21),
-      body: AnimatedBackground(
-        child: SafeArea(
-          child: _isLoading
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // En-tête
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: primary.withValues(alpha: 0.15),
+                    radius: 28,
+                    child: Icon(Icons.family_restroom_rounded, color: primary, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircularProgressIndicator(color: primary),
-                      const SizedBox(height: 16),
+                      const Text(
+                        'SKS Family',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                       Text(
-                        'Connexion en cours...',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: primary,
-                          fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                                color: primary.withValues(alpha: 0.5),
-                                blurRadius: 10),
-                          ],
-                        ),
+                        fp.currentParentName,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                       ),
                     ],
                   ),
-                )
-              : SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── Header ──
-                      Row(
+                ],
+              ),
+            ),
+            const Divider(),
+
+            // Sync status
+            ListTile(
+              leading: Icon(
+                fp.isSyncEnabled ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                color: fp.isSyncEnabled ? Colors.green : Colors.grey,
+              ),
+              title: Text(fp.isSyncEnabled ? 'Synchronisé' : 'Mode local'),
+              subtitle: Text(
+                fp.isSyncEnabled
+                    ? 'Code : ${fp.familyCode ?? '—'}'
+                    : 'Non connecté à une famille',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              ),
+            ),
+            const Divider(),
+
+            // Liens rapides
+            ListTile(
+              leading: const Icon(Icons.people_rounded),
+              title: const Text('Gérer les enfants'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigation vers manage_children_screen si souhaité
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.emoji_events_rounded),
+              title: const Text('Badges'),
+              onTap: () => Navigator.pop(context),
+            ),
+
+            const Spacer(),
+
+            // Verrou parental
+            ListTile(
+              leading: Icon(
+                pin.isParentMode
+                    ? Icons.lock_open_rounded
+                    : Icons.lock_rounded,
+                color: pin.isParentMode ? Colors.green : Colors.orange,
+              ),
+              title: Text(pin.isParentMode ? 'Mode parent actif' : 'Mode enfant'),
+              subtitle: Text(
+                pin.isParentMode ? 'Appuyez pour verrouiller' : 'Appuyez pour déverrouiller',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              ),
+              onTap: () {
+                if (pin.isParentMode) {
+                  pin.lockParentMode();
+                  Navigator.pop(context);
+                } else {
+                  Navigator.pop(context);
+                  _showPinCheck(() {});
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Build principal ────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBody: true,
+      drawer: _buildDrawer(context),
+      body: AnimatedBackground(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: child,
+          ),
+          child: KeyedSubtree(
+            key: ValueKey<int>(_currentIndex),
+            child: _getScreen(),
+          ),
+        ),
+      ),
+
+      // ─── Barre de navigation ─────────────────────────────────
+      bottomNavigationBar: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: _navBarController,
+          curve: Curves.easeOutCubic,
+        )),
+        child: Container(
+          decoration: BoxDecoration(
+            color: bgColor.withValues(alpha: 0.95),
+            border: Border(
+              top: BorderSide(
+                color: primary.withValues(alpha: 0.15),
+                width: 0.5,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 12,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(5, (i) {
+                  final isSelected = _currentIndex == i;
+                  final isProtected = _protectedIndices.contains(i);
+                  return TvFocusWrapper(
+                    onTap: () => _onTabTapped(i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 6, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? primary.withValues(alpha: 0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          TvFocusWrapper(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                color:
-                                    Colors.white.withValues(alpha: 0.06),
-                                border: Border.all(
-                                    color: Colors.white
-                                        .withValues(alpha: 0.08)),
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(
+                                _navIcons[i],
+                                color: isSelected ? primary : Colors.grey,
+                                size: 26,
                               ),
-                              child: const Icon(
-                                  Icons.arrow_back_rounded,
-                                  color: Colors.white70,
-                                  size: 20),
-                            ),
+                              // ✅ Indicateur de protection PIN
+                              if (isProtected)
+                                Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Icon(
+                                    Icons.lock_rounded,
+                                    size: 10,
+                                    color: primary.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                            ],
                           ),
-                          const SizedBox(width: 14),
-                          Icon(Icons.cloud_sync_rounded,
-                              color: primary, size: 26),
-                          const SizedBox(width: 10),
+                          const SizedBox(height: 4),
                           Text(
-                            'Synchronisation',
+                            _navLabels[i],
                             style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                    color: Colors.white
-                                        .withValues(alpha: 0.2),
-                                    blurRadius: 8),
-                              ],
-                            ),
-                          ),
-                          const Spacer(),
-                          TvFocusWrapper(
-                            onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const FirebaseDiagnosticScreen())),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color:
-                                    Colors.white.withValues(alpha: 0.06),
-                              ),
-                              child: Icon(Icons.bug_report_rounded,
-                                  color: primary, size: 18),
+                              color: isSelected ? primary : Colors.grey,
+                              fontSize: 11,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-
-                      // ── Status card ──
-                      GlassCard(
-                        padding: const EdgeInsets.all(20),
-                        borderRadius: 20,
-                        glowColor: isConnected
-                            ? const Color(0xFF00E676)
-                            : null,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: (isConnected
-                                        ? const Color(0xFF00E676)
-                                        : Colors.grey)
-                                    .withValues(alpha: 0.12),
-                                boxShadow: isConnected
-                                    ? [
-                                        BoxShadow(
-                                            color: const Color(0xFF00E676)
-                                                .withValues(alpha: 0.2),
-                                            blurRadius: 12)
-                                      ]
-                                    : null,
-                              ),
-                              child: Icon(
-                                isConnected
-                                    ? Icons.cloud_done_rounded
-                                    : Icons.cloud_off_rounded,
-                                color: isConnected
-                                    ? const Color(0xFF00E676)
-                                    : Colors.grey,
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    isConnected
-                                        ? 'Synchronise'
-                                        : 'Mode local',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: isConnected
-                                          ? const Color(0xFF00E676)
-                                          : Colors.grey,
-                                      shadows: [
-                                        Shadow(
-                                            color: (isConnected
-                                                    ? const Color(
-                                                        0xFF00E676)
-                                                    : Colors.grey)
-                                                .withValues(alpha: 0.5),
-                                            blurRadius: 8),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    isConnected
-                                        ? 'Donnees partagees en temps reel'
-                                        : 'Les donnees restent sur cet appareil',
-                                    style: TextStyle(
-                                        color: Colors.grey[500],
-                                        fontSize: 13),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      if (isConnected)
-                        _buildConnectedView(primary)
-                      else ...[
-                        _buildCreateSection(primary),
-                        const SizedBox(height: 20),
-                        _buildJoinSection(primary),
-                      ],
-
-                      const SizedBox(height: 24),
-                      _buildInfoCard(primary),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
         ),
+      ),
+
+      // ─── Bouton aide ─────────────────────────────────────────
+      floatingActionButton: FloatingActionButton.small(
+        backgroundColor: primary.withValues(alpha: 0.9),
+        onPressed: _showInteractiveHelp,
+        tooltip: 'Aide',
+        child: const Icon(Icons.help_outline_rounded, color: Colors.white),
       ),
     );
   }
+}
 
-  Widget _buildConnectedView(Color primary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _neonLabel('Code famille', primary),
-        const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(20),
-          borderRadius: 20,
-          glowColor: primary,
-          child: Column(
-            children: [
-              const Text(
-                'Partagez ce code avec votre conjoint(e) :',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.white70),
-              ),
-              const SizedBox(height: 16),
-              TvFocusWrapper(
-                onTap: _copyCode,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 20),
-                  decoration: BoxDecoration(
-                    color: primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                        color: primary.withValues(alpha: 0.3), width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                          color: primary.withValues(alpha: 0.15),
-                          blurRadius: 16)
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        _familyCode ?? '...',
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          color: primary,
-                          shadows: [
-                            Shadow(
-                                color: primary.withValues(alpha: 0.5),
-                                blurRadius: 12),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text('Appuyez pour copier',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey[500])),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _copyCode,
-                  icon: const Icon(Icons.copy_rounded),
-                  label: const Text('Copier le code'),
-                  style: FilledButton.styleFrom(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 14)),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _showChangeCodeDialog,
-                  icon: Icon(Icons.edit_rounded, color: primary),
-                  label: Text('Modifier le code',
-                      style: TextStyle(color: primary)),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: primary),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _disconnect,
-                  icon: const Icon(Icons.link_off_rounded,
-                      color: Colors.orange),
-                  label: const Text('Deconnecter',
-                      style: TextStyle(color: Colors.orange)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.orange),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+// ─── Widget helper pour l'aide ──────────────────────────────────
+class _HelpTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
 
-  Widget _buildCreateSection(Color primary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _neonLabel('Creer une famille', primary),
-        const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(20),
-          borderRadius: 20,
-          child: Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: primary.withValues(alpha: 0.12),
-                  boxShadow: [
-                    BoxShadow(
-                        color: primary.withValues(alpha: 0.15),
-                        blurRadius: 12)
-                  ],
-                ),
-                child: Icon(Icons.group_add_rounded,
-                    color: primary, size: 32),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Creez une famille et obtenez un code.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text('Code personnalise',
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 14)),
-                  ),
-                  Switch(
-                    value: _useCustomCode,
-                    onChanged: (v) =>
-                        setState(() => _useCustomCode = v),
-                  ),
-                ],
-              ),
-              if (_useCustomCode) ...[
-                const SizedBox(height: 8),
-                _buildTvTextField(
-                  controller: _customCodeController,
-                  focusNode: _customCodeFocusNode,
-                  hintText: 'Ex: SKS2025',
-                  maxLength: 10,
-                  textCapitalization: TextCapitalization.characters,
-                  helperText: '4 a 10 caracteres',
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'[A-Za-z0-9]'))
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _createFamily,
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(
-                      _useCustomCode
-                          ? 'Creer avec mon code'
-                          : 'Creer ma famille',
-                      style: const TextStyle(fontSize: 16)),
-                  style: FilledButton.styleFrom(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 14)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  const _HelpTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+  });
 
-  Widget _buildJoinSection(Color primary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _neonLabel('Rejoindre une famille', Colors.orange),
-        const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(20),
-          borderRadius: 20,
-          glowColor: Colors.orange,
-          child: Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.orange.withValues(alpha: 0.12),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.orange.withValues(alpha: 0.15),
-                        blurRadius: 12)
-                  ],
-                ),
-                child: const Icon(Icons.people_rounded,
-                    color: Colors.orange, size: 32),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Entrez le code pour rejoindre.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 16),
-              _buildTvTextField(
-                controller: _joinController,
-                focusNode: _joinFocusNode,
-                hintText: 'CODE',
-                maxLength: 10,
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                      RegExp(r'[A-Za-z0-9]'))
-                ],
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.paste_rounded),
-                  onPressed: () async {
-                    final data =
-                        await Clipboard.getData(Clipboard.kTextPlain);
-                    if (data?.text != null) {
-                      _joinController.text =
-                          data!.text!.toUpperCase().trim();
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _joinFamily,
-                  icon: const Icon(Icons.login_rounded),
-                  label: const Text('Rejoindre',
-                      style: TextStyle(fontSize: 16)),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoCard(Color primary) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      borderRadius: 18,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline_rounded,
-                  size: 18, color: primary),
-              const SizedBox(width: 8),
-              Text(
-                'Comment ca marche ?',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: primary,
-                  shadows: [
-                    Shadow(
-                        color: primary.withValues(alpha: 0.3),
-                        blurRadius: 8),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...[
-            (Icons.looks_one_rounded, 'Un parent cree la famille'),
-            (Icons.looks_two_rounded, 'Il copie et partage le code'),
-            (Icons.looks_3_rounded, 'L\'autre parent colle le code'),
-            (Icons.looks_4_rounded,
-                'Les donnees se synchronisent !'),
-          ].map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(item.$1, size: 20, color: primary),
-                    const SizedBox(width: 10),
-                    Expanded(
-                        child: Text(item.$2,
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[400]))),
-                  ],
-                ),
-              )),
-        ],
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: 0.15),
+        child: Icon(icon, color: color, size: 20),
       ),
-    );
-  }
-
-  /// Helper widget that replaces NeonText — just a styled Text with glow shadow
-  Widget _neonLabel(String text, Color color) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: color,
-        shadows: [
-          Shadow(color: color.withValues(alpha: 0.3), blurRadius: 8),
-        ],
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
     );
   }
 }
