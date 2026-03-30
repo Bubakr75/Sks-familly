@@ -1,1096 +1,873 @@
-import 'package:flutter/material.dart';
+// lib/providers/family_provider.dart
+
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/child_model.dart';
 import '../models/badge_model.dart';
 import '../models/history_entry.dart';
-// Uncomment if you use Firebase:
-// import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/immunity_lines.dart';
+import '../models/trade_model.dart';
 
 class FamilyProvider extends ChangeNotifier {
-  // ==================== HIVE BOXES ====================
-  Box? _childrenBox;
-  Box? _historyBox;
-  Box? _goalsBox;
-  Box? _notesBox;
-  Box? _punishmentsBox;
-  Box? _immunitiesBox;
-  Box? _tribunalBox;
-  Box? _customBadgesBox;
-  Box? _metaBox;
-  Box? _screenTimeBox;
-  Box? _tradesBox;
-  Box? _schoolNotesBox;
+  // ─── Hive boxes ───────────────────────────────────────
+  late Box<Map> _childrenBox;
+  late Box<Map> _historyBox;
+  late Box<Map> _goalsBox;
+  late Box<Map> _notesBox;
+  late Box<Map> _punishmentsBox;
+  late Box<Map> _immunitiesBox;
+  late Box<Map> _tribunalBox;
+  late Box<Map> _customBadgesBox;
+  late Box<Map> _metaBox;
+  late Box<Map> _screenTimeBox;
+  late Box<Map> _tradesBox;
+  late Box<Map> _schoolNotesBox;
 
-  // ==================== GETTERS BOXES ====================
-  Box? get schoolNotesBox => _schoolNotesBox;
-  Box? get punishmentsBox => _punishmentsBox;
-  Box? get immunitiesBox => _immunitiesBox;
-
-  // ==================== STATE ====================
   String? _familyCode;
+  bool _isSyncEnabled = false;
+
+  // ─── Getters ──────────────────────────────────────────
   String? get familyCode => _familyCode;
+  bool get isSyncEnabled => _isSyncEnabled;
 
-  List<Map<String, dynamic>> get children {
-    if (_childrenBox == null) return [];
-    return _childrenBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<ChildModel> get children =>
+      _childrenBox.values.map((m) => ChildModel.fromMap(Map<String, dynamic>.from(m))).toList();
 
-  List<Map<String, dynamic>> get history {
-    if (_historyBox == null) return [];
-    return _historyBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<HistoryEntry> get history =>
+      _historyBox.values.map((m) => HistoryEntry.fromMap(Map<String, dynamic>.from(m))).toList();
 
-  List<Map<String, dynamic>> get goals {
-    if (_goalsBox == null) return [];
-    return _goalsBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<Map<String, dynamic>> get goals =>
+      _goalsBox.values.map((m) => Map<String, dynamic>.from(m)).toList();
 
-  List<Map<String, dynamic>> get notes {
-    if (_notesBox == null) return [];
-    return _notesBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<Map<String, dynamic>> get notes =>
+      _notesBox.values.map((m) => Map<String, dynamic>.from(m)).toList();
 
-  List<Map<String, dynamic>> get punishments {
-    if (_punishmentsBox == null) return [];
-    return _punishmentsBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<Map<String, dynamic>> get punishments =>
+      _punishmentsBox.values.map((m) => Map<String, dynamic>.from(m)).toList();
 
-  List<Map<String, dynamic>> get immunities {
-    if (_immunitiesBox == null) return [];
-    return _immunitiesBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<ImmunityLines> get immunities =>
+      _immunitiesBox.values.map((m) => ImmunityLines.fromMap(Map<String, dynamic>.from(m))).toList();
 
-  List<Map<String, dynamic>> get tribunalCases {
-    if (_tribunalBox == null) return [];
-    return _tribunalBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<Map<String, dynamic>> get tribunalCases =>
+      _tribunalBox.values.map((m) => Map<String, dynamic>.from(m)).toList();
 
-  List<Map<String, dynamic>> get customBadges {
-    if (_customBadgesBox == null) return [];
-    return _customBadgesBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<BadgeModel> get customBadges =>
+      _customBadgesBox.values.map((m) => BadgeModel.fromMap(Map<String, dynamic>.from(m))).toList();
 
-  List<Map<String, dynamic>> get trades {
-    if (_tradesBox == null) return [];
-    return _tradesBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<TradeModel> get trades =>
+      _tradesBox.values.map((m) => TradeModel.fromMap(Map<String, dynamic>.from(m))).toList();
 
-  List<Map<String, dynamic>> get schoolNotes {
-    if (_schoolNotesBox == null) return [];
-    return _schoolNotesBox!.values
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  List<Map<String, dynamic>> get schoolNotes =>
+      _schoolNotesBox.values.map((m) => Map<String, dynamic>.from(m)).toList();
 
-  // ==================== INITIALIZATION ====================
-
+  // ─── Init ─────────────────────────────────────────────
   Future<void> init() async {
-    _childrenBox = await Hive.openBox('children');
-    _historyBox = await Hive.openBox('history');
-    _goalsBox = await Hive.openBox('goals');
-    _notesBox = await Hive.openBox('notes');
-    _punishmentsBox = await Hive.openBox('punishments');
-    _immunitiesBox = await Hive.openBox('immunities');
-    _tribunalBox = await Hive.openBox('tribunal');
-    _customBadgesBox = await Hive.openBox('custom_badges');
-    _metaBox = await Hive.openBox('meta');
-    _screenTimeBox = await Hive.openBox('screen_time');
-    _tradesBox = await Hive.openBox('trades');
-    _schoolNotesBox = await Hive.openBox('school_notes');
+    _childrenBox = await Hive.openBox<Map>('children');
+    _historyBox = await Hive.openBox<Map>('history');
+    _goalsBox = await Hive.openBox<Map>('goals');
+    _notesBox = await Hive.openBox<Map>('notes');
+    _punishmentsBox = await Hive.openBox<Map>('punishments');
+    _immunitiesBox = await Hive.openBox<Map>('immunities');
+    _tribunalBox = await Hive.openBox<Map>('tribunal');
+    _customBadgesBox = await Hive.openBox<Map>('customBadges');
+    _metaBox = await Hive.openBox<Map>('meta');
+    _screenTimeBox = await Hive.openBox<Map>('screenTime');
+    _tradesBox = await Hive.openBox<Map>('trades');
+    _schoolNotesBox = await Hive.openBox<Map>('schoolNotes');
 
-    // Load meta
-    _familyCode = _metaBox?.get('familyCode');
+    // Load family code
+    final meta = _metaBox.get('family');
+    if (meta != null) {
+      final m = Map<String, dynamic>.from(meta);
+      _familyCode = m['code'] as String?;
+      _isSyncEnabled = m['syncEnabled'] == true;
+    }
 
     notifyListeners();
   }
 
-  // ==================== FAMILY MANAGEMENT ====================
-
+  // ─── Family Management ────────────────────────────────
   Future<void> createFamily(String code) async {
     _familyCode = code;
-    await _metaBox?.put('familyCode', code);
+    _isSyncEnabled = false;
+    await _metaBox.put('family', {'code': code, 'syncEnabled': false});
     notifyListeners();
+    _syncToFirestore();
   }
 
   Future<void> joinFamily(String code) async {
     _familyCode = code;
-    await _metaBox?.put('familyCode', code);
-    // Sync from Firestore if available
+    _isSyncEnabled = false;
+    await _metaBox.put('family', {'code': code, 'syncEnabled': false});
     notifyListeners();
   }
 
-  Future<void> disconnectFamily() async {
-    _familyCode = null;
-    await _metaBox?.delete('familyCode');
+  Future<void> enableSync() async {
+    _isSyncEnabled = true;
+    await _metaBox.put('family', {
+      'code': _familyCode,
+      'syncEnabled': true,
+    });
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> disableSync() async {
+    _isSyncEnabled = false;
+    await _metaBox.put('family', {
+      'code': _familyCode,
+      'syncEnabled': false,
+    });
     notifyListeners();
   }
 
-  Future<void> changeFamilyCode(String newCode) async {
-    _familyCode = newCode;
-    await _metaBox?.put('familyCode', newCode);
-    notifyListeners();
-  }
-
-  // ==================== CHILDREN ====================
-
-  Future<void> addChild(String name) async {
-    final child = {
-      'id': const Uuid().v4(),
-      'name': name,
-      'points': 0,
-      'photoBase64': null,
-      'unlockedBadges': <String>[],
-      'createdAt': DateTime.now().toIso8601String(),
-    };
-    await _childrenBox?.add(child);
-    await _syncToFirestore('children', _childrenBox);
-    notifyListeners();
-  }
-
-  Future<void> updateChild(String childId, Map<String, dynamic> updates) async {
-    if (_childrenBox == null) return;
-    final entries = _childrenBox!.values.toList();
-    final index = entries.indexWhere((c) => c['id'] == childId);
-    if (index == -1) return;
-    final child = Map<String, dynamic>.from(entries[index] as Map);
-    child.addAll(updates);
-    await _childrenBox!.putAt(index, child);
-    await _syncToFirestore('children', _childrenBox);
-    notifyListeners();
-  }
-
-  Future<void> updateChildPhoto(String childId, String? photoBase64) async {
-    await updateChild(childId, {'photoBase64': photoBase64});
-  }
-
-  Future<void> removeChild(String childId) async {
-    if (_childrenBox == null) return;
-    final entries = _childrenBox!.values.toList();
-    final index = entries.indexWhere((c) => c['id'] == childId);
-    if (index != -1) {
-      await _childrenBox!.deleteAt(index);
-      await _syncToFirestore('children', _childrenBox);
-      notifyListeners();
+  Future<void> reconnectFirestore() async {
+    if (_isSyncEnabled && _familyCode != null) {
+      try {
+        await _syncToFirestore();
+      } catch (_) {}
     }
   }
 
-  // ==================== POINTS ====================
-
-  Future<String?> addPoints(
-    String childId,
-    int points,
-    String reason, {
-    String category = 'Bonus',
-    bool isBonus = true,
-    String? proofPhotoBase64,
-    String? actionBy,
-  }) async {
-    // Update child points
-    if (_childrenBox == null) return null;
-    final entries = _childrenBox!.values.toList();
-    final childIndex = entries.indexWhere((c) => c['id'] == childId);
-    if (childIndex == -1) return null;
-
-    final child = Map<String, dynamic>.from(entries[childIndex] as Map);
-    child['points'] = ((child['points'] as int?) ?? 0) + points;
-    await _childrenBox!.putAt(childIndex, child);
-
-    // Create history entry
-    final entryId = const Uuid().v4();
-    final entry = {
-      'id': entryId,
-      'childId': childId,
-      'points': points,
-      'reason': reason,
-      'category': category,
-      'isBonus': isBonus,
-      'date': DateTime.now().toIso8601String(),
-      'proofPhotoBase64': proofPhotoBase64,
-      'actionBy': actionBy,
-    };
-    await _historyBox?.add(entry);
-
-    // Check badge unlocks
-    _checkBadgeUnlocks(childId, child['points'] as int);
-
-    await _syncToFirestore('children', _childrenBox);
-    await _syncToFirestore('history', _historyBox);
-    notifyListeners();
-
-    return entryId;
+  // ─── Child CRUD ───────────────────────────────────────
+  ChildModel? getChild(String id) {
+    final raw = _childrenBox.get(id);
+    if (raw == null) return null;
+    return ChildModel.fromMap(Map<String, dynamic>.from(raw));
   }
 
-  // ==================== BADGES ====================
+  Future<void> addChild(String name, String avatar, {String? photoBase64}) async {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final child = ChildModel(
+      id: id,
+      name: name,
+      avatar: avatar,
+      photoBase64: photoBase64,
+      points: 0,
+      level: 1,
+      badgeIds: [],
+      createdAt: DateTime.now(),
+    );
+    await _childrenBox.put(id, child.toMap());
+    notifyListeners();
+    _syncToFirestore();
+  }
 
-  void _checkBadgeUnlocks(String childId, int totalPoints) {
-    if (_childrenBox == null) return;
-    final entries = _childrenBox!.values.toList();
-    final childIndex = entries.indexWhere((c) => c['id'] == childId);
-    if (childIndex == -1) return;
+  Future<void> updateChild(ChildModel child) async {
+    await _childrenBox.put(child.id, child.toMap());
+    notifyListeners();
+    _syncToFirestore();
+  }
 
-    final child = Map<String, dynamic>.from(entries[childIndex] as Map);
-    final unlocked = List<String>.from(child['unlockedBadges'] ?? []);
+  Future<void> removeChild(String id) async {
+    await _childrenBox.delete(id);
+    // Clean related data
+    final histKeys = <dynamic>[];
+    for (final key in _historyBox.keys) {
+      final m = Map<String, dynamic>.from(_historyBox.get(key)!);
+      if (m['childId'] == id) histKeys.add(key);
+    }
+    for (final k in histKeys) {
+      await _historyBox.delete(k);
+    }
+    notifyListeners();
+    _syncToFirestore();
+  }
 
-    for (final badge in BadgeModel.defaultBadges) {
-      if (!unlocked.contains(badge.id) && totalPoints >= badge.requiredPoints) {
-        unlocked.add(badge.id);
+  // ─── Points ───────────────────────────────────────────
+  Future<void> addPoints(String childId, int points, String description,
+      {String? category, String? proofPhotoBase64, String? actionBy}) async {
+    final child = getChild(childId);
+    if (child == null) return;
+
+    final isBonus = points >= 0;
+    final updated = child.copyWith(points: child.points + points);
+    await _childrenBox.put(childId, updated.toMap());
+
+    final entryId = DateTime.now().millisecondsSinceEpoch.toString();
+    final entry = HistoryEntry(
+      id: entryId,
+      childId: childId,
+      points: points,
+      reason: description,
+      category: category ?? (isBonus ? 'Bonus' : 'Malus'),
+      date: DateTime.now(),
+      isBonus: isBonus,
+      proofPhotoBase64: proofPhotoBase64,
+      actionBy: actionBy,
+    );
+    await _historyBox.put(entryId, entry.toMap());
+
+    // Check badge unlock
+    _checkBadgeUnlock(updated);
+
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  void _checkBadgeUnlock(ChildModel child) {
+    final allBadges = [...BadgeModel.defaultBadges, ...customBadges];
+    for (final badge in allBadges) {
+      if (!child.badgeIds.contains(badge.id) && child.points >= badge.requiredPoints) {
+        final updated = child.copyWith(badgeIds: [...child.badgeIds, badge.id]);
+        _childrenBox.put(child.id, updated.toMap());
       }
     }
-
-    // Check custom badges
-    for (final cb in customBadges) {
-      final bid = cb['id'] as String?;
-      final req = (cb['requiredPoints'] as int?) ?? 999999;
-      if (bid != null && !unlocked.contains(bid) && totalPoints >= req) {
-        unlocked.add(bid);
-      }
-    }
-
-    child['unlockedBadges'] = unlocked;
-    _childrenBox!.putAt(childIndex, child);
   }
 
   Future<void> unlockBadge(String childId, String badgeId) async {
-    if (_childrenBox == null) return;
-    final entries = _childrenBox!.values.toList();
-    final childIndex = entries.indexWhere((c) => c['id'] == childId);
-    if (childIndex == -1) return;
-    final child = Map<String, dynamic>.from(entries[childIndex] as Map);
-    final unlocked = List<String>.from(child['unlockedBadges'] ?? []);
-    if (!unlocked.contains(badgeId)) {
-      unlocked.add(badgeId);
-      child['unlockedBadges'] = unlocked;
-      await _childrenBox!.putAt(childIndex, child);
-      await _syncToFirestore('children', _childrenBox);
-      notifyListeners();
-    }
+    final child = getChild(childId);
+    if (child == null) return;
+    if (child.badgeIds.contains(badgeId)) return;
+    final updated = child.copyWith(badgeIds: [...child.badgeIds, badgeId]);
+    await _childrenBox.put(childId, updated.toMap());
+    notifyListeners();
+    _syncToFirestore();
   }
 
-  // ==================== GOALS ====================
-
+  // ─── Goals ────────────────────────────────────────────
   Future<void> addGoal(String childId, String title, int targetPoints) async {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
     final goal = {
-      'id': const Uuid().v4(),
+      'id': id,
       'childId': childId,
       'title': title,
       'targetPoints': targetPoints,
-      'completed': false,
+      'isCompleted': false,
       'createdAt': DateTime.now().toIso8601String(),
     };
-    await _goalsBox?.add(goal);
-    await _syncToFirestore('goals', _goalsBox);
+    await _goalsBox.put(id, goal);
     notifyListeners();
+    _syncToFirestore();
   }
 
   Future<void> completeGoal(String goalId) async {
-    if (_goalsBox == null) return;
-    final entries = _goalsBox!.values.toList();
-    final index = entries.indexWhere((g) => g['id'] == goalId);
-    if (index == -1) return;
-    final goal = Map<String, dynamic>.from(entries[index] as Map);
-    goal['completed'] = true;
-    await _goalsBox!.putAt(index, goal);
-    await _syncToFirestore('goals', _goalsBox);
+    final raw = _goalsBox.get(goalId);
+    if (raw == null) return;
+    final goal = Map<String, dynamic>.from(raw);
+    goal['isCompleted'] = true;
+    await _goalsBox.put(goalId, goal);
     notifyListeners();
+    _syncToFirestore();
   }
 
   Future<void> deleteGoal(String goalId) async {
-    if (_goalsBox == null) return;
-    final entries = _goalsBox!.values.toList();
-    final index = entries.indexWhere((g) => g['id'] == goalId);
-    if (index != -1) {
-      await _goalsBox!.deleteAt(index);
-      await _syncToFirestore('goals', _goalsBox);
-      notifyListeners();
-    }
+    await _goalsBox.delete(goalId);
+    notifyListeners();
+    _syncToFirestore();
   }
 
-  // ==================== NOTES (parent notes) ====================
-
-  Future<void> addNote(String childId, String content) async {
+  // ─── Notes ────────────────────────────────────────────
+  Future<void> addNote(String childId, String content, {String? category}) async {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
     final note = {
-      'id': const Uuid().v4(),
+      'id': id,
       'childId': childId,
       'content': content,
-      'date': DateTime.now().toIso8601String(),
+      'category': category ?? 'Général',
+      'createdAt': DateTime.now().toIso8601String(),
     };
-    await _notesBox?.add(note);
-    await _syncToFirestore('notes', _notesBox);
+    await _notesBox.put(id, note);
     notifyListeners();
+    _syncToFirestore();
   }
 
   Future<void> deleteNote(String noteId) async {
-    if (_notesBox == null) return;
-    final entries = _notesBox!.values.toList();
-    final index = entries.indexWhere((n) => n['id'] == noteId);
-    if (index != -1) {
-      await _notesBox!.deleteAt(index);
-      await _syncToFirestore('notes', _notesBox);
-      notifyListeners();
-    }
+    await _notesBox.delete(noteId);
+    notifyListeners();
+    _syncToFirestore();
   }
 
-  // ==================== PUNISHMENTS ====================
+  // ─── Punishments ──────────────────────────────────────
+  List<Map<String, dynamic>> getPunishments([String? childId]) {
+    final all = punishments;
+    if (childId == null) return all;
+    return all.where((p) => p['childId'] == childId).toList();
+  }
 
-  Future<void> addPunishment(
-    String childId,
-    String phrase,
-    int totalLines,
-  ) async {
+  Future<void> addPunishment(String childId, String reason, int totalLines, {String? phrase}) async {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
     final punishment = {
-      'id': const Uuid().v4(),
+      'id': id,
       'childId': childId,
-      'phrase': phrase,
+      'reason': reason,
       'totalLines': totalLines,
       'completedLines': 0,
+      'phrase': phrase ?? reason,
       'status': 'active',
       'submissions': <Map<String, dynamic>>[],
       'createdAt': DateTime.now().toIso8601String(),
     };
-    await _punishmentsBox?.add(punishment);
-    await _syncToFirestore('punishments', _punishmentsBox);
+    await _punishmentsBox.put(id, punishment);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> updatePunishment(
-      String punishmentId, Map<String, dynamic> updates) async {
-    if (_punishmentsBox == null) return;
-    final entries = _punishmentsBox!.values.toList();
-    final index = entries.indexWhere((p) => p['id'] == punishmentId);
-    if (index == -1) return;
-    final punishment = Map<String, dynamic>.from(entries[index] as Map);
-    punishment.addAll(updates);
-    await _punishmentsBox!.putAt(index, punishment);
-    await _syncToFirestore('punishments', _punishmentsBox);
+  Future<void> updatePunishment(String id, Map<String, dynamic> data) async {
+    final raw = _punishmentsBox.get(id);
+    if (raw == null) return;
+    final punishment = Map<String, dynamic>.from(raw);
+    punishment.addAll(data);
+    await _punishmentsBox.put(id, punishment);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> submitPunishmentLines(
-    String punishmentId,
-    int lineCount, {
-    String? photoBase64,
-  }) async {
-    if (_punishmentsBox == null) return;
-    final entries = _punishmentsBox!.values.toList();
-    final index = entries.indexWhere((p) => p['id'] == punishmentId);
-    if (index == -1) return;
-    final punishment = Map<String, dynamic>.from(entries[index] as Map);
-
-    final submissions =
-        List<Map<String, dynamic>>.from(punishment['submissions'] ?? []);
+  Future<void> submitPunishmentLines(String punishmentId, int lines, {String? photoBase64}) async {
+    final raw = _punishmentsBox.get(punishmentId);
+    if (raw == null) return;
+    final punishment = Map<String, dynamic>.from(raw);
+    final submissions = List<Map<String, dynamic>>.from(punishment['submissions'] ?? []);
     submissions.add({
-      'id': const Uuid().v4(),
-      'lineCount': lineCount,
+      'lines': lines,
       'photoBase64': photoBase64,
+      'submittedAt': DateTime.now().toIso8601String(),
       'status': 'pending',
-      'date': DateTime.now().toIso8601String(),
     });
-
     punishment['submissions'] = submissions;
-    await _punishmentsBox!.putAt(index, punishment);
-    await _syncToFirestore('punishments', _punishmentsBox);
+    await _punishmentsBox.put(punishmentId, punishment);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> validatePunishmentSubmission(
-    String punishmentId,
-    String submissionId, {
-    required bool approved,
-    String? note,
-    int? approvedLines,
-  }) async {
-    if (_punishmentsBox == null) return;
-    final entries = _punishmentsBox!.values.toList();
-    final index = entries.indexWhere((p) => p['id'] == punishmentId);
-    if (index == -1) return;
-    final punishment = Map<String, dynamic>.from(entries[index] as Map);
+  Future<void> validatePunishmentSubmission(String punishmentId, int submissionIndex,
+      {required bool accepted, int? validatedLines, String? note}) async {
+    final raw = _punishmentsBox.get(punishmentId);
+    if (raw == null) return;
+    final punishment = Map<String, dynamic>.from(raw);
+    final submissions = List<Map<String, dynamic>>.from(punishment['submissions'] ?? []);
 
-    final submissions =
-        List<Map<String, dynamic>>.from(punishment['submissions'] ?? []);
-    final subIndex = submissions.indexWhere((s) => s['id'] == submissionId);
-    if (subIndex == -1) return;
+    if (submissionIndex >= submissions.length) return;
 
-    submissions[subIndex]['status'] = approved ? 'approved' : 'rejected';
-    submissions[subIndex]['note'] = note;
-
-    if (approved) {
-      final lines =
-          approvedLines ?? (submissions[subIndex]['lineCount'] as int? ?? 0);
-      punishment['completedLines'] =
-          ((punishment['completedLines'] as int?) ?? 0) + lines;
-
-      if ((punishment['completedLines'] as int) >=
-          (punishment['totalLines'] as int? ?? 0)) {
+    final sub = Map<String, dynamic>.from(submissions[submissionIndex]);
+    if (accepted) {
+      final lines = validatedLines ?? (sub['lines'] as int? ?? 0);
+      sub['status'] = 'validated';
+      sub['validatedLines'] = lines;
+      sub['note'] = note;
+      punishment['completedLines'] = (punishment['completedLines'] as int? ?? 0) + lines;
+      if ((punishment['completedLines'] as int) >= (punishment['totalLines'] as int)) {
         punishment['status'] = 'completed';
+        punishment['completedAt'] = DateTime.now().toIso8601String();
       }
+    } else {
+      sub['status'] = 'rejected';
+      sub['note'] = note;
     }
-
+    submissions[submissionIndex] = sub;
     punishment['submissions'] = submissions;
-    await _punishmentsBox!.putAt(index, punishment);
-    await _syncToFirestore('punishments', _punishmentsBox);
+    await _punishmentsBox.put(punishmentId, punishment);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  // Photo handling for punishments
-  Future<void> addPunishmentPhoto(
-      String punishmentId, String photoBase64) async {
-    await updatePunishment(punishmentId, {'proofPhoto': photoBase64});
-  }
-
-  // ==================== IMMUNITIES ====================
-
-  Future<void> addImmunity(
-    String childId,
-    String name,
-    String type, {
-    int maxUses = 1,
-    String? description,
-  }) async {
-    final immunity = {
-      'id': const Uuid().v4(),
-      'childId': childId,
-      'name': name,
-      'type': type,
-      'maxUses': maxUses,
-      'usedCount': 0,
-      'status': 'active',
-      'description': description ?? '',
-      'createdAt': DateTime.now().toIso8601String(),
-    };
-    await _immunitiesBox?.add(immunity);
-    await _syncToFirestore('immunities', _immunitiesBox);
+  Future<void> deletePunishment(String id) async {
+    await _punishmentsBox.delete(id);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> useImmunity(String childId, String immunityId) async {
-    if (_immunitiesBox == null) return;
-    final entries = _immunitiesBox!.values.toList();
-    final index = entries.indexWhere(
-        (i) => i['id'] == immunityId && i['childId'] == childId);
-    if (index == -1) return;
-    final immunity = Map<String, dynamic>.from(entries[index] as Map);
-    immunity['usedCount'] = ((immunity['usedCount'] as int?) ?? 0) + 1;
-    if ((immunity['usedCount'] as int) >= (immunity['maxUses'] as int? ?? 1)) {
-      immunity['status'] = 'used';
+  Future<void> resetPunishmentProgress(String id) async {
+    final raw = _punishmentsBox.get(id);
+    if (raw == null) return;
+    final punishment = Map<String, dynamic>.from(raw);
+    punishment['completedLines'] = 0;
+    punishment['status'] = 'active';
+    punishment['submissions'] = <Map<String, dynamic>>[];
+    await _punishmentsBox.put(id, punishment);
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> completePunishment(String id) async {
+    final raw = _punishmentsBox.get(id);
+    if (raw == null) return;
+    final punishment = Map<String, dynamic>.from(raw);
+    punishment['status'] = 'completed';
+    punishment['completedLines'] = punishment['totalLines'];
+    punishment['completedAt'] = DateTime.now().toIso8601String();
+    await _punishmentsBox.put(id, punishment);
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  // ─── Immunities ───────────────────────────────────────
+  List<ImmunityLines> getImmunities([String? childId]) {
+    final all = immunities;
+    if (childId == null) return all;
+    return all.where((i) => i.childId == childId).toList();
+  }
+
+  Future<void> addImmunity(String childId, String reason, int lines, {DateTime? expiresAt}) async {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final immunity = ImmunityLines(
+      id: id,
+      childId: childId,
+      reason: reason,
+      lines: lines,
+      usedLines: 0,
+      createdAt: DateTime.now(),
+      expiresAt: expiresAt,
+    );
+    await _immunitiesBox.put(id, immunity.toMap());
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> useImmunity(String immunityId, int lines) async {
+    final raw = _immunitiesBox.get(immunityId);
+    if (raw == null) return;
+    final m = Map<String, dynamic>.from(raw);
+    m['usedLines'] = (m['usedLines'] as int? ?? 0) + lines;
+    await _immunitiesBox.put(immunityId, m);
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> useImmunityOnPunishment(String immunityId, String punishmentId) async {
+    final immRaw = _immunitiesBox.get(immunityId);
+    final punRaw = _punishmentsBox.get(punishmentId);
+    if (immRaw == null || punRaw == null) return;
+
+    final imm = ImmunityLines.fromMap(Map<String, dynamic>.from(immRaw));
+    final pun = Map<String, dynamic>.from(punRaw);
+
+    if (!imm.isUsable) return;
+
+    final remaining = (pun['totalLines'] as int) - (pun['completedLines'] as int? ?? 0);
+    final available = imm.availableLines;
+    final toUse = remaining < available ? remaining : available;
+
+    // Update immunity
+    final immMap = imm.toMap();
+    immMap['usedLines'] = imm.usedLines + toUse;
+    await _immunitiesBox.put(immunityId, immMap);
+
+    // Update punishment
+    pun['completedLines'] = (pun['completedLines'] as int? ?? 0) + toUse;
+    if ((pun['completedLines'] as int) >= (pun['totalLines'] as int)) {
+      pun['status'] = 'completed';
+      pun['completedAt'] = DateTime.now().toIso8601String();
     }
-    await _immunitiesBox!.putAt(index, immunity);
-    await _syncToFirestore('immunities', _immunitiesBox);
+    await _punishmentsBox.put(punishmentId, pun);
+
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> useImmunityOnPunishment(
-    String childId,
-    String immunityId,
-    String punishmentId,
-  ) async {
-    // Use the immunity
-    await useImmunity(childId, immunityId);
+  Future<void> useImmunityOnPunishmentNamed(String immunityId, String punishmentId) async {
+    await useImmunityOnPunishment(immunityId, punishmentId);
+  }
 
-    // Mark punishment as immunized
-    if (_punishmentsBox == null) return;
-    final entries = _punishmentsBox!.values.toList();
-    final index = entries.indexWhere((p) => p['id'] == punishmentId);
-    if (index == -1) return;
-    final punishment = Map<String, dynamic>.from(entries[index] as Map);
-    punishment['status'] = 'immunized';
-    punishment['immunityUsed'] = immunityId;
-    await _punishmentsBox!.putAt(index, punishment);
-    await _syncToFirestore('punishments', _punishmentsBox);
+  Future<void> deleteImmunity(String id) async {
+    await _immunitiesBox.delete(id);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  /// Named-parameter wrapper for useImmunityOnPunishment
-  Future<void> useImmunityOnPunishmentNamed({
-    required String immunityId,
-    required String punishmentId,
-    required String childId,
-  }) async {
-    await useImmunityOnPunishment(childId, immunityId, punishmentId);
-  }
-
-  int getImmunityTotal(String childId) {
-    return immunities.where((i) => i['childId'] == childId).length;
-  }
-
-  int getImmunityUsed(String childId) {
-    return immunities
-        .where((i) => i['childId'] == childId && i['status'] == 'used')
-        .length;
-  }
-
-  int getImmunityActive(String childId) {
-    return immunities
-        .where((i) => i['childId'] == childId && i['status'] == 'active')
-        .length;
-  }
-
-  // ==================== CUSTOM BADGES ====================
-
-  Future<void> addCustomBadge(Map<String, dynamic> badge) async {
-    badge['id'] ??= const Uuid().v4();
-    badge['isCustom'] = true;
-    await _customBadgesBox?.add(badge);
-    await _syncToFirestore('custom_badges', _customBadgesBox);
-    notifyListeners();
-  }
-
-  Future<void> deleteCustomBadge(String badgeId) async {
-    if (_customBadgesBox == null) return;
-    final entries = _customBadgesBox!.values.toList();
-    final index = entries.indexWhere((b) => b['id'] == badgeId);
-    if (index != -1) {
-      await _customBadgesBox!.deleteAt(index);
-      await _syncToFirestore('custom_badges', _customBadgesBox);
-      notifyListeners();
+  Future<void> reactivateImmunity(String id) async {
+    final raw = _immunitiesBox.get(id);
+    if (raw == null) return;
+    final m = Map<String, dynamic>.from(raw);
+    m['usedLines'] = 0;
+    if (m['expiresAt'] != null) {
+      m['expiresAt'] = DateTime.now().add(const Duration(days: 7)).toIso8601String();
     }
-  }
-
-  // ==================== SCREEN TIME ====================
-
-  int getSaturdayMinutes(String childId) {
-    if (_screenTimeBox == null) return 0;
-    final key = '${childId}_saturday';
-    return (_screenTimeBox!.get(key) as int?) ?? 0;
-  }
-
-  int getSundayMinutes(String childId) {
-    if (_screenTimeBox == null) return 0;
-    final key = '${childId}_sunday';
-    return (_screenTimeBox!.get(key) as int?) ?? 0;
-  }
-
-  int getParentBonusMinutes(String childId) {
-    if (_screenTimeBox == null) return 0;
-    final key = '${childId}_bonus';
-    return (_screenTimeBox!.get(key) as int?) ?? 0;
-  }
-
-  Future<void> setSaturdayMinutes(String childId, int minutes) async {
-    await _screenTimeBox?.put('${childId}_saturday', minutes);
-    await _syncToFirestore('screen_time', _screenTimeBox);
+    await _immunitiesBox.put(id, m);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> setSundayMinutes(String childId, int minutes) async {
-    await _screenTimeBox?.put('${childId}_sunday', minutes);
-    await _syncToFirestore('screen_time', _screenTimeBox);
+  // ─── Custom Badges ────────────────────────────────────
+  Future<void> addCustomBadge(String name, String icon, String description,
+      int requiredPoints, String powerType) async {
+    final id = 'custom_${DateTime.now().millisecondsSinceEpoch}';
+    final badge = BadgeModel(
+      id: id,
+      name: name,
+      icon: icon,
+      description: description,
+      requiredPoints: requiredPoints,
+      powerType: powerType,
+      isCustom: true,
+    );
+    await _customBadgesBox.put(id, badge.toMap());
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> setParentBonusMinutes(String childId, int minutes) async {
-    await _screenTimeBox?.put('${childId}_bonus', minutes);
-    await _syncToFirestore('screen_time', _screenTimeBox);
+  Future<void> deleteCustomBadge(String id) async {
+    await _customBadgesBox.delete(id);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  int getSaturdayRating(String childId) {
-    if (_screenTimeBox == null) return 0;
-    return (_screenTimeBox!.get('${childId}_sat_rating') as int?) ?? 0;
+  List<BadgeModel> getAllBadges() {
+    return [...BadgeModel.defaultBadges, ...customBadges];
   }
 
-  Future<void> setSaturdayRating(String childId, int rating) async {
-    await _screenTimeBox?.put('${childId}_sat_rating', rating);
-    await _syncToFirestore('screen_time', _screenTimeBox);
+  List<BadgeModel> getChildBadges(String childId) {
+    final child = getChild(childId);
+    if (child == null) return [];
+    final allBadges = getAllBadges();
+    return allBadges.where((b) => child.badgeIds.contains(b.id)).toList();
+  }
+
+  // ─── Screen Time ──────────────────────────────────────
+  Map<String, dynamic>? getScreenTime(String childId) {
+    final raw = _screenTimeBox.get(childId);
+    if (raw == null) return null;
+    return Map<String, dynamic>.from(raw);
+  }
+
+  Future<void> setScreenTime(String childId, Map<String, dynamic> data) async {
+    await _screenTimeBox.put(childId, data);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  // ==================== WEEKLY SCORE ====================
-
-  int calculateWeeklyScore(String childId) {
+  // ─── Weekly Score ─────────────────────────────────────
+  int getWeeklyScore(String childId) {
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekStartDate =
-        DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final start = DateTime(weekStart.year, weekStart.month, weekStart.day);
 
-    int score = 0;
-    for (final entry in history) {
-      if (entry['childId'] != childId) continue;
-      final date = DateTime.tryParse(entry['date'] ?? '');
-      if (date != null && date.isAfter(weekStartDate)) {
-        score += (entry['points'] as int?) ?? 0;
-      }
-    }
-    return score;
+    return history
+        .where((e) => e.childId == childId && e.date.isAfter(start))
+        .fold<int>(0, (sum, e) => sum + e.points);
   }
 
-  // ==================== TRIBUNAL ====================
-
-  Future<void> addTribunalCase(
-    String accusedId,
-    String accuserId,
-    String description,
-  ) async {
-    final caseItem = {
-      'id': const Uuid().v4(),
-      'accusedId': accusedId,
-      'accuserId': accuserId,
-      'description': description,
-      'status': 'open',
-      'votes': <Map<String, dynamic>>[],
-      'verdict': null,
-      'createdAt': DateTime.now().toIso8601String(),
-    };
-    await _tribunalBox?.add(caseItem);
-    await _syncToFirestore('tribunal', _tribunalBox);
+  // ─── Tribunal ─────────────────────────────────────────
+  Future<void> startTribunalHearing(Map<String, dynamic> tribunalCase) async {
+    final id = tribunalCase['id'] ?? DateTime.now().millisecondsSinceEpoch.toString();
+    tribunalCase['id'] = id;
+    tribunalCase['status'] = tribunalCase['status'] ?? 'open';
+    tribunalCase['createdAt'] = tribunalCase['createdAt'] ?? DateTime.now().toIso8601String();
+    tribunalCase['votes'] = tribunalCase['votes'] ?? <Map<String, dynamic>>[];
+    await _tribunalBox.put(id, tribunalCase);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> updateTribunalCase(
-      String caseId, Map<String, dynamic> updates) async {
-    if (_tribunalBox == null) return;
-    final entries = _tribunalBox!.values.toList();
-    final index = entries.indexWhere((c) => c['id'] == caseId);
-    if (index == -1) return;
-    final caseItem = Map<String, dynamic>.from(entries[index] as Map);
-    caseItem.addAll(updates);
-    await _tribunalBox!.putAt(index, caseItem);
-    await _syncToFirestore('tribunal', _tribunalBox);
+  Future<void> updateTribunalCase(String id, Map<String, dynamic> data) async {
+    final raw = _tribunalBox.get(id);
+    if (raw == null) return;
+    final tc = Map<String, dynamic>.from(raw);
+    tc.addAll(data);
+    await _tribunalBox.put(id, tc);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> voteTribunalCase(
-    String caseId,
-    String voterId,
-    String vote,
-  ) async {
-    if (_tribunalBox == null) return;
-    final entries = _tribunalBox!.values.toList();
-    final index = entries.indexWhere((c) => c['id'] == caseId);
-    if (index == -1) return;
-    final caseItem = Map<String, dynamic>.from(entries[index] as Map);
-    final votes =
-        List<Map<String, dynamic>>.from(caseItem['votes'] ?? []);
-
-    // Remove previous vote from same voter
+  Future<void> voteTribunal(String caseId, String voterId, String vote) async {
+    final raw = _tribunalBox.get(caseId);
+    if (raw == null) return;
+    final tc = Map<String, dynamic>.from(raw);
+    final votes = List<Map<String, dynamic>>.from(tc['votes'] ?? []);
+    // Remove previous vote by same voter
     votes.removeWhere((v) => v['voterId'] == voterId);
     votes.add({
       'voterId': voterId,
       'vote': vote,
-      'date': DateTime.now().toIso8601String(),
+      'votedAt': DateTime.now().toIso8601String(),
     });
-
-    caseItem['votes'] = votes;
-    await _tribunalBox!.putAt(index, caseItem);
-    await _syncToFirestore('tribunal', _tribunalBox);
+    tc['votes'] = votes;
+    await _tribunalBox.put(caseId, tc);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> renderVerdict(
-    String caseId,
-    String verdict, {
-    int? penaltyPoints,
-  }) async {
-    if (_tribunalBox == null) return;
-    final entries = _tribunalBox!.values.toList();
-    final index = entries.indexWhere((c) => c['id'] == caseId);
-    if (index == -1) return;
-    final caseItem = Map<String, dynamic>.from(entries[index] as Map);
-    caseItem['status'] = 'closed';
-    caseItem['verdict'] = verdict;
-    caseItem['closedAt'] = DateTime.now().toIso8601String();
+  Future<void> renderVerdict(String caseId, String verdict, {int? pointsAdjust}) async {
+    final raw = _tribunalBox.get(caseId);
+    if (raw == null) return;
+    final tc = Map<String, dynamic>.from(raw);
+    tc['status'] = 'closed';
+    tc['verdict'] = verdict;
+    tc['closedAt'] = DateTime.now().toIso8601String();
+    await _tribunalBox.put(caseId, tc);
 
-    await _tribunalBox!.putAt(index, caseItem);
-
-    // Apply penalty if guilty
-    if (verdict == 'guilty' && penaltyPoints != null && penaltyPoints > 0) {
-      final accusedId = caseItem['accusedId'] as String?;
-      if (accusedId != null) {
-        await addPoints(
-          accusedId,
-          -penaltyPoints,
-          'Tribunal: ${caseItem['description']}',
-          category: 'Tribunal',
-          isBonus: false,
-        );
-      }
+    // Apply points adjustment if any
+    if (pointsAdjust != null && tc['accusedId'] != null) {
+      await addPoints(tc['accusedId'], pointsAdjust, 'Verdict tribunal: $verdict',
+          category: 'Tribunal');
     }
 
-    await _syncToFirestore('tribunal', _tribunalBox);
     notifyListeners();
+    _syncToFirestore();
   }
 
   Future<void> distributeVotePoints(String caseId) async {
-    if (_tribunalBox == null) return;
-    final entries = _tribunalBox!.values.toList();
-    final index = entries.indexWhere((c) => c['id'] == caseId);
-    if (index == -1) return;
-    final caseItem = Map<String, dynamic>.from(entries[index] as Map);
-    final votes = List<Map<String, dynamic>>.from(caseItem['votes'] ?? []);
-
+    final raw = _tribunalBox.get(caseId);
+    if (raw == null) return;
+    final tc = Map<String, dynamic>.from(raw);
+    final votes = List<Map<String, dynamic>>.from(tc['votes'] ?? []);
     for (final vote in votes) {
-      final voterId = vote['voterId'] as String?;
-      if (voterId != null) {
-        await addPoints(
-          voterId,
-          1,
-          'Participation au tribunal',
-          category: 'Tribunal',
-          isBonus: true,
-        );
-      }
+      final voterId = vote['voterId'] as String;
+      await addPoints(voterId, 1, 'Participation au tribunal', category: 'Tribunal');
     }
   }
 
-  // ==================== TRADES ====================
-
-  Future<void> createTrade(
-    String fromChildId,
-    String toChildId,
-    String offer,
-    String request,
-  ) async {
-    final trade = {
-      'id': const Uuid().v4(),
-      'fromChildId': fromChildId,
-      'toChildId': toChildId,
-      'offer': offer,
-      'request': request,
-      'status': 'pending',
-      'createdAt': DateTime.now().toIso8601String(),
-    };
-    await _tradesBox?.add(trade);
-    await _syncToFirestore('trades', _tradesBox);
+  Future<void> deleteTribunalCase(String id) async {
+    await _tribunalBox.delete(id);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> _updateTrade(String tradeId, Map<String, dynamic> updates) async {
-    if (_tradesBox == null) return;
-    final entries = _tradesBox!.values.toList();
-    final index = entries.indexWhere((t) => t['id'] == tradeId);
-    if (index == -1) return;
-    final trade = Map<String, dynamic>.from(entries[index] as Map);
-    trade.addAll(updates);
-    await _tradesBox!.putAt(index, trade);
-    await _syncToFirestore('trades', _tradesBox);
+  // ─── Trades ───────────────────────────────────────────
+  Future<void> addTrade(TradeModel trade) async {
+    await _tradesBox.put(trade.id, trade.toMap());
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> acceptTrade(String tradeId) async {
-    await _updateTrade(tradeId, {'status': 'accepted'});
+  Future<void> updateTrade(String id, Map<String, dynamic> data) async {
+    final raw = _tradesBox.get(id);
+    if (raw == null) return;
+    final tradeMap = Map<String, dynamic>.from(raw);
+    tradeMap.addAll(data);
+    await _tradesBox.put(id, tradeMap);
+    notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> rejectTrade(String tradeId) async {
-    await _updateTrade(tradeId, {'status': 'rejected'});
+  Future<void> deleteTrade(String id) async {
+    await _tradesBox.delete(id);
+    notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> cancelTrade(String tradeId) async {
-    await _updateTrade(tradeId, {'status': 'cancelled'});
+  TradeModel? getTrade(String id) {
+    final raw = _tradesBox.get(id);
+    if (raw == null) return null;
+    return TradeModel.fromMap(Map<String, dynamic>.from(raw));
   }
 
-  Future<void> markTradeDone(String tradeId) async {
-    await _updateTrade(tradeId, {'status': 'done'});
-  }
-
-  Future<void> completeTrade(String tradeId) async {
-    await _updateTrade(tradeId, {
-      'status': 'completed',
-      'completedAt': DateTime.now().toIso8601String(),
-    });
-  }
-
-  // ==================== HISTORY / STATS HELPERS ====================
-
-  List<Map<String, dynamic>> getChildHistory(String childId) {
-    return history.where((h) => h['childId'] == childId).toList()
-      ..sort((a, b) {
-        final da = DateTime.tryParse(a['date'] ?? '') ?? DateTime(2000);
-        final db = DateTime.tryParse(b['date'] ?? '') ?? DateTime(2000);
-        return db.compareTo(da);
-      });
-  }
-
-  List<Map<String, dynamic>> getChildBonuses(String childId) {
-    return getChildHistory(childId)
-        .where((h) => h['isBonus'] == true)
+  List<TradeModel> getChildTrades(String childId) {
+    return trades
+        .where((t) => t.fromChildId == childId || t.toChildId == childId)
         .toList();
   }
 
-  List<Map<String, dynamic>> getChildPenalties(String childId) {
-    return getChildHistory(childId)
-        .where((h) => h['isBonus'] == false)
-        .toList();
+  List<TradeModel> getActiveTrades() {
+    return trades.where((t) => t.isActive).toList();
   }
 
-  int getTotalBonusPoints(String childId) {
-    return getChildBonuses(childId)
-        .fold<int>(0, (sum, h) => sum + ((h['points'] as int?) ?? 0));
+  // ─── History Helpers ──────────────────────────────────
+  List<HistoryEntry> getHistory([String? childId]) {
+    if (childId == null) return history;
+    return history.where((e) => e.childId == childId).toList();
   }
 
-  int getTotalPenaltyPoints(String childId) {
-    return getChildPenalties(childId)
-        .fold<int>(0, (sum, h) => sum + ((h['points'] as int?) ?? 0).abs());
+  List<HistoryEntry> getChildHistory(String childId) {
+    return history.where((e) => e.childId == childId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
   }
 
-  // ==================== PUNISHMENTS HELPERS (for admin) ====================
-
-  List<Map<String, dynamic>> getPunishments(String childId) {
-    return punishments.where((p) => p['childId'] == childId).toList();
+  List<HistoryEntry> getChildBonuses(String childId) {
+    return getChildHistory(childId).where((e) => e.isBonus).toList();
   }
 
-  List<Map<String, dynamic>> getImmunities(String childId) {
-    return immunities.where((i) => i['childId'] == childId).toList();
+  List<HistoryEntry> getChildPenalties(String childId) {
+    return getChildHistory(childId).where((e) => !e.isBonus).toList();
   }
 
-  // ==================== DELETE / EDIT (admin) ====================
-
-  Future<void> deletePunishment(String punishmentId) async {
-    if (_punishmentsBox == null) return;
-    final entries = _punishmentsBox!.values.toList();
-    final index = entries.indexWhere((p) => p['id'] == punishmentId);
-    if (index != -1) {
-      await _punishmentsBox!.deleteAt(index);
-      await _syncToFirestore('punishments', _punishmentsBox);
-      notifyListeners();
-    }
+  int getChildTotalBonuses(String childId) {
+    return getChildBonuses(childId).fold<int>(0, (sum, e) => sum + e.points);
   }
 
-  Future<void> deleteImmunity(String immunityId) async {
-    if (_immunitiesBox == null) return;
-    final entries = _immunitiesBox!.values.toList();
-    final index = entries.indexWhere((i) => i['id'] == immunityId);
-    if (index != -1) {
-      await _immunitiesBox!.deleteAt(index);
-      await _syncToFirestore('immunities', _immunitiesBox);
-      notifyListeners();
-    }
+  int getChildTotalPenalties(String childId) {
+    return getChildPenalties(childId).fold<int>(0, (sum, e) => sum + e.points.abs());
   }
 
-  Future<void> deleteHistoryEntry(String childId, String entryId,
-      {bool reversePoints = false}) async {
-    if (_historyBox == null) return;
-    final entries = _historyBox!.values.toList();
-    final index = entries.indexWhere(
-        (e) => e['id'] == entryId && e['childId'] == childId);
-    if (index == -1) return;
-
-    if (reversePoints) {
-      final entry = Map<String, dynamic>.from(entries[index] as Map);
-      final points = (entry['points'] as int?) ?? 0;
-      if (_childrenBox != null) {
-        final childEntries = _childrenBox!.values.toList();
-        final childIndex =
-            childEntries.indexWhere((c) => c['id'] == childId);
-        if (childIndex != -1) {
-          final child =
-              Map<String, dynamic>.from(childEntries[childIndex] as Map);
-          child['points'] = ((child['points'] as int?) ?? 0) - points;
-          await _childrenBox!.putAt(childIndex, child);
-          await _syncToFirestore('children', _childrenBox);
-        }
+  // ─── Delete / Edit Helpers ────────────────────────────
+  Future<void> deleteHistoryEntry(String id) async {
+    final raw = _historyBox.get(id);
+    if (raw != null) {
+      final entry = HistoryEntry.fromMap(Map<String, dynamic>.from(raw));
+      // Reverse the points
+      final child = getChild(entry.childId);
+      if (child != null) {
+        final updated = child.copyWith(points: child.points - entry.points);
+        await _childrenBox.put(child.id, updated.toMap());
       }
     }
-
-    await _historyBox!.deleteAt(index);
-    await _syncToFirestore('history', _historyBox);
+    await _historyBox.delete(id);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> editHistoryEntry(
-      String childId, String entryId, Map<String, dynamic> updates) async {
-    if (_historyBox == null) return;
-    final entries = _historyBox!.values.toList();
-    final index = entries.indexWhere(
-        (e) => e['id'] == entryId && e['childId'] == childId);
-    if (index == -1) return;
+  Future<void> editHistoryEntry(String id, {int? points, String? reason}) async {
+    final raw = _historyBox.get(id);
+    if (raw == null) return;
+    final m = Map<String, dynamic>.from(raw);
+    final oldPoints = m['points'] as int;
 
-    final entry = Map<String, dynamic>.from(entries[index] as Map);
-    final oldPoints = (entry['points'] as int?) ?? 0;
-    entry.addAll(updates);
-    final newPoints = (entry['points'] as int?) ?? 0;
-
-    if (newPoints != oldPoints && _childrenBox != null) {
-      final childEntries = _childrenBox!.values.toList();
-      final childIndex = childEntries.indexWhere((c) => c['id'] == childId);
-      if (childIndex != -1) {
-        final child =
-            Map<String, dynamic>.from(childEntries[childIndex] as Map);
-        child['points'] =
-            ((child['points'] as int?) ?? 0) - oldPoints + newPoints;
-        await _childrenBox!.putAt(childIndex, child);
-        await _syncToFirestore('children', _childrenBox);
+    if (points != null) {
+      m['points'] = points;
+      // Adjust child points
+      final childId = m['childId'] as String;
+      final child = getChild(childId);
+      if (child != null) {
+        final diff = points - oldPoints;
+        final updated = child.copyWith(points: child.points + diff);
+        await _childrenBox.put(child.id, updated.toMap());
       }
     }
+    if (reason != null) m['reason'] = reason;
 
-    await _historyBox!.putAt(index, entry);
-    await _syncToFirestore('history', _historyBox);
+    await _historyBox.put(id, m);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> clearChildHistory(String childId) async {
-    if (_historyBox == null) return;
-    final entries = _historyBox!.values.toList();
-    for (int i = entries.length - 1; i >= 0; i--) {
-      if (entries[i]['childId'] == childId) {
-        await _historyBox!.deleteAt(i);
-      }
-    }
-    await _syncToFirestore('history', _historyBox);
-    notifyListeners();
-  }
-
-  Future<void> clearAllPunishments(String childId) async {
-    if (_punishmentsBox == null) return;
-    final entries = _punishmentsBox!.values.toList();
-    for (int i = entries.length - 1; i >= 0; i--) {
-      if (entries[i]['childId'] == childId) {
-        await _punishmentsBox!.deleteAt(i);
-      }
-    }
-    await _syncToFirestore('punishments', _punishmentsBox);
-    notifyListeners();
-  }
-
-  Future<void> clearAllImmunities(String childId) async {
-    if (_immunitiesBox == null) return;
-    final entries = _immunitiesBox!.values.toList();
-    for (int i = entries.length - 1; i >= 0; i--) {
-      if (entries[i]['childId'] == childId) {
-        await _immunitiesBox!.deleteAt(i);
-      }
-    }
-    await _syncToFirestore('immunities', _immunitiesBox);
-    notifyListeners();
-  }
-
+  // ─── Admin Helpers ────────────────────────────────────
   Future<void> resetChildPoints(String childId) async {
-    if (_childrenBox == null) return;
-    final entries = _childrenBox!.values.toList();
-    final index = entries.indexWhere((c) => c['id'] == childId);
-    if (index == -1) return;
-    final child = Map<String, dynamic>.from(entries[index] as Map);
-    child['points'] = 0;
-    await _childrenBox!.putAt(index, child);
-    await _syncToFirestore('children', _childrenBox);
+    final child = getChild(childId);
+    if (child == null) return;
+    final updated = child.copyWith(points: 0, level: 1, badgeIds: []);
+    await _childrenBox.put(childId, updated.toMap());
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> resetAllScores() async {
+    for (final child in children) {
+      final updated = child.copyWith(points: 0, level: 1, badgeIds: []);
+      await _childrenBox.put(child.id, updated.toMap());
+    }
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> clearHistory([String? childId]) async {
+    if (childId == null) {
+      await _historyBox.clear();
+    } else {
+      final keysToDelete = <dynamic>[];
+      for (final key in _historyBox.keys) {
+        final m = Map<String, dynamic>.from(_historyBox.get(key)!);
+        if (m['childId'] == childId) keysToDelete.add(key);
+      }
+      for (final k in keysToDelete) {
+        await _historyBox.delete(k);
+      }
+    }
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> clearAllPunishments([String? childId]) async {
+    if (childId == null) {
+      await _punishmentsBox.clear();
+    } else {
+      final keysToDelete = <dynamic>[];
+      for (final key in _punishmentsBox.keys) {
+        final m = Map<String, dynamic>.from(_punishmentsBox.get(key)!);
+        if (m['childId'] == childId) keysToDelete.add(key);
+      }
+      for (final k in keysToDelete) {
+        await _punishmentsBox.delete(k);
+      }
+    }
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> clearAllImmunities([String? childId]) async {
+    if (childId == null) {
+      await _immunitiesBox.clear();
+    } else {
+      final keysToDelete = <dynamic>[];
+      for (final key in _immunitiesBox.keys) {
+        final m = Map<String, dynamic>.from(_immunitiesBox.get(key)!);
+        if (m['childId'] == childId) keysToDelete.add(key);
+      }
+      for (final k in keysToDelete) {
+        await _immunitiesBox.delete(k);
+      }
+    }
+    notifyListeners();
+    _syncToFirestore();
+  }
+
+  Future<void> resetEverything() async {
+    await _childrenBox.clear();
+    await _historyBox.clear();
+    await _goalsBox.clear();
+    await _notesBox.clear();
+    await _punishmentsBox.clear();
+    await _immunitiesBox.clear();
+    await _tribunalBox.clear();
+    await _customBadgesBox.clear();
+    await _screenTimeBox.clear();
+    await _tradesBox.clear();
+    await _schoolNotesBox.clear();
+    _familyCode = null;
+    _isSyncEnabled = false;
+    await _metaBox.clear();
     notifyListeners();
   }
 
-  Future<void> reactivateImmunity(String immunityId) async {
-    if (_immunitiesBox == null) return;
-    final entries = _immunitiesBox!.values.toList();
-    final index = entries.indexWhere((i) => i['id'] == immunityId);
-    if (index == -1) return;
-    final immunity = Map<String, dynamic>.from(entries[index] as Map);
-    immunity['status'] = 'active';
-    immunity['usedCount'] = 0;
-    await _immunitiesBox!.putAt(index, immunity);
-    await _syncToFirestore('immunities', _immunitiesBox);
-    notifyListeners();
-  }
-
-  Future<void> resetPunishmentProgress(String punishmentId) async {
-    if (_punishmentsBox == null) return;
-    final entries = _punishmentsBox!.values.toList();
-    final index = entries.indexWhere((p) => p['id'] == punishmentId);
-    if (index == -1) return;
-    final punishment = Map<String, dynamic>.from(entries[index] as Map);
-    punishment['completedLines'] = 0;
-    punishment['status'] = 'active';
-    punishment['submissions'] = <Map<String, dynamic>>[];
-    await _punishmentsBox!.putAt(index, punishment);
-    await _syncToFirestore('punishments', _punishmentsBox);
-    notifyListeners();
-  }
-
-  Future<void> completePunishment(String punishmentId) async {
-    if (_punishmentsBox == null) return;
-    final entries = _punishmentsBox!.values.toList();
-    final index = entries.indexWhere((p) => p['id'] == punishmentId);
-    if (index == -1) return;
-    final punishment = Map<String, dynamic>.from(entries[index] as Map);
-    punishment['status'] = 'completed';
-    punishment['completedLines'] = punishment['totalLines'] ?? 0;
-    await _punishmentsBox!.putAt(index, punishment);
-    await _syncToFirestore('punishments', _punishmentsBox);
-    notifyListeners();
-  }
-
-  Future<void> resetEverything(String childId) async {
-    await resetChildPoints(childId);
-    await clearChildHistory(childId);
-    await clearAllPunishments(childId);
-    await clearAllImmunities(childId);
-  }
-
-  // ==================== SCHOOL NOTES ====================
-
-  Future<void> addSchoolNote(
-    String childId,
-    String subject,
-    double value,
-    double maxValue, {
-    String? comment,
-    String? photoBase64,
-  }) async {
+  // ─── School Notes ─────────────────────────────────────
+  Future<void> addSchoolNote(String childId, String subject, double grade,
+      double maxGrade, {String? comment, String? photoBase64}) async {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
     final note = {
-      'id': const Uuid().v4(),
+      'id': id,
       'childId': childId,
       'subject': subject,
-      'value': value,
-      'maxValue': maxValue,
-      'comment': comment ?? '',
+      'grade': grade,
+      'maxGrade': maxGrade,
+      'comment': comment,
       'photoBase64': photoBase64,
-      'date': DateTime.now().toIso8601String(),
-      'validated': null,
+      'isValidated': false,
+      'createdAt': DateTime.now().toIso8601String(),
     };
-    await _schoolNotesBox?.add(note);
-    await _syncToFirestore('school_notes', _schoolNotesBox);
+    await _schoolNotesBox.put(id, note);
     notifyListeners();
+    _syncToFirestore();
   }
 
-  Future<void> validateSchoolNote(String noteId,
-      {required bool validated}) async {
-    if (_schoolNotesBox == null) return;
-    final entries = _schoolNotesBox!.values.toList();
-    final index = entries.indexWhere((n) => n['id'] == noteId);
-    if (index == -1) return;
-    final note = Map<String, dynamic>.from(entries[index] as Map);
-    note['validated'] = validated;
-    await _schoolNotesBox!.putAt(index, note);
-    await _syncToFirestore('school_notes', _schoolNotesBox);
-    notifyListeners();
-  }
+  Future<void> validateSchoolNote(String noteId, {int bonusPoints = 0, String? childId}) async {
+    final raw = _schoolNotesBox.get(noteId);
+    if (raw == null) return;
+    final note = Map<String, dynamic>.from(raw);
+    note['isValidated'] = true;
+    note['validatedAt'] = DateTime.now().toIso8601String();
+    await _schoolNotesBox.put(noteId, note);
 
-  // ==================== HIVE HELPER ====================
-
-  Future<void> _saveBoxFromList(Box box, List<Map<String, dynamic>> list) async {
-    await box.clear();
-    for (final item in list) {
-      await box.add(item);
+    if (bonusPoints > 0 && childId != null) {
+      await addPoints(childId, bonusPoints, 'Bonus note scolaire: ${note['subject']}',
+          category: 'École');
     }
+
+    notifyListeners();
+    _syncToFirestore();
   }
 
-  // ==================== FIRESTORE SYNC ====================
+  Future<void> deleteSchoolNote(String id) async {
+    await _schoolNotesBox.delete(id);
+    notifyListeners();
+    _syncToFirestore();
+  }
 
-  Future<void> _syncToFirestore(String collection, Box? box) async {
-    if (_familyCode == null || _familyCode!.isEmpty || box == null) return;
+  List<Map<String, dynamic>> getChildSchoolNotes(String childId) {
+    return schoolNotes.where((n) => n['childId'] == childId).toList();
+  }
+
+  // ─── Firestore Sync (placeholder) ────────────────────
+  Future<void> _syncToFirestore() async {
+    if (!_isSyncEnabled || _familyCode == null) return;
     try {
-      // TODO: Implement your Firestore sync logic
-      // Example:
-      // final data = box.values.toList().map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      // await FirebaseFirestore.instance
-      //     .collection('families')
-      //     .doc(_familyCode)
-      //     .update({collection: data});
+      final db = FirebaseFirestore.instance;
+      final ref = db.collection('families').doc(_familyCode);
+      await ref.set({
+        'children': children.map((c) => c.toMap()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } catch (e) {
-      debugPrint('Sync error for $collection: $e');
+      debugPrint('Firestore sync error: $e');
     }
   }
 }
