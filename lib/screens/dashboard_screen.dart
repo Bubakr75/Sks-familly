@@ -171,7 +171,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   //  PODIUM
   // ──────────────────────────────────────────────
   Widget _buildPodium(List<dynamic> children) {
-    // Trier par points décroissants
     final sorted = List<dynamic>.from(children)
       ..sort((a, b) => (b.points as int).compareTo(a.points as int));
 
@@ -197,13 +196,10 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     return Column(
       children: [
-        // Top podium (3 premiers max)
         if (sorted.length >= 3)
           _buildTopThreePodium(sorted)
         else if (sorted.length == 2)
           _buildTwoChildrenPodium(sorted),
-
-        // Reste du classement
         if (sorted.length > 3) ...[
           const SizedBox(height: 12),
           ...sorted.skip(3).toList().asMap().entries.map((entry) {
@@ -257,7 +253,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // 1er
         Expanded(
           child: ScaleTransition(
             scale: CurvedAnimation(
@@ -291,7 +286,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
         const SizedBox(width: 8),
-        // 2e
         Expanded(
           child: ScaleTransition(
             scale: CurvedAnimation(
@@ -332,7 +326,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // 2e place (gauche)
         Expanded(
           child: ScaleTransition(
             scale: CurvedAnimation(
@@ -365,8 +358,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
         const SizedBox(width: 6),
-
-        // 1er place (centre, plus haut)
         Expanded(
           flex: 2,
           child: ScaleTransition(
@@ -403,8 +394,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
         const SizedBox(width: 6),
-
-        // 3e place (droite)
         Expanded(
           child: ScaleTransition(
             scale: CurvedAnimation(
@@ -488,12 +477,21 @@ class _DashboardScreenState extends State<DashboardScreen>
       _QuickAction(emoji: '🛡️', label: 'Immunité', color: Colors.cyan,
           onTap: () => Navigator.push(context, SlidePageRoute(page: const ImmunityLinesScreen()))),
       _QuickAction(emoji: '📺', label: 'Écran', color: Colors.purple, parentOnly: true,
-          onTap: () => PinGuard.guardAction(context: context, onAuthorized: () =>
+          onTap: () => PinGuard.guardAction(context, () =>
               Navigator.push(context, SlidePageRoute(page: const ScreenTimeScreen())))),
       _QuickAction(emoji: '⚖️', label: 'Tribunal', color: Colors.deepOrange,
           onTap: () => Navigator.push(context, SlidePageRoute(page: const TribunalScreen()))),
       _QuickAction(emoji: '🤝', label: 'Vente', color: Colors.teal,
-          onTap: () => Navigator.push(context, SlidePageRoute(page: const TradeScreen()))),
+          onTap: () {
+            final familyProvider = context.read<FamilyProvider>();
+            final children = familyProvider.children;
+            if (children.isEmpty) return;
+            if (children.length == 1) {
+              Navigator.push(context, SlidePageRoute(page: TradeScreen(childId: children.first.id)));
+            } else {
+              _showChildPickerForTrade(context);
+            }
+          }),
       _QuickAction(emoji: '👤', label: 'Profil', color: Colors.indigo,
           onTap: () {
             final familyProvider = context.read<FamilyProvider>();
@@ -570,6 +568,63 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // ──────────────────────────────────────────────
+  //  CHILD PICKER POUR TRADE
+  // ──────────────────────────────────────────────
+  void _showChildPickerForTrade(BuildContext context) {
+    final familyProvider = context.read<FamilyProvider>();
+    final children = familyProvider.children;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Choisir un enfant pour la vente',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            ...children.map((child) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TvFocusWrapper(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(context, SlidePageRoute(page: TradeScreen(childId: child.id)));
+                },
+                child: GlassCard(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(context, SlidePageRoute(page: TradeScreen(childId: child.id)));
+                  },
+                  child: ListTile(
+                    leading: _buildAvatar(child, size: 48, rank: 0),
+                    title: Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('${child.points} pts — ${child.levelTitle}',
+                        style: const TextStyle(fontSize: 12, color: Colors.white54)),
+                  ),
+                ),
+              ),
+            )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────
   //  TRADES ACTIFS
   // ──────────────────────────────────────────────
   Widget _buildActiveTrades(FamilyProvider provider) {
@@ -594,11 +649,19 @@ class _DashboardScreenState extends State<DashboardScreen>
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: TvFocusWrapper(
-                  onTap: () => Navigator.push(
-                      context, SlidePageRoute(page: const TradeScreen())),
+                  onTap: () {
+                    final childId = seller?.id ?? buyer?.id;
+                    if (childId != null) {
+                      Navigator.push(context, SlidePageRoute(page: TradeScreen(childId: childId)));
+                    }
+                  },
                   child: GlassCard(
-                    onTap: () => Navigator.push(
-                        context, SlidePageRoute(page: const TradeScreen())),
+                    onTap: () {
+                      final childId = seller?.id ?? buyer?.id;
+                      if (childId != null) {
+                        Navigator.push(context, SlidePageRoute(page: TradeScreen(childId: childId)));
+                      }
+                    },
                     child: ListTile(
                       leading: const Text('🤝', style: TextStyle(fontSize: 24)),
                       title: Text(
@@ -697,7 +760,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
                   children: [
-                    // Floating emoji
                     AnimatedBuilder(
                       animation: _floatingController,
                       builder: (_, __) {
