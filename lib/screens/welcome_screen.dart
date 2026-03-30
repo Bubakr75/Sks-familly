@@ -357,4 +357,58 @@ class _WelcomeParticlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  void _handleChildMode() {
+    final fp = Provider.of<FamilyProvider>(context, listen: false);
+    final children = fp.children;
+    if (children.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Aucun enfant enregistré. Connectez-vous en mode Parent.'),
+            backgroundColor: Colors.orange),
+      );
+      return;
+    }
+    if (children.length == 1) {
+      Navigator.pushReplacement(
+        context,
+        ZoomPageRoute(page: ChildDashboardScreen(childId: children.first.id)),
+      );
+      return;
+    }
+    // Le reste de la méthode (si tu l'avais avant, colle-le ici)
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Plusieurs enfants - fonctionnalité en cours')),
+    );
+  }
+
+  void _showParentPicker() {
+    final presets = ['Papa', 'Maman'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Qui es-tu ?', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ...presets.map((name) => ListTile(
+                    title: Text(name, style: const TextStyle(color: Colors.white)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _navigateToHome(name);
+                    },
+                  )),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
