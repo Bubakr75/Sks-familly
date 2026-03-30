@@ -255,22 +255,27 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   void _handleParentMode() {
+    debugPrint("🔵 Bouton Mode Parent appuyé");
     final pin = Provider.of<PinProvider>(context, listen: false);
     if (pin.isPinSet) {
+      debugPrint("🔵 PIN configuré, ouverture du dialogue");
       _showPinDialog(() => _showParentPicker());
     } else {
+      debugPrint("🔵 Pas de PIN, ouverture directe");
       _showParentPicker();
     }
   }
 
   void _showPinDialog(VoidCallback onSuccess) {
     final controller = TextEditingController();
+    debugPrint("🔵 Ouverture du dialogue PIN");
 
     showDialog(
       context: context,
       builder: (dialogContext) {
         final pinProvider = Provider.of<PinProvider>(dialogContext, listen: false);
-        
+        debugPrint("🔵 Dialogue PIN ouvert");
+
         return AlertDialog(
           backgroundColor: const Color(0xFF1A1A2E),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -304,11 +309,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ),
             ElevatedButton(
               onPressed: () {
+                debugPrint("🔵 Bouton Valider appuyé - PIN : ${controller.text}");
                 if (pinProvider.verifyPin(controller.text)) {
+                  debugPrint("✅ PIN CORRECT");
                   Navigator.pop(dialogContext);
                   onSuccess();
-                  debugPrint("✅ PIN accepté - Ouverture du sélecteur parent");
                 } else {
+                  debugPrint("❌ PIN INCORRECT");
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('❌ PIN incorrect'), backgroundColor: Colors.red),
                   );
@@ -446,6 +453,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   void _navigateToHome(String parentName) {
+    debugPrint("🚀 Navigation vers HomeScreen avec : $parentName");
     final fp = Provider.of<FamilyProvider>(context, listen: false);
     fp.setCurrentParent(parentName);
     Navigator.pushReplacement(
@@ -474,7 +482,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Plusieurs enfants - fonctionnalité en cours')),
+      const SnackBar(content: Text('Plusieurs enfants détectés')),
     );
   }
 }
