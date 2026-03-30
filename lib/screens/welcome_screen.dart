@@ -11,6 +11,7 @@ import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
 import 'home_screen.dart';
 import 'child_dashboard_screen.dart';
+import 'package:flutter/foundation.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
