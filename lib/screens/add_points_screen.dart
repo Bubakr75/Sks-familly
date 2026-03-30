@@ -1198,4 +1198,86 @@ class _PointsButton extends StatelessWidget {
       ),
     );
   }
+  // Ajouter dans le State, après la soumission réussie d'un point :
+
+// Stocker le dernier ajout pour permettre l'annulation
+String? _lastEntryId;
+String? _lastChildId;
+bool _showUndoButton = false;
+
+// Après l'appel à familyProvider.addPoints, récupérer l'ID :
+// (addPoints doit retourner l'ID — voir modification provider ci-dessous)
+
+void _submitPoints() {
+  // ... validation existante ...
+  
+  final entryId = familyProvider.addPoints(
+    childId: selectedChildId,
+    points: _pointCount,
+    reason: _reason,
+    category: _isBonus ? 'Bonus' : 'Pénalité',
+    isBonus: _isBonus,
+    proofPhotoBase64: _proofPhoto,
+  );
+
+  // Stocker pour annulation
+  _lastEntryId = entryId;
+  _lastChildId = selectedChildId;
+  _showUndoButton = true;
+
+  // Masquer le bouton après 10 secondes
+  Future.delayed(const Duration(seconds: 10), () {
+    if (mounted) setState(() => _showUndoButton = false);
+  });
+
+  // ... animation existante ...
+}
+
+// Ajouter un bouton "Annuler" dans le build, visible après soumission :
+
+if (_showUndoButton && _lastEntryId != null)
+  Positioned(
+    bottom: 100,
+    left: 20,
+    right: 20,
+    child: TvFocusWrapper(
+      onTap: () {
+        final familyProvider = context.read<FamilyProvider>();
+        familyProvider.deleteHistoryEntry(
+          childId: _lastChildId!,
+          entryId: _lastEntryId!,
+          reversePoints: true,
+        );
+        setState(() => _showUndoButton = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('↩️ Action annulée — Points restaurés'),
+            backgroundColor: Colors.purple.withOpacity(0.8),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      },
+      child: GlassCard(
+        glowColor: Colors.purple,
+        onTap: () { /* handled above */ },
+        child: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.undo, color: Colors.purpleAccent),
+              SizedBox(width: 8),
+              Text('↩️ Annuler le dernier ajout',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purpleAccent)),
+            ],
+          ),
+        ),
+      ),
+    ),
+  ),
+
 }
