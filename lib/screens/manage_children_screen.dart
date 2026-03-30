@@ -7,6 +7,7 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/glass_widgets.dart'; // ✅ AJOUT — NeonText + GlowIcon
 import '../widgets/animated_background.dart';
 import 'notes_screen.dart';
 
