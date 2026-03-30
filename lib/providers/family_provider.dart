@@ -263,4 +263,217 @@ void rejectSchoolNote({
   _schoolNotesBox.delete(pendingKey);
 
   notifyListeners();
+  // ════════════════════════════════════════════════════════
+//  ADMINISTRATION PARENT — CONTRÔLE TOTAL
+// ════════════════════════════════════════════════════════
+
+/// Supprimer une entrée d'historique et annuler les points
+void deleteHistoryEntry({
+  required String childId,
+  required String entryId,
+  bool reversePoints = true,
+}) {
+  final history = getHistory(childId);
+  final index = history.indexWhere((e) => e.id == entryId);
+  if (index == -1) return;
+
+  final entry = history[index];
+
+  // Annuler les points
+  if (reversePoints && entry.points != 0) {
+    final child = getChild(childId);
+    if (child != null) {
+      final newPoints = entry.isBonus
+          ? child.points - entry.points
+          : child.points + entry.points.abs();
+      updateChildPoints(childId, newPoints.clamp(0, 999999));
+    }
+  }
+
+  // Supprimer l'entrée
+  _removeHistoryEntry(childId, entryId);
+  notifyListeners();
+}
+
+/// Modifier une entrée d'historique
+void editHistoryEntry({
+  required String childId,
+  required String entryId,
+  required int newPoints,
+  required String newReason,
+}) {
+  final history = getHistory(childId);
+  final index = history.indexWhere((e) => e.id == entryId);
+  if (index == -1) return;
+
+  final entry = history[index];
+  final oldPoints = entry.points;
+  final wasBonus = entry.isBonus;
+
+  // Calculer le delta de points
+  final child = getChild(childId);
+  if (child != null) {
+    // Annuler les anciens points
+    int currentPoints = child.points;
+    if (wasBonus) {
+      currentPoints -= oldPoints;
+    } else {
+      currentPoints += oldPoints.abs();
+    }
+    // Appliquer les nouveaux points
+    final isNowBonus = newPoints >= 0;
+    if (isNowBonus) {
+      currentPoints += newPoints;
+    } else {
+      currentPoints += newPoints; // newPoints est négatif
+    }
+    updateChildPoints(childId, currentPoints.clamp(0, 999999));
+  }
+
+  // Mettre à jour l'entrée
+  _updateHistoryEntry(childId, entryId, {
+    'points': newPoints.abs(),
+    'reason': newReason,
+    'isBonus': newPoints >= 0,
+  });
+  notifyListeners();
+}
+
+/// Effacer tout l'historique d'un enfant
+void clearChildHistory({required String childId}) {
+  final history = getHistory(childId);
+  for (final entry in history) {
+    _removeHistoryEntry(childId, entry.id);
+  }
+  notifyListeners();
+}
+
+/// Supprimer toutes les punitions d'un enfant
+void clearAllPunishments({required String childId}) {
+  final punishments = getPunishments(childId);
+  for (final p in punishments) {
+    _removePunishment(childId, p['id'] as String);
+  }
+  notifyListeners();
+}
+
+/// Supprimer toutes les immunités d'un enfant
+void clearAllImmunities({required String childId}) {
+  final immunities = getImmunities(childId);
+  for (final imm in immunities) {
+    _removeImmunity(childId, imm['id'] as String);
+  }
+  notifyListeners();
+}
+
+/// Remettre les points à zéro pour un enfant
+void resetChildPoints({required String childId}) {
+  updateChildPoints(childId, 0);
+  notifyListeners();
+}
+
+/// Réactiver une immunité (remet en status 'active')
+void reactivateImmunity({
+  required String childId,
+  required String immunityId,
+}) {
+  final immunities = getImmunities(childId);
+  final index = immunities.indexWhere((i) => i['id'] == immunityId);
+  if (index == -1) return;
+
+  final immunity = Map<String, dynamic>.from(immunities[index]);
+  immunity['status'] = 'active';
+  immunity['usedAt'] = null;
+
+  final key = '${childId}_$immunityId';
+  _immunityBox.put(key, immunity);
+  notifyListeners();
+}
+
+/// Remettre une punition à zéro lignes
+void resetPunishmentProgress({
+  required String childId,
+  required String punishmentId,
+}) {
+  final punishments = getPunishments(childId);
+  final index = punishments.indexWhere((p) => p['id'] == punishmentId);
+  if (index == -1) return;
+
+  final punishment = Map<String, dynamic>.from(punishments[index]);
+  punishment['completedLines'] = 0;
+  punishment['pendingSubmission'] = null;
+  punishment['pendingImmunityRequest'] = null;
+  punishment['lastRejection'] = null;
+  punishment['validationHistory'] = [];
+
+  _savePunishment(childId, punishmentId, punishment);
+  notifyListeners();
+}
+
+/// Marquer une punition comme terminée
+void completePunishment({
+  required String childId,
+  required String punishmentId,
+}) {
+  final punishments = getPunishments(childId);
+  final index = punishments.indexWhere((p) => p['id'] == punishmentId);
+  if (index == -1) return;
+
+  final punishment = Map<String, dynamic>.from(punishments[index]);
+  punishment['completedLines'] = punishment['totalLines'];
+  punishment['pendingSubmission'] = null;
+  punishment['pendingImmunityRequest'] = null;
+
+  _savePunishment(childId, punishmentId, punishment);
+  notifyListeners();
+}
+
+/// Reset total — tous les enfants
+void resetEverything() {
+  for (final child in children) {
+    clearChildHistory(childId: child.id);
+    clearAllPunishments(childId: child.id);
+    clearAllImmunities(childId: child.id);
+    updateChildPoints(child.id, 0);
+  }
+  // Vider les notes scolaires
+  _schoolNotesBox.clear();
+  notifyListeners();
+}
+
+/// Mettre à jour les points d'un enfant directement
+void updateChildPoints(String childId, int newPoints) {
+  final child = getChild(childId);
+  if (child == null) return;
+  final updated = child.copyWith(points: newPoints);
+  _saveChild(updated);
+}
+
+// ─── Helpers internes pour la suppression ───
+
+void _removeHistoryEntry(String childId, String entryId) {
+  // Supprimer de la box Hive
+  final key = '${childId}_$entryId';
+  _historyBox.delete(key);
+}
+
+void _updateHistoryEntry(String childId, String entryId, Map<String, dynamic> updates) {
+  final key = '${childId}_$entryId';
+  final existing = _historyBox.get(key);
+  if (existing == null) return;
+  final data = Map<String, dynamic>.from(existing);
+  data.addAll(updates);
+  _historyBox.put(key, data);
+}
+
+void _removePunishment(String childId, String punishmentId) {
+  final key = '${childId}_$punishmentId';
+  _punishmentBox.delete(key);
+}
+
+void _removeImmunity(String childId, String immunityId) {
+  final key = '${childId}_$immunityId';
+  _immunityBox.delete(key);
+}
+
 }
