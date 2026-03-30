@@ -62,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ──────────────────────────────────────────────
   //  NAVIGATION PAR ONGLET
   // ──────────────────────────────────────────────
-  // Indices protégés par PIN : 1 (Points/AddPoints) et 4 (Réglages)
   static const List<int> _protectedIndices = [1, 4];
 
   Widget _getScreen(int index) {
@@ -86,13 +85,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_protectedIndices.contains(index)) {
       final pinProvider = context.read<PinProvider>();
       if (!pinProvider.canPerformParentAction()) {
-        PinGuard.guardAction(
-          context: context,
-          onAuthorized: () {
-            _transitionController.forward(from: 0);
-            setState(() => _currentIndex = index);
-          },
-        );
+        PinGuard.guardAction(context, () {
+          _transitionController.forward(from: 0);
+          setState(() => _currentIndex = index);
+        });
         return;
       }
     }
@@ -198,7 +194,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final pinProvider = context.read<PinProvider>();
     final isParent = pinProvider.canPerformParentAction();
 
-    // Collecter tout l'historique
     final allHistory = <Map<String, dynamic>>[];
     for (final child in children) {
       final history = familyProvider.getHistory(child.id);
@@ -211,7 +206,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     }
 
-    // Trier par date décroissante
     allHistory.sort((a, b) {
       final dateA = (a['entry']).date as DateTime;
       final dateB = (b['entry']).date as DateTime;
@@ -521,8 +515,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
                           colors: [
-                            themeProvider.accentColor,
-                            themeProvider.accentColor.withOpacity(0.5),
+                            themeProvider.primaryColor,
+                            themeProvider.primaryColor.withOpacity(0.5),
                           ],
                         ),
                       ),
@@ -648,10 +642,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 subtitle: 'Commerce entre enfants',
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    SlidePageRoute(page: const TradeScreen()),
-                  );
+                  _showChildPicker(context, onSelected: (childId) {
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: TradeScreen(childId: childId)),
+                    );
+                  });
                 },
               ),
 
@@ -676,15 +672,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 subtitle: 'Suivi samedi & dimanche',
                 onTap: () {
                   Navigator.pop(context);
-                  PinGuard.guardAction(
-                    context: context,
-                    onAuthorized: () {
-                      Navigator.push(
-                        context,
-                        SlidePageRoute(page: const ScreenTimeScreen()),
-                      );
-                    },
-                  );
+                  PinGuard.guardAction(context, () {
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const ScreenTimeScreen()),
+                    );
+                  });
                 },
               ),
 
@@ -700,15 +693,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 subtitle: 'Gestion de la famille',
                 onTap: () {
                   Navigator.pop(context);
-                  PinGuard.guardAction(
-                    context: context,
-                    onAuthorized: () {
-                      Navigator.push(
-                        context,
-                        SlidePageRoute(page: const FamilyScreen()),
-                      );
-                    },
-                  );
+                  PinGuard.guardAction(context, () {
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const FamilyScreen()),
+                    );
+                  });
                 },
               ),
 
@@ -842,7 +832,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 child: FloatingActionButton.extended(
                   onPressed: () => _onTabTapped(1),
-                  backgroundColor: themeProvider.accentColor.withOpacity(0.8),
+                  backgroundColor: themeProvider.primaryColor.withOpacity(0.8),
                   icon: const Icon(Icons.add, size: 28),
                   label: const Text(
                     'Points',
@@ -903,7 +893,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? themeProvider.accentColor.withOpacity(0.2)
+                                      ? themeProvider.primaryColor.withOpacity(0.2)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -911,7 +901,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   item.icon,
                                   size: 24,
                                   color: isSelected
-                                      ? themeProvider.accentColor
+                                      ? themeProvider.primaryColor
                                       : Colors.white38,
                                 ),
                               ),
@@ -939,7 +929,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? themeProvider.accentColor : Colors.white38,
+                              color: isSelected ? themeProvider.primaryColor : Colors.white38,
                             ),
                           ),
                         ],
