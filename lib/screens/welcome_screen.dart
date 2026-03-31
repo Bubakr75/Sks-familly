@@ -90,7 +90,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   void _handleParentMode() async {
     final pinProvider = context.read<PinProvider>();
-    // ✅ CORRIGÉ : isPinSet au lieu de hasPin
     if (!pinProvider.isPinSet) {
       _navigateToHome();
       return;
@@ -114,8 +113,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           textAlign: TextAlign.center,
           decoration: InputDecoration(
             hintText: '   ',
-            hintStyle:
-                TextStyle(color: Colors.white.withOpacity(0.3)),
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
             filled: true,
             fillColor: Colors.white.withOpacity(0.1),
             border: OutlineInputBorder(
@@ -139,8 +137,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     backgroundColor: Colors.red));
               }
             },
-            style:
-                ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             child: const Text('Valider'),
           ),
         ],
@@ -152,7 +149,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   void _handleChildMode() {
     final provider = context.read<FamilyProvider>();
-    // ✅ CORRIGÉ : List<ChildModel> (pas Map)
     final List<ChildModel> children = provider.children;
 
     if (children.isEmpty) {
@@ -164,7 +160,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     if (children.length == 1) {
       Navigator.of(context).push(MaterialPageRoute(
-          // ✅ CORRIGÉ : .id au lieu de ['id']
           builder: (_) =>
               ChildDashboardScreen(childId: children.first.id)));
       return;
@@ -186,44 +181,35 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     fontSize: 20,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            // ✅ CORRIGÉ : child est un ChildModel, pas un Map
             ...children.map((child) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: TvFocusWrapper(
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: Colors.white24,
-                        backgroundImage:
-                            child.photoBase64.isNotEmpty
-                                ? MemoryImage(
-                                    base64Decode(child.photoBase64))
-                                : null,
+                        backgroundImage: child.photoBase64.isNotEmpty
+                            ? MemoryImage(base64Decode(child.photoBase64))
+                            : null,
                         child: child.photoBase64.isEmpty
                             ? Text(
                                 child.name.isNotEmpty
-                                    ? child.name
-                                        .substring(0, 1)
-                                        .toUpperCase()
+                                    ? child.name.substring(0, 1).toUpperCase()
                                     : '?',
-                                style: const TextStyle(
-                                    color: Colors.white))
+                                style: const TextStyle(color: Colors.white))
                             : null,
                       ),
                       title: Text(child.name,
-                          style:
-                              const TextStyle(color: Colors.white)),
+                          style: const TextStyle(color: Colors.white)),
                       subtitle: Text('${child.points} points',
-                          style: const TextStyle(
-                              color: Colors.white54)),
+                          style: const TextStyle(color: Colors.white54)),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       tileColor: Colors.white.withOpacity(0.05),
                       onTap: () {
                         Navigator.of(ctx).pop();
-                        Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => ChildDashboardScreen(
-                                    childId: child.id)));
+                        Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) =>
+                                ChildDashboardScreen(childId: child.id)));
                       },
                     ),
                   ),
@@ -239,8 +225,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
           Icon(Icons.help_outline, color: Colors.amber),
           SizedBox(width: 8),
@@ -253,8 +238,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               children: [
                 Text('👑 Mode Parent',
                     style: TextStyle(
-                        color: Colors.amber,
-                        fontWeight: FontWeight.bold)),
+                        color: Colors.amber, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
                 Text(
                     'Gérer les enfants, ajouter/retirer des points, créer des punitions, gérer le tribunal et les échanges.',
@@ -262,8 +246,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 SizedBox(height: 12),
                 Text('🧒 Mode Enfant',
                     style: TextStyle(
-                        color: Colors.cyan,
-                        fontWeight: FontWeight.bold)),
+                        color: Colors.cyan, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
                 Text(
                     'Voir son tableau de bord, ses badges, son historique et le temps d\'écran.',
@@ -271,8 +254,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 SizedBox(height: 12),
                 Text('⭐ Points',
                     style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold)),
+                        color: Colors.green, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
                 Text(
                     'Les bonus donnent des points, les malus en retirent. Accumulez pour débloquer des badges !',
@@ -292,10 +274,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
-    // ✅ CORRIGÉ : List<ChildModel>
-    final List<ChildModel> children = provider.childrenSorted;
+    // ✅ CORRIGÉ : sortedChildren (pas childrenSorted)
+    final List<ChildModel> children = provider.sortedChildren;
 
-    // Stats globales — ✅ CORRIGÉ : .points, .badgeIds (pas ['points'])
     final totalPoints =
         children.fold<int>(0, (sum, c) => sum + c.points);
     final totalBadges =
@@ -308,11 +289,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       body: AnimatedBackground(
         child: SafeArea(
           child: CustomPaint(
-            painter:
-                _WelcomeParticlePainter(animation: _particleController),
+            painter: _WelcomeParticlePainter(animation: _particleController),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 24, vertical: 16),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(children: [
                 const SizedBox(height: 20),
 
@@ -353,7 +333,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 ),
                 const SizedBox(height: 24),
 
-                // Classement des enfants
+                // Classement
                 if (children.isNotEmpty)
                   FadeTransition(
                     opacity: _cardOpacity,
@@ -367,7 +347,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold)),
                             const SizedBox(height: 12),
-                            // ✅ CORRIGÉ : ChildModel directement
                             ...children.asMap().entries.map((entry) {
                               final idx = entry.key;
                               final child = entry.value;
@@ -380,9 +359,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     : null,
                                 onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute(
-                                        builder: (_) =>
-                                            ChildDashboardScreen(
-                                                childId: child.id))),
+                                        builder: (_) => ChildDashboardScreen(
+                                            childId: child.id))),
                               );
                             }),
                           ]),
@@ -396,17 +374,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   child: Row(children: [
                     Expanded(
                         child: _StatBubble(
-                            label: 'Points',
-                            value: '$totalPoints')),
+                            label: 'Points', value: '$totalPoints')),
                     const SizedBox(width: 8),
                     Expanded(
                         child: _StatBubble(
-                            label: 'Badges',
-                            value: '$totalBadges')),
+                            label: 'Badges', value: '$totalBadges')),
                     const SizedBox(width: 8),
                     Expanded(
-                        child: _StatBubble(
-                            label: 'Leader', value: leader)),
+                        child: _StatBubble(label: 'Leader', value: leader)),
                   ]),
                 ),
                 const SizedBox(height: 32),
@@ -422,19 +397,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: _handleParentMode,
-                            icon: const Icon(
-                                Icons.admin_panel_settings,
+                            icon: const Icon(Icons.admin_panel_settings,
                                 size: 28),
                             label: const Text('Mode Parent',
                                 style: TextStyle(fontSize: 18)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.amber,
                               foregroundColor: Colors.black87,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(16)),
+                                  borderRadius: BorderRadius.circular(16)),
                             ),
                           ),
                         ),
@@ -445,18 +418,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: _handleChildMode,
-                            icon: const Icon(Icons.child_care,
-                                size: 28),
+                            icon: const Icon(Icons.child_care, size: 28),
                             label: const Text('Mode Enfant',
                                 style: TextStyle(fontSize: 18)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.cyan,
                               foregroundColor: Colors.black87,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(16)),
+                                  borderRadius: BorderRadius.circular(16)),
                             ),
                           ),
                         ),
@@ -468,8 +439,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           icon: const Icon(Icons.help_outline,
                               color: Colors.white54),
                           label: const Text('Aide',
-                              style:
-                                  TextStyle(color: Colors.white54)),
+                              style: TextStyle(color: Colors.white54)),
                         ),
                       ),
                     ]),
@@ -547,9 +517,7 @@ class _ChildStatCard extends StatelessWidget {
                   : null,
               child: photoBase64 == null
                   ? Text(
-                      name.isNotEmpty
-                          ? name.substring(0, 1).toUpperCase()
-                          : '?',
+                      name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?',
                       style: const TextStyle(color: Colors.white))
                   : null,
             ),
@@ -560,8 +528,7 @@ class _ChildStatCard extends StatelessWidget {
                   children: [
                 Text(name,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
+                        color: Colors.white, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 LinearProgressIndicator(
                     value: progress,
@@ -603,8 +570,7 @@ class _StatBubble extends StatelessWidget {
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
         Text(label,
-            style:
-                const TextStyle(color: Colors.white54, fontSize: 12)),
+            style: const TextStyle(color: Colors.white54, fontSize: 12)),
       ]),
     );
   }
