@@ -1,3 +1,4 @@
+// lib/screens/parent_admin_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -49,7 +50,6 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
     super.dispose();
   }
 
-  // ── Confirmation simple ──
   Future<bool> _confirm(String title, String body) async {
     return await showDialog<bool>(
       context: context,
@@ -70,7 +70,6 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
     ) ?? false;
   }
 
-  // ── Double confirmation ──
   Future<bool> _doubleConfirm(String title, String body) async {
     final first = await _confirm(title, body);
     if (!first) return false;
@@ -88,7 +87,6 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
 
   String _formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
-  // ── Voir une photo en plein écran ──
   void _showFullPhoto(String base64) {
     showDialog(
       context: context,
@@ -158,7 +156,6 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
                         children: [
                           IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70)),
                           const Expanded(child: NeonText(text: '⚙️ Administration', fontSize: 20, color: Color(0xFF00E5FF))),
-                          // Menu actions bulk
                           PopupMenuButton<String>(
                             icon: const Icon(Icons.more_vert, color: Colors.white70),
                             color: const Color(0xFF0D1B2A),
@@ -334,7 +331,7 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
   }
 
   void _showEditEntry(HistoryEntry entry, FamilyProvider provider) {
-    final descCtrl = TextEditingController(text: entry.description);
+    final descCtrl   = TextEditingController(text: entry.description);
     final pointsCtrl = TextEditingController(text: '${entry.points}');
     showDialog(
       context: context,
@@ -377,10 +374,11 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
             onPressed: () {
               Navigator.pop(ctx);
               provider.deleteHistoryEntry(entry.id);
+              // ✅ CORRIGÉ : addPoints avec arguments positionnels pour les 3 premiers
               provider.addPoints(
-                childId: entry.childId,
-                points: int.tryParse(pointsCtrl.text) ?? entry.points,
-                description: descCtrl.text.trim().isEmpty ? entry.description : descCtrl.text.trim(),
+                entry.childId,
+                int.tryParse(pointsCtrl.text) ?? entry.points,
+                descCtrl.text.trim().isEmpty ? entry.description : descCtrl.text.trim(),
                 emoji: entry.emoji,
                 category: entry.category,
               );
@@ -406,7 +404,7 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: punishments.length,
       itemBuilder: (ctx, i) {
-        final p = punishments[i];
+        final p     = punishments[i];
         final color = p.isCompleted ? const Color(0xFF4CAF50) : const Color(0xFFFF6B6B);
         return Dismissible(
           key: Key(p.id),
@@ -561,7 +559,7 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: immunities.length,
       itemBuilder: (ctx, i) {
-        final imm = immunities[i];
+        final imm   = immunities[i];
         final color = imm.isUsable ? const Color(0xFF9C27B0) : Colors.white38;
         return Dismissible(
           key: Key(imm.id),
@@ -642,7 +640,6 @@ class _ParentAdminScreenState extends State<ParentAdminScreen>
     );
   }
 
-  // ── Actions bulk ──
   void _handleBulkAction(String action, FamilyProvider provider, ChildModel? child) async {
     if (_selectedChildId == null && action != 'full_reset') {
       _snack('Sélectionne d\'abord un enfant', color: const Color(0xFFFF6B6B));
