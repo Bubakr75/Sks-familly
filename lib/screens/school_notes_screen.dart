@@ -149,7 +149,7 @@ class _SchoolNoteDisplay {
   final double value;
   final double maxValue;
   final DateTime date;
-  final String rawEntry; // clé unique dans l'historique
+  final String rawEntry;
 
   const _SchoolNoteDisplay({
     required this.subject,
@@ -178,7 +178,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _listCtrl;
 
-  // ── sujets rapides ────────────────────────────────────────────────────────
   static const List<String> _quickSubjects = [
     'Comportement',
     'Respect',
@@ -206,45 +205,42 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
 
   // ── récupère les notes depuis l'historique ───────────────────────────────
   List<_SchoolNoteDisplay> _getNotes(FamilyProvider fp) {
-    final child = fp.children.firstWhere((c) => c.id == widget.childId,
-        orElse: () => fp.children.first);
+    final child = fp.children.firstWhere(
+      (c) => c.id == widget.childId,
+      orElse: () => fp.children.first,
+    );
     final notes = <_SchoolNoteDisplay>[];
+    // Utilise le champ correct du modèle : pointsHistory ou history selon le modèle
+    final historyList = _getHistory(child);
 
-    for (final entry in child.history.reversed) {
-      // Format stocké : "📝 Note comportement — Sujet: valeur/max (date)"
+    for (final entry in historyList.reversed) {
       if (!entry.contains('📝') && !entry.contains('Note comportement')) {
         continue;
       }
       try {
-        // Extraction du sujet et de la note
         final dashIdx = entry.indexOf('—');
         if (dashIdx < 0) continue;
         final afterDash = entry.substring(dashIdx + 1).trim();
-        // afterDash = "Sujet: valeur/max (date)"
         final colonIdx = afterDash.indexOf(':');
         if (colonIdx < 0) continue;
         final subject = afterDash.substring(0, colonIdx).trim();
         final rest = afterDash.substring(colonIdx + 1).trim();
-        // rest = "valeur/max (date)"
         final parenIdx = rest.indexOf('(');
         final scoreStr =
             parenIdx >= 0 ? rest.substring(0, parenIdx).trim() : rest.trim();
         final slashIdx = scoreStr.indexOf('/');
         if (slashIdx < 0) continue;
         final value = double.tryParse(scoreStr.substring(0, slashIdx).trim());
-        final maxVal =
-            double.tryParse(scoreStr.substring(slashIdx + 1).trim());
+        final maxVal = double.tryParse(scoreStr.substring(slashIdx + 1).trim());
         if (value == null || maxVal == null) continue;
-
-        // Date
         DateTime date = DateTime.now();
         if (parenIdx >= 0) {
-          final dateStr = rest
-              .substring(parenIdx + 1, rest.lastIndexOf(')'))
-              .trim();
-          date = DateTime.tryParse(dateStr) ?? DateTime.now();
+          final closeParen = rest.lastIndexOf(')');
+          if (closeParen > parenIdx) {
+            final dateStr = rest.substring(parenIdx + 1, closeParen).trim();
+            date = DateTime.tryParse(dateStr) ?? DateTime.now();
+          }
         }
-
         notes.add(_SchoolNoteDisplay(
           subject: subject,
           value: value,
@@ -259,48 +255,61 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
     return notes;
   }
 
+  /// Retourne la liste d'historique quelle que soit la propriété utilisée dans ChildModel
+  List<String> _getHistory(dynamic child) {
+    try {
+      final h = child.history;
+      if (h is List) return List<String>.from(h);
+    } catch (_) {}
+    try {
+      final h = child.pointsHistory;
+      if (h is List) return List<String>.from(h);
+    } catch (_) {}
+    return [];
+  }
+
+  /// Ajoute une entrée dans l'historique de l'enfant
+  void _addToHistory(dynamic child, String entry, FamilyProvider fp) {
+    bool added = false;
+    try {
+      (child.history as List).add(entry);
+      added = true;
+    } catch (_) {}
+    if (!added) {
+      try {
+        (child.pointsHistory as List).add(entry);
+      } catch (_) {}
+    }
+    fp.notifyListeners();
+  }
+
+  /// Supprime une entrée de l'historique
+  void _removeFromHistory(dynamic child, String entry, FamilyProvider fp) {
+    bool removed = false;
+    try {
+      (child.history as List).remove(entry);
+      removed = true;
+    } catch (_) {}
+    if (!removed) {
+      try {
+        (child.pointsHistory as List).remove(entry);
+      } catch (_) {}
+    }
+    fp.notifyListeners();
+  }
+
   // ── suppression d'une note ───────────────────────────────────────────────
   Future<void> _deleteNote(
       BuildContext context, FamilyProvider fp, _SchoolNoteDisplay note) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Supprimer la note ?',
-            style: TextStyle(color: Colors.white)),
-        content: Text(
-          '${note.subject} : ${note.value.toStringAsFixed(0)}/${note.maxValue.toStringAsFixed(0)}',
-          style: const TextStyle(color: Colors.white70),
+    final child = fp.children.firstWhere((c) => c.id == widget.childId);
+    _removeFromHistory(child, note.rawEntry, fp);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Note supprimée'),
+          backgroundColor: Colors.redAccent,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler',
-                style: TextStyle(color: Colors.white54)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true && mounted) {
-      final child = fp.children
-          .firstWhere((c) => c.id == widget.childId);
-      // Supprime l'entrée de l'historique
-      child.history.remove(note.rawEntry);
-      fp.notifyListeners();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Note supprimée'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+      );
     }
   }
 
@@ -311,7 +320,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
     final customCtrl = TextEditingController();
     bool useCustom = false;
     double value = 10;
-    int maxScore = 20; // Barème : 10 ou 20 uniquement
+    int maxScore = 20;
     DateTime selectedDate = DateTime.now();
 
     await showModalBottomSheet(
@@ -348,14 +357,13 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                     style: TextStyle(
                         color: Colors.white70, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                TvFocusWrapper(
-                  onActivate: () async {
+                GestureDetector(
+                  onTap: () async {
                     final picked = await showDatePicker(
                       context: ctx2,
                       initialDate: selectedDate,
                       firstDate: DateTime(2020),
                       lastDate: DateTime.now(),
-                      locale: const Locale('fr'),
                       builder: (context, child) => Theme(
                         data: ThemeData.dark().copyWith(
                           colorScheme: const ColorScheme.dark(
@@ -421,13 +429,13 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 7),
                               decoration: BoxDecoration(
-                                gradient: (!useCustom &&
-                                        selectedSubject == s)
-                                    ? const LinearGradient(colors: [
-                                        Color(0xFF7C3AED),
-                                        Color(0xFF9F67FA)
-                                      ])
-                                    : null,
+                                gradient:
+                                    (!useCustom && selectedSubject == s)
+                                        ? const LinearGradient(colors: [
+                                            Color(0xFF7C3AED),
+                                            Color(0xFF9F67FA)
+                                          ])
+                                        : null,
                                 color: (!useCustom && selectedSubject == s)
                                     ? null
                                     : Colors.white12,
@@ -476,13 +484,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                       child: GestureDetector(
                         onTap: () => setModal(() {
                           maxScore = m;
-                          // Réinitialise la valeur si elle dépasse le nouveau max
                           if (value > m) value = m.toDouble();
                         }),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          margin: EdgeInsets.only(
-                              right: m == 10 ? 8 : 0),
+                          margin: EdgeInsets.only(right: m == 10 ? 8 : 0),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
                             gradient: selected
@@ -491,8 +497,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                                     Color(0xFF9F67FA)
                                   ])
                                 : null,
-                            color:
-                                selected ? null : Colors.white12,
+                            color: selected ? null : Colors.white12,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: selected
@@ -580,9 +585,10 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                             fontSize: 16,
                             fontWeight: FontWeight.bold)),
                     onPressed: () async {
-                      final subject = useCustom && customCtrl.text.isNotEmpty
-                          ? customCtrl.text.trim()
-                          : selectedSubject;
+                      final subject =
+                          useCustom && customCtrl.text.isNotEmpty
+                              ? customCtrl.text.trim()
+                              : selectedSubject;
                       Navigator.pop(ctx2);
                       await _submitNote(
                           context, fp, subject, value, maxScore, selectedDate);
@@ -608,22 +614,18 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
   ) async {
     final pct = (value / maxScore) * 100;
     final stars = _percentToStars(pct);
-
-    // Format de stockage :
-    // "📝 Note comportement — Sujet: valeur/max (YYYY-MM-DD)"
     final dateStr =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final noteStr =
         '📝 Note comportement — $subject: ${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)}/$maxScore ($dateStr)';
 
     final child = fp.children.firstWhere((c) => c.id == widget.childId);
-    child.history.add(noteStr);
-    fp.notifyListeners();
+    _addToHistory(child, noteStr, fp);
 
     if (!mounted) return;
     await showSchoolNotebookAnimation(context);
     if (!mounted) return;
-    Navigator.pop(context); // ferme l'anim cahier
+    Navigator.pop(context);
     await showStarsAnimation(context, stars);
   }
 
@@ -654,10 +656,9 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                   fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
-            Text(
-              '${note.percentage.toStringAsFixed(1)} %',
-              style: const TextStyle(color: Colors.white54, fontSize: 16),
-            ),
+            Text('${note.percentage.toStringAsFixed(1)} %',
+                style:
+                    const TextStyle(color: Colors.white54, fontSize: 16)),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -677,7 +678,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
               '${note.date.day.toString().padLeft(2, '0')}/'
               '${note.date.month.toString().padLeft(2, '0')}/'
               '${note.date.year}',
-              style: const TextStyle(color: Colors.white38, fontSize: 14),
+              style:
+                  const TextStyle(color: Colors.white38, fontSize: 14),
             ),
             const SizedBox(height: 16),
           ],
@@ -703,7 +705,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          const AnimatedBackground(),
+          // ── fond animé ── utilise le constructeur correct ────────────────
+          AnimatedBackground(child: const SizedBox.expand()),
           SafeArea(
             child: Column(
               children: [
@@ -725,8 +728,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold)),
                       ),
-                      TvFocusWrapper(
-                        onActivate: () => _showAddNote(context),
+                      GestureDetector(
+                        onTap: () => _showAddNote(context),
                         child: Container(
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(colors: [
@@ -749,18 +752,20 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                 // ── moyenne globale ──────────────────────────────────────
                 if (notes.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16),
                     child: GlassCard(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 20, vertical: 14),
                         child: Row(
                           children: [
-                            CircularPercentWidget(
+                            _CircularPercent(
                                 percent: avgPct / 100, size: 56),
                             const SizedBox(width: 16),
                             Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                               children: [
                                 const Text('Moyenne générale',
                                     style: TextStyle(
@@ -818,218 +823,169 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                           itemCount: notes.length,
                           itemBuilder: (ctx, i) {
                             final note = notes[i];
-                            final stars = _percentToStars(note.percentage);
-                            final delay =
-                                Duration(milliseconds: i * 60);
+                            final stars =
+                                _percentToStars(note.percentage);
 
-                            return FutureBuilder(
-                              future: Future.delayed(delay),
-                              builder: (_, snap) {
-                                return AnimatedOpacity(
-                                  opacity: snap.connectionState ==
-                                          ConnectionState.done
-                                      ? 1.0
-                                      : 0.0,
-                                  duration:
-                                      const Duration(milliseconds: 300),
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 10),
-                                    // ── Swipe pour supprimer ────────────
-                                    child: Dismissible(
-                                      key: Key(note.rawEntry),
-                                      direction:
-                                          DismissDirection.endToStart,
-                                      background: Container(
-                                        alignment: Alignment.centerRight,
-                                        padding: const EdgeInsets.only(
-                                            right: 20),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(
-                                              0.25),
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: 10),
+                              child: Dismissible(
+                                key: Key(note.rawEntry),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding:
+                                      const EdgeInsets.only(right: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.25),
+                                    borderRadius:
+                                        BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(
+                                      Icons.delete_rounded,
+                                      color: Colors.redAccent,
+                                      size: 28),
+                                ),
+                                confirmDismiss: (_) async {
+                                  return await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                      backgroundColor:
+                                          const Color(0xFF1E1E2E),
+                                      shape: RoundedRectangleBorder(
                                           borderRadius:
-                                              BorderRadius.circular(16),
-                                        ),
-                                        child: const Icon(
-                                            Icons.delete_rounded,
-                                            color: Colors.redAccent,
-                                            size: 28),
+                                              BorderRadius.circular(
+                                                  16)),
+                                      title: const Text('Supprimer ?',
+                                          style: TextStyle(
+                                              color: Colors.white)),
+                                      content: Text(
+                                        '${note.subject} : ${note.value.toStringAsFixed(0)}/${note.maxValue.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                            color: Colors.white70),
                                       ),
-                                      confirmDismiss: (_) async {
-                                        return await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            backgroundColor:
-                                                const Color(0xFF1E1E2E),
-                                            shape:
-                                                RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius
-                                                            .circular(
-                                                                16)),
-                                            title: const Text(
-                                                'Supprimer ?',
-                                                style: TextStyle(
-                                                    color:
-                                                        Colors.white)),
-                                            content: Text(
-                                              '${note.subject} : ${note.value.toStringAsFixed(0)}/${note.maxValue.toStringAsFixed(0)}',
-                                              style: const TextStyle(
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(
+                                                  context, false),
+                                          child: const Text('Annuler',
+                                              style: TextStyle(
+                                                  color:
+                                                      Colors.white54)),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(
+                                                  context, true),
+                                          child: const Text(
+                                              'Supprimer',
+                                              style: TextStyle(
                                                   color: Colors
-                                                      .white70),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(
-                                                        context, false),
-                                                child: const Text(
-                                                    'Annuler',
-                                                    style: TextStyle(
-                                                        color: Colors
-                                                            .white54)),
-                                              ),
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(
-                                                        context, true),
-                                                child: const Text(
-                                                    'Supprimer',
-                                                    style: TextStyle(
-                                                        color: Colors
-                                                            .redAccent)),
-                                              ),
-                                            ],
+                                                      .redAccent)),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                onDismissed: (_) =>
+                                    _deleteNote(context, fp, note),
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      _showNoteDetail(context, note),
+                                  child: GlassCard(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(14),
+                                      child: Row(
+                                        children: [
+                                          _CircularPercent(
+                                            percent:
+                                                note.percentage / 100,
+                                            size: 52,
                                           ),
-                                        );
-                                      },
-                                      onDismissed: (_) => _deleteNote(
-                                          context, fp, note),
-                                      child: TvFocusWrapper(
-                                        onActivate: () =>
-                                            _showNoteDetail(
-                                                context, note),
-                                        child: GlassCard(
-                                          child: Padding(
-                                            padding:
-                                                const EdgeInsets.all(14),
-                                            child: Row(
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment
+                                                      .start,
                                               children: [
-                                                // ── % cercle ──────────
-                                                CircularPercentWidget(
-                                                  percent:
-                                                      note.percentage /
-                                                          100,
-                                                  size: 52,
+                                                Text(
+                                                  note.subject,
+                                                  style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 15,
+                                                      fontWeight:
+                                                          FontWeight
+                                                              .w700),
                                                 ),
-                                                const SizedBox(width: 14),
-                                                // ── infos ─────────────
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        note.subject,
-                                                        style: const TextStyle(
-                                                            color: Colors
-                                                                .white,
-                                                            fontSize: 15,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w700),
-                                                      ),
-                                                      const SizedBox(
-                                                          height: 4),
-                                                      Text(
-                                                        '${note.value.toStringAsFixed(note.value.truncateToDouble() == note.value ? 0 : 1)} / ${note.maxValue.toStringAsFixed(0)}',
-                                                        style: const TextStyle(
-                                                            color: Colors
-                                                                .purpleAccent,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .bold,
-                                                            fontSize:
-                                                                16),
-                                                      ),
-                                                      const SizedBox(
-                                                          height: 4),
-                                                      Text(
-                                                        '${note.date.day.toString().padLeft(2, '0')}/'
-                                                        '${note.date.month.toString().padLeft(2, '0')}/'
-                                                        '${note.date.year}',
-                                                        style: const TextStyle(
-                                                            color: Colors
-                                                                .white38,
-                                                            fontSize:
-                                                                12),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${note.value.toStringAsFixed(note.value.truncateToDouble() == note.value ? 0 : 1)} / ${note.maxValue.toStringAsFixed(0)}',
+                                                  style: const TextStyle(
+                                                      color: Colors
+                                                          .purpleAccent,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 16),
                                                 ),
-                                                // ── étoiles ───────────
-                                                Column(
-                                                  children: [
-                                                    Row(
-                                                      children: List
-                                                          .generate(
-                                                        5,
-                                                        (si) => Icon(
-                                                          si < stars
-                                                              ? Icons
-                                                                  .star_rounded
-                                                              : Icons
-                                                                  .star_outline_rounded,
-                                                          color: Colors
-                                                              .amber,
-                                                          size: 16,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(
-                                                        height: 6),
-                                                    // bouton supprimer
-                                                    GestureDetector(
-                                                      onTap: () =>
-                                                          _deleteNote(
-                                                              context,
-                                                              fp,
-                                                              note),
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(6),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: Colors
-                                                              .red
-                                                              .withOpacity(
-                                                                  0.15),
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(
-                                                                      8),
-                                                        ),
-                                                        child: const Icon(
-                                                            Icons
-                                                                .delete_outline_rounded,
-                                                            color: Colors
-                                                                .redAccent,
-                                                            size: 16),
-                                                      ),
-                                                    ),
-                                                  ],
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${note.date.day.toString().padLeft(2, '0')}/'
+                                                  '${note.date.month.toString().padLeft(2, '0')}/'
+                                                  '${note.date.year}',
+                                                  style: const TextStyle(
+                                                      color: Colors.white38,
+                                                      fontSize: 12),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                        ),
+                                          Column(
+                                            children: [
+                                              Row(
+                                                children: List.generate(
+                                                  5,
+                                                  (si) => Icon(
+                                                    si < stars
+                                                        ? Icons.star_rounded
+                                                        : Icons
+                                                            .star_outline_rounded,
+                                                    color: Colors.amber,
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              GestureDetector(
+                                                onTap: () => _deleteNote(
+                                                    context, fp, note),
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.all(
+                                                          6),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.red
+                                                        .withOpacity(0.15),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8),
+                                                  ),
+                                                  child: const Icon(
+                                                      Icons
+                                                          .delete_outline_rounded,
+                                                      color: Colors.redAccent,
+                                                      size: 16),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
-                                );
-                              },
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -1044,15 +1000,13 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  WIDGET CERCLE POURCENTAGE
+//  WIDGET CERCLE POURCENTAGE (privé, pas de conflit de nom)
 // ══════════════════════════════════════════════════════════════════════════════
 
-class CircularPercentWidget extends StatelessWidget {
-  final double percent; // 0.0 → 1.0
+class _CircularPercent extends StatelessWidget {
+  final double percent;
   final double size;
-
-  const CircularPercentWidget(
-      {super.key, required this.percent, this.size = 52});
+  const _CircularPercent({required this.percent, this.size = 52});
 
   Color _color() {
     if (percent >= 0.8) return Colors.greenAccent;
@@ -1088,7 +1042,6 @@ class CircularPercentWidget extends StatelessWidget {
 class _CirclePainter extends CustomPainter {
   final double percent;
   final Color color;
-
   const _CirclePainter({required this.percent, required this.color});
 
   @override
@@ -1102,11 +1055,9 @@ class _CirclePainter extends CustomPainter {
       ..strokeWidth = 5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-
     final rect = Rect.fromCircle(
         center: Offset(size.width / 2, size.height / 2),
         radius: size.width / 2 - 3);
-
     canvas.drawArc(rect, -pi / 2, 2 * pi, false, bg);
     canvas.drawArc(rect, -pi / 2, 2 * pi * percent, false, fg);
   }
