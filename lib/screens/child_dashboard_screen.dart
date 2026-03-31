@@ -1,1060 +1,213 @@
-// lib/screens/punishment_lines_screen.dart
+// lib/screens/child_dashboard_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/punishment_lines.dart';
-import '../models/immunity_lines.dart';
+import 'dart:math' show cos, sin;
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../models/child_model.dart';
+import '../models/badge_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 
-class PunishmentLinesScreen extends StatefulWidget {
-  const PunishmentLinesScreen({super.key});
+class ChildDashboardScreen extends StatefulWidget {
+  final String childId;
+  const ChildDashboardScreen({super.key, required this.childId});
   @override
-  State<PunishmentLinesScreen> createState() =>
-      _PunishmentLinesScreenState();
+  State<ChildDashboardScreen> createState() => _ChildDashboardScreenState();
 }
 
-class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
+class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     with TickerProviderStateMixin {
-  late AnimationController _listController;
-  late AnimationController _progressController;
-  String? _selectedChildId;
+  late TabController _tabController;
+  late AnimationController _profileController;
+  late AnimationController _contentController;
+  late AnimationController _glowController;
+
+  late Animation<double> _profileScale;
+  late Animation<double> _profileFade;
+  late Animation<double> _glowAnim;
+
+  static const _jours = [
+    'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
+  ];
+  int _jourCible = 5;
+  final Set<int> _joursSources = {0, 1, 2, 3, 4};
 
   @override
   void initState() {
     super.initState();
-    _listController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200))
-      ..forward();
-    _progressController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1500))
-      ..forward();
-    final provider = context.read<FamilyProvider>();
-    if (provider.children.isNotEmpty) {
-      _selectedChildId = provider.children.first.id;
-    }
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() => setState(() {}));
+
+    _profileController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
+    _profileScale = CurvedAnimation(
+        parent: _profileController, curve: Curves.elasticOut);
+    _profileFade = CurvedAnimation(
+        parent: _profileController,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeIn));
+
+    _contentController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800));
+
+    _glowController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 2000))
+      ..repeat(reverse: true);
+    _glowAnim = Tween<double>(begin: 0.3, end: 0.8).animate(
+        CurvedAnimation(parent: _glowController, curve: Curves.easeInOut));
+
+    _profileController.forward();
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) _contentController.forward();
+    });
   }
 
   @override
   void dispose() {
-    _listController.dispose();
-    _progressController.dispose();
+    _tabController.dispose();
+    _profileController.dispose();
+    _contentController.dispose();
+    _glowController.dispose();
     super.dispose();
   }
 
-  List<PunishmentLines> _getPunishments(FamilyProvider provider) {
-    if (_selectedChildId == null) return [];
-    return provider.punishments
-        .where((e) => e.childId == _selectedChildId)
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  String _formatMinutes(int m) {
+    if (m < 60) return '${m}min';
+    final h = m ~/ 60;
+    final r = m % 60;
+    return r == 0 ? '${h}h' : '${h}h${r.toString().padLeft(2, '0')}';
   }
 
-  void _markPendingValidation(FamilyProvider provider, PunishmentLines p) {
-    final idx = provider.punishments.indexWhere((x) => x.id == p.id);
-    if (idx != -1) {
-      provider.punishments[idx].pendingValidation = true;
-      provider.notifyListeners();
+  List<Map<String, dynamic>> _getSchoolNotes(FamilyProvider fp) {
+    final history = fp.getHistoryForChild(widget.childId);
+    return history.where((h) => h.category == 'school_note').map((h) {
+      String subject = h.reason;
+      int noteValue = h.points;
+      int noteMax = 20;
+      final match = RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(h.reason);
+      if (match != null) {
+        subject = match.group(1)!.trim();
+        noteValue = int.tryParse(match.group(2)!) ?? h.points;
+        noteMax = int.tryParse(match.group(3)!) ?? 20;
+      }
+      return {
+        'subject': subject,
+        'value': noteValue,
+        'max': noteMax,
+        'percent': noteMax > 0 ? noteValue / noteMax * 100 : 0.0,
+        'date': h.date,
+      };
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _getBehaviorNotes(FamilyProvider fp) {
+    final history = fp.getHistoryForChild(widget.childId);
+    return history
+        .where((h) =>
+            h.category != 'school_note' &&
+            h.category != 'screen_time_bonus' &&
+            h.category != 'saturday_rating' &&
+            h.category != 'tribunal_vote' &&
+            h.category != 'tribunal_verdict')
+        .take(10)
+        .map((h) => {
+              'subject': h.reason,
+              'points': h.isBonus ? h.points : -h.points,
+              'date': h.date,
+              'isBonus': h.isBonus,
+            })
+        .toList();
+  }
+
+  int _percentToStars(double percent) {
+    if (percent >= 90) return 5;
+    if (percent >= 75) return 4;
+    if (percent >= 60) return 3;
+    if (percent >= 40) return 2;
+    return 1;
+  }
+
+  int _calculerTempsEcranPourJour(FamilyProvider fp) {
+    if (_joursSources.isEmpty) return 0;
+    final now = DateTime.now();
+    final debutSemaine = now.subtract(Duration(days: now.weekday - 1));
+    final history = fp.getHistoryForChild(widget.childId);
+    final notesSources = <Map<String, dynamic>>[];
+
+    for (final jourIdx in _joursSources) {
+      final jourDate = DateTime(
+          debutSemaine.year, debutSemaine.month, debutSemaine.day + jourIdx);
+      final notesJour = history.where((h) =>
+          h.category == 'school_note' &&
+          h.date.year == jourDate.year &&
+          h.date.month == jourDate.month &&
+          h.date.day == jourDate.day);
+      for (final n in notesJour) {
+        int noteValue = n.points;
+        int noteMax = 20;
+        final match = RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(n.reason);
+        if (match != null) {
+          noteValue = int.tryParse(match.group(2)!) ?? n.points;
+          noteMax = int.tryParse(match.group(3)!) ?? 20;
+        }
+        notesSources.add(
+            {'percent': noteMax > 0 ? noteValue / noteMax * 100 : 0.0});
+      }
     }
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('✅ Demande envoyée au parent !'),
-        backgroundColor: Colors.orange,
-      ));
+
+    final bonus = fp.getParentBonusMinutes(widget.childId);
+    if (notesSources.isEmpty) {
+      final globalScore = fp.getWeeklyGlobalScore(widget.childId);
+      return ((globalScore / 20 * 180).round() + bonus).clamp(0, 180);
     }
-  }
-
-  void _validateByParent(FamilyProvider provider, PunishmentLines p,
-      BuildContext ctx) {
-    final remaining = p.totalLines - p.completedLines;
-    provider.updatePunishmentProgress(p.id, remaining);
-    Navigator.pop(ctx);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('✅ Punition validée !'),
-      backgroundColor: Colors.green,
-    ));
-    _listController.forward(from: 0);
-  }
-
-  void _showUseImmunityDialog(
-      FamilyProvider provider, PunishmentLines p) {
-    final immunities = provider.getUsableImmunitiesForChild(p.childId);
-    if (immunities.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('❌ Aucune immunité disponible'),
-        backgroundColor: Colors.red,
-      ));
-      return;
-    }
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: Colors.grey.shade900,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Row(children: [
-              Text('🛡️', style: TextStyle(fontSize: 22)),
-              SizedBox(width: 8),
-              Text('Utiliser une immunité',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-            ]),
-            const SizedBox(height: 4),
-            Text(
-              'Lignes restantes : ${p.totalLines - p.completedLines}',
-              style:
-                  const TextStyle(color: Colors.white54, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            ...immunities
-                .map((imm) => _buildImmunityOption(ctx, provider, p, imm)),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImmunityOption(BuildContext ctx, FamilyProvider provider,
-      PunishmentLines p, ImmunityLines imm) {
-    final remaining = p.totalLines - p.completedLines;
-    final maxUsable =
-        imm.availableLines < remaining ? imm.availableLines : remaining;
-    return StatefulBuilder(builder: (_, setLocal) {
-      int selected = maxUsable;
-      return StatefulBuilder(builder: (_, setSlider) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.greenAccent.withOpacity(0.07),
-            borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: Colors.greenAccent.withOpacity(0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                const Icon(Icons.shield,
-                    color: Colors.greenAccent, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(imm.reason,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14)),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                      color: Colors.greenAccent.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8)),
-                  child: Text('${imm.availableLines} dispo',
-                      style: const TextStyle(
-                          color: Colors.greenAccent, fontSize: 11)),
-                ),
-              ]),
-              const SizedBox(height: 10),
-              Row(children: [
-                const Text('Lignes à annuler : ',
-                    style:
-                        TextStyle(color: Colors.white70, fontSize: 13)),
-                Text('$selected',
-                    style: const TextStyle(
-                        color: Colors.greenAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16)),
-                Text(' / $maxUsable max',
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 12)),
-              ]),
-              Slider(
-                value: selected.toDouble(),
-                min: 1,
-                max: maxUsable.toDouble(),
-                divisions: maxUsable > 1 ? maxUsable - 1 : 1,
-                activeColor: Colors.greenAccent,
-                inactiveColor: Colors.white12,
-                onChanged: (v) => setSlider(() => selected = v.round()),
-              ),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await provider.useImmunityOnPunishment(
-                        imm.id, p.id, selected);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(
-                        content: Text(
-                            '🛡️ $selected ligne${selected > 1 ? 's' : ''} annulée${selected > 1 ? 's' : ''} !'),
-                        backgroundColor: Colors.green.shade700,
-                      ));
-                      final updated = provider.punishments.firstWhere(
-                          (x) => x.id == p.id,
-                          orElse: () => p);
-                      if (updated.isCompleted) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(
-                          content: Text(
-                              '🎉 Punition terminée grâce à l\'immunité !'),
-                          backgroundColor: Colors.green,
-                        ));
-                      }
-                      _listController.forward(from: 0);
-                    }
-                  },
-                  icon: const Icon(Icons.shield, size: 16),
-                  label: Text(
-                      'Utiliser $selected ligne${selected > 1 ? 's' : ''}'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.greenAccent.shade700,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      });
-    });
-  }
-
-  void _showAddPunishmentSheet() {
-    final textCtrl = TextEditingController();
-    final linesCtrl = TextEditingController(text: '10');
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          decoration: BoxDecoration(
-            color: Colors.grey.shade900,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 24, right: 24, top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 20),
-              const Text('📝 Nouvelle Punition',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              TextField(
-                controller: textCtrl,
-                style: const TextStyle(color: Colors.white),
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Texte à copier',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  hintText:
-                      'Ex: Je dois être poli avec mes frères et sœurs.',
-                  hintStyle: const TextStyle(color: Colors.white30),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                        color: Colors.redAccent.withOpacity(0.5)),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide:
-                        const BorderSide(color: Colors.redAccent),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text('Nombre de lignes',
-                  style:
-                      TextStyle(color: Colors.white70, fontSize: 14)),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: 140,
-                child: TextField(
-                  controller: linesCtrl,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly
-                  ],
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.redAccent.withOpacity(0.2),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [5, 10, 20, 50, 100].map((n) {
-                  return TvFocusWrapper(
-                    onTap: () =>
-                        setSheetState(() => linesCtrl.text = '$n'),
-                    child: GestureDetector(
-                      onTap: () =>
-                          setSheetState(() => linesCtrl.text = '$n'),
-                      child: Chip(
-                        label: Text('$n',
-                            style: const TextStyle(
-                                color: Colors.white70)),
-                        backgroundColor:
-                            Colors.white.withOpacity(0.1),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.shade700,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: () {
-                    final totalLines =
-                        int.tryParse(linesCtrl.text) ?? 0;
-                    if (textCtrl.text.trim().isEmpty ||
-                        _selectedChildId == null ||
-                        totalLines <= 0) return;
-                    context.read<FamilyProvider>().addPunishment(
-                        _selectedChildId!,
-                        textCtrl.text.trim(),
-                        totalLines);
-                    Navigator.pop(ctx);
-                    _listController.forward(from: 0);
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(
-                      content: Text(
-                          '📝 Punition de $totalLines lignes ajoutée'),
-                      backgroundColor: Colors.red.shade700,
-                    ));
-                  },
-                  child: const Text('Créer la punition',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showPunishmentDetail(PunishmentLines punishment) {
-    final isParent = context.read<PinProvider>().isParentMode;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => Consumer<FamilyProvider>(
-        builder: (ctx, provider, _) {
-          final currentP = provider.punishments.firstWhere(
-              (p) => p.id == punishment.id,
-              orElse: () => punishment);
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24)),
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // ── Titre ──────────────────────────────
-                Row(children: [
-                  Text(
-                      currentP.isCompleted
-                          ? '✅'
-                          : currentP.pendingValidation
-                              ? '⏳'
-                              : '📝',
-                      style: const TextStyle(fontSize: 28)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(currentP.text,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
-                  ),
-                ]),
-
-                // ── Badge "En attente de validation" ──
-                if (currentP.pendingValidation &&
-                    !currentP.isCompleted) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: Colors.orange.withOpacity(0.4)),
-                    ),
-                    child: const Row(children: [
-                      Icon(Icons.hourglass_top_rounded,
-                          color: Colors.orange, size: 16),
-                      SizedBox(width: 6),
-                      Text('⏳ En attente de validation parent',
-                          style: TextStyle(
-                              color: Colors.orange,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                    ]),
-                  ),
-                ],
-
-                const SizedBox(height: 16),
-
-                // ── Barre de progression ──────────────
-                AnimatedBuilder(
-                  animation: _progressController,
-                  builder: (ctx, _) {
-                    final progress =
-                        currentP.progress * _progressController.value;
-                    return Column(children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 12,
-                          backgroundColor:
-                              Colors.white.withOpacity(0.1),
-                          valueColor: AlwaysStoppedAnimation(
-                            currentP.isCompleted
-                                ? Colors.greenAccent
-                                : currentP.pendingValidation
-                                    ? Colors.orange
-                                    : Colors.redAccent,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                                '${currentP.completedLines}/${currentP.totalLines} lignes',
-                                style: const TextStyle(
-                                    color: Colors.white70)),
-                            Text(
-                                '${(currentP.progress * 100).toInt()}%',
-                                style: TextStyle(
-                                    color: currentP.isCompleted
-                                        ? Colors.greenAccent
-                                        : Colors.redAccent,
-                                    fontWeight: FontWeight.bold)),
-                          ]),
-                    ]);
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                if (!currentP.isCompleted) ...[
-                  // ── 🛡️ Bouton immunité (tous) ────────
-                  SizedBox(
-                    width: double.infinity,
-                    child: TvFocusWrapper(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _showUseImmunityDialog(provider, currentP);
-                      },
-                      child: Container(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            Colors.greenAccent.shade700
-                                .withOpacity(0.85),
-                            Colors.teal.shade700.withOpacity(0.85),
-                          ]),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Center(
-                          child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('🛡️',
-                                    style: TextStyle(fontSize: 18)),
-                                SizedBox(width: 8),
-                                Text('Utiliser une immunité',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15)),
-                              ]),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── 🙋 Bouton "J'ai fini" (enfant) ──
-                  if (!isParent && !currentP.pendingValidation) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: TvFocusWrapper(
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _markPendingValidation(provider, currentP);
-                        },
-                        child: Container(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              Colors.orange.shade700,
-                              Colors.amber.shade700,
-                            ]),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Center(
-                            child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('🙋',
-                                      style: TextStyle(fontSize: 18)),
-                                  SizedBox(width: 8),
-                                  Text('J\'ai fini mes lignes !',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15)),
-                                ]),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // ── Parent : ajouter lignes + valider ─
-                  if (isParent) ...[
-                    const Text('Ajouter des lignes complétées',
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [1, 5, 10].map((n) {
-                        return TvFocusWrapper(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            final prov = context.read<FamilyProvider>();
-                            prov.updatePunishmentProgress(
-                                currentP.id, n);
-                            _progressController.forward(from: 0);
-                            final updated = prov.punishments.firstWhere(
-                                (p) => p.id == currentP.id,
-                                orElse: () => currentP);
-                            if (updated.isCompleted) {
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(const SnackBar(
-                                content: Text('🎉 Punition terminée !'),
-                                backgroundColor: Colors.green,
-                              ));
-                            }
-                          },
-                          child: Chip(
-                            label: Text('+$n',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold)),
-                            backgroundColor:
-                                Colors.redAccent.withOpacity(0.3),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // ✅ Valider si enfant a demandé
-                    if (currentP.pendingValidation) ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: TvFocusWrapper(
-                          onTap: () =>
-                              _validateByParent(provider, currentP, ctx),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 14),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [
-                                Colors.green.shade700,
-                                Colors.greenAccent.shade700,
-                              ]),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Center(
-                              child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.check_circle,
-                                        color: Colors.white, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('✅ Valider — l\'enfant a fini',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15)),
-                                  ]),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    // 🗑️ Supprimer
-                    SizedBox(
-                      width: double.infinity,
-                      child: TvFocusWrapper(
-                        onTap: () {
-                          context
-                              .read<FamilyProvider>()
-                              .removePunishment(currentP.id);
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(const SnackBar(
-                            content: Text('🗑️ Punition supprimée'),
-                            backgroundColor: Colors.red,
-                          ));
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade900.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                                color:
-                                    Colors.redAccent.withOpacity(0.5)),
-                          ),
-                          child: const Center(
-                            child: Text('🗑️ Supprimer',
-                                style: TextStyle(
-                                    color: Colors.redAccent,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ],
-            ),
-          );
-        },
-      ),
-    );
+    final avgPercent = notesSources.fold<double>(
+            0, (s, n) => s + (n['percent'] as double)) /
+        notesSources.length;
+    return ((avgPercent / 100 * 180).round() + bonus).clamp(0, 180);
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
-      builder: (context, provider, _) {
-        final children = provider.children;
-        final punishments = _getPunishments(provider);
-        final activeCount =
-            punishments.where((e) => !e.isCompleted).length;
-        final completedCount =
-            punishments.where((e) => e.isCompleted).length;
-        final pendingCount = punishments
-            .where((e) => e.pendingValidation && !e.isCompleted)
-            .length;
-
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: AnimatedBackground(
-            child: SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(children: [
-                      TvFocusWrapper(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.arrow_back,
-                              color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text('📝',
-                          style: TextStyle(fontSize: 28)),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text('Punitions',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      if (pendingCount > 0)
-                        Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color:
-                                    Colors.orange.withOpacity(0.5)),
-                          ),
-                          child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.hourglass_top,
-                                    color: Colors.orange, size: 14),
-                                const SizedBox(width: 4),
-                                Text('$pendingCount',
-                                    style: const TextStyle(
-                                        color: Colors.orange,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13)),
-                              ]),
-                        ),
-                      TvFocusWrapper(
-                        onTap: _showAddPunishmentSheet,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              Colors.redAccent.shade700,
-                              Colors.red.shade700,
-                            ]),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add,
-                                    color: Colors.white, size: 20),
-                                SizedBox(width: 4),
-                                Text('Ajouter',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold)),
-                              ]),
-                        ),
-                      ),
-                    ]),
-                  ),
-
-                  if (children.length > 1)
-                    SizedBox(
-                      height: 50,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16),
-                        itemCount: children.length,
-                        itemBuilder: (ctx, i) {
-                          final child = children[i];
-                          final selected = child.id == _selectedChildId;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: TvFocusWrapper(
-                              onTap: () {
-                                setState(() =>
-                                    _selectedChildId = child.id);
-                                _listController.forward(from: 0);
-                              },
-                              child: AnimatedContainer(
-                                duration:
-                                    const Duration(milliseconds: 300),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? Colors.redAccent
-                                          .withOpacity(0.3)
-                                      : Colors.white
-                                          .withOpacity(0.1),
-                                  borderRadius:
-                                      BorderRadius.circular(20),
-                                  border: selected
-                                      ? Border.all(
-                                          color: Colors.redAccent,
-                                          width: 2)
-                                      : null,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${child.avatar.isNotEmpty ? child.avatar : '👤'} ${child.name}',
-                                    style: TextStyle(
-                                      color: selected
-                                          ? Colors.redAccent
-                                          : Colors.white70,
-                                      fontWeight: selected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                  const SizedBox(height: 8),
-
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16),
-                    child: GlassCard(
-                      child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _statChip('En cours', '$activeCount',
-                              Colors.redAccent),
-                          Container(
-                              width: 1,
-                              height: 30,
-                              color: Colors.white24),
-                          _statChip('En attente', '$pendingCount',
-                              Colors.orange),
-                          Container(
-                              width: 1,
-                              height: 30,
-                              color: Colors.white24),
-                          _statChip('Terminées', '$completedCount',
-                              Colors.greenAccent),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Expanded(
-                    child: punishments.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('📝',
-                                    style: TextStyle(fontSize: 64)),
-                                const SizedBox(height: 16),
-                                const Text('Aucune punition',
-                                    style: TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 18)),
-                                const SizedBox(height: 8),
-                                const Text('Espérons que ça dure !',
-                                    style: TextStyle(
-                                        color: Colors.white38,
-                                        fontSize: 14)),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16),
-                            itemCount: punishments.length,
-                            itemBuilder: (ctx, index) {
-                              final p = punishments[index];
-                              final delay = index * 0.1;
-                              return AnimatedBuilder(
-                                animation: _listController,
-                                builder: (ctx, child) {
-                                  final raw =
-                                      (_listController.value - delay) /
-                                          (1 - delay);
-                                  final t = Curves.elasticOut
-                                      .transform(raw.clamp(0.0, 1.0));
-                                  return Transform.translate(
-                                    offset: Offset(0, 50 * (1 - t)),
-                                    child: Opacity(
-                                        opacity: t, child: child),
-                                  );
-                                },
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.only(bottom: 8),
-                                  child: TvFocusWrapper(
-                                    onTap: () {
-                                      _progressController
-                                          .forward(from: 0);
-                                      _showPunishmentDetail(p);
-                                    },
-                                    child: GlassCard(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(children: [
-                                            Text(
-                                                p.isCompleted
-                                                    ? '✅'
-                                                    : p.pendingValidation
-                                                        ? '⏳'
-                                                        : '📝',
-                                                style: const TextStyle(
-                                                    fontSize: 24)),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment
-                                                        .start,
-                                                children: [
-                                                  Text(
-                                                    p.text,
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 15,
-                                                      decoration: p
-                                                              .isCompleted
-                                                          ? TextDecoration
-                                                              .lineThrough
-                                                          : null,
-                                                    ),
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow
-                                                        .ellipsis,
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    p.pendingValidation &&
-                                                            !p.isCompleted
-                                                        ? '⏳ En attente de validation'
-                                                        : '${p.completedLines}/${p.totalLines} lignes • ${(p.progress * 100).toInt()}%',
-                                                    style: TextStyle(
-                                                      color: p.pendingValidation
-                                                          ? Colors.orange
-                                                          : p.isCompleted
-                                                              ? Colors
-                                                                  .greenAccent
-                                                              : Colors
-                                                                  .white54,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const Icon(
-                                                Icons.chevron_right,
-                                                color: Colors.white38,
-                                                size: 20),
-                                          ]),
-                                          const SizedBox(height: 8),
-                                          ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                            child:
-                                                LinearProgressIndicator(
-                                              value: p.progress,
-                                              minHeight: 6,
-                                              backgroundColor: Colors
-                                                  .white
-                                                  .withOpacity(0.1),
-                                              valueColor:
-                                                  AlwaysStoppedAnimation(
-                                                p.isCompleted
-                                                    ? Colors.greenAccent
-                                                    : p.pendingValidation
-                                                        ? Colors.orange
-                                                        : Colors.redAccent,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
+      builder: (context, fp, _) {
+        final child = fp.children
+            .cast<ChildModel?>()
+            .firstWhere((c) => c!.id == widget.childId,
+                orElse: () => null);
+        if (child == null) {
+          return const Scaffold(
+              body: Center(child: Text('Enfant introuvable')));
+        }
+        return AnimatedBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: Text(child.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              bottom: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.cyan,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white38,
+                tabs: const [
+                  Tab(icon: Icon(Icons.person), text: 'Profil'),
+                  Tab(icon: Icon(Icons.timer), text: 'Écran'),
+                  Tab(icon: Icon(Icons.history), text: 'Historique'),
+                  Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
                 ],
               ),
+            ),
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildProfileTab(child, fp),
+                _buildScreenTimeTab(child, fp),
+                _buildHistoryTab(child, fp),
+                _buildBadgesTab(child, fp),
+              ],
             ),
           ),
         );
@@ -1062,15 +215,1191 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  Widget _statChip(String label, String value, Color color) {
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      Text(value,
-          style: TextStyle(
-              color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 2),
-      Text(label,
-          style:
-              const TextStyle(color: Colors.white54, fontSize: 12)),
-    ]);
+  // ── Onglet Profil ──────────────────────────────────────────
+  Widget _buildProfileTab(ChildModel child, FamilyProvider fp) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          AnimatedBuilder(
+            animation: Listenable.merge([_profileScale, _glowAnim]),
+            builder: (context, _) {
+              return Transform.scale(
+                scale: _profileScale.value.clamp(0.0, 1.0),
+                child: Opacity(
+                  opacity: _profileFade.value,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.cyan.withOpacity(_glowAnim.value),
+                            blurRadius: 30,
+                            spreadRadius: 5)
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.cyan.withOpacity(0.3),
+                      child: Text(
+                          child.name.isNotEmpty
+                              ? child.name[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: child.points),
+            duration: const Duration(milliseconds: 2000),
+            curve: Curves.easeOut,
+            builder: (context, value, _) {
+              return ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                        colors: [Colors.cyan, Colors.blue, Colors.purple])
+                    .createShader(bounds),
+                child: Text('$value points',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold)),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          ..._buildProfileStats(child, fp),
+        ],
+      ),
+    );
   }
+
+  List<Widget> _buildProfileStats(ChildModel child, FamilyProvider fp) {
+    final history = fp.getHistoryForChild(child.id);
+    final bonus = history.where((h) => h.isBonus).length;
+    final penalty = history.where((h) => !h.isBonus).length;
+    final screenMinutes = fp.getSaturdayMinutes(child.id);
+    final stats = [
+      {'label': 'Total activités', 'value': '${history.length}',
+       'icon': Icons.timeline, 'color': Colors.cyan},
+      {'label': 'Bonus', 'value': '$bonus',
+       'icon': Icons.thumb_up, 'color': Colors.green},
+      {'label': 'Pénalités', 'value': '$penalty',
+       'icon': Icons.thumb_down, 'color': Colors.red},
+      {'label': 'Écran samedi', 'value': _formatMinutes(screenMinutes),
+       'icon': Icons.tv, 'color': Colors.blue},
+    ];
+    return stats.asMap().entries.map((entry) {
+      final i = entry.key;
+      final s = entry.value;
+      return TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: Duration(milliseconds: 600 + i * 200),
+        curve: Curves.easeOutBack,
+        builder: (context, value, child) => Transform.translate(
+            offset: Offset(40 * (1 - value), 0),
+            child: Opacity(opacity: value, child: child)),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: GlassCard(
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: (s['color'] as Color).withOpacity(0.15)),
+                child: Icon(s['icon'] as IconData,
+                    color: s['color'] as Color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Text(s['label'] as String,
+                      style: const TextStyle(color: Colors.white54))),
+              Text(s['value'] as String,
+                  style: TextStyle(
+                      color: s['color'] as Color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
+            ]),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  // ── Onglet Écran ───────────────────────────────────────────
+  Widget _buildScreenTimeTab(ChildModel child, FamilyProvider fp) {
+    final isParent =
+        Provider.of<PinProvider>(context, listen: false).isParentMode;
+
+    final schoolAvg = fp.getWeeklySchoolAverage(child.id);
+    final behaviorScore = fp.getWeeklyBehaviorScore(child.id);
+    final globalScore = fp.getWeeklyGlobalScore(child.id);
+    final bonusMinutes = fp.getParentBonusMinutes(child.id);
+    final immunities = fp.getImmunitiesForChild(child.id);
+    final immunityBonus = immunities
+        .where((im) => im.isUsable)
+        .fold<int>(0, (s, im) => s + im.availableLines);
+
+    final tempsCalcule = _calculerTempsEcranPourJour(fp);
+    final schoolNotes = _getSchoolNotes(fp);
+    final behaviorNotes = _getBehaviorNotes(fp);
+
+    final satMin = fp.getSaturdayMinutes(child.id);
+    const maxMinutes = 180;
+    final ratio = (satMin / maxMinutes).clamp(0.0, 1.0);
+
+    // ── Punitions actives pour rappel visuel ──────────────
+    final punishmentsActives = fp.punishments
+        .where((p) => p.childId == child.id && !p.isCompleted)
+        .toList();
+    final totalLignesRestantes = punishmentsActives.fold<int>(
+        0, (s, p) => s + (p.totalLines - p.completedLines));
+    final hasPendingValidation =
+        punishmentsActives.any((p) => p.pendingValidation);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          // ══════════════════════════════════════════════
+          //  RAPPEL VISUEL LIGNES DE PUNITION
+          // ══════════════════════════════════════════════
+          if (punishmentsActives.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [
+                  Colors.red.withOpacity(0.14),
+                  Colors.deepOrange.withOpacity(0.08),
+                ]),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: Colors.redAccent.withOpacity(0.45)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(children: [
+                    Text('📝', style: TextStyle(fontSize: 20)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Lignes de punition en cours',
+                        style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Il te reste $totalLignesRestantes ligne${totalLignesRestantes > 1 ? 's' : ''} à écrire.',
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '⚠️ Pense à les faire avant de jouer à la console !',
+                    style: TextStyle(
+                        color: Colors.orangeAccent,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic),
+                  ),
+                  if (hasPendingValidation) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: Colors.orange.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.hourglass_top_rounded,
+                                color: Colors.orange, size: 14),
+                            SizedBox(width: 6),
+                            Text('En attente de validation parent',
+                                style: TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ══════════════════════════════════════════════
+          //  RÉSUMÉ DE LA SEMAINE
+          // ══════════════════════════════════════════════
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                Colors.cyan.withOpacity(0.12),
+                Colors.blue.withOpacity(0.06),
+              ]),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.cyan.withOpacity(0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.cyan.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.bar_chart_rounded,
+                        color: Colors.cyan, size: 16),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Résumé de la semaine',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700)),
+                ]),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(
+                      child: _miniScoreCard(
+                          '📚',
+                          'Scolaire',
+                          schoolAvg < 0
+                              ? '--'
+                              : '${schoolAvg.toStringAsFixed(1)}/20',
+                          schoolAvg < 0
+                              ? Colors.white38
+                              : schoolAvg >= 10
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _miniScoreCard(
+                          '🧠',
+                          'Comportement',
+                          '${behaviorScore.toStringAsFixed(1)}/20',
+                          behaviorScore >= 10
+                              ? Colors.greenAccent
+                              : Colors.redAccent)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _miniScoreCard(
+                          '⭐',
+                          'Global',
+                          '${globalScore.toStringAsFixed(1)}/20',
+                          globalScore >= 10
+                              ? Colors.amber
+                              : Colors.orangeAccent)),
+                ]),
+                const SizedBox(height: 12),
+                _miniDetailRow('🛡️ Immunités dispo',
+                    '$immunityBonus lignes', Colors.cyanAccent),
+                _miniDetailRow('⏰ Bonus parent',
+                    '+${_formatMinutes(bonusMinutes)}', Colors.purpleAccent),
+                const Divider(color: Colors.white12, height: 16),
+                _miniDetailRow('⭐ Score global',
+                    '${globalScore.toStringAsFixed(1)}/20', Colors.amber,
+                    bold: true),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ══════════════════════════════════════════════
+          //  CALCULATEUR DE TEMPS D'ÉCRAN
+          // ══════════════════════════════════════════════
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.calculate_rounded,
+                        color: Colors.orange, size: 16),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Calculer le temps d\'écran',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700)),
+                ]),
+                const SizedBox(height: 14),
+                const Text('Jour à calculer :',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 36,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _jours.length,
+                    itemBuilder: (context, i) {
+                      final isSelected = _jourCible == i;
+                      final minSource = _joursSources.isNotEmpty
+                          ? _joursSources.reduce((a, b) => a > b ? a : b)
+                          : -1;
+                      final isAvailable = i > minSource;
+                      return GestureDetector(
+                        onTap: isAvailable
+                            ? () => setState(() {
+                                  _jourCible = i;
+                                  _joursSources.removeWhere((s) => s >= i);
+                                })
+                            : null,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.orange
+                                : isAvailable
+                                    ? Colors.white.withOpacity(0.06)
+                                    : Colors.white.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: isSelected
+                                    ? Colors.orange
+                                    : Colors.white.withOpacity(
+                                        isAvailable ? 0.12 : 0.04)),
+                          ),
+                          child: Text(_jours[i],
+                              style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : isAvailable
+                                          ? Colors.white70
+                                          : Colors.white24,
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w400)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text('Basé sur les notes de :',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: List.generate(_jourCible, (i) {
+                    final isSelected = _joursSources.contains(i);
+                    return GestureDetector(
+                      onTap: () => setState(() {
+                        if (isSelected) {
+                          _joursSources.remove(i);
+                        } else {
+                          _joursSources.add(i);
+                        }
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF7C4DFF).withOpacity(0.25)
+                              : Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF7C4DFF)
+                                  : Colors.white.withOpacity(0.12)),
+                        ),
+                        child: Text(_jours[i],
+                            style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.white54,
+                                fontSize: 11,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w400)),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [
+                      Colors.orange.withOpacity(0.12),
+                      Colors.deepOrange.withOpacity(0.06),
+                    ]),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                        color: Colors.orange.withOpacity(0.25)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text('${_jours[_jourCible]} :',
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12)),
+                      const SizedBox(height: 4),
+                      TweenAnimationBuilder<int>(
+                        key: ValueKey(tempsCalcule),
+                        tween: IntTween(begin: 0, end: tempsCalcule),
+                        duration: const Duration(milliseconds: 800),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, val, _) => Text(
+                          _formatMinutes(val),
+                          style: TextStyle(
+                              color: tempsCalcule >= 120
+                                  ? Colors.greenAccent
+                                  : tempsCalcule >= 60
+                                      ? Colors.orange
+                                      : Colors.redAccent,
+                              fontSize: 36,
+                              fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      Text('sur 3h max',
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 11)),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: (tempsCalcule / 180).clamp(0.0, 1.0),
+                          minHeight: 7,
+                          backgroundColor:
+                              Colors.white.withOpacity(0.08),
+                          valueColor: AlwaysStoppedAnimation(
+                              tempsCalcule >= 120
+                                  ? Colors.greenAccent
+                                  : tempsCalcule >= 60
+                                      ? Colors.orange
+                                      : Colors.redAccent),
+                        ),
+                      ),
+                      if (bonusMinutes > 0) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '+ ${_formatMinutes(bonusMinutes)} bonus parent inclus',
+                          style: const TextStyle(
+                              color: Colors.purpleAccent, fontSize: 11),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Cercle temps d'écran samedi ─────────────────
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: ratio),
+            duration: const Duration(milliseconds: 2000),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) {
+              return Center(
+                child: SizedBox(
+                  width: 160,
+                  height: 160,
+                  child: CustomPaint(
+                    painter: _ScreenTimePainter(value, satMin),
+                    child: Center(
+                      child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TweenAnimationBuilder<int>(
+                              tween: IntTween(begin: 0, end: satMin),
+                              duration:
+                                  const Duration(milliseconds: 2000),
+                              builder: (context, val, _) => Text(
+                                  _formatMinutes(val),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                            const Text('samedi',
+                                style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 11)),
+                          ]),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // ── Boutons bonus parent ────────────────────────
+          if (isParent) ...[
+            const Text('Bonus rapide',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [15, 30, 60].map((mins) {
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, ch) =>
+                      Transform.scale(scale: value, child: ch),
+                  child: TvFocusWrapper(
+                    onTap: () {
+                      fp.addScreenTimeBonus(
+                          child.id, mins, 'Bonus écran +${mins}min');
+                      _showBonusAnimation(mins);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          Colors.cyan.withOpacity(0.3),
+                          Colors.blue.withOpacity(0.3)
+                        ]),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: Colors.cyan.withOpacity(0.5)),
+                      ),
+                      child: Text('+${mins}min',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            TvFocusWrapper(
+              onTap: () => _showCustomBonusDialog(child, fp),
+              child: GlassCard(
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                  Icon(Icons.add_circle, color: Colors.cyan[300]),
+                  const SizedBox(width: 8),
+                  Text('Bonus personnalisé',
+                      style: TextStyle(color: Colors.cyan[300])),
+                ]),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+
+          // ══════════════════════════════════════════════
+          //  NOTES RÉCENTES
+          // ══════════════════════════════════════════════
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Notes comportementales EN AVANT
+                Row(children: [
+                  const Text('🧠', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  const Text('Notes comportementales',
+                      style: TextStyle(
+                          color: Colors.purpleAccent,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700)),
+                ]),
+                const SizedBox(height: 10),
+                if (behaviorNotes.isEmpty)
+                  _emptyNotes('Aucune note comportementale',
+                      Icons.psychology_outlined)
+                else
+                  ...behaviorNotes.take(4).map((n) {
+                    final pts = n['points'] as int;
+                    final isPos = pts >= 0;
+                    final c =
+                        isPos ? Colors.greenAccent : Colors.redAccent;
+                    final date = n['date'] as DateTime;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: c.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: c.withOpacity(0.2)),
+                      ),
+                      child: Row(children: [
+                        Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: c.withOpacity(0.15)),
+                          child: Center(
+                              child: Text(
+                                  isPos ? '+$pts' : '$pts',
+                                  style: TextStyle(
+                                      color: c,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 13))),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                            child: Text(n['subject'] as String,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2)),
+                        Text(
+                            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}',
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 10)),
+                      ]),
+                    );
+                  }),
+
+                const SizedBox(height: 14),
+                const Divider(color: Colors.white12),
+                const SizedBox(height: 10),
+
+                // Notes scolaires en dessous
+                Row(children: [
+                  const Text('📚', style: TextStyle(fontSize: 14)),
+                  const SizedBox(width: 8),
+                  const Text('Notes scolaires',
+                      style: TextStyle(
+                          color: Colors.orangeAccent,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  if (schoolNotes.isNotEmpty)
+                    Text(
+                      'Moy. ${(schoolNotes.fold<double>(0, (s, n) => s + (n['percent'] as double)) / schoolNotes.length).round()}%',
+                      style: const TextStyle(
+                          color: Colors.orangeAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
+                    ),
+                ]),
+                const SizedBox(height: 8),
+                if (schoolNotes.isEmpty)
+                  _emptyNotes(
+                      'Aucune note scolaire', Icons.school_outlined)
+                else
+                  ...schoolNotes.take(3).map((note) {
+                    final percent = note['percent'] as double;
+                    final isGood = percent >= 50;
+                    final nc = isGood
+                        ? Colors.greenAccent
+                        : Colors.redAccent;
+                    final stars = _percentToStars(percent);
+                    final date = note['date'] as DateTime;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: nc.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: nc.withOpacity(0.12)),
+                      ),
+                      child: Row(children: [
+                        Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: nc.withOpacity(0.1)),
+                          child: Center(
+                              child: Text('${percent.round()}%',
+                                  style: TextStyle(
+                                      color: nc,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 9))),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(note['subject'] as String,
+                                  style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500),
+                                  overflow: TextOverflow.ellipsis),
+                              Row(
+                                  children: List.generate(
+                                      stars,
+                                      (i) => const Text('⭐',
+                                          style: TextStyle(
+                                              fontSize: 8)))),
+                            ],
+                          ),
+                        ),
+                        Text(
+                            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}',
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 10)),
+                      ]),
+                    );
+                  }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  // ── Widgets helpers ────────────────────────────────────────
+  Widget _miniScoreCard(
+      String emoji, String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(height: 3),
+          Text(value,
+              style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white54, fontSize: 9),
+              textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniDetailRow(String label, String value, Color color,
+      {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(
+              child: Text(label,
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.55),
+                      fontSize: 11))),
+          Text(value,
+              style: TextStyle(
+                  color: color,
+                  fontWeight:
+                      bold ? FontWeight.w900 : FontWeight.w600,
+                  fontSize: bold ? 13 : 11)),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyNotes(String text, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+        Icon(icon, color: Colors.white24, size: 16),
+        const SizedBox(width: 6),
+        Text(text,
+            style: const TextStyle(
+                color: Colors.white38, fontSize: 11)),
+      ]),
+    );
+  }
+
+  void _showBonusAnimation(int mins) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (context) {
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (Navigator.of(context).canPop()) Navigator.pop(context);
+        });
+        return Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.elasticOut,
+            builder: (context, value, child) => Transform.scale(
+                scale: value,
+                child: Opacity(
+                    opacity: value.clamp(0.0, 1.0), child: child)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 32, vertical: 20),
+              decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.green.withOpacity(0.5),
+                        blurRadius: 30,
+                        spreadRadius: 5)
+                  ]),
+              child: Text('⏰ +${mins}min !',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold)),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCustomBonusDialog(ChildModel child, FamilyProvider fp) {
+    int customMins = 15;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1A1A2E),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: const Text('Bonus personnalisé',
+                style: TextStyle(color: Colors.white)),
+            content:
+                Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('$customMins min',
+                  style: TextStyle(
+                      color: Colors.cyan[300],
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold)),
+              Slider(
+                  value: customMins.toDouble(),
+                  min: 5,
+                  max: 120,
+                  divisions: 23,
+                  activeColor: Colors.cyan,
+                  onChanged: (v) =>
+                      setDialogState(() => customMins = v.round())),
+            ]),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annuler',
+                      style: TextStyle(color: Colors.white54))),
+              ElevatedButton(
+                onPressed: () {
+                  fp.addScreenTimeBonus(child.id, customMins,
+                      'Bonus écran +${customMins}min');
+                  Navigator.pop(context);
+                  _showBonusAnimation(customMins);
+                },
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyan),
+                child: const Text('Ajouter'),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
+  // ── Onglet Historique ──────────────────────────────────────
+  Widget _buildHistoryTab(ChildModel child, FamilyProvider fp) {
+    final history = fp.getHistoryForChild(child.id);
+    if (history.isEmpty) {
+      return Center(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 800),
+          builder: (context, value, child) =>
+              Opacity(opacity: value, child: child),
+          child: const Text('Aucune activité',
+              style: TextStyle(color: Colors.white54, fontSize: 16)),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: history.length,
+      itemBuilder: (context, index) {
+        final h = history[index];
+        final pts = h.isBonus ? h.points : -h.points;
+        final isPositive = pts >= 0;
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(
+              milliseconds: 400 + (index.clamp(0, 15) * 50)),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) => Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: Opacity(opacity: value, child: child)),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: GlassCard(
+              child: Row(children: [
+                Container(
+                  width: 50, height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                        colors: isPositive
+                            ? [Colors.green, Colors.green.shade700]
+                            : [Colors.red, Colors.red.shade700]),
+                    boxShadow: [
+                      BoxShadow(
+                          color: (isPositive
+                                  ? Colors.green
+                                  : Colors.red)
+                              .withOpacity(0.3),
+                          blurRadius: 8)
+                    ],
+                  ),
+                  child: Center(
+                      child: Text(
+                          isPositive ? '+$pts' : '$pts',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13))),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(h.reason,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold)),
+                    if (h.category.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                            color: Colors.cyan.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8)),
+                        child: Text(h.category,
+                            style: TextStyle(
+                                color: Colors.cyan[300],
+                                fontSize: 10)),
+                      ),
+                  ]),
+                ),
+                Text(_formatDate(h.date),
+                    style: const TextStyle(
+                        color: Colors.white38, fontSize: 10)),
+              ]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+  // ── Onglet Badges ──────────────────────────────────────────
+  Widget _buildBadgesTab(ChildModel child, FamilyProvider fp) {
+    final allBadges = [
+      ...BadgeModel.defaultBadges,
+      ...fp.customBadges
+    ];
+    if (allBadges.isEmpty) {
+      return Center(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 800),
+          builder: (context, value, ch) => Opacity(
+              opacity: value,
+              child:
+                  Transform.scale(scale: value, child: ch)),
+          child: const Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('🏆', style: TextStyle(fontSize: 50)),
+            SizedBox(height: 8),
+            Text('Aucun badge encore',
+                style: TextStyle(color: Colors.white54)),
+          ]),
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.8),
+      itemCount: allBadges.length,
+      itemBuilder: (context, index) {
+        final badge = allBadges[index];
+        final isUnlocked = child.badgeIds.contains(badge.id);
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 500 + index * 120),
+          curve: Curves.elasticOut,
+          builder: (context, value, ch) => Transform.scale(
+            scale: value.clamp(0.0, 1.0),
+            child: Transform.rotate(
+                angle: (1 - value) * 0.3,
+                child: Opacity(
+                    opacity: value.clamp(0.0, 1.0), child: ch)),
+          ),
+          child: GlassCard(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isUnlocked
+                      ? Colors.amber.withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.1),
+                  boxShadow: isUnlocked
+                      ? [
+                          BoxShadow(
+                              color: Colors.amber.withOpacity(0.4),
+                              blurRadius: 12,
+                              spreadRadius: 2)
+                        ]
+                      : [],
+                ),
+                child: Icon(
+                    isUnlocked
+                        ? Icons.emoji_events
+                        : Icons.lock,
+                    color:
+                        isUnlocked ? Colors.amber : Colors.grey,
+                    size: 28),
+              ),
+              const SizedBox(height: 8),
+              Text(badge.name,
+                  style: TextStyle(
+                      color: isUnlocked
+                          ? Colors.white
+                          : Colors.white38,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+            ]),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Painter cercle temps d'écran ───────────────────────────
+class _ScreenTimePainter extends CustomPainter {
+  final double progress;
+  final int minutes;
+  _ScreenTimePainter(this.progress, this.minutes);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 10;
+    final bgPaint = Paint()
+      ..color = Colors.white.withOpacity(0.1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 12;
+    canvas.drawCircle(center, radius, bgPaint);
+    final color = progress > 0.5
+        ? Colors.cyan
+        : progress > 0.2
+            ? Colors.orange
+            : Colors.red;
+    final progressPaint = Paint()
+      ..shader = SweepGradient(
+        startAngle: -1.5708,
+        endAngle: -1.5708 + 6.2832 * progress,
+        colors: [color.withOpacity(0.5), color],
+      ).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 12
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -1.5708,
+        6.2832 * progress,
+        false,
+        progressPaint);
+
+    // Points décoratifs
+    for (int i = 0; i < 12; i++) {
+      final angle = -1.5708 + (i / 12) * 6.2832;
+      final dotX = center.dx + (radius + 8) * cos(angle);
+      final dotY = center.dy + (radius + 8) * sin(angle);
+      canvas.drawCircle(
+          Offset(dotX, dotY),
+          2,
+          Paint()
+            ..color = Colors.white.withOpacity(0.2)
+            ..style = PaintingStyle.fill);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScreenTimePainter old) =>
+      old.progress != progress;
 }
