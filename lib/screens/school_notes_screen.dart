@@ -1555,4 +1555,156 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
           ),
         ],
         const SizedBox(height: 16),
-        const Text('💡 Le temps d\'écran est calculé automat<span class="cursor">█</span>
+        const Text('💡 Le temps d\'écran est calculé automatiquement\nà partir de la moyenne scolaire (60%) et du\ncomportement (40%). Maximum 3h/jour.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white38, fontSize: 12)),
+      ]),
+    );
+  }
+
+  Widget _timeCard(String label, int minutes, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(children: [
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w600,
+                fontSize: 13)),
+        const SizedBox(height: 8),
+        Text(_minutesToString(minutes),
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.w900, fontSize: 24)),
+        Text('/ 3h max',
+            style: TextStyle(
+                color: Colors.white.withOpacity(0.3), fontSize: 11)),
+      ]),
+    );
+  }
+
+  void _showNoteDetail(_SchoolNoteDisplay note, FamilyProvider provider) {
+    final percent =
+        note.maxValue > 0 ? note.value / note.maxValue * 100 : 0.0;
+    final stars = _percentToStars(percent);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            color: Colors.grey[900]?.withOpacity(0.95),
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24))),
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                  child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              Row(children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.elasticOut,
+                  builder: (context, val, child) =>
+                      Transform.scale(scale: val, child: child),
+                  child:
+                      const Text('📝', style: TextStyle(fontSize: 28)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text(note.subject,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold))),
+              ]),
+              const SizedBox(height: 16),
+              Center(
+                child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(stars, (i) {
+                      return TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration:
+                            Duration(milliseconds: 400 + i * 150),
+                        curve: Curves.elasticOut,
+                        builder: (context, val, child) =>
+                            Transform.scale(scale: val, child: child),
+                        child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: Text('⭐',
+                                style: TextStyle(fontSize: 28))),
+                      );
+                    })),
+              ),
+              const SizedBox(height: 16),
+              _detailRow('Note', '${note.value}/${note.maxValue}'),
+              _detailRow('Pourcentage', '${percent.round()}%'),
+              _detailRow('Date', _dayName(note.date)),
+              const SizedBox(height: 16),
+              // Bouton supprimer
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    PinGuard.guardAction(context, () {
+                      _confirmDeleteNote(provider, note.id, note.subject);
+                    });
+                  },
+                  icon: const Icon(Icons.delete_outline,
+                      color: Colors.redAccent, size: 18),
+                  label: const Text('Supprimer cette note',
+                      style: TextStyle(color: Colors.redAccent)),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ]),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    color: Colors.white54, fontSize: 14)),
+            Text(value,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+          ]),
+    );
+  }
+}
+
+class _SchoolNoteDisplay {
+  final String id;
+  final String subject;
+  final int value;
+  final int maxValue;
+  final DateTime date;
+  const _SchoolNoteDisplay(
+      {required this.id,
+      required this.subject,
+      required this.value,
+      required this.maxValue,
+      required this.date});
+}
