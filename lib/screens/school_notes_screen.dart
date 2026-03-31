@@ -89,10 +89,10 @@ class _SchoolNotebookOpenState extends State<_SchoolNotebookOpen>
                   width: 220,
                   height: 270,
                   decoration: BoxDecoration(
-                      color: const Color(0xFF1565C0),
+                      color: const Color(0xFF6A1B9A),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                          color: const Color(0xFF0D47A1),
+                          color: const Color(0xFF4A148C),
                           width: 2),
                       boxShadow: [
                         BoxShadow(
@@ -103,15 +103,15 @@ class _SchoolNotebookOpenState extends State<_SchoolNotebookOpen>
                   child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                    const Icon(Icons.school_rounded,
+                    const Icon(Icons.psychology_rounded,
                         color: Colors.white70, size: 48),
                     const SizedBox(height: 8),
-                    Text('NOTES',
+                    Text('COMPORTEMENT',
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
-                            fontSize: 18,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 3)),
+                            letterSpacing: 2)),
                   ]),
                 ),
               ),
@@ -186,7 +186,7 @@ class _StarsAnimationState extends State<_StarsAnimation>
         final t = _ctrl.value;
         return Stack(alignment: Alignment.center, children: [
           Container(
-              color: Colors.amber
+              color: Colors.purple
                   .withOpacity(0.04 * (1 - t))),
           Row(
               mainAxisSize: MainAxisSize.min,
@@ -284,7 +284,7 @@ Future<void> showStarsAnimation(
 }
 
 // ═══════════════════════════════════════════════════════════
-//  SCHOOL NOTES SCREEN
+//  NOTES COMPORTEMENTALES SCREEN
 // ═══════════════════════════════════════════════════════════
 class SchoolNotesScreen extends StatefulWidget {
   final String childId;
@@ -304,8 +304,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     int maxValue = 20;
     final subjectController = TextEditingController();
     const quickSubjects = [
-      'Mathématiques', 'Français', 'Histoire',
-      'Sciences', 'Anglais', 'Sport', 'Arts', 'Musique'
+      'Comportement', 'Respect', 'Travail en classe',
+      'Effort', 'Politesse', 'Coopération', 'Autonomie', 'Ponctualité'
     ];
 
     if (!mounted) return;
@@ -350,18 +350,18 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                         builder: (context, val, child) =>
                             Transform.scale(
                                 scale: val, child: child),
-                        child: const Text('📝',
+                        child: const Text('🧠',
                             style: TextStyle(fontSize: 28)),
                       ),
                       const SizedBox(width: 10),
-                      const Text('Nouvelle note',
+                      const Text('Nouvelle note comportementale',
                           style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold)),
                     ]),
                     const SizedBox(height: 24),
-                    const Text('Matière',
+                    const Text('Critère',
                         style: TextStyle(
                             color: Colors.white70, fontSize: 14)),
                     const SizedBox(height: 8),
@@ -391,7 +391,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                                         vertical: 8),
                                 decoration: BoxDecoration(
                                     color: isSelected
-                                        ? Colors.orangeAccent
+                                        ? Colors.purpleAccent
                                             .withOpacity(0.2)
                                         : Colors.white
                                             .withOpacity(0.06),
@@ -399,12 +399,12 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                                         BorderRadius.circular(20),
                                     border: Border.all(
                                         color: isSelected
-                                            ? Colors.orangeAccent
+                                            ? Colors.purpleAccent
                                             : Colors.white24)),
                                 child: Text(s,
                                     style: TextStyle(
                                         color: isSelected
-                                            ? Colors.orangeAccent
+                                            ? Colors.purpleAccent
                                             : Colors.white70,
                                         fontSize: 13)),
                               ),
@@ -416,7 +416,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                       controller: subjectController,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                          hintText: 'Ou saisissez une matière...',
+                          hintText: 'Ou saisissez un critère...',
                           hintStyle: const TextStyle(
                               color: Colors.white38),
                           filled: true,
@@ -430,7 +430,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                               borderRadius:
                                   BorderRadius.circular(14),
                               borderSide: const BorderSide(
-                                  color: Colors.orangeAccent))),
+                                  color: Colors.purpleAccent))),
                       onChanged: (val) {
                         if (val.isNotEmpty)
                           setModalState(() => subject = '');
@@ -469,7 +469,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      // Correction : key force le rebuild de l'animation
                       TweenAnimationBuilder<double>(
                         key: ValueKey(value),
                         tween: Tween<double>(
@@ -544,11 +543,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                                 style: OutlinedButton.styleFrom(
                                     foregroundColor:
                                         maxValue == val
-                                            ? Colors.orangeAccent
+                                            ? Colors.purpleAccent
                                             : Colors.white54,
                                     side: BorderSide(
                                         color: maxValue == val
-                                            ? Colors.orangeAccent
+                                            ? Colors.purpleAccent
                                             : Colors.white24),
                                     shape:
                                         RoundedRectangleBorder(
@@ -576,14 +575,14 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                               subjectController.text,
                               value,
                               maxValue),
-                          icon: const Icon(Icons.school),
+                          icon: const Icon(Icons.psychology),
                           label: const Text('Ajouter la note',
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                               backgroundColor:
-                                  Colors.orangeAccent.shade700,
+                                  Colors.purple.shade700,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                   borderRadius:
@@ -608,8 +607,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
         subject.isNotEmpty ? subject : customSubject.trim();
     if (finalSubject.isEmpty) {
       ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-          content: Text('Indiquez une matière'),
-          backgroundColor: Colors.orangeAccent));
+          content: Text('Indiquez un critère'),
+          backgroundColor: Colors.purpleAccent));
       return;
     }
     final normalizedScore =
@@ -621,7 +620,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
         '$finalSubject: $value/$maxValue',
         category: 'school_note', isBonus: true);
 
-    // Ferme le bottom sheet avant l'animation
     if (ctx.mounted) Navigator.pop(ctx);
 
     if (!mounted) return;
@@ -630,8 +628,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
-              'Note ajoutée : $value/$maxValue en $finalSubject'),
-          backgroundColor: Colors.green));
+              'Note ajoutée : $value/$maxValue – $finalSubject'),
+          backgroundColor: Colors.purple));
     }
   }
 
@@ -688,11 +686,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                   curve: Curves.elasticOut,
                   builder: (context, val, child) =>
                       Transform.scale(scale: val, child: child),
-                  child: const Text('📚',
+                  child: const Text('🧠',
                       style: TextStyle(fontSize: 22)),
                 ),
                 const SizedBox(width: 8),
-                Text('Notes – ${child?.name ?? ''}'),
+                Text('Notes comportementales – ${child?.name ?? ''}'),
               ]),
               backgroundColor: Colors.transparent,
               elevation: 0,
@@ -705,13 +703,13 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
-                      Colors.orangeAccent.withOpacity(0.12),
-                      Colors.orangeAccent.withOpacity(0.04)
+                      Colors.purpleAccent.withOpacity(0.12),
+                      Colors.purpleAccent.withOpacity(0.04)
                     ]),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                         color:
-                            Colors.orangeAccent.withOpacity(0.3)),
+                            Colors.purpleAccent.withOpacity(0.3)),
                   ),
                   child: Row(children: [
                     Row(
@@ -729,7 +727,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                             crossAxisAlignment:
                                 CrossAxisAlignment.start,
                             children: [
-                          const Text('Moyenne générale',
+                          const Text('Moyenne comportementale',
                               style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12)),
@@ -771,13 +769,13 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                             builder: (context, val, child) =>
                                 Transform.scale(
                                     scale: val, child: child),
-                            child: const Icon(Icons.school,
+                            child: const Icon(Icons.psychology,
                                 size: 64,
                                 color: Colors.white24),
                           ),
                           const SizedBox(height: 12),
                           const Text(
-                              'Aucune note enregistrée',
+                              'Aucune note comportementale',
                               style: TextStyle(
                                   color: Colors.white54)),
                         ]))
@@ -920,13 +918,13 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _showAddNote(provider),
                       icon: const Icon(Icons.add),
-                      label: const Text('Ajouter une note',
+                      label: const Text('Ajouter une note comportementale',
                           style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                           backgroundColor:
-                              Colors.orangeAccent.shade700,
+                              Colors.purple.shade700,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius:
@@ -976,7 +974,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
               curve: Curves.elasticOut,
               builder: (context, val, child) =>
                   Transform.scale(scale: val, child: child),
-              child: const Text('📝',
+              child: const Text('🧠',
                   style: TextStyle(fontSize: 28)),
             ),
             const SizedBox(width: 10),
