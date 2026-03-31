@@ -1,15 +1,16 @@
 // lib/screens/immunity_lines_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/immunity_lines.dart';
 import '../providers/family_provider.dart';
+import '../providers/pin_provider.dart';
+import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
 import 'trade_screen.dart';
-import '../widgets/page_transitions.dart';
-
 
 class ImmunityLinesScreen extends StatefulWidget {
   const ImmunityLinesScreen({super.key});
@@ -52,7 +53,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
 
   List<ImmunityLines> _getImmunities(FamilyProvider provider) {
     if (_selectedChildId == null) return [];
-    // Copie défensive pour permettre le tri
     return List<ImmunityLines>.from(
         provider.getImmunitiesForChild(_selectedChildId!))
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -78,7 +78,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
 
   void _showAddImmunityDialog() {
     final reasonCtrl = TextEditingController();
-    int lines = 1;
+    final linesCtrl = TextEditingController(text: '1');
     DateTime? expiresAt;
 
     showDialog(
@@ -108,34 +108,59 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                             const BorderSide(color: Colors.greenAccent),
                         borderRadius: BorderRadius.circular(12)))),
             const SizedBox(height: 16),
-            Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                      onPressed: () {
-                        if (lines > 1) setDialogState(() => lines--);
-                      },
-                      icon: const Icon(Icons.remove_circle,
-                          color: Colors.redAccent)),
-                  Container(
+            TextField(
+              controller: linesCtrl,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold),
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              decoration: InputDecoration(
+                labelText: 'Nombre de lignes',
+                labelStyle: const TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                        color: Colors.greenAccent.withOpacity(0.5)),
+                    borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                    borderSide:
+                        const BorderSide(color: Colors.greenAccent),
+                    borderRadius: BorderRadius.circular(12)),
+                suffixText: 'ligne(s)',
+                suffixStyle: const TextStyle(
+                    color: Colors.white38, fontSize: 14),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [1, 3, 5, 10, 20].map((v) {
+                return GestureDetector(
+                  onTap: () =>
+                      setDialogState(() => linesCtrl.text = '$v'),
+                  child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 8),
+                        horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                        color: Colors.greenAccent.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12)),
-                    child: Text(
-                        '$lines ligne${lines > 1 ? 's' : ''}',
+                      color: Colors.greenAccent.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: Colors.greenAccent.withOpacity(0.4)),
+                    ),
+                    child: Text('$v',
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
+                            color: Colors.greenAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
                   ),
-                  IconButton(
-                      onPressed: () =>
-                          setDialogState(() => lines++),
-                      icon: const Icon(Icons.add_circle,
-                          color: Colors.greenAccent)),
-                ]),
+                );
+              }).toList(),
+            ),
             const SizedBox(height: 16),
             GestureDetector(
               onTap: () async {
@@ -179,7 +204,11 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                   backgroundColor: Colors.greenAccent.shade700),
               onPressed: () {
                 final reason = reasonCtrl.text.trim();
-                if (reason.isEmpty || _selectedChildId == null) return;
+                final lines =
+                    int.tryParse(linesCtrl.text.trim()) ?? 0;
+                if (reason.isEmpty ||
+                    _selectedChildId == null ||
+                    lines < 1) return;
                 context.read<FamilyProvider>().addImmunity(
                     _selectedChildId!, reason, lines,
                     expiresAt: expiresAt);
@@ -204,7 +233,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
       isScrollControlled: true,
       builder: (ctx) => Consumer<FamilyProvider>(
         builder: (ctx, provider, _) {
-          // Lecture réactive depuis le provider
           final current = provider.immunities.firstWhere(
             (i) => i.id == imm.id,
             orElse: () => imm,
@@ -226,7 +254,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                           height: 4,
                           decoration: BoxDecoration(
                               color: Colors.white24,
-                              borderRadius: BorderRadius.circular(2)))),
+                              borderRadius:
+                                  BorderRadius.circular(2)))),
                   const SizedBox(height: 20),
                   Row(children: [
                     Icon(_statusIcon(current),
@@ -264,22 +293,26 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                               context,
                               DoorPageRoute(
                                   page: TradeScreen(
-                                      childId: _selectedChildId!)));
+                                      childId:
+                                          _selectedChildId!)));
                         },
                         child: Container(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14),
                           decoration: BoxDecoration(
                               gradient: LinearGradient(colors: [
                                 Colors.purple.shade700,
                                 Colors.blue.shade700
                               ]),
-                              borderRadius: BorderRadius.circular(14)),
+                              borderRadius:
+                                  BorderRadius.circular(14)),
                           child: const Center(
-                              child: Text('🤝 Proposer un Trade',
+                              child: Text(
+                                  '🤝 Proposer un Trade',
                                   style: TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.bold))),
+                                      fontWeight:
+                                          FontWeight.bold))),
                         ),
                       ),
                     ),
@@ -289,29 +322,36 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                     width: double.infinity,
                     child: GestureDetector(
                       onTap: () {
-                        context
-                            .read<FamilyProvider>()
-                            .removeImmunity(current.id);
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content:
-                                const Text('🗑️ Immunité supprimée'),
-                            backgroundColor: Colors.red.shade700));
+                        PinGuard.guardAction(context, () {
+                          context
+                              .read<FamilyProvider>()
+                              .removeImmunity(current.id);
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(
+                                  content: const Text(
+                                      '🗑️ Immunité supprimée'),
+                                  backgroundColor:
+                                      Colors.red.shade700));
+                        });
                       },
                       child: Container(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 14),
                         decoration: BoxDecoration(
-                            color: Colors.red.shade900.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(14),
+                            color: Colors.red.shade900
+                                .withOpacity(0.5),
+                            borderRadius:
+                                BorderRadius.circular(14),
                             border: Border.all(
-                                color:
-                                    Colors.redAccent.withOpacity(0.5))),
+                                color: Colors.redAccent
+                                    .withOpacity(0.5))),
                         child: const Center(
                             child: Text('🗑️ Supprimer',
                                 style: TextStyle(
                                     color: Colors.redAccent,
-                                    fontWeight: FontWeight.bold))),
+                                    fontWeight:
+                                        FontWeight.bold))),
                       ),
                     ),
                   ),
@@ -347,16 +387,16 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
       builder: (context, provider, _) {
         final children = provider.children;
         final immunities = _getImmunities(provider);
-        final activeCount = immunities.where((e) => e.isUsable).length;
-        final totalLines =
-            immunities.fold<int>(0, (s, e) => s + e.availableLines);
+        final activeCount =
+            immunities.where((e) => e.isUsable).length;
+        final totalLines = immunities.fold<int>(
+            0, (s, e) => s + e.availableLines);
 
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: AnimatedBackground(
             child: SafeArea(
               child: Column(children: [
-                // Header
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(children: [
@@ -365,8 +405,10 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                       child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12)),
+                              color:
+                                  Colors.white.withOpacity(0.1),
+                              borderRadius:
+                                  BorderRadius.circular(12)),
                           child: const Icon(Icons.arrow_back,
                               color: Colors.white)),
                     ),
@@ -383,7 +425,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold))),
                     TvFocusWrapper(
-                      onTap: _showAddImmunityDialog,
+                      onTap: () => PinGuard.guardAction(
+                          context, _showAddImmunityDialog),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),
@@ -392,55 +435,62 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                               Colors.greenAccent.shade700,
                               Colors.green.shade700
                             ]),
-                            borderRadius: BorderRadius.circular(14)),
+                            borderRadius:
+                                BorderRadius.circular(14)),
                         child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.add,
-                                  color: Colors.white, size: 20),
+                                  color: Colors.white,
+                                  size: 20),
                               SizedBox(width: 4),
                               Text('Ajouter',
                                   style: TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.bold)),
+                                      fontWeight:
+                                          FontWeight.bold)),
                             ]),
                       ),
                     ),
                   ]),
                 ),
-
-                // Sélecteur enfant
                 if (children.length > 1)
                   SizedBox(
                     height: 50,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16),
                       itemCount: children.length,
                       itemBuilder: (ctx, i) {
                         final child = children[i];
-                        final selected = child.id == _selectedChildId;
+                        final selected =
+                            child.id == _selectedChildId;
                         return Padding(
-                          padding: const EdgeInsets.only(right: 8),
+                          padding:
+                              const EdgeInsets.only(right: 8),
                           child: TvFocusWrapper(
-                            onTap: () => setState(
-                                () => _selectedChildId = child.id),
+                            onTap: () => setState(() =>
+                                _selectedChildId = child.id),
                             child: AnimatedContainer(
-                              duration:
-                                  const Duration(milliseconds: 300),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                              duration: const Duration(
+                                  milliseconds: 300),
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8),
                               decoration: BoxDecoration(
                                   color: selected
                                       ? Colors.greenAccent
                                           .withOpacity(0.3)
-                                      : Colors.white.withOpacity(0.1),
+                                      : Colors.white
+                                          .withOpacity(0.1),
                                   borderRadius:
                                       BorderRadius.circular(20),
                                   border: selected
                                       ? Border.all(
-                                          color: Colors.greenAccent,
+                                          color: Colors
+                                              .greenAccent,
                                           width: 2)
                                       : null),
                               child: Center(
@@ -448,11 +498,13 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                                     '${child.avatar.isNotEmpty ? child.avatar : '👤'} ${child.name}',
                                     style: TextStyle(
                                         color: selected
-                                            ? Colors.greenAccent
+                                            ? Colors
+                                                .greenAccent
                                             : Colors.white70,
                                         fontWeight: selected
                                             ? FontWeight.bold
-                                            : FontWeight.normal)),
+                                            : FontWeight
+                                                .normal)),
                               ),
                             ),
                           ),
@@ -460,12 +512,10 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                       },
                     ),
                   ),
-
                 const SizedBox(height: 8),
-
-                // Statistiques
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16),
                   child: GlassCard(
                     child: Row(
                         mainAxisAlignment:
@@ -477,21 +527,18 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                               width: 1,
                               height: 30,
                               color: Colors.white24),
-                          _statChip('Total lignes', '$totalLines',
-                              Colors.cyanAccent),
+                          _statChip('Total lignes',
+                              '$totalLines', Colors.cyanAccent),
                           Container(
                               width: 1,
                               height: 30,
                               color: Colors.white24),
-                          _statChip('Total', '${immunities.length}',
-                              Colors.white70),
+                          _statChip('Total',
+                              '${immunities.length}', Colors.white70),
                         ]),
                   ),
                 ),
-
                 const SizedBox(height: 8),
-
-                // Liste
                 Expanded(
                   child: immunities.isEmpty
                       ? Center(
@@ -501,7 +548,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                               ScaleTransition(
                                   scale: _shieldPulse,
                                   child: const Text('🛡️',
-                                      style: TextStyle(fontSize: 64))),
+                                      style: TextStyle(
+                                          fontSize: 64))),
                               const SizedBox(height: 16),
                               const Text('Aucune immunité',
                                   style: TextStyle(
@@ -526,35 +574,49 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                             return AnimatedBuilder(
                               animation: _listController,
                               builder: (ctx, child) {
-                                final t = Curves.elasticOut.transform(
-                                    ((_listController.value - delay) /
-                                            (1 - delay))
-                                        .clamp(0.0, 1.0));
+                                final t = Curves.elasticOut
+                                    .transform(
+                                        ((_listController
+                                                        .value -
+                                                    delay) /
+                                                (1 - delay))
+                                            .clamp(0.0, 1.0));
                                 return Transform.translate(
-                                    offset: Offset(0, 50 * (1 - t)),
+                                    offset:
+                                        Offset(0, 50 * (1 - t)),
                                     child: Opacity(
-                                        opacity: t, child: child));
+                                        opacity: t,
+                                        child: child));
                               },
                               child: Padding(
                                 padding:
-                                    const EdgeInsets.only(bottom: 8),
+                                    const EdgeInsets.only(
+                                        bottom: 8),
                                 child: TvFocusWrapper(
-                                  onTap: () => _showDetailSheet(imm),
+                                  onTap: () =>
+                                      _showDetailSheet(imm),
                                   child: GlassCard(
                                     child: Row(children: [
                                       Container(
                                           width: 48,
                                           height: 48,
                                           decoration: BoxDecoration(
-                                              color: _statusColor(imm)
-                                                  .withOpacity(0.2),
+                                              color: _statusColor(
+                                                      imm)
+                                                  .withOpacity(
+                                                      0.2),
                                               borderRadius:
-                                                  BorderRadius.circular(
-                                                      14)),
-                                          child: Icon(_statusIcon(imm),
-                                              color: _statusColor(imm),
+                                                  BorderRadius
+                                                      .circular(
+                                                          14)),
+                                          child: Icon(
+                                              _statusIcon(imm),
+                                              color:
+                                                  _statusColor(
+                                                      imm),
                                               size: 24)),
-                                      const SizedBox(width: 12),
+                                      const SizedBox(
+                                          width: 12),
                                       Expanded(
                                           child: Column(
                                               crossAxisAlignment:
@@ -563,48 +625,63 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                                               children: [
                                             Text(imm.reason,
                                                 style: const TextStyle(
-                                                    color: Colors.white,
+                                                    color: Colors
+                                                        .white,
                                                     fontWeight:
-                                                        FontWeight.bold,
-                                                    fontSize: 16)),
-                                            const SizedBox(height: 4),
+                                                        FontWeight
+                                                            .bold,
+                                                    fontSize:
+                                                        16)),
+                                            const SizedBox(
+                                                height: 4),
                                             Row(children: [
-                                              Text(_statusText(imm),
+                                              Text(
+                                                  _statusText(
+                                                      imm),
                                                   style: TextStyle(
-                                                      color:
-                                                          _statusColor(
-                                                              imm),
-                                                      fontSize: 12)),
-                                              const SizedBox(width: 8),
+                                                      color: _statusColor(
+                                                          imm),
+                                                      fontSize:
+                                                          12)),
+                                              const SizedBox(
+                                                  width: 8),
                                               Text(
                                                   '${imm.availableLines}/${imm.lines} lignes',
                                                   style: const TextStyle(
-                                                      color:
-                                                          Colors.white54,
-                                                      fontSize: 12)),
+                                                      color: Colors
+                                                          .white54,
+                                                      fontSize:
+                                                          12)),
                                             ]),
                                           ])),
                                       if (imm.isUsable)
                                         Container(
-                                            padding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4),
+                                            padding: const EdgeInsets
+                                                .symmetric(
+                                                horizontal: 8,
+                                                vertical: 4),
                                             decoration: BoxDecoration(
-                                                color: Colors.greenAccent
-                                                    .withOpacity(0.2),
+                                                color: Colors
+                                                    .greenAccent
+                                                    .withOpacity(
+                                                        0.2),
                                                 borderRadius:
-                                                    BorderRadius.circular(
-                                                        8)),
+                                                    BorderRadius
+                                                        .circular(
+                                                            8)),
                                             child: const Text(
                                                 'Utilisable',
                                                 style: TextStyle(
-                                                    color:
-                                                        Colors.greenAccent,
-                                                    fontSize: 11))),
-                                      const SizedBox(width: 8),
-                                      const Icon(Icons.chevron_right,
-                                          color: Colors.white38,
+                                                    color: Colors
+                                                        .greenAccent,
+                                                    fontSize:
+                                                        11))),
+                                      const SizedBox(
+                                          width: 8),
+                                      const Icon(
+                                          Icons.chevron_right,
+                                          color:
+                                              Colors.white38,
                                           size: 20),
                                     ]),
                                   ),
@@ -631,7 +708,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
         Text(label,
-            style:
-                const TextStyle(color: Colors.white54, fontSize: 12)),
+            style: const TextStyle(
+                color: Colors.white54, fontSize: 12)),
       ]);
 }
