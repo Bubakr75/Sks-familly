@@ -57,7 +57,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
 
   void _showAddPunishmentSheet() {
     final textCtrl = TextEditingController();
-    int totalLines = 10;
+    final linesCtrl = TextEditingController(text: '10');
 
     showModalBottomSheet(
       context: context,
@@ -120,62 +120,41 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               const Text('Nombre de lignes',
                   style: TextStyle(color: Colors.white70, fontSize: 14)),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      if (totalLines > 1)
-                        setSheetState(() => totalLines--);
-                    },
-                    icon: const Icon(Icons.remove_circle,
-                        color: Colors.redAccent, size: 32),
+              SizedBox(
+                width: 140,
+                child: TextField(
+                  controller: linesCtrl,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold),
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.redAccent.withOpacity(0.2),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      '$totalLines',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () => setSheetState(() => totalLines++),
-                    icon: const Icon(Icons.add_circle,
-                        color: Colors.greenAccent, size: 32),
-                  ),
-                ],
+                ),
               ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: [5, 10, 20, 50].map((n) {
+                children: [5, 10, 20, 50, 100].map((n) {
                   return TvFocusWrapper(
-                    onTap: () => setSheetState(() => totalLines = n),
-                    child: Chip(
-                      label: Text(
-                        '$n',
-                        style: TextStyle(
-                          color: totalLines == n
-                              ? Colors.white
-                              : Colors.white70,
-                          fontWeight: totalLines == n
-                              ? FontWeight.bold
-                              : FontWeight.normal,
+                    onTap: () => setSheetState(() => linesCtrl.text = '$n'),
+                    child: GestureDetector(
+                      onTap: () => setSheetState(() => linesCtrl.text = '$n'),
+                      child: Chip(
+                        label: Text(
+                          '$n',
+                          style: const TextStyle(color: Colors.white70),
                         ),
+                        backgroundColor: Colors.white.withOpacity(0.1),
                       ),
-                      backgroundColor: totalLines == n
-                          ? Colors.redAccent.withOpacity(0.4)
-                          : Colors.white.withOpacity(0.1),
                     ),
                   );
                 }).toList(),
@@ -191,8 +170,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         borderRadius: BorderRadius.circular(14)),
                   ),
                   onPressed: () {
+                    final totalLines = int.tryParse(linesCtrl.text) ?? 0;
                     if (textCtrl.text.trim().isEmpty ||
-                        _selectedChildId == null) return;
+                        _selectedChildId == null ||
+                        totalLines <= 0) return;
                     context.read<FamilyProvider>().addPunishment(
                           _selectedChildId!,
                           textCtrl.text.trim(),
@@ -223,7 +204,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      // Consumer pour réactivité sans rebuild du parent
       builder: (ctx) => Consumer<FamilyProvider>(
         builder: (ctx, provider, _) {
           final currentP = provider.punishments.firstWhere(
@@ -267,7 +247,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   ),
                 ]),
                 const SizedBox(height: 16),
-                // Barre de progression réactive
                 AnimatedBuilder(
                   animation: _progressController,
                   builder: (ctx, _) {
@@ -321,7 +300,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                           final prov = context.read<FamilyProvider>();
                           prov.updatePunishmentProgress(currentP.id, n);
                           _progressController.forward(from: 0);
-                          // Vérifie si terminée après màj
                           final updated = prov.punishments.firstWhere(
                             (p) => p.id == currentP.id,
                             orElse: () => currentP,
@@ -349,7 +327,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   ),
                   const SizedBox(height: 16),
                 ],
-                // Bouton supprimer
                 SizedBox(
                   width: double.infinity,
                   child: TvFocusWrapper(
@@ -405,7 +382,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             child: SafeArea(
               child: Column(
                 children: [
-                  // Header
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Row(children: [
@@ -458,7 +434,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                     ]),
                   ),
 
-                  // Sélecteur enfant
                   if (children.length > 1)
                     SizedBox(
                       height: 50,
@@ -516,7 +491,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
 
                   const SizedBox(height: 8),
 
-                  // Statistiques
                   Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16),
@@ -545,7 +519,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
 
                   const SizedBox(height: 8),
 
-                  // Liste
                   Expanded(
                     child: punishments.isEmpty
                         ? Center(
