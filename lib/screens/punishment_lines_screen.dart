@@ -1,234 +1,195 @@
-// lib/screens/punishment_lines_screen.dart
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../models/child_model.dart';
+import '../models/punishment_lines.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/glass_widgets.dart';
 import '../widgets/tv_focus_wrapper.dart';
 
 class PunishmentLinesScreen extends StatefulWidget {
-  const PunishmentLinesScreen({super.key});
+  final String? initialChildId;
+  const PunishmentLinesScreen({super.key, this.initialChildId});
+
   @override
-  State<PunishmentLinesScreen> createState() =>
-      _PunishmentLinesScreenState();
+  State<PunishmentLinesScreen> createState() => _PunishmentLinesScreenState();
 }
 
 class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     with TickerProviderStateMixin {
-  late AnimationController _listController;
-  late AnimationController _progressController;
+  late AnimationController _listCtrl;
+  late AnimationController _progressCtrl;
+  late Animation<double> _listFade;
+  late Animation<double> _progressAnim;
+
   String? _selectedChildId;
 
   @override
   void initState() {
     super.initState();
-    _listController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200))
-      ..forward();
-    _progressController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
+    _listCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _progressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _listFade = CurvedAnimation(parent: _listCtrl, curve: Curves.easeOut);
+    _progressAnim = CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOutCubic);
+    _listCtrl.forward();
+    _progressCtrl.forward();
 
-    final provider = context.read<FamilyProvider>();
-    if (provider.children.isNotEmpty) {
-      _selectedChildId = provider.children.first.id;
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<FamilyProvider>();
+      final children = provider.sortedChildren;
+      if (widget.initialChildId != null) {
+        setState(() => _selectedChildId = widget.initialChildId);
+      } else if (children.isNotEmpty) {
+        setState(() => _selectedChildId = children.first.id);
+      }
+    });
   }
 
   @override
   void dispose() {
-    _listController.dispose();
-    _progressController.dispose();
+    _listCtrl.dispose();
+    _progressCtrl.dispose();
     super.dispose();
   }
 
-  List<dynamic> _getPunishments(FamilyProvider provider) {
+  List<PunishmentLines> _getPunishments(FamilyProvider provider) {
     if (_selectedChildId == null) return [];
-    final list = provider.punishments
-        .where((p) => p.childId == _selectedChildId)
-        .toList();
-    list.sort((a, b) {
-      if (a.isCompleted && !b.isCompleted) return 1;
-      if (!a.isCompleted && b.isCompleted) return -1;
-      return b.createdAt.compareTo(a.createdAt);
-    });
-    return list;
+    return provider.getPunishmentsForChild(_selectedChildId!)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  // ── Sheet ajout punition (champ libre + raccourcis) ───────
-  void _showAddPunishmentSheet(FamilyProvider provider) {
+  Color _statusColor(PunishmentLines p) {
+    if (p.isCompleted) return const Color(0xFF4CAF50);
+    if (p.progress > 0.5) return const Color(0xFFFFD700);
+    return const Color(0xFFFF6B6B);
+  }
+
+  void _showAddPunishmentSheet() {
     final textCtrl = TextEditingController();
     final linesCtrl = TextEditingController(text: '10');
-
+    int lines = 10;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          decoration: BoxDecoration(
-            color: Colors.grey.shade900.withOpacity(0.95),
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+        builder: (ctx, setSheet) => Container(
           padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
             left: 20,
             right: 20,
             top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF0D1B2A),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Center(
-                  child: Text('📝 Nouvelle Punition',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold)),
-                ),
+                Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+                const NeonText(text: 'Nouvelle punition', fontSize: 22, color: Color(0xFFFF6B6B)),
                 const SizedBox(height: 20),
-                const Text('Texte à recopier',
-                    style:
-                        TextStyle(color: Colors.white70, fontSize: 14)),
+                const Text('Description', style: TextStyle(color: Colors.white70, fontSize: 13)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: textCtrl,
                   style: const TextStyle(color: Colors.white),
-                  maxLines: 2,
+                  maxLines: 3,
                   decoration: InputDecoration(
-                    hintText: 'Ex: Je ne dois pas taper mon frère...',
-                    hintStyle: const TextStyle(color: Colors.white30),
+                    hintText: 'Ex: Écrire 50 fois "je ne dois pas..."',
+                    hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.08),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Colors.redAccent),
-                    ),
+                    fillColor: Colors.white.withOpacity(0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text('Nombre de lignes',
-                    style: TextStyle(
-                        color: Colors.white70, fontSize: 14)),
+                const SizedBox(height: 20),
+                const Text('Nombre de lignes', style: TextStyle(color: Colors.white70, fontSize: 13)),
                 const SizedBox(height: 8),
-                // ✅ Champ libre
-                TextField(
-                  controller: linesCtrl,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly
+                // Saisie libre + raccourcis
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: linesCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.07),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onChanged: (v) => setSheet(() => lines = int.tryParse(v) ?? lines),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            final v = (int.tryParse(linesCtrl.text) ?? lines) + 1;
+                            linesCtrl.text = '$v';
+                            setSheet(() => lines = v);
+                          },
+                          icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white70),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            final v = math.max(1, (int.tryParse(linesCtrl.text) ?? lines) - 1);
+                            linesCtrl.text = '$v';
+                            setSheet(() => lines = v);
+                          },
+                          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+                        ),
+                      ],
+                    ),
                   ],
-                  onChanged: (_) => setSheetState(() {}),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.08),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Colors.redAccent),
-                    ),
-                    suffixText: 'lignes',
-                    suffixStyle: const TextStyle(
-                        color: Colors.white38, fontSize: 14),
-                  ),
                 ),
                 const SizedBox(height: 8),
-                // ✅ Raccourcis rapides
+                // Raccourcis rapides
                 Wrap(
                   spacing: 8,
-                  runSpacing: 8,
-                  children: [5, 10, 20, 30, 50, 100].map((v) {
-                    final isSelected =
-                        linesCtrl.text.trim() == '$v';
-                    return GestureDetector(
-                      onTap: () => setSheetState(
-                          () => linesCtrl.text = v.toString()),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.redAccent.withOpacity(0.35)
-                              : Colors.redAccent.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: Colors.redAccent.withOpacity(
-                                  isSelected ? 0.8 : 0.4),
-                              width: isSelected ? 2 : 1),
-                        ),
-                        child: Text('$v',
-                            style: const TextStyle(
-                                color: Colors.redAccent,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14)),
-                      ),
-                    );
-                  }).toList(),
+                  children: [5, 10, 20, 50, 100].map((n) => ActionChip(
+                    label: Text('$n', style: const TextStyle(color: Colors.white70)),
+                    backgroundColor: Colors.white.withOpacity(0.07),
+                    onPressed: () => setSheet(() {
+                      lines = n;
+                      linesCtrl.text = '$n';
+                    }),
+                  )).toList(),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   height: 52,
-                  child: ElevatedButton.icon(
+                  child: ElevatedButton(
                     onPressed: () {
-                      final text = textCtrl.text.trim();
-                      final totalLines =
-                          int.tryParse(linesCtrl.text.trim()) ?? 0;
-                      if (text.isEmpty ||
-                          _selectedChildId == null ||
-                          totalLines < 1) return;
-                      provider.addPunishment(
-                          _selectedChildId!, text, totalLines);
+                      if (_selectedChildId == null || textCtrl.text.trim().isEmpty) return;
+                      final finalLines = int.tryParse(linesCtrl.text) ?? lines;
+                      if (finalLines <= 0) return;
+                      context.read<FamilyProvider>().addPunishment(
+                        childId: _selectedChildId!,
+                        text: textCtrl.text.trim(),
+                        totalLines: finalLines,
+                      );
                       Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(
-                        content: Text(
-                            '📝 Punition ajoutée : $totalLines lignes'),
-                        backgroundColor: Colors.red.shade700,
-                      ));
                     },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Ajouter la punition',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent.shade700,
+                      backgroundColor: const Color(0xFFFF6B6B),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
+                    child: const Text('Enregistrer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -237,573 +198,378 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  // ── Sheet détail punition ─────────────────────────────────
-  void _showPunishmentDetail(
-      dynamic punishment, FamilyProvider provider) {
-    final linesAddCtrl = TextEditingController(text: '1');
-
+  void _showPunishmentDetail(PunishmentLines p) {
+    final addCtrl = TextEditingController(text: '1');
+    int toAdd = 1;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) {
-          final current = provider.punishments.firstWhere(
-            (p) => p.id == punishment.id,
-            orElse: () => punishment,
-          );
-          final remaining =
-              current.totalLines - current.completedLines;
-
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900.withOpacity(0.95),
-              borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24)),
-            ),
-            padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 24,
-                bottom:
-                    MediaQuery.of(ctx).viewInsets.bottom + 24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                      child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                              color: Colors.white24,
-                              borderRadius:
-                                  BorderRadius.circular(2)))),
-                  const SizedBox(height: 20),
-                  Text(current.text,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  // Barre de progression
-                  TweenAnimationBuilder<double>(
-                    tween: Tween<double>(
-                        begin: 0, end: current.progress),
-                    duration:
-                        const Duration(milliseconds: 800),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, val, _) =>
-                        ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: val,
-                        minHeight: 12,
-                        backgroundColor:
-                            Colors.white.withOpacity(0.1),
-                        valueColor: AlwaysStoppedAnimation(
-                            current.isCompleted
-                                ? Colors.greenAccent
-                                : Colors.redAccent),
+        builder: (ctx, setSheet) => Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom + 16, left: 20, right: 20, top: 20),
+          decoration: const BoxDecoration(color: Color(0xFF0D1B2A), borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+                Row(
+                  children: [
+                    Expanded(child: NeonText(text: p.text, fontSize: 18, color: _statusColor(p))),
+                    if (!p.isCompleted)
+                      IconButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _confirmDelete(p);
+                        },
+                        icon: const Icon(Icons.delete_outline, color: Color(0xFFFF6B6B)),
                       ),
-                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('${p.completedLines} / ${p.totalLines} lignes', style: const TextStyle(color: Colors.white70)),
+                    Text('${(p.progress * 100).toInt()}%', style: TextStyle(color: _statusColor(p), fontWeight: FontWeight.bold, fontSize: 18)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: p.progress,
+                    backgroundColor: Colors.white12,
+                    valueColor: AlwaysStoppedAnimation(_statusColor(p)),
+                    minHeight: 12,
                   ),
+                ),
+                const SizedBox(height: 24),
+                if (!p.isCompleted) ...[
+                  const Text('Ajouter des lignes complétées', style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 8),
                   Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                            '${current.completedLines}/${current.totalLines} lignes',
-                            style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 13)),
-                        Text(
-                            current.isCompleted
-                                ? '✅ Terminé'
-                                : '$remaining restante${remaining > 1 ? 's' : ''}',
-                            style: TextStyle(
-                                color: current.isCompleted
-                                    ? Colors.greenAccent
-                                    : Colors.orangeAccent,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600)),
-                      ]),
-
-                  if (!current.isCompleted) ...[
-                    const SizedBox(height: 20),
-                    const Text('Ajouter des lignes complétées',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14)),
-                    const SizedBox(height: 8),
-
-                    // ✅ Champ libre + bouton valider
-                    Row(children: [
+                    children: [
                       Expanded(
                         child: TextField(
-                          controller: linesAddCtrl,
+                          controller: addCtrl,
                           keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          onChanged: (_) => setSheetState(() {}),
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor:
-                                Colors.white.withOpacity(0.08),
-                            border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            suffixText: '/ $remaining',
-                            suffixStyle: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 14),
+                            fillColor: Colors.white.withOpacity(0.07),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                           ),
+                          onChanged: (v) => setSheet(() => toAdd = int.tryParse(v) ?? toAdd),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: () {
-                          final toAdd = (int.tryParse(
-                                      linesAddCtrl.text
-                                          .trim()) ??
-                                  0)
-                              .clamp(0, remaining);
-                          if (toAdd < 1) return;
-                          provider.updatePunishmentProgress(
-                              current.id, toAdd);
-                          linesAddCtrl.text = '1';
-                          setSheetState(() {});
-                          _progressController.forward(from: 0);
-                        },
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.greenAccent.shade700,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(12))),
-                        child: const Text('Valider',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    ]),
-                    const SizedBox(height: 8),
-
-                    // ✅ Raccourcis
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [1, 5, 10, 20, remaining]
-                          .toSet()
-                          .where(
-                              (v) => v > 0 && v <= remaining)
-                          .map((v) {
-                        final isSelected = linesAddCtrl.text
-                                .trim() ==
-                            '$v';
-                        return GestureDetector(
-                          onTap: () => setSheetState(
-                              () => linesAddCtrl.text = '$v'),
-                          child: AnimatedContainer(
-                            duration: const Duration(
-                                milliseconds: 150),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.greenAccent
-                                      .withOpacity(0.3)
-                                  : Colors.greenAccent
-                                      .withOpacity(0.12),
-                              borderRadius:
-                                  BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: Colors.greenAccent
-                                      .withOpacity(isSelected
-                                          ? 0.8
-                                          : 0.4),
-                                  width: isSelected ? 2 : 1),
-                            ),
-                            child: Text(
-                                v == remaining
-                                    ? 'Tout ($v)'
-                                    : '$v',
-                                style: const TextStyle(
-                                    color: Colors.greenAccent,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13)),
+                      Column(
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              final v = (int.tryParse(addCtrl.text) ?? toAdd) + 1;
+                              addCtrl.text = '$v';
+                              setSheet(() => toAdd = v);
+                            },
+                            icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white70),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        provider
-                            .removePunishment(current.id);
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(
-                                content: const Text(
-                                    '🗑️ Punition supprimée'),
-                                backgroundColor:
-                                    Colors.red.shade700));
-                      },
-                      icon: const Icon(Icons.delete_outline,
-                          color: Colors.redAccent, size: 18),
-                      label: const Text('Supprimer',
-                          style:
-                              TextStyle(color: Colors.redAccent)),
-                    ),
+                          IconButton(
+                            onPressed: () {
+                              final v = math.max(1, (int.tryParse(addCtrl.text) ?? toAdd) - 1);
+                              addCtrl.text = '$v';
+                              setSheet(() => toAdd = v);
+                            },
+                            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [1, 5, 10, 20].map((n) => ActionChip(
+                      label: Text('+$n', style: const TextStyle(color: Colors.white70)),
+                      backgroundColor: Colors.white.withOpacity(0.07),
+                      onPressed: () => setSheet(() {
+                        toAdd = n;
+                        addCtrl.text = '$n';
+                      }),
+                    )).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final finalAdd = int.tryParse(addCtrl.text) ?? toAdd;
+                        if (finalAdd <= 0) return;
+                        context.read<FamilyProvider>().updatePunishmentProgress(p.id, finalAdd);
+                        Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.check),
+                      label: const Text('Valider'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4CAF50),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                      border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.4)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('✅', style: TextStyle(fontSize: 24)),
+                        SizedBox(width: 12),
+                        Text('Punition terminée !', style: TextStyle(color: Color(0xFF4CAF50), fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _confirmDelete(p);
+                      },
+                      icon: const Icon(Icons.delete_outline, color: Color(0xFFFF6B6B)),
+                      label: const Text('Supprimer', style: TextStyle(color: Color(0xFFFF6B6B))),
+                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFFF6B6B))),
+                    ),
+                  ),
                 ],
-              ),
+                const SizedBox(height: 8),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
-  // ── BUILD ────────────────────────────────────────────────────
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<FamilyProvider>(
-      builder: (context, provider, _) {
-        final children = provider.children;
-        final punishments = _getPunishments(provider);
-        final activeCount =
-            punishments.where((p) => !p.isCompleted).length;
-        final completedCount =
-            punishments.where((p) => p.isCompleted).length;
-
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: AnimatedBackground(
-            child: SafeArea(
-              child: Column(children: [
-                // ── Header
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(children: [
-                    TvFocusWrapper(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius:
-                                  BorderRadius.circular(12)),
-                          child: const Icon(Icons.arrow_back,
-                              color: Colors.white)),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text('📝',
-                        style: TextStyle(fontSize: 32)),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                        child: Text('Punitions',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold))),
-                    TvFocusWrapper(
-                      onTap: () =>
-                          _showAddPunishmentSheet(provider),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              Colors.redAccent.shade700,
-                              Colors.red.shade700
-                            ]),
-                            borderRadius:
-                                BorderRadius.circular(14)),
-                        child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add,
-                                  color: Colors.white, size: 20),
-                              SizedBox(width: 4),
-                              Text('Ajouter',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight:
-                                          FontWeight.bold)),
-                            ]),
-                      ),
-                    ),
-                  ]),
-                ),
-
-                // ── Sélecteur enfant
-                if (children.length > 1)
-                  SizedBox(
-                    height: 50,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16),
-                      itemCount: children.length,
-                      itemBuilder: (ctx, i) {
-                        final child = children[i];
-                        final selected =
-                            child.id == _selectedChildId;
-                        return Padding(
-                          padding:
-                              const EdgeInsets.only(right: 8),
-                          child: TvFocusWrapper(
-                            onTap: () => setState(() =>
-                                _selectedChildId = child.id),
-                            child: AnimatedContainer(
-                              duration: const Duration(
-                                  milliseconds: 300),
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8),
-                              decoration: BoxDecoration(
-                                  color: selected
-                                      ? Colors.redAccent
-                                          .withOpacity(0.3)
-                                      : Colors.white
-                                          .withOpacity(0.1),
-                                  borderRadius:
-                                      BorderRadius.circular(20),
-                                  border: selected
-                                      ? Border.all(
-                                          color: Colors.redAccent,
-                                          width: 2)
-                                      : null),
-                              child: Center(
-                                child: Text(
-                                    '${child.avatar.isNotEmpty ? child.avatar : '👤'} ${child.name}',
-                                    style: TextStyle(
-                                        color: selected
-                                            ? Colors.redAccent
-                                            : Colors.white70,
-                                        fontWeight: selected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal)),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                const SizedBox(height: 8),
-
-                // ── Stats
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(children: [
-                    _statChip('Actives', '$activeCount',
-                        Colors.redAccent),
-                    const SizedBox(width: 8),
-                    _statChip('Terminées', '$completedCount',
-                        Colors.greenAccent),
-                    const SizedBox(width: 8),
-                    _statChip('Total', '${punishments.length}',
-                        Colors.white70),
-                  ]),
-                ),
-
-                const SizedBox(height: 8),
-
-                // ── Liste
-                Expanded(
-                  child: punishments.isEmpty
-                      ? Center(
-                          child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Text('📝',
-                                style: TextStyle(fontSize: 64)),
-                            SizedBox(height: 16),
-                            Text('Aucune punition',
-                                style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 18)),
-                            SizedBox(height: 8),
-                            Text(
-                                'Appuyez sur + pour en ajouter',
-                                style: TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 14)),
-                          ],
-                        ))
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16),
-                          itemCount: punishments.length,
-                          itemBuilder: (ctx, index) {
-                            final p = punishments[index];
-                            final delay = index * 0.1;
-                            return AnimatedBuilder(
-                              animation: _listController,
-                              builder: (ctx, child) {
-                                final t = Curves.elasticOut
-                                    .transform(
-                                        ((_listController
-                                                        .value -
-                                                    delay) /
-                                                (1 - delay))
-                                            .clamp(0.0, 1.0));
-                                return Transform.translate(
-                                    offset:
-                                        Offset(0, 50 * (1 - t)),
-                                    child: Opacity(
-                                        opacity: t,
-                                        child: child));
-                              },
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.only(
-                                        bottom: 8),
-                                child: TvFocusWrapper(
-                                  onTap: () =>
-                                      _showPunishmentDetail(
-                                          p, provider),
-                                  child: GlassCard(
-                                    child: Row(children: [
-                                      Container(
-                                          width: 48,
-                                          height: 48,
-                                          decoration: BoxDecoration(
-                                              color: (p.isCompleted
-                                                      ? Colors
-                                                          .greenAccent
-                                                      : Colors
-                                                          .redAccent)
-                                                  .withOpacity(0.2),
-                                              borderRadius:
-                                                  BorderRadius
-                                                      .circular(14)),
-                                          child: Icon(
-                                              p.isCompleted
-                                                  ? Icons
-                                                      .check_circle
-                                                  : Icons
-                                                      .edit_document,
-                                              color: p.isCompleted
-                                                  ? Colors
-                                                      .greenAccent
-                                                  : Colors.redAccent,
-                                              size: 24)),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                          child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment
-                                                      .start,
-                                              children: [
-                                            Text(p.text,
-                                                style: const TextStyle(
-                                                    color:
-                                                        Colors.white,
-                                                    fontWeight:
-                                                        FontWeight
-                                                            .bold,
-                                                    fontSize: 14),
-                                                maxLines: 1,
-                                                overflow:
-                                                    TextOverflow
-                                                        .ellipsis),
-                                            const SizedBox(height: 4),
-                                            Row(children: [
-                                              Text(
-                                                  '${p.completedLines}/${p.totalLines}',
-                                                  style: const TextStyle(
-                                                      color: Colors
-                                                          .white54,
-                                                      fontSize: 12)),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                  child: ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius
-                                                        .circular(4),
-                                                child:
-                                                    LinearProgressIndicator(
-                                                  value: p.progress,
-                                                  minHeight: 4,
-                                                  backgroundColor:
-                                                      Colors.white
-                                                          .withOpacity(
-                                                              0.1),
-                                                  valueColor:
-                                                      AlwaysStoppedAnimation(
-                                                          p.isCompleted
-                                                              ? Colors
-                                                                  .greenAccent
-                                                              : Colors
-                                                                  .redAccent),
-                                                ),
-                                              )),
-                                            ]),
-                                          ])),
-                                      const SizedBox(width: 8),
-                                      const Icon(
-                                          Icons.chevron_right,
-                                          color: Colors.white38,
-                                          size: 20),
-                                    ]),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ]),
-            ),
+  void _confirmDelete(PunishmentLines p) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1B2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Supprimer ?', style: TextStyle(color: Colors.white)),
+        content: Text('Supprimer "${p.text}" ?', style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<FamilyProvider>().removePunishment(p.id);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B6B), foregroundColor: Colors.white),
+            child: const Text('Supprimer'),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  Widget _statChip(String label, String value, Color color) =>
-      Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Consumer<FamilyProvider>(
+          builder: (ctx, provider, _) {
+            final children = provider.sortedChildren;
+            final punishments = _getPunishments(provider);
+            final active = punishments.where((p) => !p.isCompleted).toList();
+            final completed = punishments.where((p) => p.isCompleted).toList();
+
+            return SafeArea(
+              child: FadeTransition(
+                opacity: _listFade,
+                child: Column(
+                  children: [
+                    // ── Header ──
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70),
+                          ),
+                          const Expanded(child: NeonText(text: '📋 Lignes de punition', fontSize: 20, color: Color(0xFFFF6B6B))),
+                        ],
+                      ),
+                    ),
+
+                    // ── Sélecteur enfant ──
+                    if (children.length > 1)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: children.map((c) {
+                              final selected = c.id == _selectedChildId;
+                              return GestureDetector(
+                                onTap: () => setState(() => _selectedChildId = c.id),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  margin: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    color: selected ? const Color(0xFFFF6B6B).withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                                    border: Border.all(color: selected ? const Color(0xFFFF6B6B) : Colors.white24),
+                                  ),
+                                  child: Text(c.name, style: TextStyle(color: selected ? const Color(0xFFFF6B6B) : Colors.white70, fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+
+                    // ── Stats chips ──
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      child: Row(
+                        children: [
+                          _chip('🔴 En cours', '${active.length}', const Color(0xFFFF6B6B)),
+                          const SizedBox(width: 8),
+                          _chip('✅ Terminées', '${completed.length}', const Color(0xFF4CAF50)),
+                          const SizedBox(width: 8),
+                          _chip('📋 Total', '${punishments.length}', Colors.white54),
+                        ],
+                      ),
+                    ),
+
+                    // ── Liste ──
+                    Expanded(
+                      child: punishments.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text('🎉', style: TextStyle(fontSize: 64)),
+                                  const SizedBox(height: 12),
+                                  const Text('Aucune punition !', style: TextStyle(color: Colors.white70, fontSize: 18)),
+                                  const SizedBox(height: 6),
+                                  const Text('Tout va bien 😊', style: TextStyle(color: Colors.white38, fontSize: 14)),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              itemCount: punishments.length,
+                              itemBuilder: (ctx, i) {
+                                final p = punishments[i];
+                                return _buildPunishmentCard(p);
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _showAddPunishmentSheet,
+          backgroundColor: const Color(0xFFFF6B6B),
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add),
+          label: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.1),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: TextStyle(color: color, fontSize: 12)),
+          const SizedBox(width: 4),
+          Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPunishmentCard(PunishmentLines p) {
+    final color = _statusColor(p);
+    return GestureDetector(
+      onTap: () => _showPunishmentDetail(p),
+      child: AnimatedBuilder(
+        animation: _progressAnim,
+        builder: (_, __) => Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withOpacity(0.04),
             border: Border.all(color: color.withOpacity(0.3)),
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(value,
-                style: TextStyle(
-                    color: color,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white54, fontSize: 11)),
-          ]),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text(p.text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: color.withOpacity(0.15)),
+                    child: Text(p.isCompleted ? '✅ Fait' : '🔴 En cours', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: (p.progress * _progressAnim.value).clamp(0.0, 1.0),
+                        backgroundColor: Colors.white12,
+                        valueColor: AlwaysStoppedAnimation(color),
+                        minHeight: 8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text('${p.completedLines}/${p.totalLines}', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Créé le ${p.createdAt.day}/${p.createdAt.month}/${p.createdAt.year}',
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+            ],
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
