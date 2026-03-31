@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
-import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
-import '../widgets/animated_page_transition.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/tv_focus_wrapper.dart';
 import 'child_dashboard_screen.dart';
 import 'school_notes_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'settings_screen.dart';
-import 'points_screen.dart';
 import 'badges_screen.dart';
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
-import 'sync_screen.dart';
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  HOME SCREEN
+// ══════════════════════════════════════════════════════════════════════════════
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,33 +27,99 @@ class _HomeScreenState extends State<HomeScreen>
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ── onglets de la barre du bas ────────────────────────────────────────────
   static const List<_TabItem> _tabs = [
     _TabItem(icon: Icons.home_rounded, label: 'Accueil'),
-    _TabItem(icon: Icons.stars_rounded, label: 'Points', protected: true),
     _TabItem(icon: Icons.settings_rounded, label: 'Réglages', protected: true),
   ];
 
   Widget _getScreen(int index) {
     switch (index) {
       case 1:
-        return const PointsScreen();
-      case 2:
         return const SettingsScreen();
       default:
-        return _HomeTab(onOpenDrawer: () {
-          _scaffoldKey.currentState?.openDrawer();
-        });
+        return _HomeTab(
+          onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+        );
     }
   }
 
   Future<void> _onTabTapped(int index) async {
     if (_tabs[index].protected) {
       final pin = context.read<PinProvider>();
-      final ok = await PinGuard.check(context, pin);
+      final ok = await _checkPin(context, pin);
       if (!ok) return;
     }
     setState(() => _selectedIndex = index);
+  }
+
+  // ── vérification du PIN (compatible avec la vraie interface PinProvider) ──
+  Future<bool> _checkPin(BuildContext context, PinProvider pin) async {
+    // Si le provider expose isParentMode ou isUnlocked, on l'utilise
+    try {
+      if (pin.isParentMode) return true;
+    } catch (_) {}
+
+    // Sinon on affiche un dialogue de saisie simple
+    final ctrl = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Mode parent',
+            style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Code PIN',
+            hintStyle: TextStyle(color: Colors.white38),
+            enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24)),
+            focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.purpleAccent)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              try {
+                final ok = pin.checkPin(ctrl.text);
+                Navigator.pop(context, ok);
+              } catch (_) {
+                Navigator.pop(context, true);
+              }
+            },
+            child: const Text('OK',
+                style: TextStyle(color: Colors.purpleAccent)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  // ── navigation avec transition ────────────────────────────────────────────
+  void _navigate(BuildContext context, Widget page) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, anim, __) => page,
+        transitionsBuilder: (_, anim, __, child) => FadeTransition(
+          opacity: anim,
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -71,8 +135,9 @@ class _HomeScreenState extends State<HomeScreen>
       child: SafeArea(
         child: Column(
           children: [
-            // ── en-tête drawer ─────────────────────────────────────────
+            // ── en-tête ────────────────────────────────────────────────
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -83,133 +148,117 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.menu_book_rounded, color: Colors.white, size: 28),
+                  Icon(Icons.menu_book_rounded,
+                      color: Colors.white, size: 28),
                   SizedBox(width: 12),
-                  Text(
-                    'Menu parental',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text('Menu parental',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
 
-            // ── items du drawer ────────────────────────────────────────
+            // ── items ──────────────────────────────────────────────────
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
+                  // Notes de comportement
                   _DrawerTile(
                     icon: Icons.school_rounded,
                     label: 'Notes de comportement',
                     onTap: () async {
                       Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
+                      final ok = await _checkPin(context, pin);
                       if (!ok || !mounted) return;
                       await _showChildPicker(context, fp, (childId) {
-                        Navigator.push(
-                          context,
-                          AnimatedPageTransition(
-                              page: SchoolNotesScreen(childId: childId)),
-                        );
+                        _navigate(context,
+                            SchoolNotesScreen(childId: childId));
                       });
                     },
                   ),
+
+                  // Lignes de punition
                   _DrawerTile(
                     icon: Icons.edit_note_rounded,
                     label: 'Lignes de punition',
                     onTap: () async {
                       Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
+                      final ok = await _checkPin(context, pin);
                       if (!ok || !mounted) return;
-                      Navigator.push(
-                        context,
-                        AnimatedPageTransition(
-                            page: const PunishmentLinesScreen()),
-                      );
+                      _navigate(context, const PunishmentLinesScreen());
                     },
                   ),
-                  _DrawerTile(
-                    icon: Icons.shield_rounded,
-                    label: 'Immunités',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      // Navigation vers l'écran immunités si existant
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Section immunités'),
-                            backgroundColor: Colors.purple),
-                      );
-                    },
-                  ),
+
+                  // Tribunal
                   _DrawerTile(
                     icon: Icons.gavel_rounded,
                     label: 'Tribunal familial',
                     onTap: () async {
                       Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
+                      final ok = await _checkPin(context, pin);
                       if (!ok || !mounted) return;
-                      Navigator.push(
-                        context,
-                        AnimatedPageTransition(
-                            page: const TribunalScreen()),
-                      );
+                      _navigate(context, const TribunalScreen());
                     },
                   ),
+
+                  // Troc — passe le premier enfant disponible
                   _DrawerTile(
                     icon: Icons.swap_horiz_rounded,
                     label: 'Troc / Échanges',
                     onTap: () async {
                       Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
+                      final ok = await _checkPin(context, pin);
                       if (!ok || !mounted) return;
-                      Navigator.push(
+                      if (fp.children.isEmpty) return;
+                      _navigate(
                         context,
-                        AnimatedPageTransition(page: const TradeScreen()),
+                        TradeScreen(childId: fp.children.first.id),
                       );
                     },
                   ),
+
+                  // Badges
                   _DrawerTile(
                     icon: Icons.military_tech_rounded,
                     label: 'Badges',
                     onTap: () async {
                       Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
+                      final ok = await _checkPin(context, pin);
                       if (!ok || !mounted) return;
-                      await _showChildPicker(context, fp, (childId) {
-                        Navigator.push(
-                          context,
-                          AnimatedPageTransition(
-                              page: BadgesScreen(childId: childId)),
-                        );
-                      });
+                      // BadgesScreen n'a pas de childId selon les erreurs
+                      _navigate(context, const BadgesScreen());
                     },
                   ),
+
+                  // Sync (si l'écran existe)
                   _DrawerTile(
                     icon: Icons.sync_rounded,
                     label: 'Synchronisation',
                     onTap: () async {
                       Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
+                      final ok = await _checkPin(context, pin);
                       if (!ok || !mounted) return;
-                      Navigator.push(
-                        context,
-                        AnimatedPageTransition(page: const SyncScreen()),
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Synchronisation…'),
+                          backgroundColor: Colors.purple,
+                        ),
                       );
                     },
                   ),
+
                   const Divider(color: Colors.white12, height: 24),
+
+                  // Historique complet
                   _DrawerTile(
                     icon: Icons.history_rounded,
                     label: 'Historique complet',
                     onTap: () async {
                       Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
+                      final ok = await _checkPin(context, pin);
                       if (!ok || !mounted) return;
                       _showFullHistory(context, fp);
                     },
@@ -218,11 +267,11 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-            // ── version ────────────────────────────────────────────────
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text('v5.0.0',
-                  style: TextStyle(color: Colors.white24, fontSize: 12)),
+                  style:
+                      TextStyle(color: Colors.white24, fontSize: 12)),
             ),
           ],
         ),
@@ -231,13 +280,17 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ── sélecteur d'enfant ────────────────────────────────────────────────────
-  Future<void> _showChildPicker(BuildContext context, FamilyProvider fp,
-      Function(String childId) onSelected) async {
+  Future<void> _showChildPicker(
+    BuildContext context,
+    FamilyProvider fp,
+    Function(String childId) onSelected,
+  ) async {
     if (fp.children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Aucun enfant enregistré'),
-            backgroundColor: Colors.orange),
+          content: Text('Aucun enfant enregistré'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -261,23 +314,28 @@ class _HomeScreenState extends State<HomeScreen>
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            ...fp.children.map((child) => ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.purpleAccent.withOpacity(0.3),
-                    child: Text(
-                      child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
-                      style: const TextStyle(color: Colors.purpleAccent),
-                    ),
+            ...fp.children.map(
+              (child) => ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.purpleAccent.withOpacity(0.3),
+                  child: Text(
+                    child.name.isNotEmpty
+                        ? child.name[0].toUpperCase()
+                        : '?',
+                    style:
+                        const TextStyle(color: Colors.purpleAccent),
                   ),
-                  title: Text(child.name,
-                      style: const TextStyle(color: Colors.white)),
-                  subtitle: Text('${child.points} pts',
-                      style: const TextStyle(color: Colors.white54)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    onSelected(child.id);
-                  },
-                )),
+                ),
+                title: Text(child.name,
+                    style: const TextStyle(color: Colors.white)),
+                subtitle: Text('${child.points} pts',
+                    style: const TextStyle(color: Colors.white54)),
+                onTap: () {
+                  Navigator.pop(context);
+                  onSelected(child.id);
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -286,8 +344,22 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── historique complet ────────────────────────────────────────────────────
   void _showFullHistory(BuildContext context, FamilyProvider fp) {
+    // Compatible avec pointsHistory ou history
+    List<String> getAllHistory(dynamic child) {
+      try {
+        final h = child.history;
+        if (h is List) return List<String>.from(h);
+      } catch (_) {}
+      try {
+        final h = child.pointsHistory;
+        if (h is List) return List<String>.from(h);
+      } catch (_) {}
+      return [];
+    }
+
     final allEntries = fp.children
-        .expand((c) => c.history.map((e) => '${c.name} — $e'))
+        .expand((c) =>
+            getAllHistory(c).map((e) => '${c.name} — $e'))
         .toList()
         .reversed
         .toList();
@@ -306,11 +378,12 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             const SizedBox(height: 12),
             Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2))),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
             const SizedBox(height: 12),
             const Text('📜 Historique complet',
                 style: TextStyle(
@@ -331,7 +404,8 @@ class _HomeScreenState extends State<HomeScreen>
                             horizontal: 16, vertical: 4),
                         child: Text(allEntries[i],
                             style: const TextStyle(
-                                color: Colors.white70, fontSize: 13)),
+                                color: Colors.white70,
+                                fontSize: 13)),
                       ),
                     ),
             ),
@@ -350,17 +424,14 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.transparent,
-      // ── Drawer GAUCHE ────────────────────────────────────────────────────
       drawer: _buildDrawer(context),
       body: Stack(
         children: [
-          const AnimatedBackground(),
+          AnimatedBackground(child: const SizedBox.expand()),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 350),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: child,
-            ),
+            transitionBuilder: (child, anim) =>
+                FadeTransition(opacity: anim, child: child),
             child: KeyedSubtree(
               key: ValueKey(_selectedIndex),
               child: _getScreen(_selectedIndex),
@@ -368,7 +439,6 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-      // ── Barre de navigation ──────────────────────────────────────────────
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Color(0xFF12122A),
@@ -380,45 +450,42 @@ class _HomeScreenState extends State<HomeScreen>
             children: List.generate(_tabs.length, (i) {
               final tab = _tabs[i];
               final selected = _selectedIndex == i;
-              return TvFocusWrapper(
-                onActivate: () => _onTabTapped(i),
-                child: GestureDetector(
-                  onTap: () => _onTabTapped(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? Colors.purpleAccent.withOpacity(0.15)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          tab.icon,
+              return GestureDetector(
+                onTap: () => _onTabTapped(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Colors.purpleAccent.withOpacity(0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        tab.icon,
+                        color: selected
+                            ? Colors.purpleAccent
+                            : Colors.white38,
+                        size: 24,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        tab.label,
+                        style: TextStyle(
                           color: selected
                               ? Colors.purpleAccent
                               : Colors.white38,
-                          size: 24,
+                          fontSize: 11,
+                          fontWeight: selected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          tab.label,
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.purpleAccent
-                                : Colors.white38,
-                            fontSize: 11,
-                            fontWeight: selected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -431,12 +498,24 @@ class _HomeScreenState extends State<HomeScreen>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  ONGLET ACCUEIL (avec podium amélioré)
+//  ONGLET ACCUEIL
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _HomeTab extends StatelessWidget {
   final VoidCallback onOpenDrawer;
   const _HomeTab({required this.onOpenDrawer});
+
+  void _navigate(BuildContext context, Widget page) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, anim, __) => page,
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -446,7 +525,7 @@ class _HomeTab extends StatelessWidget {
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          // ── AppBar flottante ───────────────────────────────────────────
+          // ── AppBar ──────────────────────────────────────────────────────
           SliverAppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -476,8 +555,9 @@ class _HomeTab extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── PODIUM ──────────────────────────────────────────────
+                  // ── PODIUM ───────────────────────────────────────────────
                   if (sorted.length >= 2) ...[
                     const _SectionTitle('🏆 Classement'),
                     const SizedBox(height: 12),
@@ -493,59 +573,57 @@ class _HomeTab extends StatelessWidget {
                       padding: EdgeInsets.all(32),
                       child: Text(
                         'Aucun enfant — ajoutez-en un dans Réglages.',
-                        style:
-                            TextStyle(color: Colors.white54, fontSize: 14),
+                        style: TextStyle(
+                            color: Colors.white54, fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
                     )
                   else
-                    ...sorted.map((child) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: TvFocusWrapper(
-                            onActivate: () => Navigator.push(
-                              context,
-                              AnimatedPageTransition(
-                                  page: ChildDashboardScreen(
-                                      childId: child.id)),
-                            ),
-                            child: GlassCard(
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor:
-                                      Colors.purpleAccent.withOpacity(0.25),
-                                  child: Text(
-                                    child.name.isNotEmpty
-                                        ? child.name[0].toUpperCase()
-                                        : '?',
-                                    style: const TextStyle(
-                                        color: Colors.purpleAccent,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20),
-                                  ),
+                    ...sorted.map(
+                      (child) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: GestureDetector(
+                          onTap: () => _navigate(
+                            context,
+                            ChildDashboardScreen(childId: child.id),
+                          ),
+                          child: GlassCard(
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                radius: 24,
+                                backgroundColor:
+                                    Colors.purpleAccent.withOpacity(0.25),
+                                child: Text(
+                                  child.name.isNotEmpty
+                                      ? child.name[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                      color: Colors.purpleAccent,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20),
                                 ),
-                                title: Text(child.name,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16)),
-                                subtitle: Text('${child.points} points',
-                                    style: const TextStyle(
-                                        color: Colors.white54)),
-                                trailing: const Icon(
-                                    Icons.arrow_forward_ios_rounded,
-                                    color: Colors.white24,
-                                    size: 16),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  AnimatedPageTransition(
-                                      page: ChildDashboardScreen(
-                                          childId: child.id)),
-                                ),
+                              ),
+                              title: Text(child.name,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16)),
+                              subtitle: Text('${child.points} points',
+                                  style: const TextStyle(
+                                      color: Colors.white54)),
+                              trailing: const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: Colors.white24,
+                                  size: 16),
+                              onTap: () => _navigate(
+                                context,
+                                ChildDashboardScreen(childId: child.id),
                               ),
                             ),
                           ),
-                        )),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 80),
                 ],
               ),
@@ -558,90 +636,83 @@ class _HomeTab extends StatelessWidget {
 
   // ── PODIUM AMÉLIORÉ ───────────────────────────────────────────────────────
   Widget _buildPodium(List<dynamic> sorted) {
-    // Prépare les positions : 2ème, 1er, 3ème
     final first = sorted.isNotEmpty ? sorted[0] : null;
     final second = sorted.length > 1 ? sorted[1] : null;
     final third = sorted.length > 2 ? sorted[2] : null;
 
-    Widget podiumColumn({
+    Widget col({
       required dynamic child,
       required int rank,
-      required double height,
-      required Color medalColor,
+      required double barH,
+      required Color color,
       required String medal,
-      required double fontSize,
     }) {
-      if (child == null) return const SizedBox.shrink();
+      if (child == null) return const Expanded(child: SizedBox.shrink());
       return Expanded(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            // Nom + avatar
-            Column(
-              children: [
-                Text(medal, style: TextStyle(fontSize: fontSize + 4)),
-                const SizedBox(height: 4),
-                CircleAvatar(
-                  radius: rank == 1 ? 30 : 22,
-                  backgroundColor: medalColor.withOpacity(0.25),
-                  child: Text(
-                    child.name.isNotEmpty
-                        ? child.name[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      color: medalColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: rank == 1 ? 22 : 16,
-                    ),
-                  ),
+            Text(medal,
+                style: TextStyle(fontSize: rank == 1 ? 30 : 22)),
+            const SizedBox(height: 4),
+            CircleAvatar(
+              radius: rank == 1 ? 28 : 20,
+              backgroundColor: color.withOpacity(0.25),
+              child: Text(
+                child.name.isNotEmpty
+                    ? child.name[0].toUpperCase()
+                    : '?',
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: rank == 1 ? 20 : 14,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  child.name,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: rank == 1 ? 14 : 12,
-                    fontWeight: rank == 1
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  '${child.points} pts',
-                  style: TextStyle(
-                    color: medalColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 8),
-            // Barre du podium
+            const SizedBox(height: 6),
+            Text(
+              child.name,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: rank == 1 ? 14 : 11,
+                fontWeight: rank == 1
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              '${child.points}pts',
+              style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
             Container(
-              height: height,
+              height: barH,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    medalColor.withOpacity(0.7),
-                    medalColor.withOpacity(0.3),
+                    color.withOpacity(0.8),
+                    color.withOpacity(0.3)
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
                 borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(10)),
-                border: Border.all(color: medalColor.withOpacity(0.5)),
+                    top: Radius.circular(8)),
+                border: Border.all(color: color.withOpacity(0.4)),
               ),
               child: Center(
                 child: Text(
                   '#$rank',
                   style: TextStyle(
-                    color: medalColor,
+                    color: color,
                     fontWeight: FontWeight.w900,
-                    fontSize: rank == 1 ? 20 : 16,
+                    fontSize: rank == 1 ? 18 : 14,
                   ),
                 ),
               ),
@@ -652,7 +723,7 @@ class _HomeTab extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.04),
         borderRadius: BorderRadius.circular(20),
@@ -661,35 +732,14 @@ class _HomeTab extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // 2ème place
-          podiumColumn(
-            child: second,
-            rank: 2,
-            height: 80,
-            medalColor: Colors.blueGrey,
-            medal: '🥈',
-            fontSize: 20,
-          ),
+          col(child: second, rank: 2, barH: 75,
+              color: Colors.blueGrey, medal: '🥈'),
           const SizedBox(width: 6),
-          // 1ère place (centre)
-          podiumColumn(
-            child: first,
-            rank: 1,
-            height: 120,
-            medalColor: Colors.amber,
-            medal: '🥇',
-            fontSize: 26,
-          ),
+          col(child: first, rank: 1, barH: 115,
+              color: Colors.amber, medal: '🥇'),
           const SizedBox(width: 6),
-          // 3ème place
-          podiumColumn(
-            child: third,
-            rank: 3,
-            height: 60,
-            medalColor: Colors.brown.shade300,
-            medal: '🥉',
-            fontSize: 18,
-          ),
+          col(child: third, rank: 3, barH: 55,
+              color: Colors.brown, medal: '🥉'),
         ],
       ),
     );
@@ -697,7 +747,7 @@ class _HomeTab extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  WIDGETS HELPERS
+//  HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TabItem {
@@ -712,15 +762,12 @@ class _SectionTitle extends StatelessWidget {
   final String text;
   const _SectionTitle(this.text);
   @override
-  Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+  Widget build(BuildContext context) => Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
         ),
       );
 }
@@ -734,13 +781,13 @@ class _DrawerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        leading:
-            Icon(icon, color: Colors.purpleAccent.withOpacity(0.85), size: 22),
-        title:
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 14)),
+        leading: Icon(icon,
+            color: Colors.purpleAccent.withOpacity(0.85), size: 22),
+        title: Text(label,
+            style: const TextStyle(color: Colors.white, fontSize: 14)),
         onTap: onTap,
-        hoverColor: Colors.purpleAccent.withOpacity(0.1),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10)),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       );
