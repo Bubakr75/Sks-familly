@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -75,7 +76,6 @@ class _StarBurstPainter extends CustomPainter {
       _drawStar(canvas, starCenter, starSize, paint);
     }
 
-    // Centre glow
     final glowPaint = Paint()
       ..color = Colors.amber.withOpacity((1.0 - progress) * 0.5)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
@@ -158,7 +158,6 @@ class _ImpactPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
 
-    // Expanding rings
     for (int i = 0; i < 3; i++) {
       final ringProgress = (progress - i * 0.15).clamp(0.0, 1.0);
       final paint = Paint()
@@ -168,7 +167,6 @@ class _ImpactPainter extends CustomPainter {
       canvas.drawCircle(center, ringProgress * size.width * 0.4, paint);
     }
 
-    // Impact lines
     for (int i = 0; i < 8; i++) {
       final angle = i * pi * 2 / 8;
       final startDist = progress * size.width * 0.15;
@@ -228,34 +226,21 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   bool _isSubmitting = false;
   final _reasonController = TextEditingController();
 
-  // Undo feature
+  // Undo
   String? _lastEntryId;
-  String? _lastChildId;
   bool _showUndo = false;
 
   late AnimationController _colorAnimController;
   late Animation<Color?> _bgColorAnim;
 
   final List<String> _bonusQuickReasons = [
-    'Devoirs faits',
-    'Chambre rangée',
-    'Aide à la maison',
-    'Bonne attitude',
-    'Lecture',
-    'Politesse',
-    'Sport',
-    'Partage',
+    'Devoirs faits', 'Chambre rangée', 'Aide à la maison',
+    'Bonne attitude', 'Lecture', 'Politesse', 'Sport', 'Partage',
   ];
 
   final List<String> _penaltyQuickReasons = [
-    'Désobéissance',
-    'Bagarre',
-    'Mensonge',
-    'Cris',
-    'Retard',
-    'Irrespect',
-    'Désordre',
-    'Écran sans permission',
+    'Désobéissance', 'Bagarre', 'Mensonge', 'Cris',
+    'Retard', 'Irrespect', 'Désordre', 'Écran sans permission',
   ];
 
   @override
@@ -317,16 +302,11 @@ class _AddPointsScreenState extends State<AddPointsScreen>
         }
         return;
       }
-      setState(() {
-        _photoBase64 = base64Encode(bytes);
-      });
+      setState(() => _photoBase64 = base64Encode(bytes));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur image: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Erreur image: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -335,19 +315,13 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   Future<void> _submit() async {
     if (_selectedChildId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sélectionne un enfant'),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('Sélectionne un enfant'), backgroundColor: Colors.orange),
       );
       return;
     }
     if (_reason.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Indique une raison'),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('Indique une raison'), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -359,44 +333,42 @@ class _AddPointsScreenState extends State<AddPointsScreen>
       HapticFeedback.mediumImpact();
 
       final provider = context.read<FamilyProvider>();
-      final entryId = await provider.addPoints(
+      final points = _isBonus ? _points : -_points;
+
+      await provider.addPoints(
         _selectedChildId!,
-        _isBonus ? _points : -_points,
+        points,
         _reason,
         category: _isBonus ? 'Bonus' : 'Malus',
-        isBonus: _isBonus,
+        emoji: _isBonus ? '⭐' : '⚠️',
         proofPhotoBase64: _photoBase64,
       );
 
+      // Récupérer l'id de la dernière entrée pour le undo
+      final history = provider.getHistoryForChild(_selectedChildId!);
+      if (history.isNotEmpty) {
+        _lastEntryId = history.first.id;
+      }
+
       if (mounted) {
-        final childName = provider.children
-            .firstWhere((c) => c['id'] == _selectedChildId)['name'];
+        final child = provider.getChild(_selectedChildId!);
+        final childName = child?.name ?? '?';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              _isBonus
-                  ? '+$_points points pour $childName !'
-                  : '-$_points points pour $childName',
-            ),
+            content: Text(_isBonus
+                ? '+$_points points pour $childName !'
+                : '-$_points points pour $childName'),
             backgroundColor: _isBonus ? Colors.green : Colors.red,
           ),
         );
 
-        // Préparer undo
-        if (entryId != null) {
-          setState(() {
-            _lastEntryId = entryId;
-            _lastChildId = _selectedChildId;
-            _showUndo = true;
-          });
+        if (_lastEntryId != null) {
+          setState(() => _showUndo = true);
           Future.delayed(const Duration(seconds: 8), () {
-            if (mounted) {
-              setState(() => _showUndo = false);
-            }
+            if (mounted) setState(() => _showUndo = false);
           });
         }
 
-        // Reset form
         setState(() {
           _reason = '';
           _reasonController.clear();
@@ -407,10 +379,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -419,11 +388,10 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   }
 
   Future<void> _undoLastEntry() async {
-    if (_lastEntryId == null || _lastChildId == null) return;
+    if (_lastEntryId == null) return;
     try {
       final provider = context.read<FamilyProvider>();
-      await provider.deleteHistoryEntry(_lastChildId!, _lastEntryId!,
-          reversePoints: true);
+      await provider.deleteHistoryEntry(_lastEntryId!);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -434,16 +402,12 @@ class _AddPointsScreenState extends State<AddPointsScreen>
         setState(() {
           _showUndo = false;
           _lastEntryId = null;
-          _lastChildId = null;
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur annulation: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Erreur annulation: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -452,9 +416,8 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
-    final children = provider.children;
-    final quickReasons =
-        _isBonus ? _bonusQuickReasons : _penaltyQuickReasons;
+    final children = provider.sortedChildren;
+    final quickReasons = _isBonus ? _bonusQuickReasons : _penaltyQuickReasons;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -505,13 +468,8 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Enfant',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(color: Colors.white),
-                          ),
+                          Text('Enfant',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white)),
                           const SizedBox(height: 8),
                           SizedBox(
                             height: 80,
@@ -520,74 +478,46 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                               itemCount: children.length,
                               itemBuilder: (ctx, i) {
                                 final child = children[i];
-                                final isSelected =
-                                    child['id'] == _selectedChildId;
+                                final isSelected = child.id == _selectedChildId;
                                 return TvFocusWrapper(
                                   child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _selectedChildId = child['id'];
-                                      });
-                                    },
+                                    onTap: () => setState(() => _selectedChildId = child.id),
                                     child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      margin: const EdgeInsets.symmetric(
-                                          horizontal: 4),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 8),
+                                      duration: const Duration(milliseconds: 200),
+                                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                       decoration: BoxDecoration(
                                         color: isSelected
-                                            ? (_isBonus
-                                                ? Colors.green
-                                                    .withOpacity(0.3)
-                                                : Colors.red
-                                                    .withOpacity(0.3))
+                                            ? (_isBonus ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3))
                                             : Colors.white.withOpacity(0.1),
-                                        borderRadius:
-                                            BorderRadius.circular(16),
+                                        borderRadius: BorderRadius.circular(16),
                                         border: isSelected
-                                            ? Border.all(
-                                                color: _isBonus
-                                                    ? Colors.green
-                                                    : Colors.red,
-                                                width: 2)
+                                            ? Border.all(color: _isBonus ? Colors.green : Colors.red, width: 2)
                                             : null,
                                       ),
                                       child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           CircleAvatar(
                                             radius: 18,
                                             backgroundColor: Colors.white24,
-                                            backgroundImage: child[
-                                                        'photoBase64'] !=
-                                                    null
-                                                ? MemoryImage(base64Decode(
-                                                    child['photoBase64']))
+                                            backgroundImage: child.photoBase64 != null
+                                                ? MemoryImage(base64Decode(child.photoBase64!))
                                                 : null,
-                                            child:
-                                                child['photoBase64'] == null
-                                                    ? Text(
-                                                        (child['name'] ?? '?')
-                                                            .substring(0, 1)
-                                                            .toUpperCase(),
-                                                        style: const TextStyle(
-                                                            color:
-                                                                Colors.white),
-                                                      )
-                                                    : null,
+                                            child: child.photoBase64 == null
+                                                ? Text(
+                                                    child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+                                                    style: const TextStyle(color: Colors.white),
+                                                  )
+                                                : null,
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            child['name'] ?? '',
+                                            child.name,
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 11,
-                                              fontWeight: isSelected
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                             ),
                                             overflow: TextOverflow.ellipsis,
                                           ),
@@ -609,13 +539,8 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Raison rapide',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(color: Colors.white),
-                          ),
+                          Text('Raison rapide',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white)),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 8,
@@ -626,22 +551,13 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                 child: ChoiceChip(
                                   label: Text(r),
                                   selected: isSelected,
-                                  selectedColor: _isBonus
-                                      ? Colors.green.withOpacity(0.7)
-                                      : Colors.red.withOpacity(0.7),
-                                  backgroundColor:
-                                      Colors.white.withOpacity(0.15),
-                                  labelStyle: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.white70,
-                                  ),
+                                  selectedColor: _isBonus ? Colors.green.withOpacity(0.7) : Colors.red.withOpacity(0.7),
+                                  backgroundColor: Colors.white.withOpacity(0.15),
+                                  labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
                                   onSelected: (selected) {
                                     setState(() {
                                       _reason = selected ? r : '';
-                                      if (selected) {
-                                        _reasonController.clear();
-                                      }
+                                      if (selected) _reasonController.clear();
                                     });
                                   },
                                 ),
@@ -654,8 +570,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               hintText: 'Ou raison personnalisée…',
-                              hintStyle:
-                                  TextStyle(color: Colors.white.withOpacity(0.5)),
+                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                               filled: true,
                               fillColor: Colors.white.withOpacity(0.1),
                               border: OutlineInputBorder(
@@ -663,11 +578,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                 borderSide: BorderSide.none,
                               ),
                             ),
-                            onChanged: (val) {
-                              setState(() {
-                                _reason = val;
-                              });
-                            },
+                            onChanged: (val) => setState(() => _reason = val),
                           ),
                         ],
                       ),
@@ -678,45 +589,42 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                     GlassCard(
                       child: Column(
                         children: [
-                          Text(
-                            'Points',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(color: Colors.white),
-                          ),
-                          const SizedBox(height: 12),
+                          Text('Points',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white)),
+                          const SizedBox(height: 8),
+                          // Saisie libre
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               _PointsButton(
                                 icon: Icons.remove,
-                                onTap: () {
-                                  if (_points > 1) {
-                                    setState(() => _points--);
-                                  }
-                                },
+                                onTap: () { if (_points > 1) setState(() => _points--); },
                               ),
-                              const SizedBox(width: 24),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                child: Text(
-                                  '$_points',
-                                  key: ValueKey(_points),
+                              const SizedBox(width: 16),
+                              SizedBox(
+                                width: 80,
+                                child: TextField(
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: 48,
+                                    fontSize: 36,
                                     fontWeight: FontWeight.bold,
-                                    color:
-                                        _isBonus ? Colors.green : Colors.red,
+                                    color: _isBonus ? Colors.green : Colors.red,
                                   ),
+                                  controller: TextEditingController(text: '$_points')
+                                    ..selection = TextSelection.collapsed(offset: '$_points'.length),
+                                  decoration: const InputDecoration(border: InputBorder.none),
+                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                  onChanged: (v) {
+                                    final val = int.tryParse(v);
+                                    if (val != null && val > 0) setState(() => _points = val);
+                                  },
                                 ),
                               ),
-                              const SizedBox(width: 24),
+                              const SizedBox(width: 16),
                               _PointsButton(
                                 icon: Icons.add,
-                                onTap: () {
-                                  setState(() => _points++);
-                                },
+                                onTap: () => setState(() => _points++),
                               ),
                             ],
                           ),
@@ -726,13 +634,9 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                             children: [1, 2, 3, 5, 10].map((v) {
                               return ActionChip(
                                 label: Text('$v'),
-                                backgroundColor:
-                                    Colors.white.withOpacity(0.15),
-                                labelStyle:
-                                    const TextStyle(color: Colors.white),
-                                onPressed: () {
-                                  setState(() => _points = v);
-                                },
+                                backgroundColor: Colors.white.withOpacity(0.15),
+                                labelStyle: const TextStyle(color: Colors.white),
+                                onPressed: () => setState(() => _points = v),
                               );
                             }).toList(),
                           ),
@@ -746,34 +650,20 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Photo preuve (optionnel)',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(color: Colors.white),
-                          ),
+                          Text('Photo preuve (optionnel)',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white)),
                           const SizedBox(height: 8),
                           if (_photoBase64 != null) ...[
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.memory(
-                                base64Decode(_photoBase64!),
-                                height: 150,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
+                              child: Image.memory(base64Decode(_photoBase64!),
+                                  height: 150, width: double.infinity, fit: BoxFit.cover),
                             ),
                             const SizedBox(height: 8),
                             TextButton.icon(
-                              onPressed: () {
-                                setState(() => _photoBase64 = null);
-                              },
-                              icon: const Icon(Icons.delete,
-                                  color: Colors.redAccent),
-                              label: const Text('Supprimer',
-                                  style:
-                                      TextStyle(color: Colors.redAccent)),
+                              onPressed: () => setState(() => _photoBase64 = null),
+                              icon: const Icon(Icons.delete, color: Colors.redAccent),
+                              label: const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
                             ),
                           ] else ...[
                             Row(
@@ -781,18 +671,11 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                 Expanded(
                                   child: TvFocusWrapper(
                                     child: OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _pickImage(ImageSource.camera),
-                                      icon: const Icon(Icons.camera_alt,
-                                          color: Colors.white70),
-                                      label: const Text('Caméra',
-                                          style: TextStyle(
-                                              color: Colors.white70)),
+                                      onPressed: () => _pickImage(ImageSource.camera),
+                                      icon: const Icon(Icons.camera_alt, color: Colors.white70),
+                                      label: const Text('Caméra', style: TextStyle(color: Colors.white70)),
                                       style: OutlinedButton.styleFrom(
-                                        side: BorderSide(
-                                            color: Colors.white
-                                                .withOpacity(0.3)),
-                                      ),
+                                          side: BorderSide(color: Colors.white.withOpacity(0.3))),
                                     ),
                                   ),
                                 ),
@@ -800,18 +683,11 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                 Expanded(
                                   child: TvFocusWrapper(
                                     child: OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _pickImage(ImageSource.gallery),
-                                      icon: const Icon(Icons.photo_library,
-                                          color: Colors.white70),
-                                      label: const Text('Galerie',
-                                          style: TextStyle(
-                                              color: Colors.white70)),
+                                      onPressed: () => _pickImage(ImageSource.gallery),
+                                      icon: const Icon(Icons.photo_library, color: Colors.white70),
+                                      label: const Text('Galerie', style: TextStyle(color: Colors.white70)),
                                       style: OutlinedButton.styleFrom(
-                                        side: BorderSide(
-                                            color: Colors.white
-                                                .withOpacity(0.3)),
-                                      ),
+                                          side: BorderSide(color: Colors.white.withOpacity(0.3))),
                                     ),
                                   ),
                                 ),
@@ -823,35 +699,21 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // Submit button
+                    // Submit
                     TvFocusWrapper(
                       child: ElevatedButton(
                         onPressed: _isSubmitting ? null : _submit,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              _isBonus ? Colors.green : Colors.red,
+                          backgroundColor: _isBonus ? Colors.green : Colors.red,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         child: _isSubmitting
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
+                            ? const SizedBox(width: 24, height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                             : Text(
-                                _isBonus
-                                    ? 'Ajouter le bonus'
-                                    : 'Appliquer le malus',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                _isBonus ? 'Ajouter le bonus' : 'Appliquer le malus',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                       ),
                     ),
@@ -874,9 +736,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueGrey,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -917,24 +777,17 @@ class _ToggleButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected ? color.withOpacity(0.3) : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? color : Colors.white24,
-              width: isSelected ? 2 : 1,
-            ),
+            border: Border.all(color: isSelected ? color : Colors.white24, width: isSelected ? 2 : 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: isSelected ? color : Colors.white54),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? color : Colors.white54,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
+              Text(label,
+                  style: TextStyle(
+                      color: isSelected ? color : Colors.white54,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
             ],
           ),
         ),
@@ -957,10 +810,7 @@ class _PointsButton extends StatelessWidget {
         child: Container(
           width: 48,
           height: 48,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
           child: Icon(icon, color: Colors.white),
         ),
       ),
