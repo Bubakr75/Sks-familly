@@ -1,5 +1,6 @@
 // lib/screens/immunity_lines_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/immunity_lines.dart';
 import '../providers/family_provider.dart';
@@ -50,7 +51,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
 
   List<ImmunityLines> _getImmunities(FamilyProvider provider) {
     if (_selectedChildId == null) return [];
-    // Copie défensive pour permettre le tri
     return List<ImmunityLines>.from(
         provider.getImmunitiesForChild(_selectedChildId!))
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -76,7 +76,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
 
   void _showAddImmunityDialog() {
     final reasonCtrl = TextEditingController();
-    int lines = 1;
+    final linesCtrl = TextEditingController(text: '1');
     DateTime? expiresAt;
 
     showDialog(
@@ -106,34 +106,43 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                             const BorderSide(color: Colors.greenAccent),
                         borderRadius: BorderRadius.circular(12)))),
             const SizedBox(height: 16),
-            Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                      onPressed: () {
-                        if (lines > 1) setDialogState(() => lines--);
-                      },
-                      icon: const Icon(Icons.remove_circle,
-                          color: Colors.redAccent)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(
-                        color: Colors.greenAccent.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12)),
-                    child: Text(
-                        '$lines ligne${lines > 1 ? 's' : ''}',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
+            const Text('Nombre de lignes',
+                style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: 120,
+              child: TextField(
+                controller: linesCtrl,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.greenAccent.withOpacity(0.2),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [1, 3, 5, 10, 20].map((n) {
+                return GestureDetector(
+                  onTap: () => setDialogState(() => linesCtrl.text = '$n'),
+                  child: Chip(
+                    label: Text('$n',
+                        style: const TextStyle(color: Colors.white70)),
+                    backgroundColor: Colors.white.withOpacity(0.1),
                   ),
-                  IconButton(
-                      onPressed: () =>
-                          setDialogState(() => lines++),
-                      icon: const Icon(Icons.add_circle,
-                          color: Colors.greenAccent)),
-                ]),
+                );
+              }).toList(),
+            ),
             const SizedBox(height: 16),
             GestureDetector(
               onTap: () async {
@@ -177,7 +186,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                   backgroundColor: Colors.greenAccent.shade700),
               onPressed: () {
                 final reason = reasonCtrl.text.trim();
-                if (reason.isEmpty || _selectedChildId == null) return;
+                final lines = int.tryParse(linesCtrl.text) ?? 0;
+                if (reason.isEmpty || _selectedChildId == null || lines <= 0) return;
                 context.read<FamilyProvider>().addImmunity(
                     _selectedChildId!, reason, lines,
                     expiresAt: expiresAt);
@@ -202,7 +212,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
       isScrollControlled: true,
       builder: (ctx) => Consumer<FamilyProvider>(
         builder: (ctx, provider, _) {
-          // Lecture réactive depuis le provider
           final current = provider.immunities.firstWhere(
             (i) => i.id == imm.id,
             orElse: () => imm,
@@ -354,7 +363,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
           body: AnimatedBackground(
             child: SafeArea(
               child: Column(children: [
-                // Header
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(children: [
@@ -407,7 +415,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                   ]),
                 ),
 
-                // Sélecteur enfant
                 if (children.length > 1)
                   SizedBox(
                     height: 50,
@@ -461,7 +468,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
 
                 const SizedBox(height: 8),
 
-                // Statistiques
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: GlassCard(
@@ -489,7 +495,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
 
                 const SizedBox(height: 8),
 
-                // Liste
                 Expanded(
                   child: immunities.isEmpty
                       ? Center(
