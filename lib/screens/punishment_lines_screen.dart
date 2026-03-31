@@ -12,7 +12,6 @@ import '../widgets/tv_focus_wrapper.dart';
 
 class PunishmentLinesScreen extends StatefulWidget {
   const PunishmentLinesScreen({super.key});
-
   @override
   State<PunishmentLinesScreen> createState() =>
       _PunishmentLinesScreenState();
@@ -28,14 +27,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   void initState() {
     super.initState();
     _listController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..forward();
+        vsync: this, duration: const Duration(milliseconds: 1200))
+      ..forward();
     _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..forward();
-
+        vsync: this, duration: const Duration(milliseconds: 1500))
+      ..forward();
     final provider = context.read<FamilyProvider>();
     if (provider.children.isNotEmpty) {
       _selectedChildId = provider.children.first.id;
@@ -57,12 +53,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  // ── Méthode pour marquer "J'ai fini" (enfant) ──────────────
-  Future<void> _markPendingValidation(
-      FamilyProvider provider, PunishmentLines p) async {
-    p.pendingValidation = true;
-    await provider.updatePunishmentProgress(p.id, 0); // force save
-    // On sauvegarde directement via le provider
+  void _markPendingValidation(FamilyProvider provider, PunishmentLines p) {
     final idx = provider.punishments.indexWhere((x) => x.id == p.id);
     if (idx != -1) {
       provider.punishments[idx].pendingValidation = true;
@@ -70,18 +61,27 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('✅ Demande de validation envoyée au parent !'),
+        content: Text('✅ Demande envoyée au parent !'),
         backgroundColor: Colors.orange,
       ));
     }
   }
 
-  // ── Dialog utiliser immunité sur une punition ───────────────
+  void _validateByParent(FamilyProvider provider, PunishmentLines p,
+      BuildContext ctx) {
+    final remaining = p.totalLines - p.completedLines;
+    provider.updatePunishmentProgress(p.id, remaining);
+    Navigator.pop(ctx);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('✅ Punition validée !'),
+      backgroundColor: Colors.green,
+    ));
+    _listController.forward(from: 0);
+  }
+
   void _showUseImmunityDialog(
       FamilyProvider provider, PunishmentLines p) {
-    final immunities = provider
-        .getUsableImmunitiesForChild(p.childId);
-
+    final immunities = provider.getUsableImmunitiesForChild(p.childId);
     if (immunities.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('❌ Aucune immunité disponible'),
@@ -89,7 +89,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       ));
       return;
     }
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -100,15 +99,14 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           borderRadius:
               const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(2)),
@@ -116,7 +114,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             ),
             const SizedBox(height: 16),
             const Row(children: [
-              Text('🛡️', style: TextStyle(fontSize: 24)),
+              Text('🛡️', style: TextStyle(fontSize: 22)),
               SizedBox(width: 8),
               Text('Utiliser une immunité',
                   style: TextStyle(
@@ -124,16 +122,16 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       fontSize: 18,
                       fontWeight: FontWeight.bold)),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               'Lignes restantes : ${p.totalLines - p.completedLines}',
               style:
                   const TextStyle(color: Colors.white54, fontSize: 13),
             ),
             const SizedBox(height: 16),
-            ...immunities.map((imm) => _buildImmunityOption(
-                ctx, provider, p, imm)),
-            const SizedBox(height: 12),
+            ...immunities
+                .map((imm) => _buildImmunityOption(ctx, provider, p, imm)),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -143,91 +141,117 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   Widget _buildImmunityOption(BuildContext ctx, FamilyProvider provider,
       PunishmentLines p, ImmunityLines imm) {
     final remaining = p.totalLines - p.completedLines;
-    final canUse = imm.availableLines > 0 && remaining > 0;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: canUse
-            ? Colors.greenAccent.withOpacity(0.07)
-            : Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: canUse
-              ? Colors.greenAccent.withOpacity(0.3)
-              : Colors.white12,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(Icons.shield,
-                color:
-                    canUse ? Colors.greenAccent : Colors.white24,
-                size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(imm.reason,
-                  style: TextStyle(
-                      color:
-                          canUse ? Colors.white : Colors.white38,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14)),
-            ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                  color: Colors.greenAccent.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Text('${imm.availableLines} lignes dispo',
-                  style: const TextStyle(
-                      color: Colors.greenAccent, fontSize: 11)),
-            ),
-          ]),
-          if (canUse) ...[
-            const SizedBox(height: 10),
-            // Sélecteur du nombre de lignes à utiliser
-            _ImmunityLinePicker(
-              max: imm.availableLines < remaining
-                  ? imm.availableLines
-                  : remaining,
-              onConfirm: (lines) async {
-                Navigator.pop(ctx);
-                await provider.useImmunityOnPunishment(
-                    imm.id, p.id, lines);
-                if (mounted) {
-                  final updated = provider.punishments
-                      .firstWhere((x) => x.id == p.id,
+    final maxUsable =
+        imm.availableLines < remaining ? imm.availableLines : remaining;
+    return StatefulBuilder(builder: (_, setLocal) {
+      int selected = maxUsable;
+      return StatefulBuilder(builder: (_, setSlider) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.greenAccent.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                Border.all(color: Colors.greenAccent.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.shield,
+                    color: Colors.greenAccent, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(imm.reason,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                      color: Colors.greenAccent.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Text('${imm.availableLines} dispo',
+                      style: const TextStyle(
+                          color: Colors.greenAccent, fontSize: 11)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Row(children: [
+                const Text('Lignes à annuler : ',
+                    style:
+                        TextStyle(color: Colors.white70, fontSize: 13)),
+                Text('$selected',
+                    style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
+                Text(' / $maxUsable max',
+                    style: const TextStyle(
+                        color: Colors.white38, fontSize: 12)),
+              ]),
+              Slider(
+                value: selected.toDouble(),
+                min: 1,
+                max: maxUsable.toDouble(),
+                divisions: maxUsable > 1 ? maxUsable - 1 : 1,
+                activeColor: Colors.greenAccent,
+                inactiveColor: Colors.white12,
+                onChanged: (v) => setSlider(() => selected = v.round()),
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await provider.useImmunityOnPunishment(
+                        imm.id, p.id, selected);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(SnackBar(
+                        content: Text(
+                            '🛡️ $selected ligne${selected > 1 ? 's' : ''} annulée${selected > 1 ? 's' : ''} !'),
+                        backgroundColor: Colors.green.shade700,
+                      ));
+                      final updated = provider.punishments.firstWhere(
+                          (x) => x.id == p.id,
                           orElse: () => p);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(
-                        '🛡️ $lines ligne${lines > 1 ? 's' : ''} annulée${lines > 1 ? 's' : ''} par immunité !'),
-                    backgroundColor: Colors.green.shade700,
-                  ));
-                  if (updated.isCompleted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(const SnackBar(
-                      content: Text('🎉 Punition terminée grâce à l\'immunité !'),
-                      backgroundColor: Colors.green,
-                    ));
-                  }
-                  _listController.forward(from: 0);
-                }
-              },
-            ),
-          ],
-        ],
-      ),
-    );
+                      if (updated.isCompleted) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(
+                          content: Text(
+                              '🎉 Punition terminée grâce à l\'immunité !'),
+                          backgroundColor: Colors.green,
+                        ));
+                      }
+                      _listController.forward(from: 0);
+                    }
+                  },
+                  icon: const Icon(Icons.shield, size: 16),
+                  label: Text(
+                      'Utiliser $selected ligne${selected > 1 ? 's' : ''}'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.greenAccent.shade700,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      });
+    });
   }
 
   void _showAddPunishmentSheet() {
     final textCtrl = TextEditingController();
     final linesCtrl = TextEditingController(text: '10');
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -240,21 +264,17 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
+            left: 24, right: 24, top: 24,
             bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 20),
               const Text('📝 Nouvelle Punition',
@@ -269,12 +289,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 maxLines: 2,
                 decoration: InputDecoration(
                   labelText: 'Texte à copier',
-                  labelStyle:
-                      const TextStyle(color: Colors.white70),
+                  labelStyle: const TextStyle(color: Colors.white70),
                   hintText:
                       'Ex: Je dois être poli avec mes frères et sœurs.',
-                  hintStyle:
-                      const TextStyle(color: Colors.white30),
+                  hintStyle: const TextStyle(color: Colors.white30),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(
                         color: Colors.redAccent.withOpacity(0.5)),
@@ -341,7 +359,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent.shade700,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
                   ),
@@ -352,10 +371,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         _selectedChildId == null ||
                         totalLines <= 0) return;
                     context.read<FamilyProvider>().addPunishment(
-                          _selectedChildId!,
-                          textCtrl.text.trim(),
-                          totalLines,
-                        );
+                        _selectedChildId!,
+                        textCtrl.text.trim(),
+                        totalLines);
                     Navigator.pop(ctx);
                     _listController.forward(from: 0);
                     ScaffoldMessenger.of(context)
@@ -379,9 +397,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   }
 
   void _showPunishmentDetail(PunishmentLines punishment) {
-    final isParent =
-        context.read<PinProvider>().isParentMode;
-
+    final isParent = context.read<PinProvider>().isParentMode;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -389,33 +405,37 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       builder: (ctx) => Consumer<FamilyProvider>(
         builder: (ctx, provider, _) {
           final currentP = provider.punishments.firstWhere(
-            (p) => p.id == punishment.id,
-            orElse: () => punishment,
-          );
-
+              (p) => p.id == punishment.id,
+              orElse: () => punishment);
           return Container(
             decoration: BoxDecoration(
               color: Colors.grey.shade900,
               borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24)),
             ),
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
                   child: Container(
-                    width: 40,
-                    height: 4,
+                    width: 40, height: 4,
                     decoration: BoxDecoration(
                         color: Colors.white24,
                         borderRadius: BorderRadius.circular(2)),
                   ),
                 ),
                 const SizedBox(height: 20),
+
+                // ── Titre ──────────────────────────────
                 Row(children: [
-                  Text(currentP.isCompleted ? '✅' : '📝',
+                  Text(
+                      currentP.isCompleted
+                          ? '✅'
+                          : currentP.pendingValidation
+                              ? '⏳'
+                              : '📝',
                       style: const TextStyle(fontSize: 28)),
                   const SizedBox(width: 12),
                   Expanded(
@@ -427,7 +447,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   ),
                 ]),
 
-                // Badge "En attente de validation"
+                // ── Badge "En attente de validation" ──
                 if (currentP.pendingValidation &&
                     !currentP.isCompleted) ...[
                   const SizedBox(height: 10),
@@ -444,8 +464,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       Icon(Icons.hourglass_top_rounded,
                           color: Colors.orange, size: 16),
                       SizedBox(width: 6),
-                      Text(
-                          '⏳ En attente de validation parent',
+                      Text('⏳ En attente de validation parent',
                           style: TextStyle(
                               color: Colors.orange,
                               fontSize: 12,
@@ -455,6 +474,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 ],
 
                 const SizedBox(height: 16),
+
+                // ── Barre de progression ──────────────
                 AnimatedBuilder(
                   animation: _progressController,
                   builder: (ctx, _) {
@@ -497,10 +518,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                     ]);
                   },
                 ),
+
                 const SizedBox(height: 20),
 
                 if (!currentP.isCompleted) ...[
-                  // ── Bouton immunité ──────────────────────
+                  // ── 🛡️ Bouton immunité (tous) ────────
                   SizedBox(
                     width: double.infinity,
                     child: TvFocusWrapper(
@@ -514,8 +536,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         decoration: BoxDecoration(
                           gradient: LinearGradient(colors: [
                             Colors.greenAccent.shade700
-                                .withOpacity(0.8),
-                            Colors.teal.shade700.withOpacity(0.8),
+                                .withOpacity(0.85),
+                            Colors.teal.shade700.withOpacity(0.85),
                           ]),
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -538,7 +560,46 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   ),
                   const SizedBox(height: 12),
 
-                  // ── Ajouter des lignes (parent) ──────────
+                  // ── 🙋 Bouton "J'ai fini" (enfant) ──
+                  if (!isParent && !currentP.pendingValidation) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: TvFocusWrapper(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _markPendingValidation(provider, currentP);
+                        },
+                        child: Container(
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [
+                              Colors.orange.shade700,
+                              Colors.amber.shade700,
+                            ]),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Center(
+                            child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('🙋',
+                                      style: TextStyle(fontSize: 18)),
+                                  SizedBox(width: 8),
+                                  Text('J\'ai fini mes lignes !',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15)),
+                                ]),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // ── Parent : ajouter lignes + valider ─
                   if (isParent) ...[
                     const Text('Ajouter des lignes complétées',
                         style: TextStyle(
@@ -550,22 +611,18 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         return TvFocusWrapper(
                           onTap: () {
                             HapticFeedback.lightImpact();
-                            final prov =
-                                context.read<FamilyProvider>();
+                            final prov = context.read<FamilyProvider>();
                             prov.updatePunishmentProgress(
                                 currentP.id, n);
                             _progressController.forward(from: 0);
-                            final updated =
-                                prov.punishments.firstWhere(
-                              (p) => p.id == currentP.id,
-                              orElse: () => currentP,
-                            );
+                            final updated = prov.punishments.firstWhere(
+                                (p) => p.id == currentP.id,
+                                orElse: () => currentP);
                             if (updated.isCompleted) {
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context)
                                   .showSnackBar(const SnackBar(
-                                content:
-                                    Text('🎉 Punition terminée !'),
+                                content: Text('🎉 Punition terminée !'),
                                 backgroundColor: Colors.green,
                               ));
                             }
@@ -583,27 +640,13 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                     ),
                     const SizedBox(height: 12),
 
-                    // ── Valider "j'ai fini" (parent) ─────────
+                    // ✅ Valider si enfant a demandé
                     if (currentP.pendingValidation) ...[
                       SizedBox(
                         width: double.infinity,
                         child: TvFocusWrapper(
-                          onTap: () {
-                            final prov =
-                                context.read<FamilyProvider>();
-                            final remaining = currentP.totalLines -
-                                currentP.completedLines;
-                            prov.updatePunishmentProgress(
-                                currentP.id, remaining);
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(const SnackBar(
-                              content: Text(
-                                  '✅ Punition validée par le parent !'),
-                              backgroundColor: Colors.green,
-                            ));
-                            _listController.forward(from: 0);
-                          },
+                          onTap: () =>
+                              _validateByParent(provider, currentP, ctx),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 vertical: 14),
@@ -612,23 +655,19 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                 Colors.green.shade700,
                                 Colors.greenAccent.shade700,
                               ]),
-                              borderRadius:
-                                  BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                             child: const Center(
                               child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.check_circle,
-                                        color: Colors.white,
-                                        size: 20),
+                                        color: Colors.white, size: 20),
                                     SizedBox(width: 8),
-                                    Text(
-                                        '✅ Valider (l\'enfant a fini)',
+                                    Text('✅ Valider — l\'enfant a fini',
                                         style: TextStyle(
                                             color: Colors.white,
-                                            fontWeight:
-                                                FontWeight.bold,
+                                            fontWeight: FontWeight.bold,
                                             fontSize: 15)),
                                   ]),
                             ),
@@ -637,89 +676,42 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       ),
                       const SizedBox(height: 12),
                     ],
-                  ],
 
-                  // ── Bouton "J'ai fini !" (enfant) ────────
-                  if (!isParent &&
-                      !currentP.pendingValidation) ...[
+                    // 🗑️ Supprimer
                     SizedBox(
                       width: double.infinity,
                       child: TvFocusWrapper(
                         onTap: () {
+                          context
+                              .read<FamilyProvider>()
+                              .removePunishment(currentP.id);
                           Navigator.pop(ctx);
-                          _markPendingValidation(
-                              context.read<FamilyProvider>(),
-                              currentP);
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                            content: Text('🗑️ Punition supprimée'),
+                            backgroundColor: Colors.red,
+                          ));
                         },
                         child: Container(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              Colors.orange.shade700,
-                              Colors.amber.shade700,
-                            ]),
+                            color: Colors.red.shade900.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color:
+                                    Colors.redAccent.withOpacity(0.5)),
                           ),
                           child: const Center(
-                            child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('🙋',
-                                      style:
-                                          TextStyle(fontSize: 18)),
-                                  SizedBox(width: 8),
-                                  Text('J\'ai fini mes lignes !',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15)),
-                                ]),
+                            child: Text('🗑️ Supprimer',
+                                style: TextStyle(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
                   ],
-                ],
-
-                // ── Supprimer (parent seulement) ──────────
-                if (isParent) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: TvFocusWrapper(
-                      onTap: () {
-                        context
-                            .read<FamilyProvider>()
-                            .removePunishment(currentP.id);
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(
-                          content: Text('🗑️ Punition supprimée'),
-                          backgroundColor: Colors.red,
-                        ));
-                      },
-                      child: Container(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color:
-                              Colors.red.shade900.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color:
-                                  Colors.redAccent.withOpacity(0.5)),
-                        ),
-                        child: const Center(
-                          child: Text('🗑️ Supprimer',
-                              style: TextStyle(
-                                  color: Colors.redAccent,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                 ],
               ],
             ),
@@ -740,8 +732,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
         final completedCount =
             punishments.where((e) => e.isCompleted).length;
         final pendingCount = punishments
-            .where((e) =>
-                e.pendingValidation && !e.isCompleted)
+            .where((e) => e.pendingValidation && !e.isCompleted)
             .length;
 
         return Scaffold(
@@ -776,7 +767,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold)),
                       ),
-                      // Badge validation en attente
                       if (pendingCount > 0)
                         Container(
                           margin: const EdgeInsets.only(right: 8),
@@ -786,7 +776,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                             color: Colors.orange.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: Colors.orange.withOpacity(0.5)),
+                                color:
+                                    Colors.orange.withOpacity(0.5)),
                           ),
                           child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -839,8 +830,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         itemCount: children.length,
                         itemBuilder: (ctx, i) {
                           final child = children[i];
-                          final selected =
-                              child.id == _selectedChildId;
+                          final selected = child.id == _selectedChildId;
                           return Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: TvFocusWrapper(
@@ -858,7 +848,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                   color: selected
                                       ? Colors.redAccent
                                           .withOpacity(0.3)
-                                      : Colors.white.withOpacity(0.1),
+                                      : Colors.white
+                                          .withOpacity(0.1),
                                   borderRadius:
                                       BorderRadius.circular(20),
                                   border: selected
@@ -925,16 +916,14 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Text('📝',
-                                    style:
-                                        TextStyle(fontSize: 64)),
+                                    style: TextStyle(fontSize: 64)),
                                 const SizedBox(height: 16),
                                 const Text('Aucune punition',
                                     style: TextStyle(
                                         color: Colors.white54,
                                         fontSize: 18)),
                                 const SizedBox(height: 8),
-                                const Text(
-                                    'Espérons que ça dure !',
+                                const Text('Espérons que ça dure !',
                                     style: TextStyle(
                                         color: Colors.white38,
                                         fontSize: 14)),
@@ -952,22 +941,19 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                 animation: _listController,
                                 builder: (ctx, child) {
                                   final raw =
-                                      (_listController.value -
-                                              delay) /
+                                      (_listController.value - delay) /
                                           (1 - delay);
                                   final t = Curves.elasticOut
-                                      .transform(
-                                          raw.clamp(0.0, 1.0));
+                                      .transform(raw.clamp(0.0, 1.0));
                                   return Transform.translate(
-                                    offset:
-                                        Offset(0, 50 * (1 - t)),
+                                    offset: Offset(0, 50 * (1 - t)),
                                     child: Opacity(
                                         opacity: t, child: child),
                                   );
                                 },
                                 child: Padding(
-                                  padding: const EdgeInsets.only(
-                                      bottom: 8),
+                                  padding:
+                                      const EdgeInsets.only(bottom: 8),
                                   child: TvFocusWrapper(
                                     onTap: () {
                                       _progressController
@@ -998,11 +984,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                                   Text(
                                                     p.text,
                                                     style: TextStyle(
-                                                      color:
-                                                          Colors.white,
+                                                      color: Colors.white,
                                                       fontWeight:
-                                                          FontWeight
-                                                              .bold,
+                                                          FontWeight.bold,
                                                       fontSize: 15,
                                                       decoration: p
                                                               .isCompleted
@@ -1011,22 +995,18 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                                           : null,
                                                     ),
                                                     maxLines: 2,
-                                                    overflow:
-                                                        TextOverflow
-                                                            .ellipsis,
+                                                    overflow: TextOverflow
+                                                        .ellipsis,
                                                   ),
-                                                  const SizedBox(
-                                                      height: 4),
+                                                  const SizedBox(height: 4),
                                                   Text(
                                                     p.pendingValidation &&
                                                             !p.isCompleted
                                                         ? '⏳ En attente de validation'
                                                         : '${p.completedLines}/${p.totalLines} lignes • ${(p.progress * 100).toInt()}%',
                                                     style: TextStyle(
-                                                      color: p
-                                                              .pendingValidation
-                                                          ? Colors
-                                                              .orange
+                                                      color: p.pendingValidation
+                                                          ? Colors.orange
                                                           : p.isCompleted
                                                               ? Colors
                                                                   .greenAccent
@@ -1046,8 +1026,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                           const SizedBox(height: 8),
                                           ClipRRect(
                                             borderRadius:
-                                                BorderRadius.circular(
-                                                    4),
+                                                BorderRadius.circular(4),
                                             child:
                                                 LinearProgressIndicator(
                                               value: p.progress,
@@ -1061,8 +1040,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                                     ? Colors.greenAccent
                                                     : p.pendingValidation
                                                         ? Colors.orange
-                                                        : Colors
-                                                            .redAccent,
+                                                        : Colors.redAccent,
                                               ),
                                             ),
                                           ),
@@ -1088,79 +1066,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     return Column(mainAxisSize: MainAxisSize.min, children: [
       Text(value,
           style: TextStyle(
-              color: color,
-              fontSize: 20,
-              fontWeight: FontWeight.bold)),
+              color: color, fontSize: 20, fontWeight: FontWeight.bold)),
       const SizedBox(height: 2),
       Text(label,
-          style: const TextStyle(
-              color: Colors.white54, fontSize: 12)),
+          style:
+              const TextStyle(color: Colors.white54, fontSize: 12)),
     ]);
-  }
-}
-
-// ── Widget sélecteur de lignes pour immunité ────────────────
-class _ImmunityLinePicker extends StatefulWidget {
-  final int max;
-  final void Function(int lines) onConfirm;
-  const _ImmunityLinePicker(
-      {required this.max, required this.onConfirm});
-
-  @override
-  State<_ImmunityLinePicker> createState() =>
-      _ImmunityLinePickerState();
-}
-
-class _ImmunityLinePickerState extends State<_ImmunityLinePicker> {
-  late int _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    _selected = widget.max;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          const Text('Lignes à annuler : ',
-              style: TextStyle(color: Colors.white70, fontSize: 13)),
-          Text('$_selected',
-              style: const TextStyle(
-                  color: Colors.greenAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16)),
-          Text(' / ${widget.max} max',
-              style: const TextStyle(
-                  color: Colors.white38, fontSize: 12)),
-        ]),
-        Slider(
-          value: _selected.toDouble(),
-          min: 1,
-          max: widget.max.toDouble(),
-          divisions: widget.max > 1 ? widget.max - 1 : 1,
-          activeColor: Colors.greenAccent,
-          inactiveColor: Colors.white12,
-          onChanged: (v) => setState(() => _selected = v.round()),
-        ),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => widget.onConfirm(_selected),
-            icon: const Icon(Icons.shield, size: 16),
-            label: Text('Utiliser $_selected ligne${_selected > 1 ? 's' : ''} d\'immunité'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.greenAccent.shade700,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
