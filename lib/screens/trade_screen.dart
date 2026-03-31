@@ -1,6 +1,7 @@
 // lib/screens/trade_screen.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/family_provider.dart';
@@ -361,7 +362,6 @@ class TradeScreen extends StatefulWidget {
 class _TradeScreenState extends State<TradeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  // Anti double-tap global
   bool _isProcessing = false;
 
   @override
@@ -376,7 +376,6 @@ class _TradeScreenState extends State<TradeScreen>
     super.dispose();
   }
 
-  /// Exécute une action async en empêchant les doubles appels
   Future<void> _run(Future<void> Function() action) async {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
@@ -491,7 +490,6 @@ class _TradeScreenState extends State<TradeScreen>
     );
   }
 
-  // ── Bandeau immunités disponibles ──────────────────────
   Widget _buildImmunityBanner(ChildModel child, int available) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -565,7 +563,6 @@ class _TradeScreenState extends State<TradeScreen>
     );
   }
 
-  // ── Tab Marché ─────────────────────────────────────────
   Widget _buildMarketTab(FamilyProvider provider, ChildModel child,
       int available, List<TradeModel> pendingForMe) {
     final myPendingSales = provider.trades
@@ -779,7 +776,6 @@ class _TradeScreenState extends State<TradeScreen>
     );
   }
 
-  // ── Tab En cours ───────────────────────────────────────
   Widget _buildActiveTab(FamilyProvider provider, ChildModel child,
       List<TradeModel> activeTrades) {
     final inProgress = activeTrades
@@ -966,7 +962,6 @@ class _TradeScreenState extends State<TradeScreen>
     );
   }
 
-  // ── Tab Historique ─────────────────────────────────────
   Widget _buildHistoryTab(FamilyProvider provider, ChildModel child,
       List<TradeModel> trades) {
     if (trades.isEmpty) {
@@ -1055,7 +1050,9 @@ class _TradeScreenState extends State<TradeScreen>
         }).toList());
   }
 
-  // ── Dialog création vente ──────────────────────────────
+  // ══════════════════════════════════════════════════════════
+  //  MODIFIÉ : TextField numérique + raccourcis rapides
+  // ══════════════════════════════════════════════════════════
   void _showCreateSaleDialog(BuildContext context,
       FamilyProvider provider, ChildModel seller, int maxLines) {
     final otherChildren = provider.children
@@ -1076,12 +1073,15 @@ class _TradeScreenState extends State<TradeScreen>
         context: context,
         builder: (ctx) {
           String? selectedBuyerId;
-          int lines = 1;
+          final linesCtrl = TextEditingController(text: '1');
           final serviceCtrl = TextEditingController();
 
           return StatefulBuilder(builder: (ctx, setDialogState) {
+            final parsedLines = int.tryParse(linesCtrl.text) ?? 0;
             final bool canSubmit = selectedBuyerId != null &&
-                serviceCtrl.text.trim().isNotEmpty;
+                serviceCtrl.text.trim().isNotEmpty &&
+                parsedLines > 0 &&
+                parsedLines <= maxLines;
 
             return AlertDialog(
               backgroundColor: const Color(0xFF1a1a4a),
@@ -1170,55 +1170,56 @@ class _TradeScreenState extends State<TradeScreen>
                         style: TextStyle(
                             color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 8),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                              onPressed: lines > 1
-                                  ? () =>
-                                      setDialogState(() => lines--)
-                                  : null,
-                              icon: Icon(Icons.remove_circle_rounded,
-                                  color: lines > 1
-                                      ? Colors.red
-                                      : Colors.grey,
-                                  size: 32)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 8),
-                            decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius:
-                                    BorderRadius.circular(12)),
-                            child: Text('$lines',
-                                style: const TextStyle(
-                                    color: Color(0xFF00E676),
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w900)),
+                    Center(
+                      child: SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: linesCtrl,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: Color(0xFF00E676),
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900),
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          onChanged: (_) => setDialogState(() {}),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.1),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none),
                           ),
-                          IconButton(
-                              onPressed: lines < maxLines
-                                  ? () =>
-                                      setDialogState(() => lines++)
-                                  : null,
-                              icon: Icon(Icons.add_circle_rounded,
-                                  color: lines < maxLines
-                                      ? const Color(0xFF00E676)
-                                      : Colors.grey,
-                                  size: 32)),
-                        ]),
+                        ),
+                      ),
+                    ),
                     Center(
                         child: Text('max: $maxLines',
                             style: TextStyle(
                                 color:
                                     Colors.white.withOpacity(0.3),
                                 fontSize: 11))),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Wrap(
+                        spacing: 8,
+                        children: [1, 3, 5, 10, 20].where((n) => n <= maxLines).map((n) {
+                          return GestureDetector(
+                            onTap: () => setDialogState(() => linesCtrl.text = '$n'),
+                            child: Chip(
+                              label: Text('$n',
+                                  style: const TextStyle(color: Colors.white70)),
+                              backgroundColor: Colors.white.withOpacity(0.1),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     const Text('Service demandé en échange :',
                         style: TextStyle(
                             color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 8),
-                    // Utilisation d'un TextEditingController stable
                     TextField(
                       controller: serviceCtrl,
                       onChanged: (_) => setDialogState(() {}),
@@ -1244,10 +1245,11 @@ class _TradeScreenState extends State<TradeScreen>
                 TvFocusWrapper(
                   onTap: canSubmit
                       ? () => _run(() async {
+                            final finalLines = (int.tryParse(linesCtrl.text) ?? 1).clamp(1, maxLines);
                             await provider.createTrade(
                                 widget.childId,
                                 selectedBuyerId!,
-                                lines,
+                                finalLines,
                                 serviceCtrl.text.trim());
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (mounted) {
@@ -1259,10 +1261,11 @@ class _TradeScreenState extends State<TradeScreen>
                   child: ElevatedButton.icon(
                     onPressed: canSubmit
                         ? () => _run(() async {
+                              final finalLines = (int.tryParse(linesCtrl.text) ?? 1).clamp(1, maxLines);
                               await provider.createTrade(
                                   widget.childId,
                                   selectedBuyerId!,
-                                  lines,
+                                  finalLines,
                                   serviceCtrl.text.trim());
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (mounted) {
@@ -1289,7 +1292,6 @@ class _TradeScreenState extends State<TradeScreen>
         });
   }
 
-  // ── Dialog validation parent ───────────────────────────
   void _showParentValidationDialog(BuildContext context,
       FamilyProvider provider, TradeModel trade) {
     final noteCtrl = TextEditingController();
@@ -1391,7 +1393,6 @@ class _TradeScreenState extends State<TradeScreen>
         });
   }
 
-  // ── Helpers ────────────────────────────────────────────
   Widget _buildBadgeCount(int count) {
     return Container(
       padding:
