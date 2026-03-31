@@ -1,3 +1,4 @@
+// lib/screens/screen_time_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -44,11 +45,46 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
     return const Color(0xFFFF1744);
   }
 
+  // ─── Notes scolaires helpers ───────────────────────────
+  List<Map<String, dynamic>> _getSchoolNotes(
+      FamilyProvider provider, String childId) {
+    final history = provider.getHistoryForChild(childId);
+    return history
+        .where((h) => h.category == 'school_note')
+        .map((h) {
+      String subject = h.reason;
+      int noteValue = h.points;
+      int noteMax = 20;
+      final match =
+          RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(h.reason);
+      if (match != null) {
+        subject = match.group(1)!.trim();
+        noteValue = int.tryParse(match.group(2)!) ?? h.points;
+        noteMax = int.tryParse(match.group(3)!) ?? 20;
+      }
+      return {
+        'subject': subject,
+        'value': noteValue,
+        'max': noteMax,
+        'percent': noteMax > 0 ? noteValue / noteMax * 100 : 0.0,
+        'date': h.date,
+      };
+    }).toList();
+  }
+
+  int _percentToStars(double percent) {
+    if (percent >= 90) return 5;
+    if (percent >= 75) return 4;
+    if (percent >= 60) return 3;
+    if (percent >= 40) return 2;
+    return 1;
+  }
+  // ───────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
     final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
@@ -228,8 +264,8 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text('Comparaison par enfant',
-              style:
-                  TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
           const SizedBox(height: 16),
           SizedBox(
             height: 220,
@@ -387,11 +423,11 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
             final progress = (total / 720).clamp(0.0, 1.0);
             final color = _getProgressColor(progress);
             final medal = i == 0
-                ? '\u{1F947}'
+                ? '🥇'
                 : i == 1
-                    ? '\u{1F948}'
+                    ? '🥈'
                     : i == 2
-                        ? '\u{1F949}'
+                        ? '🥉'
                         : '${i + 1}';
 
             return Container(
@@ -425,7 +461,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                           borderRadius: BorderRadius.circular(10)),
                       child: Center(
                           child: Text(
-                              child.avatar.isEmpty ? '\u{1F466}' : child.avatar,
+                              child.avatar.isEmpty ? '👦' : child.avatar,
                               style: const TextStyle(fontSize: 18))),
                     ),
                   const SizedBox(width: 12),
@@ -481,15 +517,24 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
     final satMin = provider.getSaturdayMinutes(child.id);
     final sunMin = provider.getSundayMinutes(child.id);
     final totalMin = satMin + sunMin;
-    final maxMin = 720;
+    const maxMin = 720;
     final progress = (totalMin / maxMin).clamp(0.0, 1.0);
     final color = _getProgressColor(progress);
+
+    // Notes scolaires pour cet enfant
+    final schoolNotes = _getSchoolNotes(provider, child.id);
+    final avgPercent = schoolNotes.isNotEmpty
+        ? schoolNotes.fold<double>(
+                0, (sum, n) => sum + (n['percent'] as double)) /
+            schoolNotes.length
+        : 0.0;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
+          // ── Sélecteur d'enfant ──────────────────────────
           SizedBox(
             height: 56,
             child: ListView(
@@ -500,8 +545,8 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                   onTap: () => setState(() => _selectedChildId = c.id),
                   child: Container(
                     margin: const EdgeInsets.only(right: 10),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFF7C4DFF)
@@ -514,7 +559,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                     ),
                     child: Row(
                       children: [
-                        Text(c.avatar.isEmpty ? '\u{1F466}' : c.avatar,
+                        Text(c.avatar.isEmpty ? '👦' : c.avatar,
                             style: const TextStyle(fontSize: 20)),
                         const SizedBox(width: 8),
                         Text(c.name,
@@ -531,6 +576,8 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
             ),
           ),
           const SizedBox(height: 20),
+
+          // ── Cercle temps d'écran (inchangé) ────────────
           SizedBox(
             width: 180,
             height: 180,
@@ -551,7 +598,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar,
+                    Text(child.avatar.isEmpty ? '👦' : child.avatar,
                         style: const TextStyle(fontSize: 28)),
                     const SizedBox(height: 4),
                     Text(
@@ -571,28 +618,32 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
             ),
           ),
           const SizedBox(height: 24),
+
+          // ── Samedi / Dimanche (inchangé) ────────────────
           Row(
             children: [
               Expanded(
                 child: _buildDayCard(
-                    '\u{1F4C5}', 'Samedi', satMin, 360, const Color(0xFF7C4DFF)),
+                    '📅', 'Samedi', satMin, 360, const Color(0xFF7C4DFF)),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildDayCard(
-                    '\u{1F31E}', 'Dimanche', sunMin, 360, const Color(0xFFB388FF)),
+                    '🌞', 'Dimanche', sunMin, 360, const Color(0xFFB388FF)),
               ),
             ],
           ),
           const SizedBox(height: 20),
+
+          // ── Statistiques (inchangé) ─────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,7 +654,8 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                         fontSize: 16,
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
-                _buildStatRow('Temps total', _formatMinutes(totalMin), color),
+                _buildStatRow(
+                    'Temps total', _formatMinutes(totalMin), color),
                 _buildStatRow(
                     'Moyenne par jour',
                     _formatMinutes(totalMin ~/ 2),
@@ -624,6 +676,8 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
             ),
           ),
           const SizedBox(height: 20),
+
+          // ── Message bilan (inchangé) ────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -662,6 +716,186 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
             ),
           ),
           const SizedBox(height: 24),
+
+          // ══════════════════════════════════════════════════
+          //  NOUVELLE SECTION : NOTES SCOLAIRES
+          // ══════════════════════════════════════════════════
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [
+                          Color(0xFFFF6F00),
+                          Color(0xFFFFCA28),
+                        ]),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.menu_book_rounded,
+                          color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Notes scolaires',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    if (schoolNotes.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (avgPercent >= 50
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent)
+                              .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Moy. ${avgPercent.round()}%',
+                          style: TextStyle(
+                              color: avgPercent >= 50
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (schoolNotes.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Column(
+                        children: [
+                          Icon(Icons.school_outlined,
+                              size: 40,
+                              color: Colors.white.withValues(alpha: 0.2)),
+                          const SizedBox(height: 8),
+                          Text('Aucune note scolaire',
+                              style: TextStyle(
+                                  color:
+                                      Colors.white.withValues(alpha: 0.4),
+                                  fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ...schoolNotes.take(5).map((note) {
+                    final percent = note['percent'] as double;
+                    final isGood = percent >= 50;
+                    final noteColor = isGood
+                        ? Colors.greenAccent
+                        : Colors.redAccent;
+                    final stars = _percentToStars(percent);
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: noteColor.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: noteColor.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: noteColor.withValues(alpha: 0.12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${percent.round()}%',
+                                style: TextStyle(
+                                    color: noteColor,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 11),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  note['subject'] as String,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  children: [
+                                    Text(
+                                      '${note['value']}/${note['max']}',
+                                      style: const TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 12),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    ...List.generate(
+                                        stars,
+                                        (i) => const Text('⭐',
+                                            style: TextStyle(
+                                                fontSize: 10))),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            () {
+                              final d = note['date'] as DateTime;
+                              return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+                            }(),
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                if (schoolNotes.length > 5)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Center(
+                      child: Text(
+                        '+ ${schoolNotes.length - 5} autres notes',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            fontSize: 12),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // ══════════════════════════════════════════════════
         ],
       ),
     );
@@ -733,4 +967,3 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
     );
   }
 }
-
