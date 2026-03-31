@@ -39,7 +39,6 @@ class FamilyProvider extends ChangeNotifier {
           .map((m) => ChildModel.fromMap(Map<String, dynamic>.from(m)))
           .toList();
 
-  /// Enfants triés par points décroissants
   List<ChildModel> get sortedChildren {
     final list = [...children];
     list.sort((a, b) => b.points.compareTo(a.points));
@@ -59,7 +58,6 @@ class FamilyProvider extends ChangeNotifier {
           .map((m) => NoteModel.fromMap(Map<String, dynamic>.from(m)))
           .toList();
 
-  /// Punishments bruts (Map) — usage interne uniquement
   List<Map<String, dynamic>> get punishments =>
       _punishmentsBox.values
           .map((m) => Map<String, dynamic>.from(m))
@@ -116,7 +114,7 @@ class FamilyProvider extends ChangeNotifier {
     final meta = _metaBox.get('family');
     if (meta != null) {
       final m = Map<String, dynamic>.from(meta);
-      _familyCode  = m['code'] as String?;
+      _familyCode    = m['code'] as String?;
       _isSyncEnabled = m['syncEnabled'] == true;
     }
     notifyListeners();
@@ -195,10 +193,12 @@ class FamilyProvider extends ChangeNotifier {
     return ChildModel.fromMap(Map<String, dynamic>.from(raw));
   }
 
+  // ✅ CORRIGÉ : photoBase64 ?? '' pour éviter null vers String
   Future<void> addChild(String name, String avatar, {String? photoBase64}) async {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final child = ChildModel(
-      id: id, name: name, avatar: avatar, photoBase64: photoBase64,
+      id: id, name: name, avatar: avatar,
+      photoBase64: photoBase64 ?? '',
       points: 0, level: 1, badgeIds: [], createdAt: DateTime.now(),
     );
     await _childrenBox.put(id, child.toMap());
@@ -301,11 +301,7 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── Badges helpers ───────────────────────────────────
   List<BadgeModel> getAllBadges() => [...BadgeModel.defaultBadges, ...customBadges];
-
-  /// Utilisé par ChildDashboardScreen
   List<BadgeModel> getDefaultBadges() => BadgeModel.defaultBadges;
-
-  /// Utilisé par ChildDashboardScreen
   List<BadgeModel> getCustomBadgesForChild(String childId) => customBadges;
 
   List<BadgeModel> getChildBadges(String childId) {
@@ -422,8 +418,6 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // ─── Punishments ──────────────────────────────────────
-
-  /// Retourne les punitions d'un enfant sous forme de PunishmentLines (typé)
   List<PunishmentLines> getPunishmentsForChild(String childId) {
     return _punishmentsBox.values
         .map((m) => Map<String, dynamic>.from(m))
@@ -432,7 +426,6 @@ class FamilyProvider extends ChangeNotifier {
         .toList();
   }
 
-  /// Retourne toutes les punitions brutes (Map) pour usage interne
   List<Map<String, dynamic>> getPunishments([String? childId]) {
     final all = punishments;
     if (childId == null) return all;
@@ -446,11 +439,8 @@ class FamilyProvider extends ChangeNotifier {
   }) async {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final punishment = PunishmentLines(
-      id: id,
-      childId: childId,
-      text: text,
-      totalLines: totalLines,
-      completedLines: 0,
+      id: id, childId: childId, text: text,
+      totalLines: totalLines, completedLines: 0,
       createdAt: DateTime.now(),
     );
     await _punishmentsBox.put(id, punishment.toMap());
@@ -458,13 +448,12 @@ class FamilyProvider extends ChangeNotifier {
     _syncToFirestore();
   }
 
-  /// Ajoute N lignes complétées à une punition
   Future<void> updatePunishmentProgress(String id, int additionalLines) async {
     final raw = _punishmentsBox.get(id);
     if (raw == null) return;
     final m = Map<String, dynamic>.from(raw);
-    final current   = (m['completedLines'] as int? ?? 0);
-    final total     = (m['totalLines']     as int? ?? 1);
+    final current      = (m['completedLines'] as int? ?? 0);
+    final total        = (m['totalLines']     as int? ?? 1);
     final newCompleted = (current + additionalLines).clamp(0, total);
     m['completedLines'] = newCompleted;
     if (newCompleted >= total) {
@@ -476,7 +465,6 @@ class FamilyProvider extends ChangeNotifier {
     _syncToFirestore();
   }
 
-  /// Marque une punition comme terminée (100%)
   Future<void> completePunishment(String id) async {
     final raw = _punishmentsBox.get(id);
     if (raw == null) return;
@@ -495,7 +483,6 @@ class FamilyProvider extends ChangeNotifier {
     _syncToFirestore();
   }
 
-  /// Alias pour compatibilité
   Future<void> deletePunishment(String id) async => removePunishment(id);
 
   Future<void> resetPunishmentProgress(String id) async {
@@ -534,7 +521,6 @@ class FamilyProvider extends ChangeNotifier {
   List<ImmunityLines> getImmunitiesForChild(String childId) =>
       getImmunities(childId);
 
-  /// Immunités utilisables pour un enfant (pour TradeScreen)
   List<ImmunityLines> getUsableImmunitiesForChild(String childId) =>
       getImmunities(childId).where((i) => i.isUsable).toList();
 
@@ -565,7 +551,6 @@ class FamilyProvider extends ChangeNotifier {
     _syncToFirestore();
   }
 
-  /// Utilise N lignes d'immunité sur une punition précise (paramètres nommés)
   Future<void> useImmunityOnPunishment({
     required String immunityId,
     required String punishmentId,
@@ -580,12 +565,10 @@ class FamilyProvider extends ChangeNotifier {
 
     final safeLines = linesToUse.clamp(1, imm.availableLines);
 
-    // Mise à jour immunité
     final immMap = imm.toMap();
     immMap['usedLines'] = imm.usedLines + safeLines;
     await _immunitiesBox.put(immunityId, immMap);
 
-    // Mise à jour punition
     final pun = Map<String, dynamic>.from(punRaw);
     final newCompleted =
         ((pun['completedLines'] as int? ?? 0) + safeLines)
@@ -607,7 +590,6 @@ class FamilyProvider extends ChangeNotifier {
     _syncToFirestore();
   }
 
-  /// Alias pour compatibilité
   Future<void> deleteImmunity(String id) async => removeImmunity(id);
 
   Future<void> reactivateImmunity(String id) async {
@@ -664,27 +646,21 @@ class FamilyProvider extends ChangeNotifier {
     _syncToFirestore();
   }
 
-  int getSaturdayMinutes(String childId) {
-    return (getScreenTime(childId)?['saturdayMinutes'] as int?) ?? 0;
-  }
+  int getSaturdayMinutes(String childId) =>
+      (getScreenTime(childId)?['saturdayMinutes'] as int?) ?? 0;
 
-  int getSundayMinutes(String childId) {
-    return (getScreenTime(childId)?['sundayMinutes'] as int?) ?? 0;
-  }
+  int getSundayMinutes(String childId) =>
+      (getScreenTime(childId)?['sundayMinutes'] as int?) ?? 0;
 
-  int getParentBonusMinutes(String childId) {
-    return (getScreenTime(childId)?['bonusMinutes'] as int?) ?? 0;
-  }
+  int getParentBonusMinutes(String childId) =>
+      (getScreenTime(childId)?['bonusMinutes'] as int?) ?? 0;
 
-  /// Alias utilisé dans ChildDashboardScreen
   int getBonusMinutes(String childId) => getParentBonusMinutes(childId);
 
-  /// Total des minutes cette semaine (sam + dim + bonus)
-  int getWeeklyScreenMinutes(String childId) {
-    return getSaturdayMinutes(childId) +
-        getSundayMinutes(childId) +
-        getParentBonusMinutes(childId);
-  }
+  int getWeeklyScreenMinutes(String childId) =>
+      getSaturdayMinutes(childId) +
+      getSundayMinutes(childId) +
+      getParentBonusMinutes(childId);
 
   // ─── Weekly Score ─────────────────────────────────────
   int getWeeklyScore(String childId) {
@@ -738,9 +714,9 @@ class FamilyProvider extends ChangeNotifier {
     final raw = _tribunalBox.get(caseId);
     if (raw == null) return;
     final tc = TribunalCase.fromMap(Map<String, dynamic>.from(raw));
-    tc.status       = TribunalStatus.closed;
-    tc.verdict      = TribunalVerdict.dismissed;
-    tc.verdictDate  = DateTime.now();
+    tc.status      = TribunalStatus.closed;
+    tc.verdict     = TribunalVerdict.dismissed;
+    tc.verdictDate = DateTime.now();
     await _tribunalBox.put(caseId, tc.toMap());
     notifyListeners();
     _syncToFirestore();
@@ -754,12 +730,12 @@ class FamilyProvider extends ChangeNotifier {
   }) async {
     final raw = _tribunalBox.get(caseId);
     if (raw == null) return;
-    final tc       = TribunalCase.fromMap(Map<String, dynamic>.from(raw));
-    tc.status       = TribunalStatus.verdict;
-    tc.verdict      = verdict;
-    tc.verdictReason = reason;
-    tc.verdictDate  = DateTime.now();
-    tc.accusedPoints = accusedPoints;
+    final tc          = TribunalCase.fromMap(Map<String, dynamic>.from(raw));
+    tc.status          = TribunalStatus.verdict;
+    tc.verdict         = verdict;
+    tc.verdictReason   = reason;
+    tc.verdictDate     = DateTime.now();
+    tc.accusedPoints   = accusedPoints;
     await _tribunalBox.put(caseId, tc.toMap());
     if (accusedPoints != 0) {
       await addPoints(
@@ -804,9 +780,9 @@ class FamilyProvider extends ChangeNotifier {
     _syncToFirestore();
   }
 
-  Future<void> acceptTrade(String id) async   => _updateTradeStatus(id, 'accepted');
-  Future<void> rejectTrade(String id) async    => _updateTradeStatus(id, 'rejected');
-  Future<void> cancelTrade(String id) async    => _updateTradeStatus(id, 'cancelled');
+  Future<void> acceptTrade(String id) async    => _updateTradeStatus(id, 'accepted');
+  Future<void> rejectTrade(String id) async     => _updateTradeStatus(id, 'rejected');
+  Future<void> cancelTrade(String id) async     => _updateTradeStatus(id, 'cancelled');
   Future<void> markServiceDone(String id) async => _updateTradeStatus(id, 'service_done');
 
   Future<void> completeTrade(String id, {String? parentNote}) async {
@@ -860,7 +836,6 @@ class FamilyProvider extends ChangeNotifier {
   List<TradeModel> getActiveTrades() => trades.where((t) => t.isActive).toList();
 
   // ─── Admin Helpers ────────────────────────────────────
-
   Future<void> resetChildPoints(String childId) async {
     final child = getChild(childId);
     if (child == null) return;
@@ -938,7 +913,6 @@ class FamilyProvider extends ChangeNotifier {
     _syncToFirestore();
   }
 
-  /// Reset TOTAL de toutes les données (bouton nucléaire)
   Future<void> resetAllData() async {
     await _childrenBox.clear();
     await _historyBox.clear();
@@ -957,7 +931,6 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Alias pour compatibilité
   Future<void> resetEverything() async => resetAllData();
 
   // ─── School Notes ─────────────────────────────────────
