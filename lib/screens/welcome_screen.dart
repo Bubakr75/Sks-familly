@@ -274,180 +274,196 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
-    // ✅ CORRIGÉ : sortedChildren (pas childrenSorted)
+    // ✅ CORRIGÉ : sortedChildren
     final List<ChildModel> children = provider.sortedChildren;
 
-    final totalPoints =
-        children.fold<int>(0, (sum, c) => sum + c.points);
-    final totalBadges =
-        children.fold<int>(0, (sum, c) => sum + c.badgeIds.length);
-    final leader =
-        children.isNotEmpty ? children.first.name : '-';
+    final totalPoints = children.fold<int>(0, (sum, c) => sum + c.points);
+    final totalBadges = children.fold<int>(0, (sum, c) => sum + c.badgeIds.length);
+    final leader = children.isNotEmpty ? children.first.name : '-';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: AnimatedBackground(
         child: SafeArea(
-          child: CustomPaint(
-            painter: _WelcomeParticlePainter(animation: _particleController),
-            child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(children: [
-                const SizedBox(height: 20),
-
-                // Logo
-                ScaleTransition(
-                  scale: _logoScale,
-                  child: ScaleTransition(
-                    scale: _pulseScale,
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                            colors: [Colors.amber, Colors.deepOrange]),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.amber.withOpacity(0.4),
-                              blurRadius: 30,
-                              spreadRadius: 5)
-                        ],
-                      ),
-                      child: const Icon(Icons.family_restroom,
-                          size: 50, color: Colors.white),
-                    ),
+          // ✅ CORRIGÉ : Stack + Positioned.fill pour que le CustomPaint ait une taille
+          child: Stack(
+            children: [
+              // Particules en fond avec taille correcte
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: _particleController,
+                  builder: (context, _) => CustomPaint(
+                    painter: _WelcomeParticlePainter(
+                        animation: _particleController),
                   ),
                 ),
-                const SizedBox(height: 16),
+              ),
+              // Contenu scrollable par-dessus
+              SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 16),
+                child: Column(children: [
+                  const SizedBox(height: 20),
 
-                // Titre
-                ScaleTransition(
-                  scale: _logoScale,
-                  child: const Text('SKS Family',
-                      style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
-                ),
-                const SizedBox(height: 24),
+                  // Logo
+                  ScaleTransition(
+                    scale: _logoScale,
+                    child: ScaleTransition(
+                      scale: _pulseScale,
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                              colors: [Colors.amber, Colors.deepOrange]),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.amber.withOpacity(0.4),
+                                blurRadius: 30,
+                                spreadRadius: 5)
+                          ],
+                        ),
+                        child: const Icon(Icons.family_restroom,
+                            size: 50, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                // Classement
-                if (children.isNotEmpty)
+                  // Titre
+                  ScaleTransition(
+                    scale: _logoScale,
+                    child: const Text('SKS Family',
+                        style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Classement
+                  if (children.isNotEmpty)
+                    FadeTransition(
+                      opacity: _cardOpacity,
+                      child: GlassCard(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('🏆 Classement',
+                                  style: TextStyle(
+                                      color: Colors.amber,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 12),
+                              ...children.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final child = entry.value;
+                                return _ChildStatCard(
+                                  rank: idx + 1,
+                                  name: child.name,
+                                  points: child.points,
+                                  photoBase64: child.photoBase64.isNotEmpty
+                                      ? child.photoBase64
+                                      : null,
+                                  onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              ChildDashboardScreen(
+                                                  childId: child.id))),
+                                );
+                              }),
+                            ]),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+
+                  // Stats globales
                   FadeTransition(
                     opacity: _cardOpacity,
-                    child: GlassCard(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('🏆 Classement',
-                                style: TextStyle(
-                                    color: Colors.amber,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
-                            ...children.asMap().entries.map((entry) {
-                              final idx = entry.key;
-                              final child = entry.value;
-                              return _ChildStatCard(
-                                rank: idx + 1,
-                                name: child.name,
-                                points: child.points,
-                                photoBase64: child.photoBase64.isNotEmpty
-                                    ? child.photoBase64
-                                    : null,
-                                onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                        builder: (_) => ChildDashboardScreen(
-                                            childId: child.id))),
-                              );
-                            }),
-                          ]),
-                    ),
-                  ),
-                const SizedBox(height: 16),
-
-                // Stats globales
-                FadeTransition(
-                  opacity: _cardOpacity,
-                  child: Row(children: [
-                    Expanded(
-                        child: _StatBubble(
-                            label: 'Points', value: '$totalPoints')),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: _StatBubble(
-                            label: 'Badges', value: '$totalBadges')),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: _StatBubble(label: 'Leader', value: leader)),
-                  ]),
-                ),
-                const SizedBox(height: 32),
-
-                // Boutons
-                SlideTransition(
-                  position: _buttonsSlide,
-                  child: FadeTransition(
-                    opacity: _buttonsOpacity,
-                    child: Column(children: [
-                      TvFocusWrapper(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _handleParentMode,
-                            icon: const Icon(Icons.admin_panel_settings,
-                                size: 28),
-                            label: const Text('Mode Parent',
-                                style: TextStyle(fontSize: 18)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.amber,
-                              foregroundColor: Colors.black87,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TvFocusWrapper(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _handleChildMode,
-                            icon: const Icon(Icons.child_care, size: 28),
-                            label: const Text('Mode Enfant',
-                                style: TextStyle(fontSize: 18)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.cyan,
-                              foregroundColor: Colors.black87,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TvFocusWrapper(
-                        child: TextButton.icon(
-                          onPressed: _showHelpDialog,
-                          icon: const Icon(Icons.help_outline,
-                              color: Colors.white54),
-                          label: const Text('Aide',
-                              style: TextStyle(color: Colors.white54)),
-                        ),
-                      ),
+                    child: Row(children: [
+                      Expanded(
+                          child: _StatBubble(
+                              label: 'Points', value: '$totalPoints')),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: _StatBubble(
+                              label: 'Badges', value: '$totalBadges')),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child:
+                              _StatBubble(label: 'Leader', value: leader)),
                     ]),
                   ),
-                ),
-                const SizedBox(height: 24),
-              ]),
-            ),
+                  const SizedBox(height: 32),
+
+                  // Boutons
+                  SlideTransition(
+                    position: _buttonsSlide,
+                    child: FadeTransition(
+                      opacity: _buttonsOpacity,
+                      child: Column(children: [
+                        TvFocusWrapper(
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _handleParentMode,
+                              icon: const Icon(
+                                  Icons.admin_panel_settings,
+                                  size: 28),
+                              label: const Text('Mode Parent',
+                                  style: TextStyle(fontSize: 18)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.amber,
+                                foregroundColor: Colors.black87,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(16)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TvFocusWrapper(
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _handleChildMode,
+                              icon: const Icon(Icons.child_care, size: 28),
+                              label: const Text('Mode Enfant',
+                                  style: TextStyle(fontSize: 18)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.cyan,
+                                foregroundColor: Colors.black87,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(16)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TvFocusWrapper(
+                          child: TextButton.icon(
+                            onPressed: _showHelpDialog,
+                            icon: const Icon(Icons.help_outline,
+                                color: Colors.white54),
+                            label: const Text('Aide',
+                                style:
+                                    TextStyle(color: Colors.white54)),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ]),
+              ),
+            ],
           ),
         ),
       ),
@@ -517,7 +533,9 @@ class _ChildStatCard extends StatelessWidget {
                   : null,
               child: photoBase64 == null
                   ? Text(
-                      name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?',
+                      name.isNotEmpty
+                          ? name.substring(0, 1).toUpperCase()
+                          : '?',
                       style: const TextStyle(color: Colors.white))
                   : null,
             ),
@@ -528,7 +546,8 @@ class _ChildStatCard extends StatelessWidget {
                   children: [
                 Text(name,
                     style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 LinearProgressIndicator(
                     value: progress,
@@ -570,7 +589,8 @@ class _StatBubble extends StatelessWidget {
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
         Text(label,
-            style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            style:
+                const TextStyle(color: Colors.white54, fontSize: 12)),
       ]),
     );
   }
