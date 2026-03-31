@@ -5,7 +5,8 @@ class PunishmentLines {
   int totalLines;
   int completedLines;
   DateTime createdAt;
-  List<String> photoUrls; // base64 encoded photos for penalty evidence
+  List<String> photoUrls;
+  bool pendingValidation;
 
   PunishmentLines({
     required this.id,
@@ -15,6 +16,7 @@ class PunishmentLines {
     this.completedLines = 0,
     DateTime? createdAt,
     List<String>? photoUrls,
+    this.pendingValidation = false,
   })  : createdAt = createdAt ?? DateTime.now(),
         photoUrls = photoUrls ?? [];
 
@@ -30,6 +32,7 @@ class PunishmentLines {
         'completedLines': completedLines,
         'createdAt': createdAt.toIso8601String(),
         'photoUrls': photoUrls,
+        'pendingValidation': pendingValidation,
       };
 
   factory PunishmentLines.fromMap(Map<String, dynamic> map) => PunishmentLines(
@@ -42,5 +45,6 @@ class PunishmentLines {
             ? DateTime.parse(map['createdAt'])
             : DateTime.now(),
         photoUrls: List<String>.from(map['photoUrls'] ?? []),
+        pendingValidation: map['pendingValidation'] ?? false,
       );
 }
