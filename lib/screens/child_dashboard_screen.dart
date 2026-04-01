@@ -370,7 +370,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
     final schoolAvg     = fp.getWeeklySchoolAverage(child.id);
     final behaviorScore = _getBehaviorScoreForSelectedDays(fp);
-    final globalScore   = fp.getWeeklyGlobalScore(child.id);
+    final globalScore   = fp.getGlobalScoreForDays(child.id, _joursSources);
     final bonusMinutes  = fp.getParentBonusMinutes(child.id);
     final immunities    = fp.getImmunitiesForChild(child.id);
     final immunityBonus = immunities
