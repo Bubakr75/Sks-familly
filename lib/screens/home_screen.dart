@@ -1,747 +1,737 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
-import '../widgets/animated_page_transition.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import 'child_dashboard_screen.dart';
+
+import 'dashboard_screen.dart';
+import 'add_points_screen.dart';
+import 'calendar_screen.dart';
+import 'stats_screen.dart';
+import 'settings_screen.dart';
+import 'badges_screen.dart';
 import 'school_notes_screen.dart';
 import 'punishment_lines_screen.dart';
-import 'settings_screen.dart';
-import 'points_screen.dart';
-import 'badges_screen.dart';
+import 'immunity_lines_screen.dart';
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
-import 'sync_screen.dart';
+import 'family_screen.dart';
+import 'child_dashboard_screen.dart';
+import '../widgets/animated_page_transition.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String parentName;
+  const HomeScreen({Key? key, this.parentName = 'Parent'}) : super(key: key);
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  int _selectedIndex = 0;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  int _currentIndex = 0;
+  late AnimationController _navBarController;
 
-  // ── onglets de la barre du bas ────────────────────────────────────────────
-  static const List<_TabItem> _tabs = [
-    _TabItem(icon: Icons.home_rounded, label: 'Accueil'),
-    _TabItem(icon: Icons.stars_rounded, label: 'Points', protected: true),
-    _TabItem(icon: Icons.settings_rounded, label: 'Réglages', protected: true),
-  ];
+  // Indices protégés par PIN : 1 (Points), 4 (Réglages)
+  final List<int> _protectedIndices = [1, 4];
 
-  Widget _getScreen(int index) {
-    switch (index) {
+  @override
+  void initState() {
+    super.initState();
+    _navBarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _navBarController.dispose();
+    super.dispose();
+  }
+
+  Widget _getScreen() {
+    switch (_currentIndex) {
+      case 0:
+        return const DashboardScreen();
       case 1:
-        return const PointsScreen();
+        return const AddPointsScreen();
       case 2:
+        return const CalendarScreen();
+      case 3:
+        return const StatsScreen();
+      case 4:
         return const SettingsScreen();
       default:
-        return _HomeTab(onOpenDrawer: () {
-          _scaffoldKey.currentState?.openDrawer();
+        return const DashboardScreen();
+    }
+  }
+
+  void _onTabTapped(int index) {
+    if (_protectedIndices.contains(index)) {
+      final pinProvider = context.read<PinProvider>();
+      if (pinProvider.isPinSet && !pinProvider.canPerformParentAction()) {
+        PinGuard.guardAction(context, () {
+          setState(() => _currentIndex = index);
         });
+        return;
+      }
     }
+    setState(() => _currentIndex = index);
   }
 
-  Future<void> _onTabTapped(int index) async {
-    if (_tabs[index].protected) {
-      final pin = context.read<PinProvider>();
-      final ok = await PinGuard.check(context, pin);
-      if (!ok) return;
+  // ─── Child Picker SCROLLABLE ──────────────────────────────────
+  void _showChildPicker(BuildContext context, void Function(dynamic child) onSelected) {
+    final provider = context.read<FamilyProvider>();
+    final children = provider.children;
+    if (children.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Aucun enfant enregistré'),
+          backgroundColor: Colors.orange.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
     }
-    setState(() => _selectedIndex = index);
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  DRAWER (gauche)
-  // ══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildDrawer(BuildContext context) {
-    final fp = context.read<FamilyProvider>();
-    final pin = context.read<PinProvider>();
-
-    return Drawer(
-      backgroundColor: const Color(0xFF1A1A2E),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // ── en-tête drawer ─────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(20),
+    if (children.length == 1) {
+      onSelected(children.first);
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.4,
+          minChildSize: 0.25,
+          maxChildSize: 0.75,
+          builder: (_, scrollController) {
+            return Container(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF7C3AED), Color(0xFF9F67FA)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: Color(0xFF1A1A2E),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              child: const Row(
+              padding: const EdgeInsets.all(20),
+              child: Column(
                 children: [
-                  Icon(Icons.menu_book_rounded, color: Colors.white, size: 28),
-                  SizedBox(width: 12),
-                  Text(
-                    'Menu parental',
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Choisir un enfant',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // ── items du drawer ────────────────────────────────────────
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                children: [
-                  _DrawerTile(
-                    icon: Icons.school_rounded,
-                    label: 'Notes de comportement',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      await _showChildPicker(context, fp, (childId) {
-                        Navigator.push(
-                          context,
-                          AnimatedPageTransition(
-                              page: SchoolNotesScreen(childId: childId)),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: children.length,
+                      itemBuilder: (_, i) {
+                        final child = children[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: TvFocusWrapper(
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              onSelected(child);
+                            },
+                            child: GlassCard(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              borderRadius: 14,
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
+                                    child: Text(
+                                      child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+                                      style: const TextStyle(
+                                        color: Colors.cyanAccent,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      child.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${child.points} pts',
+                                    style: const TextStyle(
+                                      color: Colors.cyanAccent,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         );
-                      });
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.edit_note_rounded,
-                    label: 'Lignes de punition',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      Navigator.push(
-                        context,
-                        AnimatedPageTransition(
-                            page: const PunishmentLinesScreen()),
-                      );
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.shield_rounded,
-                    label: 'Immunités',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      // Navigation vers l'écran immunités si existant
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Section immunités'),
-                            backgroundColor: Colors.purple),
-                      );
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.gavel_rounded,
-                    label: 'Tribunal familial',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      Navigator.push(
-                        context,
-                        AnimatedPageTransition(
-                            page: const TribunalScreen()),
-                      );
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.swap_horiz_rounded,
-                    label: 'Troc / Échanges',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      Navigator.push(
-                        context,
-                        AnimatedPageTransition(page: const TradeScreen()),
-                      );
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.military_tech_rounded,
-                    label: 'Badges',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      await _showChildPicker(context, fp, (childId) {
-                        Navigator.push(
-                          context,
-                          AnimatedPageTransition(
-                              page: BadgesScreen(childId: childId)),
-                        );
-                      });
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.sync_rounded,
-                    label: 'Synchronisation',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      Navigator.push(
-                        context,
-                        AnimatedPageTransition(page: const SyncScreen()),
-                      );
-                    },
-                  ),
-                  const Divider(color: Colors.white12, height: 24),
-                  _DrawerTile(
-                    icon: Icons.history_rounded,
-                    label: 'Historique complet',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final ok = await PinGuard.check(context, pin);
-                      if (!ok || !mounted) return;
-                      _showFullHistory(context, fp);
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            // ── version ────────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('v5.0.0',
-                  style: TextStyle(color: Colors.white24, fontSize: 12)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── sélecteur d'enfant ────────────────────────────────────────────────────
-  Future<void> _showChildPicker(BuildContext context, FamilyProvider fp,
-      Function(String childId) onSelected) async {
-    if (fp.children.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Aucun enfant enregistré'),
-            backgroundColor: Colors.orange),
-      );
-      return;
-    }
-    if (fp.children.length == 1) {
-      onSelected(fp.children.first.id);
-      return;
-    }
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Choisir un enfant',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ...fp.children.map((child) => ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.purpleAccent.withOpacity(0.3),
-                    child: Text(
-                      child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
-                      style: const TextStyle(color: Colors.purpleAccent),
+                      },
                     ),
                   ),
-                  title: Text(child.name,
-                      style: const TextStyle(color: Colors.white)),
-                  subtitle: Text('${child.points} pts',
-                      style: const TextStyle(color: Colors.white54)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    onSelected(child.id);
-                  },
-                )),
-          ],
-        ),
-      ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  // ── historique complet ────────────────────────────────────────────────────
-  void _showFullHistory(BuildContext context, FamilyProvider fp) {
-    final allEntries = fp.children
-        .expand((c) => c.history.map((e) => '${c.name} — $e'))
-        .toList()
-        .reversed
-        .toList();
+  // ─── Historique complet ───────────────────────────────────────
+  void _showFullHistory(BuildContext context) {
+    final provider = context.read<FamilyProvider>();
+    final history = provider.history.reversed.toList();
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.7,
-        maxChildSize: 0.95,
-        builder: (_, ctrl) => Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 12),
-            const Text('📜 Historique complet',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Expanded(
-              child: allEntries.isEmpty
-                  ? const Center(
-                      child: Text('Aucun historique',
-                          style: TextStyle(color: Colors.white54)))
-                  : ListView.builder(
-                      controller: ctrl,
-                      itemCount: allEntries.length,
-                      itemBuilder: (_, i) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
-                        child: Text(allEntries[i],
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 13)),
-                      ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          maxChildSize: 0.95,
+          minChildSize: 0.4,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A1A2E),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-            ),
-          ],
-        ),
-      ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '📜 Historique Complet',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${history.length} entrée(s)',
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: history.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Aucun historique pour le moment',
+                              style: TextStyle(color: Colors.white38),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: history.length,
+                            itemBuilder: (_, i) {
+                              final entry = history[i];
+                              final isPositive = entry.points >= 0;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: GlassCard(
+                                  padding: const EdgeInsets.all(12),
+                                  borderRadius: 12,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: (isPositive ? Colors.green : Colors.red)
+                                              .withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          '${isPositive ? '+' : ''}${entry.points}',
+                                          style: TextStyle(
+                                            color: isPositive ? Colors.greenAccent : Colors.redAccent,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              entry.reason,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              _formatDateTime(entry.date),
+                                              style: const TextStyle(
+                                                color: Colors.white38,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (entry.category.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.cyanAccent.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            entry.category,
+                                            style: const TextStyle(
+                                              color: Colors.cyanAccent,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  BUILD PRINCIPAL
-  // ══════════════════════════════════════════════════════════════════════════
+  String _formatDateTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return "À l'instant";
+    if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
+    if (diff.inDays < 7) return 'Il y a ${diff.inDays}j';
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey,
       backgroundColor: Colors.transparent,
-      // ── Drawer GAUCHE ────────────────────────────────────────────────────
+      extendBody: true,
       drawer: _buildDrawer(context),
-      body: Stack(
-        children: [
-          const AnimatedBackground(),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: child,
-            ),
-            child: KeyedSubtree(
-              key: ValueKey(_selectedIndex),
-              child: _getScreen(_selectedIndex),
+      body: AnimatedBackground(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.03, 0),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: KeyedSubtree(
+            key: ValueKey<int>(_currentIndex),
+            child: _getScreen(),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: _navBarController,
+          curve: Curves.easeOutCubic,
+        )),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D1B2E).withValues(alpha: 0.95),
+            border: Border(
+              top: BorderSide(
+                color: Colors.cyanAccent.withValues(alpha: 0.15),
+                width: 0.5,
+              ),
             ),
           ),
-        ],
-      ),
-      // ── Barre de navigation ──────────────────────────────────────────────
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF12122A),
-          border: Border(top: BorderSide(color: Colors.white10)),
-        ),
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_tabs.length, (i) {
-              final tab = _tabs[i];
-              final selected = _selectedIndex == i;
-              return TvFocusWrapper(
-                onActivate: () => _onTabTapped(i),
-                child: GestureDetector(
-                  onTap: () => _onTabTapped(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? Colors.purpleAccent.withOpacity(0.15)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          tab.icon,
-                          color: selected
-                              ? Colors.purpleAccent
-                              : Colors.white38,
-                          size: 24,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          tab.label,
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.purpleAccent
-                                : Colors.white38,
-                            fontSize: 11,
-                            fontWeight: selected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(5, (i) {
+                  final isSelected = _currentIndex == i;
+                  final icons = [
+                    Icons.home_rounded,
+                    Icons.stars_rounded,
+                    Icons.calendar_month_rounded,
+                    Icons.bar_chart_rounded,
+                    Icons.settings_rounded,
+                  ];
+                  final labels = [
+                    'Accueil',
+                    'Points',
+                    'Calendrier',
+                    'Stats',
+                    'Réglages',
+                  ];
+                  return TvFocusWrapper(
+                    onTap: () => _onTabTapped(i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSelected ? 16 : 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.cyanAccent.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedScale(
+                            scale: isSelected ? 1.2 : 1.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              icons[i],
+                              color: isSelected ? Colors.cyanAccent : Colors.white38,
+                              size: 24,
+                            ),
                           ),
+                          const SizedBox(height: 4),
+                          AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 200),
+                            style: TextStyle(
+                              color: isSelected ? Colors.cyanAccent : Colors.white38,
+                              fontSize: isSelected ? 11 : 10,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            child: Text(labels[i]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── DRAWER ───────────────────────────────────────────────────
+  Widget _buildDrawer(BuildContext context) {
+    const drawerBg = Color(0xFF0D1B2E);
+    const accentColor = Colors.cyanAccent;
+
+    return Drawer(
+      backgroundColor: drawerBg,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    accentColor.withValues(alpha: 0.15),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          accentColor.withValues(alpha: 0.3),
+                          accentColor.withValues(alpha: 0.1),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withValues(alpha: 0.2),
+                          blurRadius: 12,
                         ),
                       ],
                     ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.family_restroom_rounded,
+                      color: accentColor,
+                      size: 28,
+                    ),
                   ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  ONGLET ACCUEIL (avec podium amélioré)
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _HomeTab extends StatelessWidget {
-  final VoidCallback onOpenDrawer;
-  const _HomeTab({required this.onOpenDrawer});
-
-  @override
-  Widget build(BuildContext context) {
-    final fp = context.watch<FamilyProvider>();
-    final sorted = fp.childrenSorted;
-
-    return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          // ── AppBar flottante ───────────────────────────────────────────
-          SliverAppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            floating: true,
-            leading: IconButton(
-              icon: const Icon(Icons.menu_rounded, color: Colors.white),
-              onPressed: onOpenDrawer,
-            ),
-            title: const Text(
-              '🏠 Famille',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Icon(Icons.family_restroom_rounded,
-                    color: Colors.purpleAccent.withOpacity(0.7)),
-              ),
-            ],
-          ),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
-                children: [
-                  // ── PODIUM ──────────────────────────────────────────────
-                  if (sorted.length >= 2) ...[
-                    const _SectionTitle('🏆 Classement'),
-                    const SizedBox(height: 12),
-                    _buildPodium(sorted),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // ── LISTE DES ENFANTS ─────────────────────────────────
-                  const _SectionTitle('👨‍👩‍👧‍👦 Profils'),
-                  const SizedBox(height: 12),
-                  if (sorted.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Text(
-                        'Aucun enfant — ajoutez-en un dans Réglages.',
-                        style:
-                            TextStyle(color: Colors.white54, fontSize: 14),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  else
-                    ...sorted.map((child) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: TvFocusWrapper(
-                            onActivate: () => Navigator.push(
-                              context,
-                              AnimatedPageTransition(
-                                  page: ChildDashboardScreen(
-                                      childId: child.id)),
-                            ),
-                            child: GlassCard(
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor:
-                                      Colors.purpleAccent.withOpacity(0.25),
-                                  child: Text(
-                                    child.name.isNotEmpty
-                                        ? child.name[0].toUpperCase()
-                                        : '?',
-                                    style: const TextStyle(
-                                        color: Colors.purpleAccent,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20),
-                                  ),
-                                ),
-                                title: Text(child.name,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16)),
-                                subtitle: Text('${child.points} points',
-                                    style: const TextStyle(
-                                        color: Colors.white54)),
-                                trailing: const Icon(
-                                    Icons.arrow_forward_ios_rounded,
-                                    color: Colors.white24,
-                                    size: 16),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  AnimatedPageTransition(
-                                      page: ChildDashboardScreen(
-                                          childId: child.id)),
-                                ),
-                              ),
-                            ),
-                          ),
-                        )),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Family Rewards',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.parentName,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 14,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  // ── PODIUM AMÉLIORÉ ───────────────────────────────────────────────────────
-  Widget _buildPodium(List<dynamic> sorted) {
-    // Prépare les positions : 2ème, 1er, 3ème
-    final first = sorted.isNotEmpty ? sorted[0] : null;
-    final second = sorted.length > 1 ? sorted[1] : null;
-    final third = sorted.length > 2 ? sorted[2] : null;
+            Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
 
-    Widget podiumColumn({
-      required dynamic child,
-      required int rank,
-      required double height,
-      required Color medalColor,
-      required String medal,
-      required double fontSize,
-    }) {
-      if (child == null) return const SizedBox.shrink();
-      return Expanded(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            // Nom + avatar
-            Column(
-              children: [
-                Text(medal, style: TextStyle(fontSize: fontSize + 4)),
-                const SizedBox(height: 4),
-                CircleAvatar(
-                  radius: rank == 1 ? 30 : 22,
-                  backgroundColor: medalColor.withOpacity(0.25),
-                  child: Text(
-                    child.name.isNotEmpty
-                        ? child.name[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      color: medalColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: rank == 1 ? 22 : 16,
-                    ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  _drawerItem(
+                    icon: Icons.school_rounded,
+                    label: 'Notes Scolaires',
+                    color: Colors.orangeAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      PinGuard.guardAction(context, () {
+                        _showChildPicker(context, (child) {
+                          Navigator.push(
+                            context,
+                            SlidePageRoute(
+                              page: SchoolNotesScreen(childId: child.id),
+                            ),
+                          );
+                        });
+                      });
+                    },
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  child.name,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: rank == 1 ? 14 : 12,
-                    fontWeight: rank == 1
-                        ? FontWeight.bold
-                        : FontWeight.normal,
+                  _drawerItem(
+                    icon: Icons.edit_document,
+                    label: 'Lignes de Punition',
+                    color: Colors.redAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      PinGuard.guardAction(context, () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(page: const PunishmentLinesScreen()),
+                        );
+                      });
+                    },
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  '${child.points} pts',
-                  style: TextStyle(
-                    color: medalColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                  _drawerItem(
+                    icon: Icons.shield_rounded,
+                    label: "Lignes d'Immunité",
+                    color: Colors.amberAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      PinGuard.guardAction(context, () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(page: const ImmunityLinesScreen()),
+                        );
+                      });
+                    },
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Barre du podium
-            Container(
-              height: height,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    medalColor.withOpacity(0.7),
-                    medalColor.withOpacity(0.3),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(10)),
-                border: Border.all(color: medalColor.withOpacity(0.5)),
+                  _drawerItem(
+                    icon: Icons.gavel_rounded,
+                    label: 'Tribunal',
+                    color: Colors.purpleAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        DoorPageRoute(page: const TribunalScreen()),
+                      );
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.sell_rounded,
+                    label: "Vente d'immunités",
+                    color: Colors.tealAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showChildPicker(context, (child) {
+                        Navigator.push(
+                          context,
+                          DoorPageRoute(
+                            page: TradeScreen(childId: child.id),
+                          ),
+                        );
+                      });
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.emoji_events_rounded,
+                    label: 'Badges / Pouvoirs',
+                    color: Colors.yellowAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        ZoomPageRoute(page: const BadgesScreen()),
+                      );
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.sync_rounded,
+                    label: 'Synchronisation',
+                    color: Colors.lightBlueAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        SlidePageRoute(page: const FamilyScreen()),
+                      );
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.history_rounded,
+                    label: 'Historique Complet',
+                    color: Colors.white70,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showFullHistory(context);
+                    },
+                  ),
+                ],
               ),
-              child: Center(
-                child: Text(
-                  '#$rank',
-                  style: TextStyle(
-                    color: medalColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: rank == 1 ? 20 : 16,
-                  ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'v5.0.0',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  fontSize: 12,
                 ),
               ),
             ),
           ],
         ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // 2ème place
-          podiumColumn(
-            child: second,
-            rank: 2,
-            height: 80,
-            medalColor: Colors.blueGrey,
-            medal: '🥈',
-            fontSize: 20,
-          ),
-          const SizedBox(width: 6),
-          // 1ère place (centre)
-          podiumColumn(
-            child: first,
-            rank: 1,
-            height: 120,
-            medalColor: Colors.amber,
-            medal: '🥇',
-            fontSize: 26,
-          ),
-          const SizedBox(width: 6),
-          // 3ème place
-          podiumColumn(
-            child: third,
-            rank: 3,
-            height: 60,
-            medalColor: Colors.brown.shade300,
-            medal: '🥉',
-            fontSize: 18,
-          ),
-        ],
       ),
     );
   }
-}
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  WIDGETS HELPERS
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _TabItem {
-  final IconData icon;
-  final String label;
-  final bool protected;
-  const _TabItem(
-      {required this.icon, required this.label, this.protected = false});
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-  @override
-  Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  Widget _drawerItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: TvFocusWrapper(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withValues(alpha: 0.2),
+                size: 20,
+              ),
+            ],
           ),
         ),
-      );
-}
-
-class _DrawerTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _DrawerTile(
-      {required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-        leading:
-            Icon(icon, color: Colors.purpleAccent.withOpacity(0.85), size: 22),
-        title:
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 14)),
-        onTap: onTap,
-        hoverColor: Colors.purpleAccent.withOpacity(0.1),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      );
+      ),
+    );
+  }
 }
