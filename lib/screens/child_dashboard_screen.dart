@@ -120,19 +120,42 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         .toList();
   }
 
-  // ── CORRECTION : calcul du score comportemental sur TOUT l'historique ──
-  double _getBehaviorScoreAllTime(FamilyProvider fp) {
-    final entries = fp.getHistoryForChild(widget.childId).where((h) =>
-        h.category != 'school_note' &&
-        h.category != 'screen_time_bonus' &&
-        h.category != 'saturday_rating' &&
-        h.category != 'tribunal_vote' &&
-        h.category != 'tribunal_verdict').toList();
+  // ══════════════════════════════════════════════════════════════════
+  // CORRECTION PRINCIPALE : score comportemental basé UNIQUEMENT
+  // sur les jours cochés dans _joursSources (semaine en cours)
+  // ══════════════════════════════════════════════════════════════════
+  double _getBehaviorScoreForSelectedDays(FamilyProvider fp) {
+    if (_joursSources.isEmpty) return 10.0;
+
+    final now = DateTime.now();
+    // Lundi de la semaine en cours
+    final debutSemaine = now.subtract(Duration(days: now.weekday - 1));
+
+    // Construire la liste des dates correspondant aux jours cochés
+    final datesCochees = _joursSources.map((jourIdx) {
+      final d = debutSemaine.add(Duration(days: jourIdx));
+      return DateTime(d.year, d.month, d.day);
+    }).toSet();
+
+    // Filtrer l'historique : uniquement comportemental ET sur les jours cochés
+    final entries = fp.getHistoryForChild(widget.childId).where((h) {
+      if (h.category == 'school_note' ||
+          h.category == 'screen_time_bonus' ||
+          h.category == 'saturday_rating' ||
+          h.category == 'tribunal_vote' ||
+          h.category == 'tribunal_verdict') return false;
+
+      final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
+      return datesCochees.contains(entryDay);
+    }).toList();
+
     if (entries.isEmpty) return 10.0;
+
     final bonusCount   = entries.where((h) => h.isBonus).length;
     final penaltyCount = entries.where((h) => !h.isBonus).length;
     final total = bonusCount + penaltyCount;
     if (total == 0) return 10.0;
+
     return ((bonusCount / total) * 20).clamp(0.0, 20.0);
   }
 
@@ -352,23 +375,22 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final isParent =
         Provider.of<PinProvider>(context, listen: false).isParentMode;
 
-    final schoolAvg    = fp.getWeeklySchoolAverage(child.id);
-    // ── CORRECTION : score comportemental sur tout l'historique ──
-    final behaviorScore = _getBehaviorScoreAllTime(fp);
-    final globalScore  = fp.getWeeklyGlobalScore(child.id);
-    final bonusMinutes = fp.getParentBonusMinutes(child.id);
-    final immunities   = fp.getImmunitiesForChild(child.id);
+    final schoolAvg     = fp.getWeeklySchoolAverage(child.id);
+    // ══ CORRECTION : score comportemental sur les jours sélectionnés ══
+    final behaviorScore = _getBehaviorScoreForSelectedDays(fp);
+    final globalScore   = fp.getWeeklyGlobalScore(child.id);
+    final bonusMinutes  = fp.getParentBonusMinutes(child.id);
+    final immunities    = fp.getImmunitiesForChild(child.id);
     final immunityBonus = immunities
         .where((im) => im.isUsable)
         .fold<int>(0, (s, im) => s + im.availableLines);
 
-    final tempsCalcule = _calculerTempsEcranPourJour(fp);
-    final schoolNotes  = _getSchoolNotes(fp);
+    final tempsCalcule  = _calculerTempsEcranPourJour(fp);
+    final schoolNotes   = _getSchoolNotes(fp);
     final behaviorNotes = _getBehaviorNotes(fp);
 
-    // ── CORRECTION : cercle basé sur _jourCible et tempsCalcule ──
     final cercleMinutes = tempsCalcule;
-    const maxMinutes = 180;
+    const maxMinutes    = 180;
     final ratio = (cercleMinutes / maxMinutes).clamp(0.0, 1.0);
 
     final punishmentsActives = fp.punishments
@@ -510,6 +532,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       child: _miniScoreCard(
                           '🧠',
                           'Comportement',
+                          // ══ Affiche le score basé sur les jours sélectionnés ══
                           '${behaviorScore.toStringAsFixed(1)}/20',
                           behaviorScore >= 10
                               ? Colors.greenAccent
@@ -681,7 +704,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ),
                   child: Column(
                     children: [
-                      // ── CORRECTION : affiche le bon jour ──
                       Text('${_jours[_jourCible]} :',
                           style: const TextStyle(
                               color: Colors.white70, fontSize: 12)),
@@ -739,7 +761,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
           const SizedBox(height: 16),
 
-          // ── CORRECTION : cercle dynamique basé sur _jourCible ──
+          // ── Cercle dynamique basé sur _jourCible ──
           TweenAnimationBuilder<double>(
             key: ValueKey('$_jourCible-$tempsCalcule'),
             tween: Tween(begin: 0.0, end: ratio),
@@ -767,7 +789,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold)),
                             ),
-                            // ── CORRECTION : label dynamique ──
                             Text(_jours[_jourCible],
                                 style: const TextStyle(
                                     color: Colors.white54,
@@ -859,6 +880,30 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           color: Colors.purpleAccent,
                           fontSize: 14,
                           fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  // ══ Indicateur des jours sélectionnés ══
+                  if (_joursSources.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C4DFF).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: const Color(0xFF7C4DFF).withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        _joursSources
+                            .toList()
+                            .sorted((a, b) => a.compareTo(b))
+                            .map((i) => _jours[i].substring(0, 3))
+                            .join(', '),
+                        style: const TextStyle(
+                            color: Color(0xFF7C4DFF),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
                 ]),
                 const SizedBox(height: 10),
                 if (behaviorNotes.isEmpty)
