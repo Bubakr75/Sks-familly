@@ -52,78 +52,93 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _selectedIndex = index);
   }
 
-  // ── vérification du PIN (compatible avec la vraie interface PinProvider) ──
+  // ── vérification PIN avec verifyPin() ─────────────────────────────────────
   Future<bool> _checkPin(BuildContext context, PinProvider pin) async {
-    // Si le provider expose isParentMode ou isUnlocked, on l'utilise
-    try {
-      if (pin.isParentMode) return true;
-    } catch (_) {}
+    if (pin.isParentMode) return true;
+    if (!pin.isPinSet) return true;
 
-    // Sinon on affiche un dialogue de saisie simple
     final ctrl = TextEditingController();
+    bool obscure = true;
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Mode parent',
-            style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: ctrl,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Code PIN',
-            hintStyle: TextStyle(color: Colors.white38),
-            enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24)),
-            focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.purpleAccent)),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2E),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          title: const Row(children: [
+            Icon(Icons.lock_rounded, color: Colors.amber),
+            SizedBox(width: 8),
+            Text('Mode parent',
+                style: TextStyle(color: Colors.white)),
+          ]),
+          content: TextField(
+            controller: ctrl,
+            obscureText: obscure,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            autofocus: true,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 22, letterSpacing: 8, color: Colors.white),
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: '• • • •',
+              hintStyle: const TextStyle(
+                  fontSize: 22,
+                  letterSpacing: 8,
+                  color: Colors.white30),
+              enabledBorder: const UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white24)),
+              focusedBorder: const UnderlineInputBorder(
+                  borderSide:
+                      BorderSide(color: Colors.purpleAccent)),
+              suffixIcon: IconButton(
+                icon: Icon(
+                    obscure
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    color: Colors.white54),
+                onPressed: () => setS(() => obscure = !obscure),
+              ),
+            ),
+            onSubmitted: (_) =>
+                Navigator.pop(ctx, pin.verifyPin(ctrl.text.trim())),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, pin.verifyPin(ctrl.text.trim())),
+              child: const Text('OK',
+                  style: TextStyle(color: Colors.purpleAccent)),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler',
-                style: TextStyle(color: Colors.white54)),
-          ),
-          TextButton(
-            onPressed: () {
-              try {
-                final ok = pin.checkPin(ctrl.text);
-                Navigator.pop(context, ok);
-              } catch (_) {
-                Navigator.pop(context, true);
-              }
-            },
-            child: const Text('OK',
-                style: TextStyle(color: Colors.purpleAccent)),
-          ),
-        ],
       ),
     );
     return result ?? false;
   }
 
-  // ── navigation avec transition ────────────────────────────────────────────
+  // ── navigation avec transition fade ──────────────────────────────────────
   void _navigate(BuildContext context, Widget page) {
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (_, anim, __) => page,
-        transitionsBuilder: (_, anim, __, child) => FadeTransition(
-          opacity: anim,
-          child: child,
-        ),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 300),
       ),
     );
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  DRAWER (gauche)
+  //  DRAWER GAUCHE
   // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildDrawer(BuildContext context) {
@@ -204,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen>
                     },
                   ),
 
-                  // Troc — passe le premier enfant disponible
+                  // Troc
                   _DrawerTile(
                     icon: Icons.swap_horiz_rounded,
                     label: 'Troc / Échanges',
@@ -228,12 +243,11 @@ class _HomeScreenState extends State<HomeScreen>
                       Navigator.pop(context);
                       final ok = await _checkPin(context, pin);
                       if (!ok || !mounted) return;
-                      // BadgesScreen n'a pas de childId selon les erreurs
                       _navigate(context, const BadgesScreen());
                     },
                   ),
 
-                  // Sync (si l'écran existe)
+                  // Synchronisation
                   _DrawerTile(
                     icon: Icons.sync_rounded,
                     label: 'Synchronisation',
@@ -270,8 +284,7 @@ class _HomeScreenState extends State<HomeScreen>
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text('v5.0.0',
-                  style:
-                      TextStyle(color: Colors.white24, fontSize: 12)),
+                  style: TextStyle(color: Colors.white24, fontSize: 12)),
             ),
           ],
         ),
@@ -302,7 +315,8 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       backgroundColor: const Color(0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -317,19 +331,22 @@ class _HomeScreenState extends State<HomeScreen>
             ...fp.children.map(
               (child) => ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.purpleAccent.withOpacity(0.3),
+                  backgroundColor:
+                      Colors.purpleAccent.withOpacity(0.3),
                   child: Text(
                     child.name.isNotEmpty
                         ? child.name[0].toUpperCase()
                         : '?',
-                    style:
-                        const TextStyle(color: Colors.purpleAccent),
+                    style: const TextStyle(
+                        color: Colors.purpleAccent),
                   ),
                 ),
                 title: Text(child.name,
-                    style: const TextStyle(color: Colors.white)),
+                    style:
+                        const TextStyle(color: Colors.white)),
                 subtitle: Text('${child.points} pts',
-                    style: const TextStyle(color: Colors.white54)),
+                    style: const TextStyle(
+                        color: Colors.white54)),
                 onTap: () {
                   Navigator.pop(context);
                   onSelected(child.id);
@@ -344,8 +361,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── historique complet ────────────────────────────────────────────────────
   void _showFullHistory(BuildContext context, FamilyProvider fp) {
-    // Compatible avec pointsHistory ou history
-    List<String> getAllHistory(dynamic child) {
+    List<String> getHistory(dynamic child) {
       try {
         final h = child.history;
         if (h is List) return List<String>.from(h);
@@ -358,8 +374,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final allEntries = fp.children
-        .expand((c) =>
-            getAllHistory(c).map((e) => '${c.name} — $e'))
+        .expand((c) => getHistory(c).map((e) => '${c.name} — $e'))
         .toList()
         .reversed
         .toList();
@@ -369,7 +384,8 @@ class _HomeScreenState extends State<HomeScreen>
       backgroundColor: const Color(0xFF1A1A2E),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.7,
@@ -395,7 +411,8 @@ class _HomeScreenState extends State<HomeScreen>
               child: allEntries.isEmpty
                   ? const Center(
                       child: Text('Aucun historique',
-                          style: TextStyle(color: Colors.white54)))
+                          style:
+                              TextStyle(color: Colors.white54)))
                   : ListView.builder(
                       controller: ctrl,
                       itemCount: allEntries.length,
@@ -442,7 +459,8 @@ class _HomeScreenState extends State<HomeScreen>
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Color(0xFF12122A),
-          border: Border(top: BorderSide(color: Colors.white10)),
+          border:
+              Border(top: BorderSide(color: Colors.white10)),
         ),
         child: SafeArea(
           child: Row(
@@ -525,13 +543,14 @@ class _HomeTab extends StatelessWidget {
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          // ── AppBar ──────────────────────────────────────────────────────
+          // ── AppBar ────────────────────────────────────────────────────
           SliverAppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             floating: true,
             leading: IconButton(
-              icon: const Icon(Icons.menu_rounded, color: Colors.white),
+              icon:
+                  const Icon(Icons.menu_rounded, color: Colors.white),
               onPressed: onOpenDrawer,
             ),
             title: const Text(
@@ -552,12 +571,12 @@ class _HomeTab extends StatelessWidget {
 
           SliverToBoxAdapter(
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── PODIUM ───────────────────────────────────────────────
+                  // ── PODIUM ─────────────────────────────────────────────
                   if (sorted.length >= 2) ...[
                     const _SectionTitle('🏆 Classement'),
                     const SizedBox(height: 12),
@@ -565,7 +584,7 @@ class _HomeTab extends StatelessWidget {
                     const SizedBox(height: 24),
                   ],
 
-                  // ── LISTE DES ENFANTS ─────────────────────────────────
+                  // ── LISTE ENFANTS ──────────────────────────────────────
                   const _SectionTitle('👨‍👩‍👧‍👦 Profils'),
                   const SizedBox(height: 12),
                   if (sorted.isEmpty)
@@ -591,8 +610,8 @@ class _HomeTab extends StatelessWidget {
                             child: ListTile(
                               leading: CircleAvatar(
                                 radius: 24,
-                                backgroundColor:
-                                    Colors.purpleAccent.withOpacity(0.25),
+                                backgroundColor: Colors.purpleAccent
+                                    .withOpacity(0.25),
                                 child: Text(
                                   child.name.isNotEmpty
                                       ? child.name[0].toUpperCase()
@@ -608,7 +627,8 @@ class _HomeTab extends StatelessWidget {
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16)),
-                              subtitle: Text('${child.points} points',
+                              subtitle: Text(
+                                  '${child.points} points',
                                   style: const TextStyle(
                                       color: Colors.white54)),
                               trailing: const Icon(
@@ -617,7 +637,8 @@ class _HomeTab extends StatelessWidget {
                                   size: 16),
                               onTap: () => _navigate(
                                 context,
-                                ChildDashboardScreen(childId: child.id),
+                                ChildDashboardScreen(
+                                    childId: child.id),
                               ),
                             ),
                           ),
@@ -653,7 +674,8 @@ class _HomeTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text(medal,
-                style: TextStyle(fontSize: rank == 1 ? 30 : 22)),
+                style: TextStyle(
+                    fontSize: rank == 1 ? 30 : 22)),
             const SizedBox(height: 4),
             CircleAvatar(
               radius: rank == 1 ? 28 : 20,
@@ -697,7 +719,7 @@ class _HomeTab extends StatelessWidget {
                 gradient: LinearGradient(
                   colors: [
                     color.withOpacity(0.8),
-                    color.withOpacity(0.3)
+                    color.withOpacity(0.3),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -732,14 +754,26 @@ class _HomeTab extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          col(child: second, rank: 2, barH: 75,
-              color: Colors.blueGrey, medal: '🥈'),
+          col(
+              child: second,
+              rank: 2,
+              barH: 75,
+              color: Colors.blueGrey,
+              medal: '🥈'),
           const SizedBox(width: 6),
-          col(child: first, rank: 1, barH: 115,
-              color: Colors.amber, medal: '🥇'),
+          col(
+              child: first,
+              rank: 1,
+              barH: 115,
+              color: Colors.amber,
+              medal: '🥇'),
           const SizedBox(width: 6),
-          col(child: third, rank: 3, barH: 55,
-              color: Colors.brown, medal: '🥉'),
+          col(
+              child: third,
+              rank: 3,
+              barH: 55,
+              color: Colors.brown,
+              medal: '🥉'),
         ],
       ),
     );
@@ -755,7 +789,9 @@ class _TabItem {
   final String label;
   final bool protected;
   const _TabItem(
-      {required this.icon, required this.label, this.protected = false});
+      {required this.icon,
+      required this.label,
+      this.protected = false});
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -777,18 +813,22 @@ class _DrawerTile extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   const _DrawerTile(
-      {required this.icon, required this.label, required this.onTap});
+      {required this.icon,
+      required this.label,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) => ListTile(
         leading: Icon(icon,
-            color: Colors.purpleAccent.withOpacity(0.85), size: 22),
+            color: Colors.purpleAccent.withOpacity(0.85),
+            size: 22),
         title: Text(label,
-            style: const TextStyle(color: Colors.white, fontSize: 14)),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 14)),
         onTap: onTap,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 2),
       );
 }
