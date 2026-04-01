@@ -747,7 +747,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
       ),
     );
     if (confirm == true && mounted) {
-      provider.removeHistoryEntry(widget.childId, note.id);
+      provider.deleteHistoryEntry(note.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
