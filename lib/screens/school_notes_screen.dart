@@ -186,8 +186,7 @@ class _StarsAnimationState extends State<_StarsAnimation>
         final t = _ctrl.value;
         return Stack(alignment: Alignment.center, children: [
           Container(
-              color: Colors.purple
-                  .withOpacity(0.04 * (1 - t))),
+              color: Colors.purple.withOpacity(0.04 * (1 - t))),
           Row(
               mainAxisSize: MainAxisSize.min,
               children: List.generate(widget.starCount, (i) {
@@ -301,7 +300,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
 
     String subject = '';
     int value = 10;
-    int maxValue = 20;
+    int maxValue = 20; // ← MODIF : barème par défaut /20
+    DateTime selectedDate = DateTime.now(); // ← MODIF : date sélectionnable
     final subjectController = TextEditingController();
     const quickSubjects = [
       'Comportement', 'Respect', 'Travail en classe',
@@ -316,9 +316,9 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
       builder: (ctx) {
         return StatefulBuilder(builder: (context, setModalState) {
           return DraggableScrollableSheet(
-            initialChildSize: 0.75,
+            initialChildSize: 0.85,
             minChildSize: 0.5,
-            maxChildSize: 0.9,
+            maxChildSize: 0.95,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
@@ -361,6 +361,60 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                               fontWeight: FontWeight.bold)),
                     ]),
                     const SizedBox(height: 24),
+
+                    // ── MODIF : sélecteur de date ──────────────
+                    const Text('Date',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) => Theme(
+                            data: ThemeData.dark().copyWith(
+                              colorScheme: const ColorScheme.dark(
+                                primary: Colors.purpleAccent,
+                                onPrimary: Colors.white,
+                                surface: Color(0xFF2A2A3E),
+                              ),
+                            ),
+                            child: child!,
+                          ),
+                        );
+                        if (picked != null) {
+                          setModalState(() => selectedDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.purpleAccent.withOpacity(0.4)),
+                        ),
+                        child: Row(children: [
+                          const Icon(Icons.calendar_today_rounded,
+                              color: Colors.purpleAccent, size: 18),
+                          const SizedBox(width: 10),
+                          Text(
+                            '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 15),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.edit_calendar_rounded,
+                              color: Colors.white38, size: 16),
+                        ]),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // ── fin sélecteur de date ──────────────────
+
                     const Text('Critère',
                         style: TextStyle(
                             color: Colors.white70, fontSize: 14)),
@@ -516,6 +570,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                       ),
                     ]),
                     const SizedBox(height: 12),
+
+                    // ── MODIF : barème /10 ou /20 uniquement ───
                     const Text('Barème',
                         style: TextStyle(
                             color: Colors.white70, fontSize: 14)),
@@ -523,7 +579,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                     Row(
                         mainAxisAlignment:
                             MainAxisAlignment.center,
-                        children: [10, 20, 40, 100].map((val) {
+                        children: [10, 20].map((val) {
                           return Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 4),
@@ -559,6 +615,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                             ),
                           );
                         }).toList()),
+                    // ── fin barème ─────────────────────────────
+
                     const SizedBox(height: 28),
                     SizedBox(
                       width: double.infinity,
@@ -566,7 +624,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                       child: TvFocusWrapper(
                         onTap: () => _submitNote(ctx, provider,
                             subject, subjectController.text,
-                            value, maxValue),
+                            value, maxValue, selectedDate), // ← MODIF : passe la date
                         child: ElevatedButton.icon(
                           onPressed: () => _submitNote(
                               ctx,
@@ -574,7 +632,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                               subject,
                               subjectController.text,
                               value,
-                              maxValue),
+                              maxValue,
+                              selectedDate), // ← MODIF : passe la date
                           icon: const Icon(Icons.psychology),
                           label: const Text('Ajouter la note',
                               style: TextStyle(
@@ -600,9 +659,10 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     );
   }
 
+  // ── MODIF : ajout du paramètre date ───────────────────────
   void _submitNote(BuildContext ctx, FamilyProvider provider,
       String subject, String customSubject, int value,
-      int maxValue) async {
+      int maxValue, DateTime date) async {
     final finalSubject =
         subject.isNotEmpty ? subject : customSubject.trim();
     if (finalSubject.isEmpty) {
@@ -618,7 +678,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
 
     provider.addPoints(widget.childId, normalizedScore,
         '$finalSubject: $value/$maxValue',
-        category: 'school_note', isBonus: true);
+        category: 'school_note', isBonus: true, date: date); // ← MODIF : passe la date
 
     if (ctx.mounted) Navigator.pop(ctx);
 
@@ -645,10 +705,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
           RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(h.reason);
       if (match != null) {
         subject = match.group(1)!.trim();
-        noteValue =
-            int.tryParse(match.group(2)!) ?? h.points;
-        noteMax =
-            int.tryParse(match.group(3)!) ?? 20;
+        noteValue = int.tryParse(match.group(2)!) ?? h.points;
+        noteMax = int.tryParse(match.group(3)!) ?? 20;
       }
       return _SchoolNoteDisplay(
           id: h.id,
@@ -657,6 +715,48 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
           maxValue: noteMax,
           date: h.date);
     }).toList();
+  }
+
+  // ── MODIF : suppression d'une note ────────────────────────
+  Future<void> _deleteNote(
+      _SchoolNoteDisplay note, FamilyProvider provider) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('Supprimer la note ?',
+            style: TextStyle(color: Colors.white)),
+        content: Text(
+          '${note.subject} : ${note.value}/${note.maxValue}',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      provider.removeHistoryEntry(widget.childId, note.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Note supprimée'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -698,8 +798,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
             body: Column(children: [
               if (notes.isNotEmpty)
                 Container(
-                  margin:
-                      const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
@@ -708,19 +807,16 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                     ]),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                        color:
-                            Colors.purpleAccent.withOpacity(0.3)),
+                        color: Colors.purpleAccent.withOpacity(0.3)),
                   ),
                   child: Row(children: [
                     Row(
                         children: List.generate(
                             _percentToStars(avgPercent),
                             (i) => const Padding(
-                                padding:
-                                    EdgeInsets.only(right: 2),
+                                padding: EdgeInsets.only(right: 2),
                                 child: Text('⭐',
-                                    style:
-                                        TextStyle(fontSize: 14))))),
+                                    style: TextStyle(fontSize: 14))))),
                     const SizedBox(width: 10),
                     Expanded(
                         child: Column(
@@ -734,8 +830,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                           TweenAnimationBuilder<double>(
                             tween: Tween<double>(
                                 begin: 0, end: avgPercent),
-                            duration: const Duration(
-                                milliseconds: 800),
+                            duration:
+                                const Duration(milliseconds: 800),
                             builder: (context, val, _) => Text(
                                 '${val.round()}%',
                                 style: TextStyle(
@@ -761,23 +857,21 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                                 MainAxisAlignment.center,
                             children: [
                           TweenAnimationBuilder<double>(
-                            tween:
-                                Tween<double>(begin: 0, end: 1),
-                            duration: const Duration(
-                                milliseconds: 800),
+                            tween: Tween<double>(begin: 0, end: 1),
+                            duration:
+                                const Duration(milliseconds: 800),
                             curve: Curves.elasticOut,
                             builder: (context, val, child) =>
                                 Transform.scale(
                                     scale: val, child: child),
                             child: const Icon(Icons.psychology,
-                                size: 64,
-                                color: Colors.white24),
+                                size: 64, color: Colors.white24),
                           ),
                           const SizedBox(height: 12),
                           const Text(
                               'Aucune note comportementale',
-                              style: TextStyle(
-                                  color: Colors.white54)),
+                              style:
+                                  TextStyle(color: Colors.white54)),
                         ]))
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(
@@ -786,119 +880,121 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                         itemBuilder: (context, index) {
                           final note = notes[index];
                           final percentage = note.maxValue > 0
-                              ? (note.value /
-                                      note.maxValue *
-                                      100)
+                              ? (note.value / note.maxValue * 100)
                               : 0.0;
                           final isGood = percentage >= 50;
-                          final stars =
-                              _percentToStars(percentage);
+                          final stars = _percentToStars(percentage);
                           return Padding(
-                            padding: const EdgeInsets.only(
-                                bottom: 8),
-                            child: TvFocusWrapper(
-                              onTap: () =>
-                                  _showNoteDetail(note, provider),
-                              child: GestureDetector(
+                            padding:
+                                const EdgeInsets.only(bottom: 8),
+                            // ── MODIF : Dismissible pour swipe suppression ──
+                            child: Dismissible(
+                              key: Key(note.id),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding:
+                                    const EdgeInsets.only(right: 20),
+                                decoration: BoxDecoration(
+                                  color:
+                                      Colors.red.withOpacity(0.25),
+                                  borderRadius:
+                                      BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                    Icons.delete_rounded,
+                                    color: Colors.redAccent,
+                                    size: 28),
+                              ),
+                              confirmDismiss: (_) =>
+                                  _confirmDelete(note),
+                              onDismissed: (_) =>
+                                  _deleteNote(note, provider),
+                              child: TvFocusWrapper(
                                 onTap: () => _showNoteDetail(
                                     note, provider),
-                                child: GlassCard(
-                                  child: Padding(
-                                    padding:
-                                        const EdgeInsets.all(16),
-                                    child: Row(children: [
-                                      TweenAnimationBuilder<
-                                          double>(
-                                        tween: Tween<double>(
-                                            begin: 0,
-                                            end: percentage),
-                                        duration: Duration(
-                                            milliseconds:
-                                                600 + index * 100),
-                                        curve:
-                                            Curves.easeOutCubic,
-                                        builder: (context, val,
-                                                _) =>
-                                            Container(
-                                              width: 48,
-                                              height: 48,
-                                              decoration: BoxDecoration(
-                                                  shape: BoxShape
-                                                      .circle,
-                                                  color: (isGood
-                                                          ? Colors
-                                                              .greenAccent
-                                                          : Colors
-                                                              .redAccent)
-                                                      .withOpacity(
-                                                          0.15)),
-                                              child: Center(
-                                                  child: Text(
-                                                      '${val.round()}%',
-                                                      style: TextStyle(
-                                                          color: isGood
-                                                              ? Colors
-                                                                  .greenAccent
-                                                              : Colors
-                                                                  .redAccent,
-                                                          fontWeight:
-                                                              FontWeight
-                                                                  .bold,
-                                                          fontSize:
-                                                              13))),
-                                            ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                          child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment
-                                                      .start,
-                                              children: [
-                                            Text(note.subject,
-                                                style: const TextStyle(
-                                                    color:
-                                                        Colors.white,
-                                                    fontSize: 15,
-                                                    fontWeight:
-                                                        FontWeight
-                                                            .w600)),
-                                            const SizedBox(
-                                                height: 4),
-                                            Row(children: [
-                                              Text(
-                                                  '${note.value}/${note.maxValue}',
+                                child: GestureDetector(
+                                  onTap: () => _showNoteDetail(
+                                      note, provider),
+                                  child: GlassCard(
+                                    child: Padding(
+                                      padding:
+                                          const EdgeInsets.all(16),
+                                      child: Row(children: [
+                                        TweenAnimationBuilder<
+                                            double>(
+                                          tween: Tween<double>(
+                                              begin: 0,
+                                              end: percentage),
+                                          duration: Duration(
+                                              milliseconds:
+                                                  600 + index * 100),
+                                          curve: Curves.easeOutCubic,
+                                          builder:
+                                              (context, val, _) =>
+                                                  Container(
+                                                    width: 48,
+                                                    height: 48,
+                                                    decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: (isGood ? Colors.greenAccent : Colors.redAccent).withOpacity(0.15)),
+                                                    child: Center(
+                                                        child: Text(
+                                                            '${val.round()}%',
+                                                            style: TextStyle(
+                                                                color: isGood ? Colors.greenAccent : Colors.redAccent,
+                                                                fontWeight: FontWeight.bold,
+                                                                fontSize: 13))),
+                                                  ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                            child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment
+                                                        .start,
+                                                children: [
+                                              Text(note.subject,
                                                   style: const TextStyle(
-                                                      color: Colors
-                                                          .white54,
-                                                      fontSize: 13)),
-                                              const SizedBox(
-                                                  width: 8),
-                                              ...List.generate(
-                                                  stars,
-                                                  (i) => const Padding(
-                                                      padding: EdgeInsets
-                                                          .only(
-                                                              right:
-                                                                  1),
-                                                      child: Text(
-                                                          '⭐',
-                                                          style: TextStyle(
-                                                              fontSize:
-                                                                  10)))),
-                                            ]),
-                                          ])),
-                                      Text(
-                                          '${note.date.day.toString().padLeft(2, '0')}/${note.date.month.toString().padLeft(2, '0')}',
-                                          style: const TextStyle(
-                                              color: Colors.white38,
-                                              fontSize: 12)),
-                                      const SizedBox(width: 4),
-                                      const Icon(
-                                          Icons.chevron_right,
-                                          color: Colors.white24,
-                                          size: 18),
-                                    ]),
+                                                      color: Colors.white,
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.w600)),
+                                              const SizedBox(height: 4),
+                                              Row(children: [
+                                                Text(
+                                                    '${note.value}/${note.maxValue}',
+                                                    style: const TextStyle(
+                                                        color: Colors.white54,
+                                                        fontSize: 13)),
+                                                const SizedBox(width: 8),
+                                                ...List.generate(
+                                                    stars,
+                                                    (i) => const Padding(
+                                                        padding: EdgeInsets.only(right: 1),
+                                                        child: Text('⭐', style: TextStyle(fontSize: 10)))),
+                                              ]),
+                                            ])),
+                                        // ── MODIF : bouton supprimer + date complète ──
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                                '${note.date.day.toString().padLeft(2, '0')}/${note.date.month.toString().padLeft(2, '0')}/${note.date.year}',
+                                                style: const TextStyle(
+                                                    color: Colors.white38,
+                                                    fontSize: 11)),
+                                            const SizedBox(height: 4),
+                                            GestureDetector(
+                                              onTap: () => _deleteNote(note, provider),
+                                              child: const Icon(
+                                                  Icons.delete_outline_rounded,
+                                                  color: Colors.redAccent,
+                                                  size: 18),
+                                            ),
+                                          ],
+                                        ),
+                                      ]),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -908,8 +1004,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                       ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 child: SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -918,13 +1013,13 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _showAddNote(provider),
                       icon: const Icon(Icons.add),
-                      label: const Text('Ajouter une note comportementale',
+                      label: const Text(
+                          'Ajouter une note comportementale',
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Colors.purple.shade700,
+                          backgroundColor: Colors.purple.shade700,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius:
@@ -938,6 +1033,37 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
         );
       },
     );
+  }
+
+  // ── MODIF : confirmation suppression séparée ──────────────
+  Future<bool> _confirmDelete(_SchoolNoteDisplay note) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('Supprimer la note ?',
+            style: TextStyle(color: Colors.white)),
+        content: Text(
+          '${note.subject} : ${note.value}/${note.maxValue}',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   void _showNoteDetail(
@@ -992,12 +1118,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                 children: List.generate(stars, (i) {
                   return TweenAnimationBuilder<double>(
                     tween: Tween<double>(begin: 0, end: 1),
-                    duration: Duration(
-                        milliseconds: 400 + i * 150),
+                    duration:
+                        Duration(milliseconds: 400 + i * 150),
                     curve: Curves.elasticOut,
                     builder: (context, val, child) =>
-                        Transform.scale(
-                            scale: val, child: child),
+                        Transform.scale(scale: val, child: child),
                     child: const Padding(
                         padding: EdgeInsets.symmetric(
                             horizontal: 4),
@@ -1012,6 +1137,25 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
           _detailRow(
               'Date',
               '${note.date.day.toString().padLeft(2, '0')}/${note.date.month.toString().padLeft(2, '0')}/${note.date.year}'),
+          const SizedBox(height: 16),
+          // ── MODIF : bouton supprimer dans le détail ────────
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _deleteNote(note, provider);
+              },
+              icon: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.redAccent),
+              label: const Text('Supprimer cette note',
+                  style: TextStyle(color: Colors.redAccent)),
+              style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.redAccent),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12))),
+            ),
+          ),
           const SizedBox(height: 24),
         ]),
       ),
