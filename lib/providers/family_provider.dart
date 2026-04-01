@@ -149,12 +149,14 @@ class FamilyProvider extends ChangeNotifier {
       _punishments = list;
       _saveBoxFromList(_punishmentsBox, _punishments, (e) => e.id, (e) => e.toMap());
       notifyListeners();
-    };
-    _firestore.onNotesChanged = (list) {
-      _notes = list;
-      _saveBoxFromList(_notesBox, _notes, (e) => e.id, (e) => e.toMap());
-      notifyListeners();
-    };
+    // APRÈS :
+_firestore.onHistoryChanged = (list, _) {
+  _history = list.where((h) => !_deletedEntryIds.contains(h.id)).toList();
+  _history.sort((a, b) => b.date.compareTo(a.date));
+  _saveBoxFromList(_historyBox, _history, (e) => e.id, (e) => e.toMap());
+  notifyListeners();
+};
+      
     _firestore.onImmunitiesChanged = (list) {
       _immunities = list;
       _saveBoxFromList(_immunitiesBox, _immunities, (e) => e.id, (e) => e.toMap());
