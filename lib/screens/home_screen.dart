@@ -12,10 +12,6 @@ import 'badges_screen.dart';
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  HOME SCREEN
-// ══════════════════════════════════════════════════════════════════════════════
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -52,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _selectedIndex = index);
   }
 
-  // ── vérification PIN avec verifyPin() ─────────────────────────────────────
   Future<bool> _checkPin(BuildContext context, PinProvider pin) async {
     if (pin.isParentMode) return true;
     if (!pin.isPinSet) return true;
@@ -91,8 +86,7 @@ class _HomeScreenState extends State<HomeScreen>
               enabledBorder: const UnderlineInputBorder(
                   borderSide: BorderSide(color: Colors.white24)),
               focusedBorder: const UnderlineInputBorder(
-                  borderSide:
-                      BorderSide(color: Colors.purpleAccent)),
+                  borderSide: BorderSide(color: Colors.purpleAccent)),
               suffixIcon: IconButton(
                 icon: Icon(
                     obscure
@@ -124,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen>
     return result ?? false;
   }
 
-  // ── navigation avec transition fade ──────────────────────────────────────
   void _navigate(BuildContext context, Widget page) {
     Navigator.push(
       context,
@@ -137,10 +130,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  DRAWER GAUCHE
-  // ══════════════════════════════════════════════════════════════════════════
-
   Widget _buildDrawer(BuildContext context) {
     final fp = context.read<FamilyProvider>();
     final pin = context.read<PinProvider>();
@@ -150,7 +139,6 @@ class _HomeScreenState extends State<HomeScreen>
       child: SafeArea(
         child: Column(
           children: [
-            // ── en-tête ────────────────────────────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -174,13 +162,10 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-
-            // ── items ──────────────────────────────────────────────────
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  // Notes de comportement
                   _DrawerTile(
                     icon: Icons.school_rounded,
                     label: 'Notes de comportement',
@@ -194,8 +179,6 @@ class _HomeScreenState extends State<HomeScreen>
                       });
                     },
                   ),
-
-                  // Lignes de punition
                   _DrawerTile(
                     icon: Icons.edit_note_rounded,
                     label: 'Lignes de punition',
@@ -206,8 +189,6 @@ class _HomeScreenState extends State<HomeScreen>
                       _navigate(context, const PunishmentLinesScreen());
                     },
                   ),
-
-                  // Tribunal
                   _DrawerTile(
                     icon: Icons.gavel_rounded,
                     label: 'Tribunal familial',
@@ -218,8 +199,6 @@ class _HomeScreenState extends State<HomeScreen>
                       _navigate(context, const TribunalScreen());
                     },
                   ),
-
-                  // Troc
                   _DrawerTile(
                     icon: Icons.swap_horiz_rounded,
                     label: 'Troc / Échanges',
@@ -234,8 +213,6 @@ class _HomeScreenState extends State<HomeScreen>
                       );
                     },
                   ),
-
-                  // Badges
                   _DrawerTile(
                     icon: Icons.military_tech_rounded,
                     label: 'Badges',
@@ -246,8 +223,6 @@ class _HomeScreenState extends State<HomeScreen>
                       _navigate(context, const BadgesScreen());
                     },
                   ),
-
-                  // Synchronisation
                   _DrawerTile(
                     icon: Icons.sync_rounded,
                     label: 'Synchronisation',
@@ -263,10 +238,7 @@ class _HomeScreenState extends State<HomeScreen>
                       );
                     },
                   ),
-
                   const Divider(color: Colors.white12, height: 24),
-
-                  // Historique complet
                   _DrawerTile(
                     icon: Icons.history_rounded,
                     label: 'Historique complet',
@@ -280,7 +252,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text('v5.0.0',
@@ -292,7 +263,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ── sélecteur d'enfant ────────────────────────────────────────────────────
   Future<void> _showChildPicker(
     BuildContext context,
     FamilyProvider fp,
@@ -342,11 +312,10 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 title: Text(child.name,
-                    style:
-                        const TextStyle(color: Colors.white)),
+                    style: const TextStyle(color: Colors.white)),
                 subtitle: Text('${child.points} pts',
-                    style: const TextStyle(
-                        color: Colors.white54)),
+                    style:
+                        const TextStyle(color: Colors.white54)),
                 onTap: () {
                   Navigator.pop(context);
                   onSelected(child.id);
@@ -359,7 +328,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ── historique complet ────────────────────────────────────────────────────
   void _showFullHistory(BuildContext context, FamilyProvider fp) {
     List<String> getHistory(dynamic child) {
       try {
@@ -411,8 +379,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: allEntries.isEmpty
                   ? const Center(
                       child: Text('Aucun historique',
-                          style:
-                              TextStyle(color: Colors.white54)))
+                          style: TextStyle(color: Colors.white54)))
                   : ListView.builder(
                       controller: ctrl,
                       itemCount: allEntries.length,
@@ -431,10 +398,6 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  BUILD PRINCIPAL
-  // ══════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -459,8 +422,7 @@ class _HomeScreenState extends State<HomeScreen>
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Color(0xFF12122A),
-          border:
-              Border(top: BorderSide(color: Colors.white10)),
+          border: Border(top: BorderSide(color: Colors.white10)),
         ),
         child: SafeArea(
           child: Row(
@@ -516,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  ONGLET ACCUEIL
+//  ONGLET ACCUEIL — sans podium
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _HomeTab extends StatelessWidget {
@@ -543,14 +505,12 @@ class _HomeTab extends StatelessWidget {
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          // ── AppBar ────────────────────────────────────────────────────
           SliverAppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             floating: true,
             leading: IconButton(
-              icon:
-                  const Icon(Icons.menu_rounded, color: Colors.white),
+              icon: const Icon(Icons.menu_rounded, color: Colors.white),
               onPressed: onOpenDrawer,
             ),
             title: const Text(
@@ -568,7 +528,6 @@ class _HomeTab extends StatelessWidget {
               ),
             ],
           ),
-
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -576,17 +535,7 @@ class _HomeTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── PODIUM ─────────────────────────────────────────────
-                  if (sorted.length >= 2) ...[
-                    const _SectionTitle('🏆 Classement'),
-                    const SizedBox(height: 12),
-                    _buildPodium(sorted),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // ── LISTE ENFANTS ──────────────────────────────────────
-                  const _SectionTitle('👨‍👩‍👧‍👦 Profils'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   if (sorted.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(32),
@@ -654,130 +603,6 @@ class _HomeTab extends StatelessWidget {
       ),
     );
   }
-
-  // ── PODIUM AMÉLIORÉ ───────────────────────────────────────────────────────
-  Widget _buildPodium(List<dynamic> sorted) {
-    final first = sorted.isNotEmpty ? sorted[0] : null;
-    final second = sorted.length > 1 ? sorted[1] : null;
-    final third = sorted.length > 2 ? sorted[2] : null;
-
-    Widget col({
-      required dynamic child,
-      required int rank,
-      required double barH,
-      required Color color,
-      required String medal,
-    }) {
-      if (child == null) return const Expanded(child: SizedBox.shrink());
-      return Expanded(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(medal,
-                style: TextStyle(
-                    fontSize: rank == 1 ? 30 : 22)),
-            const SizedBox(height: 4),
-            CircleAvatar(
-              radius: rank == 1 ? 28 : 20,
-              backgroundColor: color.withOpacity(0.25),
-              child: Text(
-                child.name.isNotEmpty
-                    ? child.name[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: rank == 1 ? 20 : 14,
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              child.name,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: rank == 1 ? 14 : 11,
-                fontWeight: rank == 1
-                    ? FontWeight.bold
-                    : FontWeight.normal,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              '${child.points}pts',
-              style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              height: barH,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    color.withOpacity(0.8),
-                    color.withOpacity(0.3),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(8)),
-                border: Border.all(color: color.withOpacity(0.4)),
-              ),
-              child: Center(
-                child: Text(
-                  '#$rank',
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                    fontSize: rank == 1 ? 18 : 14,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          col(
-              child: second,
-              rank: 2,
-              barH: 75,
-              color: Colors.blueGrey,
-              medal: '🥈'),
-          const SizedBox(width: 6),
-          col(
-              child: first,
-              rank: 1,
-              barH: 115,
-              color: Colors.amber,
-              medal: '🥇'),
-          const SizedBox(width: 6),
-          col(
-              child: third,
-              rank: 3,
-              barH: 55,
-              color: Colors.brown,
-              medal: '🥉'),
-        ],
-      ),
-    );
-  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -792,20 +617,6 @@ class _TabItem {
       {required this.icon,
       required this.label,
       this.protected = false});
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      );
 }
 
 class _DrawerTile extends StatelessWidget {
