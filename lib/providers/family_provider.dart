@@ -40,7 +40,6 @@ class FamilyProvider extends ChangeNotifier {
   List<BadgeModel>      _customBadges  = [];
   List<TradeModel>      _trades        = [];
 
-  // ── AJOUT : mémorise les IDs supprimés pour résister aux syncs Firestore ──
   final Set<String> _deletedEntryIds = {};
 
   String? _familyCode;
@@ -140,7 +139,6 @@ class FamilyProvider extends ChangeNotifier {
       notifyListeners();
     };
     _firestore.onHistoryChanged = (list, _) {
-      // ── CORRECTION : filtre les entrées supprimées localement ──
       _history = list.where((h) => !_deletedEntryIds.contains(h.id)).toList();
       _history.sort((a, b) => b.date.compareTo(a.date));
       _saveBoxFromList(_historyBox, _history, (e) => e.id, (e) => e.toMap());
@@ -608,6 +606,10 @@ class FamilyProvider extends ChangeNotifier {
     return '${childId}_${weekStart.year}_${weekStart.month}_${weekStart.day}_$key';
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // MÉTHODES ORIGINALES (semaine entière)
+  // ══════════════════════════════════════════════════════════════════
+
   double getWeeklySchoolAverage(String childId) {
     final notes = _getWeekSchoolNotes(childId);
     if (notes.isEmpty) return -1;
@@ -627,12 +629,71 @@ class FamilyProvider extends ChangeNotifier {
     return ((bonusCount / total) * 20).clamp(0.0, 20.0);
   }
 
+  // ══ 50% scolaire + 50% comportemental ══
   double getWeeklyGlobalScore(String childId) {
     final sa = getWeeklySchoolAverage(childId);
     final bs = getWeeklyBehaviorScore(childId);
     if (sa < 0) return bs;
-    return (sa * 0.6 + bs * 0.4);
+    return (sa * 0.5 + bs * 0.5);
   }
+
+  // ══════════════════════════════════════════════════════════════════
+  // NOUVELLES MÉTHODES : calcul sur les jours sélectionnés
+  // joursSources = Set d'indices (0=Lundi, 1=Mardi, ... 6=Dimanche)
+  // ══════════════════════════════════════════════════════════════════
+
+  Set<DateTime> _getSelectedDates(Set<int> joursSources) {
+    final now = DateTime.now();
+    final debutSemaine = now.subtract(Duration(days: now.weekday - 1));
+    return joursSources.map((jourIdx) {
+      final d = debutSemaine.add(Duration(days: jourIdx));
+      return DateTime(d.year, d.month, d.day);
+    }).toSet();
+  }
+
+  double getSchoolAverageForDays(String childId, Set<int> joursSources) {
+    if (joursSources.isEmpty) return -1;
+    final datesCochees = _getSelectedDates(joursSources);
+    final notes = _history.where((h) {
+      if (h.childId != childId) return false;
+      if (h.category != 'school_note') return false;
+      final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
+      return datesCochees.contains(entryDay);
+    }).toList();
+    if (notes.isEmpty) return -1;
+    return notes.fold<int>(0, (s, n) => s + n.points) / notes.length;
+  }
+
+  double getBehaviorScoreForDays(String childId, Set<int> joursSources) {
+    if (joursSources.isEmpty) return 10.0;
+    final datesCochees = _getSelectedDates(joursSources);
+    final entries = _history.where((h) {
+      if (h.childId != childId) return false;
+      if (h.category == 'school_note' ||
+          h.category == 'screen_time_bonus' ||
+          h.category == 'saturday_rating' ||
+          h.category == 'tribunal_vote' ||
+          h.category == 'tribunal_verdict') return false;
+      final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
+      return datesCochees.contains(entryDay);
+    }).toList();
+    if (entries.isEmpty) return 10.0;
+    final bonusCount   = entries.where((h) => h.isBonus).length;
+    final penaltyCount = entries.where((h) => !h.isBonus).length;
+    final total = bonusCount + penaltyCount;
+    if (total == 0) return 10.0;
+    return ((bonusCount / total) * 20).clamp(0.0, 20.0);
+  }
+
+  // ══ 50% scolaire + 50% comportemental sur les jours sélectionnés ══
+  double getGlobalScoreForDays(String childId, Set<int> joursSources) {
+    final sa = getSchoolAverageForDays(childId, joursSources);
+    final bs = getBehaviorScoreForDays(childId, joursSources);
+    if (sa < 0) return bs;
+    return (sa * 0.5 + bs * 0.5);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
 
   int _minutesFromGlobalScore(double score) {
     if (score >= 18) return 180;
@@ -1076,15 +1137,10 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Suppression d'une entrée d'historique (bonus/pénalité/note) ──
   Future<void> deleteHistoryEntry(String entryId) async {
-    // 1. Mémorise l'ID pour bloquer toute réapparition via Firestore
     _deletedEntryIds.add(entryId);
-    // 2. Retire de la liste en mémoire
     _history.removeWhere((h) => h.id == entryId);
-    // 3. Supprime de Hive
     await _historyBox.delete(entryId);
-    // 4. Supprime de Firestore si connecté
     if (_firestore.isConnected && _firestore.familyId != null) {
       try {
         await FirebaseFirestore.instance
