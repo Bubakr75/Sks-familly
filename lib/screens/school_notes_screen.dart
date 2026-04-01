@@ -300,8 +300,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
 
     String subject = '';
     int value = 10;
-    int maxValue = 20; // ← MODIF : barème par défaut /20
-    DateTime selectedDate = DateTime.now(); // ← MODIF : date sélectionnable
+    int maxValue = 20;
+    DateTime selectedDate = DateTime.now();
     final subjectController = TextEditingController();
     const quickSubjects = [
       'Comportement', 'Respect', 'Travail en classe',
@@ -362,7 +362,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                     ]),
                     const SizedBox(height: 24),
 
-                    // ── MODIF : sélecteur de date ──────────────
                     const Text('Date',
                         style: TextStyle(
                             color: Colors.white70, fontSize: 14)),
@@ -395,7 +394,9 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.06),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.purpleAccent.withOpacity(0.4)),
+                          border: Border.all(
+                              color: Colors.purpleAccent
+                                  .withOpacity(0.4)),
                         ),
                         child: Row(children: [
                           const Icon(Icons.calendar_today_rounded,
@@ -413,7 +414,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // ── fin sélecteur de date ──────────────────
 
                     const Text('Critère',
                         style: TextStyle(
@@ -571,7 +571,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                     ]),
                     const SizedBox(height: 12),
 
-                    // ── MODIF : barème /10 ou /20 uniquement ───
                     const Text('Barème',
                         style: TextStyle(
                             color: Colors.white70, fontSize: 14)),
@@ -615,7 +614,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                             ),
                           );
                         }).toList()),
-                    // ── fin barème ─────────────────────────────
 
                     const SizedBox(height: 28),
                     SizedBox(
@@ -624,7 +622,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                       child: TvFocusWrapper(
                         onTap: () => _submitNote(ctx, provider,
                             subject, subjectController.text,
-                            value, maxValue, selectedDate), // ← MODIF : passe la date
+                            value, maxValue, selectedDate),
                         child: ElevatedButton.icon(
                           onPressed: () => _submitNote(
                               ctx,
@@ -633,7 +631,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                               subjectController.text,
                               value,
                               maxValue,
-                              selectedDate), // ← MODIF : passe la date
+                              selectedDate),
                           icon: const Icon(Icons.psychology),
                           label: const Text('Ajouter la note',
                               style: TextStyle(
@@ -659,7 +657,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     );
   }
 
-  // ── MODIF : ajout du paramètre date ───────────────────────
   void _submitNote(BuildContext ctx, FamilyProvider provider,
       String subject, String customSubject, int value,
       int maxValue, DateTime date) async {
@@ -678,7 +675,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
 
     provider.addPoints(widget.childId, normalizedScore,
         '$finalSubject: $value/$maxValue',
-        category: 'school_note', isBonus: true, date: date); // ← MODIF : passe la date
+        category: 'school_note', isBonus: true, date: date);
 
     if (ctx.mounted) Navigator.pop(ctx);
 
@@ -717,7 +714,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     }).toList();
   }
 
-  // ── MODIF : suppression d'une note ────────────────────────
   Future<void> _deleteNote(
       _SchoolNoteDisplay note, FamilyProvider provider) async {
     final confirm = await showDialog<bool>(
@@ -887,7 +883,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                           return Padding(
                             padding:
                                 const EdgeInsets.only(bottom: 8),
-                            // ── MODIF : Dismissible pour swipe suppression ──
                             child: Dismissible(
                               key: Key(note.id),
                               direction: DismissDirection.endToStart,
@@ -908,8 +903,19 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                               ),
                               confirmDismiss: (_) =>
                                   _confirmDelete(note),
-                              onDismissed: (_) =>
-                                  _deleteNote(note, provider),
+                              // ══ CORRECTION : suppression directe sans re-confirmation ══
+                              onDismissed: (_) async {
+                                provider.deleteHistoryEntry(note.id);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Note supprimée'),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                }
+                              },
                               child: TvFocusWrapper(
                                 onTap: () => _showNoteDetail(
                                     note, provider),
@@ -921,8 +927,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                                       padding:
                                           const EdgeInsets.all(16),
                                       child: Row(children: [
-                                        TweenAnimationBuilder<
-                                            double>(
+                                        TweenAnimationBuilder<double>(
                                           tween: Tween<double>(
                                               begin: 0,
                                               end: percentage),
@@ -930,35 +935,40 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                                               milliseconds:
                                                   600 + index * 100),
                                           curve: Curves.easeOutCubic,
-                                          builder:
-                                              (context, val, _) =>
-                                                  Container(
-                                                    width: 48,
-                                                    height: 48,
-                                                    decoration: BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        color: (isGood ? Colors.greenAccent : Colors.redAccent).withOpacity(0.15)),
-                                                    child: Center(
-                                                        child: Text(
-                                                            '${val.round()}%',
-                                                            style: TextStyle(
-                                                                color: isGood ? Colors.greenAccent : Colors.redAccent,
-                                                                fontWeight: FontWeight.bold,
-                                                                fontSize: 13))),
-                                                  ),
+                                          builder: (context, val, _) =>
+                                              Container(
+                                                width: 48,
+                                                height: 48,
+                                                decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: (isGood
+                                                            ? Colors.greenAccent
+                                                            : Colors.redAccent)
+                                                        .withOpacity(0.15)),
+                                                child: Center(
+                                                    child: Text(
+                                                        '${val.round()}%',
+                                                        style: TextStyle(
+                                                            color: isGood
+                                                                ? Colors.greenAccent
+                                                                : Colors.redAccent,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            fontSize: 13))),
+                                              ),
                                         ),
                                         const SizedBox(width: 14),
                                         Expanded(
                                             child: Column(
                                                 crossAxisAlignment:
-                                                    CrossAxisAlignment
-                                                        .start,
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                               Text(note.subject,
                                                   style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 15,
-                                                      fontWeight: FontWeight.w600)),
+                                                      fontWeight:
+                                                          FontWeight.w600)),
                                               const SizedBox(height: 4),
                                               Row(children: [
                                                 Text(
@@ -970,13 +980,16 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                                                 ...List.generate(
                                                     stars,
                                                     (i) => const Padding(
-                                                        padding: EdgeInsets.only(right: 1),
-                                                        child: Text('⭐', style: TextStyle(fontSize: 10)))),
+                                                        padding: EdgeInsets.only(
+                                                            right: 1),
+                                                        child: Text('⭐',
+                                                            style: TextStyle(
+                                                                fontSize: 10)))),
                                               ]),
                                             ])),
-                                        // ── MODIF : bouton supprimer + date complète ──
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
                                           children: [
                                             Text(
                                                 '${note.date.day.toString().padLeft(2, '0')}/${note.date.month.toString().padLeft(2, '0')}/${note.date.year}',
@@ -985,9 +998,11 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                                                     fontSize: 11)),
                                             const SizedBox(height: 4),
                                             GestureDetector(
-                                              onTap: () => _deleteNote(note, provider),
+                                              onTap: () => _deleteNote(
+                                                  note, provider),
                                               child: const Icon(
-                                                  Icons.delete_outline_rounded,
+                                                  Icons
+                                                      .delete_outline_rounded,
                                                   color: Colors.redAccent,
                                                   size: 18),
                                             ),
@@ -1035,7 +1050,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
     );
   }
 
-  // ── MODIF : confirmation suppression séparée ──────────────
   Future<bool> _confirmDelete(_SchoolNoteDisplay note) async {
     final result = await showDialog<bool>(
       context: context,
@@ -1138,7 +1152,6 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
               'Date',
               '${note.date.day.toString().padLeft(2, '0')}/${note.date.month.toString().padLeft(2, '0')}/${note.date.year}'),
           const SizedBox(height: 16),
-          // ── MODIF : bouton supprimer dans le détail ────────
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
