@@ -107,9 +107,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       isScrollControlled: true,
       builder: (ctx) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.4,
-          minChildSize: 0.25,
-          maxChildSize: 0.75,
+          // ══ CORRECTION : taille initiale augmentée pour voir tous les enfants ══
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
           builder: (_, scrollController) {
             return Container(
               decoration: const BoxDecoration(
@@ -151,15 +152,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               onSelected(child);
                             },
                             child: GlassCard(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                               borderRadius: 14,
                               child: Row(
                                 children: [
                                   CircleAvatar(
                                     radius: 20,
-                                    backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
+                                    backgroundColor:
+                                        Colors.cyanAccent.withOpacity(0.2),
                                     child: Text(
-                                      child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+                                      child.name.isNotEmpty
+                                          ? child.name[0].toUpperCase()
+                                          : '?',
                                       style: const TextStyle(
                                         color: Colors.cyanAccent,
                                         fontWeight: FontWeight.bold,
@@ -258,7 +263,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           )
                         : ListView.builder(
                             controller: scrollController,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
                             itemCount: history.length,
                             itemBuilder: (_, i) {
                               final entry = history[i];
@@ -274,15 +280,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         width: 44,
                                         height: 44,
                                         decoration: BoxDecoration(
-                                          color: (isPositive ? Colors.green : Colors.red)
-                                              .withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(12),
+                                          color: (isPositive
+                                                  ? Colors.green
+                                                  : Colors.red)
+                                              .withOpacity(0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
                                           '${isPositive ? '+' : ''}${entry.points}',
                                           style: TextStyle(
-                                            color: isPositive ? Colors.greenAccent : Colors.redAccent,
+                                            color: isPositive
+                                                ? Colors.greenAccent
+                                                : Colors.redAccent,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
                                           ),
@@ -291,7 +302,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               entry.reason,
@@ -321,8 +333,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             vertical: 4,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: Colors.cyanAccent.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: Colors.cyanAccent
+                                                .withOpacity(0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             entry.category,
@@ -349,7 +363,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── AJOUT : Bonus & Pénalités avec suppression ────────────────
+  // ── Bonus & Pénalités avec suppression ────────────────
   void _showBonusPenaltyHistory(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -364,7 +378,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               return Container(
                 decoration: const BoxDecoration(
                   color: Color(0xFF1A1A2E),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 padding: const EdgeInsets.all(32),
                 child: const Center(
@@ -420,13 +435,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          // Sélecteur enfant
                           if (children.length > 1)
                             SizedBox(
                               height: 40,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16),
                                 itemCount: children.length,
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(width: 8),
@@ -444,9 +459,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       decoration: BoxDecoration(
                                         color: isSel
                                             ? Colors.cyanAccent
-                                                .withValues(alpha: 0.2)
-                                            : Colors.white
-                                                .withValues(alpha: 0.06),
+                                                .withOpacity(0.2)
+                                            : Colors.white.withOpacity(0.06),
                                         borderRadius:
                                             BorderRadius.circular(20),
                                         border: Border.all(
@@ -513,8 +527,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     const EdgeInsets.all(8),
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
-                                                  color: color.withValues(
-                                                      alpha: 0.15),
+                                                  color: color
+                                                      .withOpacity(0.15),
                                                 ),
                                                 child: Icon(icon,
                                                     color: color, size: 20),
@@ -541,7 +555,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     Text(
                                                       '${entry.date.day}/${entry.date.month}/${entry.date.year} • ${entry.actionBy}',
                                                       style: const TextStyle(
-                                                          color: Colors.white38,
+                                                          color:
+                                                              Colors.white38,
                                                           fontSize: 11),
                                                     ),
                                                   ],
@@ -556,7 +571,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 ),
                                               ),
                                               const SizedBox(width: 4),
-                                              // ── Bouton supprimer ──
                                               TvFocusWrapper(
                                                 onTap: () async {
                                                   final confirmed =
@@ -583,8 +597,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                               color: Colors
                                                                   .white70),
                                                           maxLines: 2,
-                                                          overflow: TextOverflow
-                                                              .ellipsis),
+                                                          overflow:
+                                                              TextOverflow
+                                                                  .ellipsis),
                                                       actions: [
                                                         TextButton(
                                                           onPressed: () =>
@@ -627,8 +642,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                               '🗑️ Entrée supprimée'),
                                                           backgroundColor:
                                                               Colors.red,
-                                                          behavior: SnackBarBehavior
-                                                              .floating,
+                                                          behavior:
+                                                              SnackBarBehavior
+                                                                  .floating,
                                                         ),
                                                       );
                                                     }
@@ -640,7 +656,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   decoration: BoxDecoration(
                                                     shape: BoxShape.circle,
                                                     color: Colors.red
-                                                        .withValues(alpha: 0.1),
+                                                        .withOpacity(0.1),
                                                   ),
                                                   child: const Icon(
                                                       Icons.delete_outline,
@@ -680,10 +696,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // ══ CORRECTION : on récupère isParentMode pour masquer les items du drawer ══
+    final isParent = context.watch<PinProvider>().isParentMode;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
-      drawer: _buildDrawer(context),
+      drawer: _buildDrawer(context, isParent),
       body: AnimatedBackground(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 400),
@@ -717,10 +736,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         )),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF0D1B2E).withValues(alpha: 0.95),
+            color: const Color(0xFF0D1B2E).withOpacity(0.95),
             border: Border(
               top: BorderSide(
-                color: Colors.cyanAccent.withValues(alpha: 0.15),
+                color: Colors.cyanAccent.withOpacity(0.15),
                 width: 0.5,
               ),
             ),
@@ -758,7 +777,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? Colors.cyanAccent.withValues(alpha: 0.12)
+                            ? Colors.cyanAccent.withOpacity(0.12)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -804,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ─── DRAWER ───────────────────────────────────────────────────
-  Widget _buildDrawer(BuildContext context) {
+  Widget _buildDrawer(BuildContext context, bool isParent) {
     const drawerBg = Color(0xFF0D1B2E);
     const accentColor = Colors.cyanAccent;
 
@@ -821,7 +840,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    accentColor.withValues(alpha: 0.15),
+                    accentColor.withOpacity(0.15),
                     Colors.transparent,
                   ],
                 ),
@@ -835,14 +854,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          accentColor.withValues(alpha: 0.3),
-                          accentColor.withValues(alpha: 0.1),
+                          accentColor.withOpacity(0.3),
+                          accentColor.withOpacity(0.1),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: accentColor.withValues(alpha: 0.2),
+                          color: accentColor.withOpacity(0.2),
                           blurRadius: 12,
                         ),
                       ],
@@ -865,9 +884,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.parentName,
+                    isParent ? widget.parentName : '👦 Mode Enfant',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: Colors.white.withOpacity(0.6),
                       fontSize: 14,
                     ),
                   ),
@@ -875,58 +894,77 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
 
-            Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
+            Divider(color: Colors.white.withOpacity(0.08), height: 1),
 
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  _drawerItem(
-                    icon: Icons.school_rounded,
-                    label: 'Notes Scolaires',
-                    color: Colors.orangeAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      PinGuard.guardAction(context, () {
-                        _showChildPicker(context, (child) {
+
+                  // ══ ITEMS PARENT UNIQUEMENT ══
+                  if (isParent) ...[
+                    _drawerItem(
+                      icon: Icons.school_rounded,
+                      label: 'Notes Scolaires',
+                      color: Colors.orangeAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        PinGuard.guardAction(context, () {
+                          _showChildPicker(context, (child) {
+                            Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: SchoolNotesScreen(childId: child.id),
+                              ),
+                            );
+                          });
+                        });
+                      },
+                    ),
+                    _drawerItem(
+                      icon: Icons.edit_document,
+                      label: 'Lignes de Punition',
+                      color: Colors.redAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        PinGuard.guardAction(context, () {
                           Navigator.push(
                             context,
                             SlidePageRoute(
-                              page: SchoolNotesScreen(childId: child.id),
-                            ),
+                                page: const PunishmentLinesScreen()),
                           );
                         });
-                      });
-                    },
-                  ),
-                  _drawerItem(
-                    icon: Icons.edit_document,
-                    label: 'Lignes de Punition',
-                    color: Colors.redAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      PinGuard.guardAction(context, () {
-                        Navigator.push(
-                          context,
-                          SlidePageRoute(page: const PunishmentLinesScreen()),
-                        );
-                      });
-                    },
-                  ),
-                  _drawerItem(
-                    icon: Icons.shield_rounded,
-                    label: "Lignes d'Immunité",
-                    color: Colors.amberAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      PinGuard.guardAction(context, () {
-                        Navigator.push(
-                          context,
-                          SlidePageRoute(page: const ImmunityLinesScreen()),
-                        );
-                      });
-                    },
-                  ),
+                      },
+                    ),
+                    _drawerItem(
+                      icon: Icons.shield_rounded,
+                      label: "Lignes d'Immunité",
+                      color: Colors.amberAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        PinGuard.guardAction(context, () {
+                          Navigator.push(
+                            context,
+                            SlidePageRoute(
+                                page: const ImmunityLinesScreen()),
+                          );
+                        });
+                      },
+                    ),
+                    _drawerItem(
+                      icon: Icons.swap_vert_circle_rounded,
+                      label: 'Bonus & Pénalités',
+                      color: Colors.greenAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        PinGuard.guardAction(context, () {
+                          _showBonusPenaltyHistory(context);
+                        });
+                      },
+                    ),
+                  ],
+
+                  // ══ ITEMS ACCESSIBLES À TOUS (parent + enfant) ══
                   _drawerItem(
                     icon: Icons.gavel_rounded,
                     label: 'Tribunal',
@@ -967,39 +1005,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       );
                     },
                   ),
-                  // ── AJOUT : Bonus & Pénalités ──
-                  _drawerItem(
-                    icon: Icons.swap_vert_circle_rounded,
-                    label: 'Bonus & Pénalités',
-                    color: Colors.greenAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      PinGuard.guardAction(context, () {
-                        _showBonusPenaltyHistory(context);
-                      });
-                    },
-                  ),
-                  _drawerItem(
-                    icon: Icons.sync_rounded,
-                    label: 'Synchronisation',
-                    color: Colors.lightBlueAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        SlidePageRoute(page: const FamilyScreen()),
-                      );
-                    },
-                  ),
-                  _drawerItem(
-                    icon: Icons.history_rounded,
-                    label: 'Historique Complet',
-                    color: Colors.white70,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showFullHistory(context);
-                    },
-                  ),
+
+                  // ══ ITEMS PARENT UNIQUEMENT (suite) ══
+                  if (isParent) ...[
+                    _drawerItem(
+                      icon: Icons.sync_rounded,
+                      label: 'Synchronisation',
+                      color: Colors.lightBlueAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(page: const FamilyScreen()),
+                        );
+                      },
+                    ),
+                    _drawerItem(
+                      icon: Icons.history_rounded,
+                      label: 'Historique Complet',
+                      color: Colors.white70,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showFullHistory(context);
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1009,7 +1039,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Text(
                 'v5.0.0',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                   fontSize: 12,
                 ),
               ),
@@ -1041,7 +1071,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
+                  color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
@@ -1060,7 +1090,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Colors.white.withOpacity(0.2),
                 size: 20,
               ),
             ],
