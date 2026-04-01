@@ -1,3 +1,4 @@
+// lib/screens/dashboard_screen.dart
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -69,7 +70,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
         CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
-    // Floating animation pour les éléments décoratifs
     _floatingController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 3000))
       ..repeat(reverse: true);
@@ -100,7 +100,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           height: radius * 2,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.amber.withOpacity(0.6), width: 3),
+            border:
+                Border.all(color: Colors.amber.withOpacity(0.6), width: 3),
             boxShadow: [
               BoxShadow(
                   color: Colors.amber.withOpacity(0.3),
@@ -152,6 +153,16 @@ class _DashboardScreenState extends State<DashboardScreen>
     return context.read<PinProvider>().canPerformParentAction();
   }
 
+  // ══ CORRECTION : enterChildMode() appelé avant de naviguer vers un enfant ══
+  void _goToChildDashboard(String childId) {
+    final pin = context.read<PinProvider>();
+    pin.enterChildMode(); // ← bascule en mode enfant
+    Navigator.push(
+      context,
+      ZoomPageRoute(page: ChildDashboardScreen(childId: childId)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
@@ -199,7 +210,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       },
       child: Row(
         children: [
-          // Emoji flottant
           AnimatedBuilder(
             animation: _floatingAnim,
             builder: (context, child) {
@@ -227,12 +237,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 Text(
                   '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  style:
+                      const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],
             ),
           ),
-          // Mode indicator
           Consumer<PinProvider>(
             builder: (context, pin, _) {
               final isParent = pin.canPerformParentAction();
@@ -244,8 +254,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
                     color: isParent
@@ -259,7 +269,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (isParent ? Colors.greenAccent : Colors.redAccent)
+                        color: (isParent
+                                ? Colors.greenAccent
+                                : Colors.redAccent)
                             .withOpacity(0.15),
                         blurRadius: 8,
                       ),
@@ -270,16 +282,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                     children: [
                       Icon(
                         isParent ? Icons.lock_open : Icons.lock,
-                        color:
-                            isParent ? Colors.greenAccent : Colors.redAccent,
+                        color: isParent
+                            ? Colors.greenAccent
+                            : Colors.redAccent,
                         size: 14,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         isParent ? 'Parent' : 'Enfant',
                         style: TextStyle(
-                          color:
-                              isParent ? Colors.greenAccent : Colors.redAccent,
+                          color: isParent
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -298,7 +312,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.menu, color: Colors.white, size: 24),
+              child:
+                  const Icon(Icons.menu, color: Colors.white, size: 24),
             ),
           ),
         ],
@@ -310,7 +325,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     return GlassCard(
       child: Column(
         children: [
-          // Titre animé avec shimmer
           AnimatedBuilder(
             animation: _floatingAnim,
             builder: (context, child) {
@@ -336,7 +350,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // #2
                 AnimatedBuilder(
                   animation: _podium2Anim,
                   builder: (context, child) {
@@ -349,7 +362,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                   },
                 ),
                 const SizedBox(width: 8),
-                // #1
                 AnimatedBuilder(
                   animation: _podium1Anim,
                   builder: (context, child) {
@@ -363,7 +375,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                   },
                 ),
                 const SizedBox(width: 8),
-                // #3
                 if (sorted.length >= 3)
                   AnimatedBuilder(
                     animation: _podium3Anim,
@@ -380,7 +391,6 @@ class _DashboardScreenState extends State<DashboardScreen>
             )
           else
             _podiumCard(sorted[0], 1),
-          // Remaining
           if (sorted.length > 3) ...[
             const SizedBox(height: 16),
             const Divider(color: Colors.white12),
@@ -389,7 +399,8 @@ class _DashboardScreenState extends State<DashboardScreen>
               final rank = entry.key + 4;
               return TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.0, end: 1.0),
-                duration: Duration(milliseconds: 600 + entry.key * 150),
+                duration:
+                    Duration(milliseconds: 600 + entry.key * 150),
                 curve: Curves.easeOutBack,
                 builder: (context, value, ch) {
                   return Transform.translate(
@@ -400,10 +411,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: TvFocusWrapper(
-                    onTap: () => Navigator.push(
-                        context,
-                        ZoomPageRoute(
-                            page: ChildDashboardScreen(childId: child.id))),
+                    // ══ CORRECTION : utilise _goToChildDashboard ══
+                    onTap: () => _goToChildDashboard(child.id),
                     child: Row(
                       children: [
                         Text('#$rank',
@@ -442,27 +451,25 @@ class _DashboardScreenState extends State<DashboardScreen>
     final avatarRadius = rank == 1 ? 40.0 : 28.0;
 
     return TvFocusWrapper(
-      onTap: () {
-        Navigator.push(context,
-            ZoomPageRoute(page: ChildDashboardScreen(childId: child.id)));
-      },
+      // ══ CORRECTION : utilise _goToChildDashboard ══
+      onTap: () => _goToChildDashboard(child.id),
       child: SizedBox(
         width: rank == 1 ? 115 : 90,
         child: Column(
           children: [
-            // Médaille flottante
             AnimatedBuilder(
               animation: _floatingAnim,
               builder: (context, ch) {
                 return Transform.translate(
-                  offset: Offset(0, rank == 1 ? _floatingAnim.value * 0.5 : 0),
+                  offset: Offset(
+                      0, rank == 1 ? _floatingAnim.value * 0.5 : 0),
                   child: ch,
                 );
               },
-              child: Text(medals[rank]!, style: const TextStyle(fontSize: 24)),
+              child: Text(medals[rank]!,
+                  style: const TextStyle(fontSize: 24)),
             ),
             const SizedBox(height: 6),
-            // Photo — neon ring pour #1
             if (rank == 1)
               NeonPulseRing(
                 color: Colors.amber,
@@ -495,9 +502,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             Text(child.levelTitle,
                 style: TextStyle(
-                    color: colors[rank]!.withOpacity(0.7), fontSize: 10)),
+                    color: colors[rank]!.withOpacity(0.7),
+                    fontSize: 10)),
             const SizedBox(height: 4),
-            // Socle avec pulse pour #1
             AnimatedBuilder(
               animation: _pulseAnim,
               builder: (context, ch) {
@@ -518,8 +525,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                       colors[rank]!.withOpacity(0.3),
                     ],
                   ),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(8)),
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(8)),
                   boxShadow: [
                     BoxShadow(
                       color: colors[rank]!.withOpacity(0.3),
@@ -565,6 +572,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       _Act('📺 Écran', Icons.tv, Colors.blue, true, () {
         PinGuard.guardAction(context, () {
           _showChildPickerForNav(fp, (childId) {
+            // ══ CORRECTION : pas de enterChildMode ici car c'est une
+            // action protégée parent (PinGuard déjà vérifié) ══
             Navigator.push(context,
                 ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
           });
@@ -577,13 +586,14 @@ class _DashboardScreenState extends State<DashboardScreen>
       _Act('🏪 Vente', Icons.storefront, Colors.green, false, () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(
-              context, DoorPageRoute(page: TradeScreen(childId: childId)));
+              context,
+              DoorPageRoute(page: TradeScreen(childId: childId)));
         });
       }),
+      // ══ CORRECTION : "Profil" bascule en mode enfant ══
       _Act('👤 Profil', Icons.person, Colors.cyan, false, () {
         _showChildPickerForNav(fp, (childId) {
-          Navigator.push(context,
-              ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
+          _goToChildDashboard(childId);
         });
       }),
     ];
@@ -618,7 +628,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           childAspectRatio: 1.05,
           children: List.generate(actions.length, (i) {
             final action = actions[i];
-            final anim = i < _actionAnims.length ? _actionAnims[i] : null;
+            final anim =
+                i < _actionAnims.length ? _actionAnims[i] : null;
             final tile = _actionTile(action, isParent);
             if (anim == null) return tile;
             return AnimatedBuilder(
@@ -627,7 +638,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 return Transform.scale(
                   scale: anim.value.clamp(0.0, 1.0),
                   child: Opacity(
-                      opacity: anim.value.clamp(0.0, 1.0), child: child),
+                      opacity: anim.value.clamp(0.0, 1.0),
+                      child: child),
                 );
               },
               child: tile,
@@ -700,7 +712,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         const SizedBox(height: 8),
         ...active.asMap().entries.map((entry) {
           final trade = entry.value;
-          final sellerName = fp.getChild(trade.fromChildId)?.name ?? '?';
+          final sellerName =
+              fp.getChild(trade.fromChildId)?.name ?? '?';
           final buyerName = fp.getChild(trade.toChildId)?.name ?? '?';
           return TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.0, end: 1.0),
@@ -719,7 +732,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                   Navigator.push(
                       context,
                       DoorPageRoute(
-                          page: TradeScreen(childId: trade.fromChildId)));
+                          page:
+                              TradeScreen(childId: trade.fromChildId)));
                 },
                 child: GlassCard(
                   child: Row(
@@ -732,7 +746,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           color: Colors.greenAccent,
                           boxShadow: [
                             BoxShadow(
-                                color: Colors.greenAccent.withOpacity(0.5),
+                                color:
+                                    Colors.greenAccent.withOpacity(0.5),
                                 blurRadius: 6),
                           ],
                         ),
@@ -749,7 +764,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                             Text(
                                 '${trade.immunityLines} lignes • ${trade.serviceDescription}',
                                 style: const TextStyle(
-                                    color: Colors.white54, fontSize: 12),
+                                    color: Colors.white54,
+                                    fontSize: 12),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
                           ],
@@ -759,15 +775,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.greenAccent.withOpacity(0.15),
+                          color:
+                              Colors.greenAccent.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(trade.statusLabel,
                             style: const TextStyle(
-                                color: Colors.greenAccent, fontSize: 11)),
+                                color: Colors.greenAccent,
+                                fontSize: 11)),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right, color: Colors.white38),
+                      const Icon(Icons.chevron_right,
+                          color: Colors.white38),
                     ],
                   ),
                 ),
@@ -779,6 +798,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  // ══ CORRECTION scroll : maxChildSize 0.92, initialChildSize 0.55 ══
   void _showChildPickerForNav(
       FamilyProvider fp, Function(String) onSelected) {
     if (fp.children.isEmpty) return;
@@ -792,18 +812,20 @@ class _DashboardScreenState extends State<DashboardScreen>
       isScrollControlled: true,
       builder: (ctx) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.4,
-          minChildSize: 0.25,
-          maxChildSize: 0.75,
+          initialChildSize: 0.55,
+          minChildSize: 0.35,
+          maxChildSize: 0.92,
+          expand: false,
           builder: (_, scrollController) {
             return Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
+                  const SizedBox(height: 12),
                   Container(
                     width: 40,
                     height: 4,
@@ -818,60 +840,63 @@ class _DashboardScreenState extends State<DashboardScreen>
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: ListView.builder(
                       controller: scrollController,
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 0, 16, 24),
                       itemCount: fp.children.length,
                       itemBuilder: (_, i) {
                         final child = fp.children[i];
                         return TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0.0, end: 1.0),
-                          duration: Duration(milliseconds: 300 + i * 100),
+                          duration:
+                              Duration(milliseconds: 300 + i * 100),
                           curve: Curves.easeOutBack,
                           builder: (context, value, ch) {
                             return Transform.translate(
                               offset: Offset(30 * (1 - value), 0),
-                              child: Opacity(opacity: value, child: ch),
+                              child:
+                                  Opacity(opacity: value, child: ch),
                             );
                           },
                           child: Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: 10),
                             child: TvFocusWrapper(
                               onTap: () {
                                 Navigator.pop(ctx);
                                 onSelected(child.id);
                               },
                               child: GlassCard(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 4, horizontal: 4),
-                                  child: Row(
-                                    children: [
-                                      _buildChildAvatar(child, 22),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(child.name,
-                                                style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                            Text(
-                                                '${child.points} pts • ${child.levelTitle}',
-                                                style: const TextStyle(
-                                                    color: Colors.white54,
-                                                    fontSize: 12)),
-                                          ],
-                                        ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 14),
+                                borderRadius: 14,
+                                child: Row(
+                                  children: [
+                                    _buildChildAvatar(child, 22),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(child.name,
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight:
+                                                      FontWeight.bold)),
+                                          Text(
+                                              '${child.points} pts • ${child.levelTitle}',
+                                              style: const TextStyle(
+                                                  color: Colors.white54,
+                                                  fontSize: 12)),
+                                        ],
                                       ),
-                                      const Icon(Icons.chevron_right,
-                                          color: Colors.white38),
-                                    ],
-                                  ),
+                                    ),
+                                    const Icon(Icons.chevron_right,
+                                        color: Colors.white38),
+                                  ],
                                 ),
                               ),
                             ),
