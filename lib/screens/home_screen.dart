@@ -1,3 +1,4 @@
+// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -83,7 +84,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() => _currentIndex = index);
   }
 
-  void _showChildPicker(BuildContext context, void Function(dynamic child) onSelected) {
+  void _showChildPicker(
+      BuildContext context, void Function(dynamic child) onSelected) {
     final provider = context.read<FamilyProvider>();
     final children = provider.children;
     if (children.isEmpty) {
@@ -92,7 +94,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           content: const Text('Aucun enfant enregistré'),
           backgroundColor: Colors.orange.shade700,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
@@ -106,20 +109,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
+        // ══ CORRECTION : DraggableScrollableSheet avec taille maximale ══
         return DraggableScrollableSheet(
-          // ══ CORRECTION : taille initiale augmentée pour voir tous les enfants ══
-          initialChildSize: 0.6,
+          initialChildSize: 0.55,
           minChildSize: 0.4,
-          maxChildSize: 0.9,
+          maxChildSize: 0.92,
+          expand: false,
           builder: (_, scrollController) {
             return Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF1A1A2E),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
+                  // ── Poignée ──
+                  const SizedBox(height: 12),
                   Container(
                     width: 40,
                     height: 4,
@@ -130,22 +135,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Choisir un enfant',
+                    'Qui es-tu ?',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  // ── Liste scrollable ──
                   Expanded(
                     child: ListView.builder(
                       controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                       itemCount: children.length,
                       itemBuilder: (_, i) {
                         final child = children[i];
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.only(bottom: 10),
                           child: TvFocusWrapper(
                             onTap: () {
                               Navigator.pop(ctx);
@@ -153,12 +160,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             },
                             child: GlassCard(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                                  horizontal: 16, vertical: 14),
                               borderRadius: 14,
                               child: Row(
                                 children: [
                                   CircleAvatar(
-                                    radius: 20,
+                                    radius: 22,
                                     backgroundColor:
                                         Colors.cyanAccent.withOpacity(0.2),
                                     child: Text(
@@ -168,11 +175,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       style: const TextStyle(
                                         color: Colors.cyanAccent,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: 18,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 14),
                                   Expanded(
                                     child: Text(
                                       child.name,
@@ -183,12 +190,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ),
                                     ),
                                   ),
-                                  Text(
-                                    '${child.points} pts',
-                                    style: const TextStyle(
-                                      color: Colors.cyanAccent,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${child.points} pts',
+                                        style: const TextStyle(
+                                          color: Colors.cyanAccent,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Nv.${child.level}',
+                                        style: const TextStyle(
+                                          color: Colors.white38,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -696,7 +716,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // ══ CORRECTION : on récupère isParentMode pour masquer les items du drawer ══
     final isParent = context.watch<PinProvider>().isParentMode;
 
     return Scaffold(
@@ -822,7 +841,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ─── DRAWER ───────────────────────────────────────────────────
   Widget _buildDrawer(BuildContext context, bool isParent) {
     const drawerBg = Color(0xFF0D1B2E);
     const accentColor = Colors.cyanAccent;
@@ -893,15 +911,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-
             Divider(color: Colors.white.withOpacity(0.08), height: 1),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-
-                  // ══ ITEMS PARENT UNIQUEMENT ══
                   if (isParent) ...[
                     _drawerItem(
                       icon: Icons.school_rounded,
@@ -963,8 +977,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       },
                     ),
                   ],
-
-                  // ══ ITEMS ACCESSIBLES À TOUS (parent + enfant) ══
                   _drawerItem(
                     icon: Icons.gavel_rounded,
                     label: 'Tribunal',
@@ -1005,8 +1017,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       );
                     },
                   ),
-
-                  // ══ ITEMS PARENT UNIQUEMENT (suite) ══
                   if (isParent) ...[
                     _drawerItem(
                       icon: Icons.sync_rounded,
@@ -1033,7 +1043,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
