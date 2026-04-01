@@ -1,4 +1,3 @@
-// lib/screens/welcome_screen.dart
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -41,34 +40,42 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.initState();
 
     _logoController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1500));
+        vsync: this,
+        duration: const Duration(milliseconds: 1500));
     _logoFade = CurvedAnimation(
         parent: _logoController,
         curve: const Interval(0.0, 0.5, curve: Curves.easeIn));
     _logoScale = CurvedAnimation(
         parent: _logoController,
-        curve: const Interval(0.1, 0.7, curve: Curves.elasticOut));
+        curve:
+            const Interval(0.1, 0.7, curve: Curves.elasticOut));
 
     _pulseController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2000))
+        vsync: this,
+        duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
         CurvedAnimation(
-            parent: _pulseController, curve: Curves.easeInOut));
+            parent: _pulseController,
+            curve: Curves.easeInOut));
 
     _buttonController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
+        vsync: this,
+        duration: const Duration(milliseconds: 1200));
     _btn1Slide = CurvedAnimation(
         parent: _buttonController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack));
+        curve:
+            const Interval(0.0, 0.6, curve: Curves.easeOutBack));
     _btn2Slide = CurvedAnimation(
         parent: _buttonController,
-        curve: const Interval(0.2, 0.8, curve: Curves.easeOutBack));
+        curve:
+            const Interval(0.2, 0.8, curve: Curves.easeOutBack));
 
     _cardController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
-    _cardFade = CurvedAnimation(
-        parent: _cardController, curve: Curves.easeOut);
+        vsync: this,
+        duration: const Duration(milliseconds: 800));
+    _cardFade =
+        CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
 
     _particleController = AnimationController(
         vsync: this, duration: const Duration(seconds: 10))
@@ -97,7 +104,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.dispose();
   }
 
-  // ─── Mode Parent ─────────────────────────────────────────────
+  // ── Mode Parent ───────────────────────────────────────────────────────────
   void _handleParentMode() {
     final pin = context.read<PinProvider>();
     if (!pin.isPinSet) {
@@ -124,7 +131,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             Text('Code Parental',
                 style: TextStyle(color: Colors.white)),
           ]),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
+          content:
+              Column(mainAxisSize: MainAxisSize.min, children: [
             const Text('Entrez votre code PIN',
                 style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 16),
@@ -152,17 +160,20 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ? Icons.visibility_off_rounded
                           : Icons.visibility_rounded,
                       color: Colors.white54),
-                  onPressed: () => setS(() => obscure = !obscure),
+                  onPressed: () =>
+                      setS(() => obscure = !obscure),
                 ),
               ),
-              onSubmitted: (_) => _validatePin(ctx, pinCtrl),
+              onSubmitted: (_) =>
+                  _validatePin(ctx, pinCtrl),
             ),
           ]),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('Annuler',
-                    style: TextStyle(color: Colors.grey[400]))),
+                    style:
+                        TextStyle(color: Colors.grey[400]))),
             FilledButton(
               onPressed: () => _validatePin(ctx, pinCtrl),
               child: const Text('Valider'),
@@ -173,7 +184,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  void _validatePin(BuildContext ctx, TextEditingController ctrl) {
+  void _validatePin(
+      BuildContext ctx, TextEditingController ctrl) {
     final pin = context.read<PinProvider>();
     if (pin.verifyPin(ctrl.text.trim())) {
       Navigator.pop(ctx);
@@ -206,7 +218,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child:
+            Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
               width: 40,
               height: 4,
@@ -242,14 +255,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
+  // ── CORRECTION ICI : HomeScreen() sans parentName ─────────────────────────
   void _navigateToHome(String parentName) {
     context.read<PinProvider>().unlockParentMode();
     context.read<FamilyProvider>().setCurrentParent(parentName);
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) =>
-            HomeScreen(parentName: parentName),
+        pageBuilder: (_, __, ___) => const HomeScreen(),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 500),
@@ -257,22 +270,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ─── Mode Enfant ─────────────────────────────────────────────
+  // ── Mode Enfant ───────────────────────────────────────────────────────────
   void _handleChildMode() {
     final fp = context.read<FamilyProvider>();
     if (fp.children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Aucun enfant enregistré pour l\'instant.'),
+        content:
+            Text('Aucun enfant enregistré pour l\'instant.'),
         behavior: SnackBarBehavior.floating,
       ));
       return;
     }
-    // Si un seul enfant → direct
     if (fp.children.length == 1) {
       _navigateToHome(fp.children.first.name);
       return;
     }
-    // Plusieurs enfants → sélecteur
     _showChildPicker(fp.children);
   }
 
@@ -285,7 +297,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child:
+            Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
               width: 40,
               height: 4,
@@ -313,14 +326,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         )
                       : Text(
-                          child.avatar.isEmpty ? '🧒' : child.avatar,
+                          child.avatar.isEmpty
+                              ? '🧒'
+                              : child.avatar,
                           style: const TextStyle(fontSize: 22)),
                 ),
                 title: Text(child.name,
                     style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600)),
-                subtitle: Text('${child.points} pts · Nv.${child.currentLevelNumber}',
+                subtitle: Text(
+                    '${child.points} pts · Nv.${child.currentLevelNumber}',
                     style: TextStyle(
                         color: Colors.grey[500], fontSize: 12)),
                 onTap: () {
@@ -334,7 +350,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ─── Aide ─────────────────────────────────────────────────────
+  // ── Aide ──────────────────────────────────────────────────────────────────
   void _showInteractiveHelp() {
     showDialog(
       context: context,
@@ -343,7 +359,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24)),
         title: const Text('❔ Comment utiliser SKS Family ?',
-            style: TextStyle(color: Colors.white, fontSize: 18)),
+            style:
+                TextStyle(color: Colors.white, fontSize: 18)),
         content: SingleChildScrollView(
           child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -392,7 +409,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ─── Build ────────────────────────────────────────────────────
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -409,7 +426,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         body: SafeArea(
           child: Stack(
             children: [
-              // ── Particules ──
+              // ── Particules ──────────────────────────────────────────
               AnimatedBuilder(
                 animation: _particleController,
                 builder: (_, __) => CustomPaint(
@@ -421,7 +438,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 ),
               ),
 
-              // ── Contenu ──
+              // ── Contenu ─────────────────────────────────────────────
               SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Column(
@@ -460,7 +477,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             ),
                             child: const Center(
                               child: Text('👨‍👩‍👧‍👦',
-                                  style: TextStyle(fontSize: 48)),
+                                  style:
+                                      TextStyle(fontSize: 48)),
                             ),
                           ),
                         ),
@@ -515,10 +533,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           return FadeTransition(
                             opacity: _cardFade,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24),
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                      horizontal: 24),
                               child: Container(
-                                padding: const EdgeInsets.all(20),
+                                padding:
+                                    const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
                                   borderRadius:
                                       BorderRadius.circular(20),
@@ -530,17 +550,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 ),
                                 child: Column(children: [
                                   const Text('🏠',
-                                      style:
-                                          TextStyle(fontSize: 36)),
+                                      style: TextStyle(
+                                          fontSize: 36)),
                                   const SizedBox(height: 8),
-                                  Text('Aucun enfant enregistré',
+                                  Text(
+                                      'Aucun enfant enregistré',
                                       style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 14)),
                                   const SizedBox(height: 4),
                                   Text(
                                       'Connectez-vous en mode Parent\npour commencer',
-                                      textAlign: TextAlign.center,
+                                      textAlign:
+                                          TextAlign.center,
                                       style: TextStyle(
                                           color: Colors.grey[600],
                                           fontSize: 12)),
@@ -562,12 +584,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24),
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 24),
                                 child: Row(children: [
                                   const Text('🏆 ',
-                                      style:
-                                          TextStyle(fontSize: 16)),
+                                      style: TextStyle(
+                                          fontSize: 16)),
                                   Text(
                                     'Classement de la famille',
                                     style: TextStyle(
@@ -583,9 +606,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               SizedBox(
                                 height: 130,
                                 child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20),
+                                  scrollDirection:
+                                      Axis.horizontal,
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 20),
                                   itemCount: sorted.length,
                                   itemBuilder: (_, i) =>
                                       _ChildStatCard(
@@ -640,7 +665,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.shield_rounded,
-                                    color: Colors.black, size: 26),
+                                    color: Colors.black,
+                                    size: 26),
                                 SizedBox(width: 12),
                                 Text(
                                   'Mode Parent',
@@ -718,28 +744,31 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     // ══ STATS GLOBALES ══
                     Consumer<FamilyProvider>(
                       builder: (_, fp, __) {
-                        if (fp.children.isEmpty)
+                        if (fp.children.isEmpty) {
                           return const SizedBox.shrink();
-                        final totalPts = fp.children
-                            .fold<int>(
-                                0, (s, c) => s + c.points);
-                        final totalBadges = fp.children
-                            .fold<int>(
+                        }
+                        final totalPts = fp.children.fold<int>(
+                            0, (s, c) => s + c.points);
+                        final totalBadges =
+                            fp.children.fold<int>(
                                 0,
                                 (s, c) =>
                                     s + c.badgeIds.length);
-                        final topChild = fp.childrenSorted
-                            .isNotEmpty
-                            ? fp.childrenSorted.first
-                            : null;
+                        final topChild =
+                            fp.childrenSorted.isNotEmpty
+                                ? fp.childrenSorted.first
+                                : null;
                         return FadeTransition(
                           opacity: _cardFade,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24),
+                            padding:
+                                const EdgeInsets.symmetric(
+                                    horizontal: 24),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14, horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                      horizontal: 16),
                               decoration: BoxDecoration(
                                 borderRadius:
                                     BorderRadius.circular(18),
@@ -751,8 +780,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                               child: Row(
                                 mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .spaceAround,
+                                    MainAxisAlignment.spaceAround,
                                 children: [
                                   _StatBubble(
                                     icon: '⭐',
@@ -802,9 +830,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// Carte statistique d'un enfant
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+//  CARTE ENFANT
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _ChildStatCard extends StatefulWidget {
   final ChildModel child;
   final int rank;
@@ -833,8 +862,7 @@ class _ChildStatCardState extends State<_ChildStatCard>
         duration: const Duration(milliseconds: 600));
     _anim = CurvedAnimation(
         parent: _ctrl, curve: Curves.easeOutBack);
-    Future.delayed(
-        Duration(milliseconds: widget.delay), () {
+    Future.delayed(Duration(milliseconds: widget.delay), () {
       if (mounted) _ctrl.forward();
     });
   }
@@ -903,7 +931,6 @@ class _ChildStatCardState extends State<_ChildStatCard>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Avatar / photo
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -926,11 +953,12 @@ class _ChildStatCardState extends State<_ChildStatCard>
                         )
                       : Center(
                           child: Text(
-                              c.avatar.isEmpty ? '🧒' : c.avatar,
+                              c.avatar.isEmpty
+                                  ? '🧒'
+                                  : c.avatar,
                               style: const TextStyle(
                                   fontSize: 22))),
                 ),
-                // Badge rang
                 Positioned(
                   top: -6,
                   right: -6,
@@ -940,7 +968,6 @@ class _ChildStatCardState extends State<_ChildStatCard>
               ],
             ),
             const SizedBox(height: 8),
-            // Nom
             Text(
               c.name.split(' ').first,
               style: const TextStyle(
@@ -952,7 +979,6 @@ class _ChildStatCardState extends State<_ChildStatCard>
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-            // Points
             Text(
               '${c.points} pts',
               style: TextStyle(
@@ -962,13 +988,13 @@ class _ChildStatCardState extends State<_ChildStatCard>
               ),
             ),
             const SizedBox(height: 4),
-            // Barre de progression niveau
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: c.levelProgress.clamp(0.0, 1.0),
                 minHeight: 4,
-                backgroundColor: Colors.white.withOpacity(0.08),
+                backgroundColor:
+                    Colors.white.withOpacity(0.08),
                 valueColor:
                     AlwaysStoppedAnimation<Color>(_rankColor),
               ),
@@ -976,8 +1002,8 @@ class _ChildStatCardState extends State<_ChildStatCard>
             const SizedBox(height: 2),
             Text(
               c.levelTitle,
-              style: TextStyle(
-                  color: Colors.grey[500], fontSize: 9),
+              style:
+                  TextStyle(color: Colors.grey[500], fontSize: 9),
             ),
           ],
         ),
@@ -986,9 +1012,10 @@ class _ChildStatCardState extends State<_ChildStatCard>
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// Bulle statistique globale
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+//  STAT BUBBLE
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _StatBubble extends StatelessWidget {
   final String icon;
   final String value;
@@ -1025,9 +1052,10 @@ class _StatBubble extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// Particules de fond
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+//  PARTICULES
+// ══════════════════════════════════════════════════════════════════════════════
+
 class _WelcomeParticle {
   late double x, y, speed, size;
 
