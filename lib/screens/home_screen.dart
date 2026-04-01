@@ -36,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _navBarController;
 
-  // Indices protégés par PIN : 1 (Points), 4 (Réglages)
   final List<int> _protectedIndices = [1, 4];
 
   @override
@@ -84,7 +83,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() => _currentIndex = index);
   }
 
-  // ─── Child Picker SCROLLABLE ──────────────────────────────────
   void _showChildPicker(BuildContext context, void Function(dynamic child) onSelected) {
     final provider = context.read<FamilyProvider>();
     final children = provider.children;
@@ -351,6 +349,325 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ── AJOUT : Bonus & Pénalités avec suppression ────────────────
+  void _showBonusPenaltyHistory(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final provider = context.read<FamilyProvider>();
+            final children = provider.children;
+            if (children.isEmpty) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1A1A2E),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.all(32),
+                child: const Center(
+                  child: Text('Aucun enfant enregistré',
+                      style: TextStyle(color: Colors.white54)),
+                ),
+              );
+            }
+
+            String selectedChildId = children.first.id;
+
+            return StatefulBuilder(
+              builder: (ctx2, setInnerState) {
+                final entries = provider
+                    .getHistoryForChild(selectedChildId)
+                    .where((h) =>
+                        h.category != 'school_note' &&
+                        h.category != 'screen_time_bonus' &&
+                        h.category != 'saturday_rating' &&
+                        h.category != 'tribunal_vote' &&
+                        h.category != 'tribunal_verdict')
+                    .toList();
+
+                return DraggableScrollableSheet(
+                  initialChildSize: 0.75,
+                  maxChildSize: 0.95,
+                  minChildSize: 0.4,
+                  builder: (_, scrollController) {
+                    return Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1A1A2E),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(24)),
+                      ),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 12),
+                          Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            '💰 Bonus & Pénalités',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Sélecteur enfant
+                          if (children.length > 1)
+                            SizedBox(
+                              height: 40,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: children.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (_, i) {
+                                  final child = children[i];
+                                  final isSel = selectedChildId == child.id;
+                                  return TvFocusWrapper(
+                                    onTap: () => setInnerState(
+                                        () => selectedChildId = child.id),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isSel
+                                            ? Colors.cyanAccent
+                                                .withValues(alpha: 0.2)
+                                            : Colors.white
+                                                .withValues(alpha: 0.06),
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: isSel
+                                              ? Colors.cyanAccent
+                                              : Colors.white24,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        child.name,
+                                        style: TextStyle(
+                                          color: isSel
+                                              ? Colors.cyanAccent
+                                              : Colors.white54,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${entries.length} entrée(s)',
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 12),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: entries.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'Aucun bonus ou pénalité',
+                                      style:
+                                          TextStyle(color: Colors.white38),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    controller: scrollController,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    itemCount: entries.length,
+                                    itemBuilder: (_, i) {
+                                      final entry = entries[i];
+                                      final isBonus = entry.isBonus;
+                                      final color = isBonus
+                                          ? Colors.greenAccent
+                                          : Colors.redAccent;
+                                      final icon = isBonus
+                                          ? Icons.add_circle
+                                          : Icons.remove_circle;
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 8),
+                                        child: GlassCard(
+                                          padding: const EdgeInsets.all(12),
+                                          borderRadius: 12,
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: color.withValues(
+                                                      alpha: 0.15),
+                                                ),
+                                                child: Icon(icon,
+                                                    color: color, size: 20),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .start,
+                                                  children: [
+                                                    Text(
+                                                      entry.reason,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow
+                                                          .ellipsis,
+                                                    ),
+                                                    Text(
+                                                      '${entry.date.day}/${entry.date.month}/${entry.date.year} • ${entry.actionBy}',
+                                                      style: const TextStyle(
+                                                          color: Colors.white38,
+                                                          fontSize: 11),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Text(
+                                                '${isBonus ? '+' : '-'}${entry.points} pts',
+                                                style: TextStyle(
+                                                  color: color,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              // ── Bouton supprimer ──
+                                              TvFocusWrapper(
+                                                onTap: () async {
+                                                  final confirmed =
+                                                      await showDialog<bool>(
+                                                    context: context,
+                                                    builder: (d) =>
+                                                        AlertDialog(
+                                                      backgroundColor:
+                                                          const Color(
+                                                              0xFF1A1A2E),
+                                                      shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      16)),
+                                                      title: const Text(
+                                                          'Supprimer ?',
+                                                          style: TextStyle(
+                                                              color: Colors
+                                                                  .white)),
+                                                      content: Text(
+                                                          entry.reason,
+                                                          style: const TextStyle(
+                                                              color: Colors
+                                                                  .white70),
+                                                          maxLines: 2,
+                                                          overflow: TextOverflow
+                                                              .ellipsis),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                  d, false),
+                                                          child: const Text(
+                                                              'Annuler',
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .white54)),
+                                                        ),
+                                                        ElevatedButton(
+                                                          style: ElevatedButton
+                                                              .styleFrom(
+                                                                  backgroundColor:
+                                                                      Colors
+                                                                          .red),
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                  d, true),
+                                                          child: const Text(
+                                                              'Supprimer'),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                  if (confirmed == true &&
+                                                      context.mounted) {
+                                                    await context
+                                                        .read<FamilyProvider>()
+                                                        .deleteHistoryEntry(
+                                                            entry.id);
+                                                    setInnerState(() {});
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                              '🗑️ Entrée supprimée'),
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                          behavior: SnackBarBehavior
+                                                              .floating,
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                },
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.all(6),
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.red
+                                                        .withValues(alpha: 0.1),
+                                                  ),
+                                                  child: const Icon(
+                                                      Icons.delete_outline,
+                                                      color: Colors.redAccent,
+                                                      size: 18),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   String _formatDateTime(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
@@ -453,7 +770,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             duration: const Duration(milliseconds: 200),
                             child: Icon(
                               icons[i],
-                              color: isSelected ? Colors.cyanAccent : Colors.white38,
+                              color: isSelected
+                                  ? Colors.cyanAccent
+                                  : Colors.white38,
                               size: 24,
                             ),
                           ),
@@ -461,9 +780,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           AnimatedDefaultTextStyle(
                             duration: const Duration(milliseconds: 200),
                             style: TextStyle(
-                              color: isSelected ? Colors.cyanAccent : Colors.white38,
+                              color: isSelected
+                                  ? Colors.cyanAccent
+                                  : Colors.white38,
                               fontSize: isSelected ? 11 : 10,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                             child: Text(labels[i]),
                           ),
@@ -642,6 +965,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         context,
                         ZoomPageRoute(page: const BadgesScreen()),
                       );
+                    },
+                  ),
+                  // ── AJOUT : Bonus & Pénalités ──
+                  _drawerItem(
+                    icon: Icons.swap_vert_circle_rounded,
+                    label: 'Bonus & Pénalités',
+                    color: Colors.greenAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      PinGuard.guardAction(context, () {
+                        _showBonusPenaltyHistory(context);
+                      });
                     },
                   ),
                   _drawerItem(
