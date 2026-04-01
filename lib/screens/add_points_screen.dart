@@ -1,1100 +1,229 @@
-import 'dart:math';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../providers/pin_provider.dart';
+import '../models/child_model.dart';
+import '../models/trade_model.dart';
+import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
+import '../widgets/animated_page_transition.dart';
+import '../widgets/celebration_overlay.dart';
+import 'punishment_lines_screen.dart';
+import 'immunity_lines_screen.dart';
+import 'trade_screen.dart';
+import 'child_dashboard_screen.dart';
+import 'tribunal_screen.dart';
 
-// ═══════════════════════════════════════════════════════════
-//  EXPLOSION D'ÉTOILES (bonus)
-// ═══════════════════════════════════════════════════════════
-class _StarExplosion extends StatefulWidget {
-  final VoidCallback onComplete;
-  final int points;
-  const _StarExplosion({required this.onComplete, required this.points});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
   @override
-  State<_StarExplosion> createState() => _StarExplosionState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _StarExplosionState extends State<_StarExplosion>
+class _DashboardScreenState extends State<DashboardScreen>
     with TickerProviderStateMixin {
-  late AnimationController _burstCtrl;
-  late AnimationController _textCtrl;
-  late Animation<double> _textScale;
-  late Animation<double> _textFade;
-  late List<_StarParticle> _stars;
-  final _rng = Random();
+  late AnimationController _podiumController;
+  late AnimationController _actionsController;
+  late AnimationController _pulseController;
+  late AnimationController _floatingController;
+
+  late Animation<double> _podium1Anim;
+  late Animation<double> _podium2Anim;
+  late Animation<double> _podium3Anim;
+  final List<Animation<double>> _actionAnims = [];
+  late Animation<double> _pulseAnim;
+  late Animation<double> _floatingAnim;
+
+  // ── AJOUT : historique visible dans le dashboard ──
+  String? _selectedChildIdForHistory;
 
   @override
   void initState() {
     super.initState();
-    _burstCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1400))
-      ..forward().then((_) => widget.onComplete());
+    _podiumController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1800));
+    _podium2Anim = CurvedAnimation(
+        parent: _podiumController,
+        curve: const Interval(0.0, 0.5, curve: Curves.bounceOut));
+    _podium1Anim = CurvedAnimation(
+        parent: _podiumController,
+        curve: const Interval(0.2, 0.7, curve: Curves.bounceOut));
+    _podium3Anim = CurvedAnimation(
+        parent: _podiumController,
+        curve: const Interval(0.4, 0.9, curve: Curves.bounceOut));
 
-    _textCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
-    _textScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _textCtrl, curve: Curves.elasticOut));
-    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(
-            parent: _textCtrl,
-            curve: const Interval(0.0, 0.4)));
-
-    _stars = List.generate(
-      24,
-      (i) => _StarParticle(
-        angle: (i / 24) * 2 * pi + _rng.nextDouble() * 0.3,
-        speed: 80 + _rng.nextDouble() * 160,
-        size: 6 + _rng.nextDouble() * 10,
-        color: [
-          Colors.amber,
-          Colors.yellowAccent,
-          Colors.orangeAccent,
-          Colors.white,
-          Colors.greenAccent,
-        ][_rng.nextInt(5)],
-        rotation: _rng.nextDouble() * 2 * pi,
-        rotSpeed: (_rng.nextDouble() - 0.5) * 8,
-      ),
-    );
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) _textCtrl.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _burstCtrl.dispose();
-    _textCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([_burstCtrl, _textCtrl]),
-      builder: (context, _) {
-        final t = _burstCtrl.value;
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(color: Colors.amber.withValues(alpha: 0.08 * (1 - t))),
-            CustomPaint(
-                size: Size.infinite,
-                painter: _StarBurstPainter(_stars, t)),
-            FadeTransition(
-              opacity: _textFade,
-              child: ScaleTransition(
-                scale: _textScale,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('⭐', style: TextStyle(fontSize: 48)),
-                    const SizedBox(height: 8),
-                    Text(
-                      '+${widget.points}',
-                      style: const TextStyle(
-                        color: Colors.amber,
-                        fontSize: 56,
-                        fontWeight: FontWeight.w900,
-                        shadows: [
-                          Shadow(color: Colors.orangeAccent, blurRadius: 20)
-                        ],
-                      ),
-                    ),
-                    const Text(
-                      'BONUS !',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _StarParticle {
-  final double angle, speed, size, rotation, rotSpeed;
-  final Color color;
-  _StarParticle({
-    required this.angle,
-    required this.speed,
-    required this.size,
-    required this.color,
-    required this.rotation,
-    required this.rotSpeed,
-  });
-}
-
-class _StarBurstPainter extends CustomPainter {
-  final List<_StarParticle> stars;
-  final double t;
-  _StarBurstPainter(this.stars, this.t);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    for (final star in stars) {
-      final dist = star.speed * t;
-      final dx = cx + cos(star.angle) * dist;
-      final dy = cy + sin(star.angle) * dist - 30 * t;
-      final opacity = (1.0 - t).clamp(0.0, 1.0);
-      final scale   = star.size * (0.5 + 0.5 * (1 - t));
-      if (opacity <= 0) continue;
-      canvas.save();
-      canvas.translate(dx, dy);
-      canvas.rotate(star.rotation + star.rotSpeed * t);
-      final paint = Paint()
-        ..color = star.color.withValues(alpha: opacity);
-      _drawStar(canvas, scale, paint);
-      canvas.restore();
+    _actionsController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1500));
+    for (int i = 0; i < 6; i++) {
+      final start = i * 0.10;
+      final end = (start + 0.4).clamp(0.0, 1.0);
+      _actionAnims.add(CurvedAnimation(
+          parent: _actionsController,
+          curve: Interval(start, end, curve: Curves.elasticOut)));
     }
-  }
 
-  void _drawStar(Canvas canvas, double r, Paint paint) {
-    final path = Path();
-    for (int i = 0; i < 5; i++) {
-      final outerAngle = (i * 2 * pi / 5) - pi / 2;
-      final innerAngle = outerAngle + pi / 5;
-      if (i == 0) {
-        path.moveTo(cos(outerAngle) * r, sin(outerAngle) * r);
-      } else {
-        path.lineTo(cos(outerAngle) * r, sin(outerAngle) * r);
-      }
-      path.lineTo(cos(innerAngle) * r * 0.4, sin(innerAngle) * r * 0.4);
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _StarBurstPainter old) => true;
-}
-
-// ═══════════════════════════════════════════════════════════
-//  FLASH ROUGE (pénalité)
-// ═══════════════════════════════════════════════════════════
-class _PenaltyFlash extends StatefulWidget {
-  final VoidCallback onComplete;
-  final int points;
-  const _PenaltyFlash({required this.onComplete, required this.points});
-  @override
-  State<_PenaltyFlash> createState() => _PenaltyFlashState();
-}
-
-class _PenaltyFlashState extends State<_PenaltyFlash>
-    with TickerProviderStateMixin {
-  late AnimationController _flashCtrl;
-  late AnimationController _shakeCtrl;
-  late AnimationController _textCtrl;
-  late Animation<double> _textScale;
-
-  @override
-  void initState() {
-    super.initState();
-    _flashCtrl = AnimationController(
+    _pulseController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200))
-      ..forward().then((_) => widget.onComplete());
+      ..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
-    _shakeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500))
-      ..forward();
+    _floatingController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 3000))
+      ..repeat(reverse: true);
+    _floatingAnim = Tween<double>(begin: -8, end: 8).animate(
+        CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut));
 
-    _textCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _textScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _textCtrl, curve: Curves.elasticOut));
-
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _textCtrl.forward();
+    _podiumController.forward();
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _actionsController.forward();
     });
   }
 
   @override
   void dispose() {
-    _flashCtrl.dispose();
-    _shakeCtrl.dispose();
-    _textCtrl.dispose();
+    _podiumController.dispose();
+    _actionsController.dispose();
+    _pulseController.dispose();
+    _floatingController.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([_flashCtrl, _shakeCtrl, _textCtrl]),
-      builder: (context, _) {
-        final flashT  = _flashCtrl.value;
-        final shakeT  = _shakeCtrl.value;
-        final shakeOffset = sin(shakeT * pi * 8) * 8 * (1 - shakeT);
-
-        return Transform.translate(
-          offset: Offset(shakeOffset, 0),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                color: Colors.red.withValues(
-                  alpha: flashT < 0.15
-                      ? flashT / 0.15 * 0.4
-                      : 0.4 *
-                          (1 - ((flashT - 0.15) / 0.85))
-                              .clamp(0.0, 1.0),
-                ),
-              ),
-              CustomPaint(
-                  size: Size.infinite,
-                  painter: _ImpactLinesPainter(flashT)),
-              ScaleTransition(
-                scale: _textScale,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('⚡', style: TextStyle(fontSize: 48)),
-                    const SizedBox(height: 8),
-                    Text(
-                      '-${widget.points}',
-                      style: const TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 56,
-                        fontWeight: FontWeight.w900,
-                        shadows: [
-                          Shadow(color: Colors.red, blurRadius: 20)
-                        ],
-                      ),
-                    ),
-                    const Text(
-                      'PÉNALITÉ',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+  Widget _buildChildAvatar(ChildModel child, double radius) {
+    if (child.hasPhoto) {
+      try {
+        final bytes = base64Decode(child.photoBase64);
+        return Container(
+          width: radius * 2,
+          height: radius * 2,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.amber.withOpacity(0.6), width: 3),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.amber.withOpacity(0.3),
+                  blurRadius: 16,
+                  spreadRadius: 2),
             ],
+            image: DecorationImage(
+              image: MemoryImage(bytes),
+              fit: BoxFit.cover,
+            ),
           ),
         );
-      },
-    );
-  }
-}
-
-class _ImpactLinesPainter extends CustomPainter {
-  final double t;
-  _ImpactLinesPainter(this.t);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (t > 0.6) return;
-    final cx    = size.width / 2;
-    final cy    = size.height / 2;
-    final paint = Paint()
-      ..color      = Colors.redAccent.withValues(alpha: (0.6 - t) / 0.6 * 0.5)
-      ..strokeWidth = 2.5
-      ..style      = PaintingStyle.stroke;
-    final rng = Random(42);
-    for (int i = 0; i < 12; i++) {
-      final angle  = (i / 12) * 2 * pi + rng.nextDouble() * 0.2;
-      final innerR = 40 + 80 * t;
-      final outerR = 60 + 140 * t;
-      canvas.drawLine(
-        Offset(cx + cos(angle) * innerR, cy + sin(angle) * innerR),
-        Offset(cx + cos(angle) * outerR, cy + sin(angle) * outerR),
-        paint,
-      );
+      } catch (_) {}
     }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ImpactLinesPainter old) => true;
-}
-
-// ═══════════════════════════════════════════════════════════
-//  DIALOGUE D'ANIMATION POINTS
-// ═══════════════════════════════════════════════════════════
-Future<void> showPointsAnimation(
-  BuildContext context, {
-  required bool isBonus,
-  required int points,
-}) {
-  return showGeneralDialog(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black54,
-    transitionDuration: const Duration(milliseconds: 100),
-    pageBuilder: (ctx, _, __) => Material(
-      color: Colors.transparent,
-      child: isBonus
-          ? _StarExplosion(
-              points: points,
-              onComplete: () => Navigator.of(ctx).pop(),
-            )
-          : _PenaltyFlash(
-              points: points,
-              onComplete: () => Navigator.of(ctx).pop(),
-            ),
-    ),
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-//  ADD POINTS SCREEN
-// ═══════════════════════════════════════════════════════════
-class AddPointsScreen extends StatefulWidget {
-  const AddPointsScreen({super.key});
-  @override
-  State<AddPointsScreen> createState() => _AddPointsScreenState();
-}
-
-class _AddPointsScreenState extends State<AddPointsScreen>
-    with SingleTickerProviderStateMixin {
-  String? _selectedChildId;
-  bool    _isBonus      = true;
-  int     _points       = 1;
-  String  _reason       = '';
-  String? _photoBase64;
-  bool    _isSubmitting = false; // ✅ évite les doubles soumissions
-
-  final TextEditingController _reasonCtrl = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
-
-  late AnimationController _toggleCtrl;
-  late Animation<Color?> _bgColorAnim;
-
-  // ─── Raisons rapides ──────────────────────────────────────
-  static const _bonusReasons = [
-    {'emoji': '🧹', 'label': 'Ménage',            'points': 3},
-    {'emoji': '📚', 'label': 'Devoirs',            'points': 2},
-    {'emoji': '🤝', 'label': 'Entraide',           'points': 2},
-    {'emoji': '⭐', 'label': 'Bon comportement',   'points': 1},
-    {'emoji': '🍽️', 'label': 'Aide cuisine',       'points': 2},
-    {'emoji': '🛏️', 'label': 'Chambre rangée',     'points': 1},
-    {'emoji': '🌟', 'label': 'Effort scolaire',    'points': 3},
-    {'emoji': '😊', 'label': 'Bonne attitude',     'points': 1},
-  ];
-
-  static const _penaltyReasons = [
-    {'emoji': '😠', 'label': 'Insolence',          'points': 2},
-    {'emoji': '🤜', 'label': 'Bagarre',             'points': 3},
-    {'emoji': '📵', 'label': 'Écran interdit',      'points': 2},
-    {'emoji': '🙉', 'label': 'Désobéissance',       'points': 1},
-    {'emoji': '🗣️', 'label': 'Gros mot',            'points': 1},
-    {'emoji': '😈', 'label': 'Bêtise',              'points': 2},
-    {'emoji': '🤥', 'label': 'Mensonge',            'points': 2},
-    {'emoji': '🏚️', 'label': 'Désordre',            'points': 1},
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _toggleCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-    _bgColorAnim = ColorTween(
-      begin: Colors.green.withValues(alpha: 0.06),
-      end:   Colors.red.withValues(alpha: 0.06),
-    ).animate(CurvedAnimation(parent: _toggleCtrl, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _toggleCtrl.dispose();
-    _reasonCtrl.dispose();
-    super.dispose();
-  }
-
-  // ─── Toggle bonus / pénalité ────────────────────────────
-  void _toggleMode(bool bonus) {
-    if (_isBonus == bonus) return;
-    setState(() {
-      _isBonus = bonus;
-      _reason  = '';
-      _reasonCtrl.clear();
-      _points  = 1;
-    });
-    bonus ? _toggleCtrl.reverse() : _toggleCtrl.forward();
-    HapticFeedback.selectionClick();
-  }
-
-  List<Map<String, dynamic>> get _currentReasons =>
-      _isBonus ? _bonusReasons : _penaltyReasons;
-  Color get _accentColor =>
-      _isBonus ? Colors.greenAccent : Colors.redAccent;
-
-  // ─── Photos ─────────────────────────────────────────────
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? photo = await _picker.pickImage(
-        source:       source,
-        maxWidth:     800,
-        imageQuality: 70,
-      );
-      if (photo == null) return;
-      final bytes = await photo.readAsBytes();
-      // ✅ Vérifie que l'image ne dépasse pas ~700KB une fois encodée
-      if (bytes.lengthInBytes > 700 * 1024) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('⚠️ Image trop lourde. Choisissez une image plus petite.'),
-            backgroundColor: Colors.orange,
-          ));
-        }
-        return;
-      }
-      setState(() => _photoBase64 = base64Encode(bytes));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur photo : $e'),
-          backgroundColor: Colors.red,
-        ));
-      }
-    }
-  }
-
-  // ─── Soumission ─────────────────────────────────────────
-  Future<void> _submit() async {
-    if (_isSubmitting) return; // ✅ anti double-tap
-
-    if (_selectedChildId == null) {
-      HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('👆 Sélectionnez un enfant'),
-        backgroundColor: Colors.orange,
-        behavior: SnackBarBehavior.floating,
-      ));
-      return;
-    }
-
-    final finalReason = _reason.isNotEmpty
-        ? _reason
-        : _reasonCtrl.text.trim();
-    if (finalReason.isEmpty) {
-      HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('📝 Indiquez une raison'),
-        backgroundColor: Colors.orange,
-        behavior: SnackBarBehavior.floating,
-      ));
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-
-    // Animation d'abord
-    await showPointsAnimation(context, isBonus: _isBonus, points: _points);
-    if (!mounted) return;
-
-    // ✅ CORRIGÉ : await sur addPoints
-    await context.read<FamilyProvider>().addPoints(
-      _selectedChildId!,
-      _points,
-      finalReason,
-      isBonus:          _isBonus,
-      proofPhotoBase64: _photoBase64,
-    );
-
-    if (!mounted) return;
-
-    // Haptic selon le type
-    if (_isBonus) {
-      HapticFeedback.mediumImpact();
-    } else {
-      HapticFeedback.heavyImpact();
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(
-        children: [
-          Icon(_isBonus ? Icons.star_rounded : Icons.warning_rounded,
-              color: Colors.white, size: 18),
-          const SizedBox(width: 8),
-          Text(_isBonus
-              ? '+$_points pts ajoutés à ${context.read<FamilyProvider>().getChild(_selectedChildId!)?.name ?? ''} !'
-              : '-$_points pts retirés'),
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            Colors.cyan.withOpacity(0.4),
+            Colors.purple.withOpacity(0.3),
+          ],
+        ),
+        border: Border.all(color: Colors.cyan.withOpacity(0.5), width: 2),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.cyan.withOpacity(0.2),
+              blurRadius: 12,
+              spreadRadius: 2),
         ],
       ),
-      backgroundColor: _isBonus ? Colors.green.shade700 : Colors.red.shade700,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ));
-
-    setState(() {
-      _reason      = '';
-      _points      = 1;
-      _photoBase64 = null;
-      _isSubmitting = false;
-      _reasonCtrl.clear();
-    });
+      child: Center(
+        child: Text(
+          child.avatar.isNotEmpty
+              ? child.avatar
+              : (child.name.isNotEmpty ? child.name[0].toUpperCase() : '?'),
+          style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: radius * 0.7),
+        ),
+      ),
+    );
   }
 
-  // ─── BUILD ──────────────────────────────────────────────
+  bool _isParentMode() {
+    return context.read<PinProvider>().canPerformParentAction();
+  }
+
+  // ── AJOUT : confirmation + suppression d'une entrée d'historique ──
+  Future<void> _deleteHistoryEntry(String entryId, String reason) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Supprimer cette entrée ?',
+            style: TextStyle(color: Colors.white)),
+        content: Text(
+          reason,
+          style: const TextStyle(color: Colors.white70),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await context.read<FamilyProvider>().deleteHistoryEntry(entryId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🗑️ Entrée supprimée'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
-      builder: (context, provider, _) {
-        final children = provider.children;
-        final primary  = Theme.of(context).colorScheme.primary;
+      builder: (context, fp, _) {
+        final sorted = List<ChildModel>.from(fp.children)
+          ..sort((a, b) => b.points.compareTo(a.points));
 
         return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            body: AnimatedBuilder(
-              animation: _bgColorAnim,
-              builder: (context, child) => Container(
-                color: _bgColorAnim.value,
-                child: child,
-              ),
-              child: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
-                    // ─── Header ────────────────────────────
-                    Row(
-                      children: [
-                        Icon(
-                          _isBonus
-                              ? Icons.star_rounded
-                              : Icons.warning_rounded,
-                          color: _accentColor,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          _isBonus ? 'Ajouter un bonus' : 'Retirer des points',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildHeader(fp),
                     const SizedBox(height: 20),
-
-                    // ─── Toggle Bonus / Pénalité ────────────
-                    GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Row(
-                          children: [
-                            _ToggleButton(
-                              label: 'Bonus',
-                              icon: Icons.add_circle_rounded,
-                              isSelected: _isBonus,
-                              activeColor: Colors.greenAccent,
-                              onTap: () => _toggleMode(true),
-                              autofocus: true,
-                            ),
-                            const SizedBox(width: 8),
-                            _ToggleButton(
-                              label: 'Pénalité',
-                              icon: Icons.remove_circle_rounded,
-                              isSelected: !_isBonus,
-                              activeColor: Colors.redAccent,
-                              onTap: () => _toggleMode(false),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ─── Sélection enfant ───────────────────
-                    if (children.isEmpty)
-                      GlassCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            children: const [
-                              Icon(Icons.person_off_rounded,
-                                  color: Colors.white38, size: 40),
-                              SizedBox(height: 8),
-                              Text(
-                                'Aucun enfant enregistré.\nAjoutez des enfants dans les Réglages.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white54),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else
-                      GlassCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.child_care_rounded,
-                                      color: _accentColor, size: 18),
-                                  const SizedBox(width: 6),
-                                  const Text('Choisir l\'enfant',
-                                      style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 14)),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: children.map((child) {
-                                  final isSelected =
-                                      _selectedChildId == child.id;
-                                  return TvFocusWrapper(
-                                    onTap: () => setState(
-                                        () => _selectedChildId = child.id),
-                                    child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 14, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? _accentColor.withValues(alpha: 0.2)
-                                            : Colors.white.withValues(alpha: 0.06),
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(
-                                          color: isSelected
-                                              ? _accentColor
-                                              : Colors.white24,
-                                          width: isSelected ? 2 : 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 14,
-                                            backgroundColor: _accentColor
-                                                .withValues(alpha: 0.3),
-                                            backgroundImage: child.hasPhoto
-                                                ? MemoryImage(base64Decode(
-                                                    child.photoBase64))
-                                                : null,
-                                            child: !child.hasPhoto
-                                                ? Text(
-                                                    child.avatar.isNotEmpty
-                                                        ? child.avatar
-                                                        : child.name[0]
-                                                            .toUpperCase(),
-                                                    style: const TextStyle(
-                                                        fontSize: 12),
-                                                  )
-                                                : null,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                child.name,
-                                                style: TextStyle(
-                                                  color: isSelected
-                                                      ? _accentColor
-                                                      : Colors.white70,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              Text(
-                                                '${child.points} pts',
-                                                style: TextStyle(
-                                                  color: isSelected
-                                                      ? _accentColor
-                                                          .withValues(alpha: 0.7)
-                                                      : Colors.white38,
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-
-                    // ─── Raisons rapides ────────────────────
-                    GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.label_rounded,
-                                    color: _accentColor, size: 18),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _isBonus
-                                      ? 'Raison du bonus'
-                                      : 'Raison de la pénalité',
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _currentReasons.map((r) {
-                                final isSelected = _reason == r['label'];
-                                return TvFocusWrapper(
-                                  onTap: () => setState(() {
-                                    if (isSelected) {
-                                      _reason = '';
-                                    } else {
-                                      _reason = r['label'] as String;
-                                      _points = r['points'] as int;
-                                      _reasonCtrl.clear();
-                                    }
-                                  }),
-                                  child: AnimatedContainer(
-                                    duration:
-                                        const Duration(milliseconds: 200),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? _accentColor.withValues(alpha: 0.2)
-                                          : Colors.white.withValues(alpha: 0.06),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? _accentColor
-                                            : Colors.white24,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(r['emoji'] as String,
-                                            style: const TextStyle(
-                                                fontSize: 16)),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          r['label'] as String,
-                                          style: TextStyle(
-                                            color: isSelected
-                                                ? _accentColor
-                                                : Colors.white70,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        if (isSelected) ...[
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '(${r['points']} pts)',
-                                            style: TextStyle(
-                                              color: _accentColor
-                                                  .withValues(alpha: 0.7),
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _reasonCtrl,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText:
-                                    'Ou saisissez une raison personnalisée...',
-                                hintStyle:
-                                    const TextStyle(color: Colors.white30),
-                                prefixIcon: Icon(Icons.edit_note_rounded,
-                                    color: _accentColor),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide:
-                                      BorderSide(color: _accentColor),
-                                ),
-                              ),
-                              onChanged: (val) {
-                                if (val.isNotEmpty && _reason.isNotEmpty) {
-                                  setState(() => _reason = '');
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ─── Nombre de points ───────────────────
-                    GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.star_half_rounded,
-                                    color: _accentColor, size: 18),
-                                const SizedBox(width: 6),
-                                const Text('Nombre de points',
-                                    style: TextStyle(
-                                        color: Colors.white70, fontSize: 14)),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // ─ Bouton moins
-                                _PointsButton(
-                                  icon: Icons.remove_rounded,
-                                  onTap: () {
-                                    if (_points > 1) {
-                                      setState(() => _points--);
-                                      HapticFeedback.selectionClick();
-                                    }
-                                  },
-                                  enabled: _points > 1,
-                                ),
-                                const SizedBox(width: 24),
-                                // ─ Valeur animée
-                                TweenAnimationBuilder<int>(
-                                  tween: IntTween(
-                                      begin: _points, end: _points),
-                                  duration:
-                                      const Duration(milliseconds: 200),
-                                  builder: (context, val, _) => Text(
-                                    '$val',
-                                    style: TextStyle(
-                                      color: _accentColor,
-                                      fontSize: 48,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 24),
-                                // ─ Bouton plus
-                                _PointsButton(
-                                  icon: Icons.add_rounded,
-                                  onTap: () {
-                                    if (_points < 99) {
-                                      setState(() => _points++);
-                                      HapticFeedback.selectionClick();
-                                    }
-                                  },
-                                  enabled: _points < 99,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            // Raccourcis rapides
-                            Wrap(
-                              spacing: 6,
-                              children: [1, 2, 3, 5, 10, 20].map((val) {
-                                final isSelected = _points == val;
-                                return TvFocusWrapper(
-                                  onTap: () {
-                                    setState(() => _points = val);
-                                    HapticFeedback.selectionClick();
-                                  },
-                                  child: AnimatedContainer(
-                                    duration:
-                                        const Duration(milliseconds: 150),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? _accentColor.withValues(alpha: 0.2)
-                                          : Colors.transparent,
-                                      borderRadius:
-                                          BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? _accentColor
-                                            : Colors.white24,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      '$val',
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? _accentColor
-                                            : Colors.white54,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ─── Photo preuve ───────────────────────
-                    GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.photo_camera_rounded,
-                                    color: _accentColor, size: 18),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  'Photo preuve (optionnel)',
-                                  style: TextStyle(
-                                      color: Colors.white70, fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            if (_photoBase64 != null) ...[
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.memory(
-                                  base64Decode(_photoBase64!),
-                                  height: 150,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Center(
-                                child: TextButton.icon(
-                                  onPressed: () =>
-                                      setState(() => _photoBase64 = null),
-                                  icon: const Icon(Icons.delete_outline,
-                                      color: Colors.redAccent, size: 18),
-                                  label: const Text('Supprimer la photo',
-                                      style:
-                                          TextStyle(color: Colors.redAccent)),
-                                ),
-                              ),
-                            ] else
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TvFocusWrapper(
-                                      onTap: () =>
-                                          _pickImage(ImageSource.camera),
-                                      child: OutlinedButton.icon(
-                                        onPressed: () => _pickImage(
-                                            ImageSource.camera),
-                                        icon: const Icon(
-                                            Icons.camera_alt_rounded,
-                                            size: 18),
-                                        label: const Text('Caméra'),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: TvFocusWrapper(
-                                      onTap: () =>
-                                          _pickImage(ImageSource.gallery),
-                                      child: OutlinedButton.icon(
-                                        onPressed: () => _pickImage(
-                                            ImageSource.gallery),
-                                        icon: const Icon(
-                                            Icons.photo_library_rounded,
-                                            size: 18),
-                                        label: const Text('Galerie'),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ─── Bouton soumettre ───────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 58,
-                      child: TvFocusWrapper(
-                        onTap: _isSubmitting ? null : _submit,
-                        child: ElevatedButton.icon(
-                          onPressed: _isSubmitting ? null : _submit,
-                          icon: _isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white),
-                                )
-                              : Icon(
-                                  _isBonus
-                                      ? Icons.star_rounded
-                                      : Icons.warning_rounded,
-                                  size: 24,
-                                ),
-                          label: Text(
-                            _isSubmitting
-                                ? 'Enregistrement...'
-                                : _isBonus
-                                    ? 'Ajouter le bonus'
-                                    : 'Retirer les points',
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _isBonus
-                                ? Colors.green.shade600
-                                : Colors.red.shade600,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey.shade700,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
-                            elevation: 6,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                    if (sorted.isNotEmpty) _buildPodium(sorted),
+                    const SizedBox(height: 20),
+                    _buildQuickActions(fp),
+                    const SizedBox(height: 20),
+                    // ── AJOUT : section historique bonus/pénalités ──
+                    _buildHistorySection(fp),
+                    const SizedBox(height: 20),
+                    _buildActiveTrades(fp),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -1104,98 +233,821 @@ class _AddPointsScreenState extends State<AddPointsScreen>
       },
     );
   }
-}
 
-// ─── Widgets helpers ────────────────────────────────────────
-
-class _ToggleButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final Color activeColor;
-  final VoidCallback onTap;
-  final bool autofocus;
-
-  const _ToggleButton({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.activeColor,
-    required this.onTap,
-    this.autofocus = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: TvFocusWrapper(
-        autofocus: autofocus,
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? activeColor.withValues(alpha: 0.2)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: isSelected
-                ? Border.all(color: activeColor.withValues(alpha: 0.5))
-                : null,
+  Widget _buildHeader(FamilyProvider fp) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, -30 * (1 - value)),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Row(
+        children: [
+          AnimatedBuilder(
+            animation: _floatingAnim,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, _floatingAnim.value),
+                child: child,
+              );
+            },
+            child: const Text('🏠', style: TextStyle(fontSize: 28)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon,
-                  color: isSelected ? activeColor : Colors.white38,
-                  size: 22),
-              const SizedBox(width: 8),
-              Text(
-                label,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Colors.white, Colors.cyanAccent],
+                  ).createShader(bounds),
+                  child: const Text('Tableau de Bord',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold)),
+                ),
+                Text(
+                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName}',
+                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          Consumer<PinProvider>(
+            builder: (context, pin, _) {
+              final isParent = pin.canPerformParentAction();
+              return TvFocusWrapper(
+                onTap: () {
+                  if (!isParent && pin.isPinSet) {
+                    PinGuard.guardAction(context, () => setState(() {}));
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: isParent
+                        ? Colors.greenAccent.withOpacity(0.15)
+                        : Colors.redAccent.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isParent
+                          ? Colors.greenAccent.withOpacity(0.4)
+                          : Colors.redAccent.withOpacity(0.4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isParent ? Colors.greenAccent : Colors.redAccent)
+                            .withOpacity(0.15),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isParent ? Icons.lock_open : Icons.lock,
+                        color: isParent ? Colors.greenAccent : Colors.redAccent,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isParent ? 'Parent' : 'Enfant',
+                        style: TextStyle(
+                          color: isParent
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          TvFocusWrapper(
+            onTap: () => Scaffold.of(context).openDrawer(),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.menu, color: Colors.white, size: 24),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPodium(List<ChildModel> sorted) {
+    return GlassCard(
+      child: Column(
+        children: [
+          AnimatedBuilder(
+            animation: _floatingAnim,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, _floatingAnim.value * 0.3),
+                child: child,
+              );
+            },
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Colors.amber, Colors.orange, Colors.amber],
+              ).createShader(bounds),
+              child: const Text('🏆 CLASSEMENT',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (sorted.length >= 2)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                AnimatedBuilder(
+                  animation: _podium2Anim,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, 50 * (1 - _podium2Anim.value)),
+                      child: Opacity(
+                          opacity: _podium2Anim.value,
+                          child: _podiumCard(sorted[1], 2)),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+                AnimatedBuilder(
+                  animation: _podium1Anim,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, 60 * (1 - _podium1Anim.value)),
+                      child: Opacity(
+                        opacity: _podium1Anim.value,
+                        child: _podiumCard(sorted[0], 1),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+                if (sorted.length >= 3)
+                  AnimatedBuilder(
+                    animation: _podium3Anim,
+                    builder: (context, child) {
+                      return Transform.translate(
+                        offset: Offset(0, 40 * (1 - _podium3Anim.value)),
+                        child: Opacity(
+                            opacity: _podium3Anim.value,
+                            child: _podiumCard(sorted[2], 3)),
+                      );
+                    },
+                  ),
+              ],
+            )
+          else
+            _podiumCard(sorted[0], 1),
+          if (sorted.length > 3) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white12),
+            ...sorted.skip(3).toList().asMap().entries.map((entry) {
+              final child = entry.value;
+              final rank = entry.key + 4;
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: Duration(milliseconds: 600 + entry.key * 150),
+                curve: Curves.easeOutBack,
+                builder: (context, value, ch) {
+                  return Transform.translate(
+                    offset: Offset(30 * (1 - value), 0),
+                    child: Opacity(opacity: value, child: ch),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: TvFocusWrapper(
+                    onTap: () => Navigator.push(
+                        context,
+                        ZoomPageRoute(
+                            page: ChildDashboardScreen(childId: child.id))),
+                    child: Row(
+                      children: [
+                        Text('#$rank',
+                            style: const TextStyle(
+                                color: Colors.white38,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14)),
+                        const SizedBox(width: 10),
+                        _buildChildAvatar(child, 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(child.name,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 14)),
+                        ),
+                        Text('${child.points} pts',
+                            style: const TextStyle(
+                                color: Colors.white54,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _podiumCard(ChildModel child, int rank) {
+    final heights = {1: 110.0, 2: 85.0, 3: 65.0};
+    final colors = {1: Colors.amber, 2: Colors.grey, 3: Colors.orange};
+    final medals = {1: '🥇', 2: '🥈', 3: '🥉'};
+    final avatarRadius = rank == 1 ? 40.0 : 28.0;
+
+    return TvFocusWrapper(
+      onTap: () {
+        Navigator.push(context,
+            ZoomPageRoute(page: ChildDashboardScreen(childId: child.id)));
+      },
+      child: SizedBox(
+        width: rank == 1 ? 115 : 90,
+        child: Column(
+          children: [
+            AnimatedBuilder(
+              animation: _floatingAnim,
+              builder: (context, ch) {
+                return Transform.translate(
+                  offset: Offset(0, rank == 1 ? _floatingAnim.value * 0.5 : 0),
+                  child: ch,
+                );
+              },
+              child: Text(medals[rank]!, style: const TextStyle(fontSize: 24)),
+            ),
+            const SizedBox(height: 6),
+            if (rank == 1)
+              NeonPulseRing(
+                color: Colors.amber,
+                radius: avatarRadius + 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: _buildChildAvatar(child, avatarRadius),
+                ),
+              )
+            else
+              _buildChildAvatar(child, avatarRadius),
+            const SizedBox(height: 6),
+            Text(child.name,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            TweenAnimationBuilder<int>(
+              tween: IntTween(begin: 0, end: child.points),
+              duration: const Duration(milliseconds: 1500),
+              builder: (context, val, _) {
+                return Text('$val pts',
+                    style: TextStyle(
+                        color: colors[rank],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14));
+              },
+            ),
+            Text(child.levelTitle,
                 style: TextStyle(
-                  color: isSelected ? activeColor : Colors.white38,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                    color: colors[rank]!.withOpacity(0.7), fontSize: 10)),
+            const SizedBox(height: 4),
+            AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (context, ch) {
+                return Transform.scale(
+                  scale: rank == 1 ? _pulseAnim.value : 1.0,
+                  child: ch,
+                );
+              },
+              child: Container(
+                width: 70,
+                height: heights[rank],
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      colors[rank]!.withOpacity(0.8),
+                      colors[rank]!.withOpacity(0.3),
+                    ],
+                  ),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(8)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors[rank]!.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text('#$rank',
+                      style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20)),
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── AJOUT : section historique bonus/pénalités avec suppression ──
+  Widget _buildHistorySection(FamilyProvider fp) {
+    if (fp.children.isEmpty) return const SizedBox.shrink();
+
+    // Sélectionner le premier enfant par défaut
+    _selectedChildIdForHistory ??= fp.children.first.id;
+
+    final selectedChild = fp.getChild(_selectedChildIdForHistory!);
+    if (selectedChild == null) return const SizedBox.shrink();
+
+    final entries = fp
+        .getHistoryForChild(_selectedChildIdForHistory!)
+        .where((h) =>
+            h.category == 'Bonus' ||
+            h.category == 'Pénalité' ||
+            h.isBonus == true ||
+            h.isBonus == false)
+        .where((h) =>
+            h.category != 'school_note' &&
+            h.category != 'screen_time_bonus' &&
+            h.category != 'saturday_rating' &&
+            h.category != 'tribunal_vote' &&
+            h.category != 'tribunal_verdict')
+        .take(20)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('💰 Bonus & Pénalités',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        // Sélecteur enfant
+        if (fp.children.length > 1)
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: fp.children.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                final child = fp.children[i];
+                final isSelected = _selectedChildIdForHistory == child.id;
+                return TvFocusWrapper(
+                  onTap: () =>
+                      setState(() => _selectedChildIdForHistory = child.id),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.cyanAccent.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.cyanAccent
+                            : Colors.white24,
+                      ),
+                    ),
+                    child: Text(
+                      child.name,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.cyanAccent
+                            : Colors.white54,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      ),
+        const SizedBox(height: 10),
+        if (entries.isEmpty)
+          GlassCard(
+            child: const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Text('Aucun bonus ou pénalité',
+                    style: TextStyle(color: Colors.white38)),
+              ),
+            ),
+          )
+        else
+          ...entries.map((entry) {
+            final isBonus = entry.isBonus;
+            final color =
+                isBonus ? Colors.greenAccent : Colors.redAccent;
+            final icon = isBonus ? Icons.add_circle : Icons.remove_circle;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GlassCard(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color.withOpacity(0.15),
+                      ),
+                      child: Icon(icon, color: color, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.reason,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${entry.date.day}/${entry.date.month}/${entry.date.year} • ${entry.actionBy}',
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${isBonus ? '+' : '-'}${entry.points} pts',
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    // ── Bouton supprimer ──
+                    TvFocusWrapper(
+                      onTap: () =>
+                          _deleteHistoryEntry(entry.id, entry.reason),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.red.withOpacity(0.1),
+                        ),
+                        child: const Icon(Icons.delete_outline,
+                            color: Colors.redAccent, size: 18),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+      ],
     );
   }
-}
 
-class _PointsButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool enabled;
+  Widget _buildQuickActions(FamilyProvider fp) {
+    final isParent = _isParentMode();
 
-  const _PointsButton({
-    required this.icon,
-    required this.onTap,
-    this.enabled = true,
-  });
+    final actions = [
+      _Act('📝 Punition', Icons.menu_book, Colors.red, true, () {
+        PinGuard.guardAction(context, () {
+          Navigator.push(
+              context,
+              SlidePageRoute(
+                  page: const PunishmentLinesScreen(),
+                  direction: SlideDirection.up));
+        });
+      }),
+      _Act('🛡️ Immunité', Icons.shield, Colors.amber, true, () {
+        PinGuard.guardAction(context, () {
+          Navigator.push(
+              context, SpinPageRoute(page: const ImmunityLinesScreen()));
+        });
+      }),
+      _Act('📺 Écran', Icons.tv, Colors.blue, true, () {
+        PinGuard.guardAction(context, () {
+          _showChildPickerForNav(fp, (childId) {
+            Navigator.push(context,
+                ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
+          });
+        });
+      }),
+      _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, false, () {
+        Navigator.push(
+            context, SlidePageRoute(page: const TribunalScreen()));
+      }),
+      _Act('🏪 Vente', Icons.storefront, Colors.green, false, () {
+        _showChildPickerForNav(fp, (childId) {
+          Navigator.push(
+              context, DoorPageRoute(page: TradeScreen(childId: childId)));
+        });
+      }),
+      _Act('👤 Profil', Icons.person, Colors.cyan, false, () {
+        _showChildPickerForNav(fp, (childId) {
+          Navigator.push(context,
+              ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
+        });
+      }),
+    ];
 
-  @override
-  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.translate(
+                  offset: Offset(-20 * (1 - value), 0), child: child),
+            );
+          },
+          child: const Text('⚡ Actions Rapides',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.05,
+          children: List.generate(actions.length, (i) {
+            final action = actions[i];
+            final anim = i < _actionAnims.length ? _actionAnims[i] : null;
+            final tile = _actionTile(action, isParent);
+            if (anim == null) return tile;
+            return AnimatedBuilder(
+              animation: anim,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: anim.value.clamp(0.0, 1.0),
+                  child: Opacity(
+                      opacity: anim.value.clamp(0.0, 1.0), child: child),
+                );
+              },
+              child: tile,
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _actionTile(_Act action, bool isParent) {
     return TvFocusWrapper(
-      onTap: enabled ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: enabled
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.03),
-          border: Border.all(
-              color: enabled ? Colors.white24 : Colors.white12),
+      onTap: action.onTap,
+      child: GlassCard(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: action.color.withOpacity(0.15),
+                boxShadow: [
+                  BoxShadow(
+                      color: action.color.withOpacity(0.3),
+                      blurRadius: 12,
+                      spreadRadius: 2),
+                ],
+              ),
+              child: Icon(action.icon, color: action.color, size: 24),
+            ),
+            const SizedBox(height: 6),
+            Text(action.label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center),
+            if (action.parentOnly && !isParent)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(Icons.lock,
+                    color: Colors.white.withOpacity(0.3), size: 12),
+              ),
+          ],
         ),
-        child: Icon(icon,
-            color: enabled ? Colors.white70 : Colors.white24),
       ),
     );
   }
-}
+
+  Widget _buildActiveTrades(FamilyProvider fp) {
+    final active = fp.trades.where((t) => t.isActive).toList();
+    if (active.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 800),
+          builder: (context, value, child) {
+            return Opacity(opacity: value, child: child);
+          },
+          child: const Text('🏪 Ventes en cours',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 8),
+        ...active.asMap().entries.map((entry) {
+          final trade = entry.value;
+          final sellerName = fp.getChild(trade.fromChildId)?.name ?? '?';
+          final buyerName = fp.getChild(trade.toChildId)?.name ?? '?';
+          return TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: Duration(milliseconds: 500 + entry.key * 200),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, 20 * (1 - value)),
+                child: Opacity(opacity: value, child: child),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TvFocusWrapper(
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      DoorPageRoute(
+                          page: TradeScreen(childId: trade.fromChildId)));
+                },
+                child: GlassCard(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.greenAccent,
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.greenAccent.withOpacity(0.5),
+                                blurRadius: 6),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('$sellerName → $buyerName',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold)),
+                            Text(
+                                '${trade.immunityLines} lignes • ${trade.serviceDescription}',
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.greenAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(trade.statusLabel,
+                            style: const TextStyle(
+                                color: Colors.greenAccent, fontSize: 11)),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right, color: Colors.white38),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  void _showChildPickerForNav(
+      FamilyProvider fp, Function(String) onSelected) {
+    if (fp.children.isEmpty) return;
+    if (fp.children.length == 1) {
+      onSelected(fp.children.first.id);
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.4,
+          minChildSize: 0.25,
+          maxChildSize: 0.75,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A1A2E),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Choisir un enfant',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: fp.children.length,
+                      itemBuilder: (_, i) {
+                        final child = fp.children[i];
+                        return TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: Duration(milliseconds: 300 + i * 100),
+                          curve: Curves.easeOutBack,
+                          builder: (context, value, ch) {
+                            return Transform.translate(
+                              offset: Offset(30 * (1 - value), 0),
+                              child: Opacity(opacity: value, child: ch),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: TvFocusWrapper(
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                onSelected(child.id);
+                              },
+                              child: GlassCard(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 4, horizontal: 4),
+                                  child: Row(
+                                    children: [
+                                      _buildChildAvatar(child, 22
