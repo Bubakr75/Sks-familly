@@ -1,4 +1,3 @@
-// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -94,13 +93,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           content: const Text('Aucun enfant enregistré'),
           backgroundColor: Colors.orange.shade700,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
     }
     if (children.length == 1) {
+      // ══ CORRECTION : enterChildMode avant de naviguer ══
+      context.read<PinProvider>().enterChildMode();
       onSelected(children.first);
       return;
     }
@@ -109,7 +110,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
-        // ══ CORRECTION : DraggableScrollableSheet avec taille maximale ══
         return DraggableScrollableSheet(
           initialChildSize: 0.55,
           minChildSize: 0.4,
@@ -119,11 +119,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             return Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
-                  // ── Poignée ──
                   const SizedBox(height: 12),
                   Container(
                     width: 40,
@@ -143,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // ── Liste scrollable ──
                   Expanded(
                     child: ListView.builder(
                       controller: scrollController,
@@ -156,6 +155,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           child: TvFocusWrapper(
                             onTap: () {
                               Navigator.pop(ctx);
+                              // ══ CORRECTION : bascule en mode enfant ══
+                              context
+                                  .read<PinProvider>()
+                                  .enterChildMode();
                               onSelected(child);
                             },
                             child: GlassCard(
@@ -191,7 +194,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     ),
                                   ),
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.end,
                                     children: [
                                       Text(
                                         '${child.points} pts',
@@ -227,7 +231,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ─── Historique complet ───────────────────────────────────────
   void _showFullHistory(BuildContext context) {
     final provider = context.read<FamilyProvider>();
     final history = provider.history.reversed.toList();
@@ -245,7 +248,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             return Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -270,7 +274,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 8),
                   Text(
                     '${history.length} entrée(s)',
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
                   Expanded(
@@ -283,14 +288,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           )
                         : ListView.builder(
                             controller: scrollController,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16),
                             itemCount: history.length,
                             itemBuilder: (_, i) {
                               final entry = history[i];
                               final isPositive = entry.points >= 0;
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
+                                padding:
+                                    const EdgeInsets.only(bottom: 8),
                                 child: GlassCard(
                                   padding: const EdgeInsets.all(12),
                                   borderRadius: 12,
@@ -329,11 +335,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               entry.reason,
                                               style: const TextStyle(
                                                 color: Colors.white,
-                                                fontWeight: FontWeight.w600,
+                                                fontWeight:
+                                                    FontWeight.w600,
                                                 fontSize: 14,
                                               ),
                                               maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
+                                              overflow:
+                                                  TextOverflow.ellipsis,
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
@@ -348,7 +356,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ),
                                       if (entry.category.isNotEmpty)
                                         Container(
-                                          padding: const EdgeInsets.symmetric(
+                                          padding:
+                                              const EdgeInsets.symmetric(
                                             horizontal: 8,
                                             vertical: 4,
                                           ),
@@ -383,7 +392,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Bonus & Pénalités avec suppression ────────────────
   void _showBonusPenaltyHistory(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -431,8 +439,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     return Container(
                       decoration: const BoxDecoration(
                         color: Color(0xFF1A1A2E),
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(24)),
+                        borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(24)),
                       ),
                       child: Column(
                         children: [
@@ -467,20 +475,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     const SizedBox(width: 8),
                                 itemBuilder: (_, i) {
                                   final child = children[i];
-                                  final isSel = selectedChildId == child.id;
+                                  final isSel =
+                                      selectedChildId == child.id;
                                   return TvFocusWrapper(
-                                    onTap: () => setInnerState(
-                                        () => selectedChildId = child.id),
+                                    onTap: () => setInnerState(() =>
+                                        selectedChildId = child.id),
                                     child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                          milliseconds: 200),
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 14, vertical: 8),
                                       decoration: BoxDecoration(
                                         color: isSel
                                             ? Colors.cyanAccent
                                                 .withOpacity(0.2)
-                                            : Colors.white.withOpacity(0.06),
+                                            : Colors.white
+                                                .withOpacity(0.06),
                                         borderRadius:
                                             BorderRadius.circular(20),
                                         border: Border.all(
@@ -516,8 +526,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ? const Center(
                                     child: Text(
                                       'Aucun bonus ou pénalité',
-                                      style:
-                                          TextStyle(color: Colors.white38),
+                                      style: TextStyle(
+                                          color: Colors.white38),
                                     ),
                                   )
                                 : ListView.builder(
@@ -535,23 +545,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ? Icons.add_circle
                                           : Icons.remove_circle;
                                       return Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 8),
+                                        padding: const EdgeInsets.only(
+                                            bottom: 8),
                                         child: GlassCard(
-                                          padding: const EdgeInsets.all(12),
+                                          padding:
+                                              const EdgeInsets.all(12),
                                           borderRadius: 12,
                                           child: Row(
                                             children: [
                                               Container(
                                                 padding:
-                                                    const EdgeInsets.all(8),
+                                                    const EdgeInsets.all(
+                                                        8),
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
                                                   color: color
                                                       .withOpacity(0.15),
                                                 ),
                                                 child: Icon(icon,
-                                                    color: color, size: 20),
+                                                    color: color,
+                                                    size: 20),
                                               ),
                                               const SizedBox(width: 10),
                                               Expanded(
@@ -562,7 +575,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   children: [
                                                     Text(
                                                       entry.reason,
-                                                      style: const TextStyle(
+                                                      style:
+                                                          const TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 13,
                                                         fontWeight:
@@ -574,10 +588,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     ),
                                                     Text(
                                                       '${entry.date.day}/${entry.date.month}/${entry.date.year} • ${entry.actionBy}',
-                                                      style: const TextStyle(
-                                                          color:
-                                                              Colors.white38,
-                                                          fontSize: 11),
+                                                      style:
+                                                          const TextStyle(
+                                                              color: Colors
+                                                                  .white38,
+                                                              fontSize:
+                                                                  11),
                                                     ),
                                                   ],
                                                 ),
@@ -586,7 +602,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 '${isBonus ? '+' : '-'}${entry.points} pts',
                                                 style: TextStyle(
                                                   color: color,
-                                                  fontWeight: FontWeight.bold,
+                                                  fontWeight:
+                                                      FontWeight.bold,
                                                   fontSize: 13,
                                                 ),
                                               ),
@@ -594,7 +611,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               TvFocusWrapper(
                                                 onTap: () async {
                                                   final confirmed =
-                                                      await showDialog<bool>(
+                                                      await showDialog<
+                                                          bool>(
                                                     context: context,
                                                     builder: (d) =>
                                                         AlertDialog(
@@ -624,7 +642,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                         TextButton(
                                                           onPressed: () =>
                                                               Navigator.pop(
-                                                                  d, false),
+                                                                  d,
+                                                                  false),
                                                           child: const Text(
                                                               'Annuler',
                                                               style: TextStyle(
@@ -649,7 +668,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   if (confirmed == true &&
                                                       context.mounted) {
                                                     await context
-                                                        .read<FamilyProvider>()
+                                                        .read<
+                                                            FamilyProvider>()
                                                         .deleteHistoryEntry(
                                                             entry.id);
                                                     setInnerState(() {});
@@ -672,7 +692,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 },
                                                 child: Container(
                                                   padding:
-                                                      const EdgeInsets.all(6),
+                                                      const EdgeInsets.all(
+                                                          6),
                                                   decoration: BoxDecoration(
                                                     shape: BoxShape.circle,
                                                     color: Colors.red
@@ -680,7 +701,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   ),
                                                   child: const Icon(
                                                       Icons.delete_outline,
-                                                      color: Colors.redAccent,
+                                                      color:
+                                                          Colors.redAccent,
                                                       size: 18),
                                                 ),
                                               ),
@@ -766,7 +788,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: List.generate(5, (i) {
@@ -928,7 +951,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             Navigator.push(
                               context,
                               SlidePageRoute(
-                                page: SchoolNotesScreen(childId: child.id),
+                                page:
+                                    SchoolNotesScreen(childId: child.id),
                               ),
                             );
                           });
@@ -1070,7 +1094,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: TvFocusWrapper(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
           ),
