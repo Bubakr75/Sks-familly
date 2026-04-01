@@ -1073,9 +1073,6 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> deleteHistoryEntry(String entryId) async {
     _history.removeWhere((h) => h.id == entryId);
     await _historyBox.delete(entryId);
-    if (_firestore.isConnected) {
-      await _firestore.deleteHistoryEntry(entryId);
-    }
     notifyListeners();
   }
 
