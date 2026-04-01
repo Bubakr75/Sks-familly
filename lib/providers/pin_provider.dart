@@ -1,4 +1,3 @@
-// lib/providers/pin_provider.dart
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
@@ -21,8 +20,8 @@ class PinProvider extends ChangeNotifier {
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    final legacyPin  = prefs.getString('parent_pin');
-    final hashedPin  = prefs.getString('parent_pin_hashed');
+    final legacyPin = prefs.getString('parent_pin');
+    final hashedPin = prefs.getString('parent_pin_hashed');
 
     if (hashedPin != null && hashedPin.isNotEmpty) {
       _hashedPin = hashedPin;
@@ -105,9 +104,8 @@ class PinProvider extends ChangeNotifier {
   }
 
   // ══ AJOUT : bascule explicitement en mode enfant ══
-  // À appeler dès qu'un enfant se sélectionne depuis l'écran d'accueil
   void enterChildMode() {
-    if (!isPinSet) return; // pas de PIN → on reste en mode libre
+    if (!isPinSet) return;
     _isParentMode = false;
     _lastActivity = null;
     _saveMode();
