@@ -1,3 +1,4 @@
+// lib/screens/school_notes_screen.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,28 +7,42 @@ import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  ANIMATIONS
-// ══════════════════════════════════════════════════════════════════════════════
-
+// ═══════════════════════════════════════════════════════════
+//  CAHIER QUI S'OUVRE
+// ═══════════════════════════════════════════════════════════
 class _SchoolNotebookOpen extends StatefulWidget {
-  const _SchoolNotebookOpen();
+  final VoidCallback onComplete;
+  const _SchoolNotebookOpen({required this.onComplete});
   @override
-  State<_SchoolNotebookOpen> createState() => _SchoolNotebookOpenState();
+  State<_SchoolNotebookOpen> createState() =>
+      _SchoolNotebookOpenState();
 }
 
 class _SchoolNotebookOpenState extends State<_SchoolNotebookOpen>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double> _scale;
+  late Animation<double> _coverRotation;
+  late Animation<double> _pagesFade;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
-    _ctrl.forward();
+        vsync: this,
+        duration: const Duration(milliseconds: 1200))
+      ..forward().then((_) {
+        if (mounted) widget.onComplete();
+      });
+    _coverRotation = Tween<double>(begin: 0.0, end: -pi * 0.45)
+        .animate(CurvedAnimation(
+            parent: _ctrl,
+            curve: const Interval(0.0, 0.6,
+                curve: Curves.easeOutBack)));
+    _pagesFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+            parent: _ctrl,
+            curve: const Interval(0.3, 0.7,
+                curve: Curves.easeIn)));
   }
 
   @override
@@ -37,15 +52,107 @@ class _SchoolNotebookOpenState extends State<_SchoolNotebookOpen>
   }
 
   @override
-  Widget build(BuildContext context) => ScaleTransition(
-        scale: _scale,
-        child: const Text('📓', style: TextStyle(fontSize: 72)),
-      );
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) => Center(
+        child: SizedBox(
+          width: 260,
+          height: 300,
+          child: Stack(alignment: Alignment.center, children: [
+            Opacity(
+              opacity: _pagesFade.value,
+              child: Container(
+                width: 220,
+                height: 270,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E1),
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(2, 4))
+                    ]),
+                child: CustomPaint(
+                    painter: _SchoolPagePainter()),
+              ),
+            ),
+            Positioned(
+              left: 20,
+              child: Transform(
+                alignment: Alignment.centerLeft,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.002)
+                  ..rotateY(_coverRotation.value),
+                child: Container(
+                  width: 220,
+                  height: 270,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFF6A1B9A),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                          color: const Color(0xFF4A148C),
+                          width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: const Offset(3, 3))
+                      ]),
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                    const Icon(Icons.psychology_rounded,
+                        color: Colors.white70, size: 48),
+                    const SizedBox(height: 8),
+                    Text('COMPORTEMENT',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2)),
+                  ]),
+                ),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
+class _SchoolPagePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFBBDEFB).withOpacity(0.4)
+      ..strokeWidth = 0.8;
+    for (int i = 1; i <= 10; i++) {
+      final y = i * size.height / 11;
+      canvas.drawLine(
+          Offset(20, y), Offset(size.width - 20, y), paint);
+    }
+    final marginPaint = Paint()
+      ..color = Colors.redAccent.withOpacity(0.3)
+      ..strokeWidth = 1.5;
+    canvas.drawLine(const Offset(40, 10),
+        Offset(40, size.height - 10), marginPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ÉTOILES SELON LA NOTE
+// ═══════════════════════════════════════════════════════════
 class _StarsAnimation extends StatefulWidget {
-  final int stars;
-  const _StarsAnimation({required this.stars});
+  final int starCount;
+  final VoidCallback onComplete;
+  const _StarsAnimation(
+      {required this.starCount, required this.onComplete});
   @override
   State<_StarsAnimation> createState() => _StarsAnimationState();
 }
@@ -53,15 +160,16 @@ class _StarsAnimation extends StatefulWidget {
 class _StarsAnimationState extends State<_StarsAnimation>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900));
-    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
-    _ctrl.forward();
+        vsync: this,
+        duration: const Duration(milliseconds: 1600))
+      ..forward().then((_) {
+        if (mounted) widget.onComplete();
+      });
   }
 
   @override
@@ -71,1047 +179,874 @@ class _StarsAnimationState extends State<_StarsAnimation>
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-        opacity: _fade,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            5,
-            (i) => Icon(
-              i < widget.stars ? Icons.star_rounded : Icons.star_outline_rounded,
-              color: Colors.amber,
-              size: 36,
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final t = _ctrl.value;
+        return Stack(alignment: Alignment.center, children: [
+          Container(
+              color: Colors.purple
+                  .withOpacity(0.04 * (1 - t))),
+          Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(widget.starCount, (i) {
+                final starDelay = i * 0.15;
+                final starProgress =
+                    ((t - starDelay) / 0.3).clamp(0.0, 1.0);
+                final scale =
+                    Curves.elasticOut.transform(starProgress);
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Text('⭐',
+                        style: TextStyle(fontSize: 36, shadows: [
+                          Shadow(
+                              color: Colors.amber
+                                  .withOpacity(0.6 * starProgress),
+                              blurRadius: 10),
+                        ])),
+                  ),
+                );
+              })),
+          if (t > 0.5)
+            Positioned(
+              bottom: MediaQuery.of(context).size.height * 0.32,
+              child: Opacity(
+                opacity: ((t - 0.5) / 0.3).clamp(0.0, 1.0),
+                child: Text(
+                  widget.starCount >= 4
+                      ? 'EXCELLENT !'
+                      : widget.starCount >= 3
+                          ? 'BIEN !'
+                          : widget.starCount >= 2
+                              ? 'CORRECT'
+                              : 'PEUT MIEUX FAIRE',
+                  style: TextStyle(
+                      color: widget.starCount >= 4
+                          ? Colors.amber
+                          : widget.starCount >= 3
+                              ? Colors.greenAccent
+                              : widget.starCount >= 2
+                                  ? Colors.orangeAccent
+                                  : Colors.redAccent,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 3),
+                ),
+              ),
             ),
-          ),
-        ),
-      );
+        ]);
+      },
+    );
+  }
 }
 
-int _percentToStars(double pct) {
-  if (pct >= 90) return 5;
-  if (pct >= 75) return 4;
-  if (pct >= 60) return 3;
-  if (pct >= 40) return 2;
+int _percentToStars(double percent) {
+  if (percent >= 90) return 5;
+  if (percent >= 75) return 4;
+  if (percent >= 60) return 3;
+  if (percent >= 40) return 2;
   return 1;
 }
 
 Future<void> showSchoolNotebookAnimation(BuildContext context) {
-  return showDialog(
+  return showGeneralDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) => const Center(child: _SchoolNotebookOpen()),
-  );
-}
-
-Future<void> showStarsAnimation(BuildContext context, int stars) {
-  return showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => Center(
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1E2E),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Résultat 🎉',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              _StarsAnimation(stars: stars),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK',
-                    style: TextStyle(color: Colors.purpleAccent)),
-              ),
-            ],
-          ),
-        ),
-      ),
+    barrierColor: Colors.black87,
+    transitionDuration: const Duration(milliseconds: 100),
+    pageBuilder: (ctx, _, __) => Material(
+      color: Colors.transparent,
+      child: _SchoolNotebookOpen(
+          onComplete: () => Navigator.of(ctx).pop()),
     ),
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  MODÈLE LOCAL
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _SchoolNoteDisplay {
-  final String subject;
-  final double value;
-  final double maxValue;
-  final DateTime date;
-  final String rawEntry; // clé unique dans l'historique
-
-  const _SchoolNoteDisplay({
-    required this.subject,
-    required this.value,
-    required this.maxValue,
-    required this.date,
-    required this.rawEntry,
-  });
-
-  double get percentage => maxValue > 0 ? (value / maxValue) * 100 : 0;
+Future<void> showStarsAnimation(
+    BuildContext context, double percent) {
+  final stars = _percentToStars(percent);
+  return showGeneralDialog(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black87,
+    transitionDuration: const Duration(milliseconds: 100),
+    pageBuilder: (ctx, _, __) => Material(
+      color: Colors.transparent,
+      child: _StarsAnimation(
+          starCount: stars,
+          onComplete: () => Navigator.of(ctx).pop()),
+    ),
+  );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  ÉCRAN PRINCIPAL
-// ══════════════════════════════════════════════════════════════════════════════
-
+// ═══════════════════════════════════════════════════════════
+//  NOTES COMPORTEMENTALES SCREEN
+// ═══════════════════════════════════════════════════════════
 class SchoolNotesScreen extends StatefulWidget {
   final String childId;
   const SchoolNotesScreen({super.key, required this.childId});
-
   @override
-  State<SchoolNotesScreen> createState() => _SchoolNotesScreenState();
+  State<SchoolNotesScreen> createState() =>
+      _SchoolNotesScreenState();
 }
 
-class _SchoolNotesScreenState extends State<SchoolNotesScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _listCtrl;
+class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
+  void _showAddNote(FamilyProvider provider) async {
+    await showSchoolNotebookAnimation(context);
+    if (!mounted) return;
 
-  // ── sujets rapides ────────────────────────────────────────────────────────
-  static const List<String> _quickSubjects = [
-    'Comportement',
-    'Respect',
-    'Effort',
-    'Politesse',
-    'Travail',
-    'Participation',
-    'Rangement',
-    'Autonomie',
-  ];
+    String subject = '';
+    int value = 10;
+    int maxValue = 20;
+    final subjectController = TextEditingController();
+    const quickSubjects = [
+      'Comportement', 'Respect', 'Travail en classe',
+      'Effort', 'Politesse', 'Coopération', 'Autonomie', 'Ponctualité'
+    ];
 
-  @override
-  void initState() {
-    super.initState();
-    _listCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _listCtrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _listCtrl.dispose();
-    super.dispose();
-  }
-
-  // ── récupère les notes depuis l'historique ───────────────────────────────
-  List<_SchoolNoteDisplay> _getNotes(FamilyProvider fp) {
-    final child = fp.children.firstWhere((c) => c.id == widget.childId,
-        orElse: () => fp.children.first);
-    final notes = <_SchoolNoteDisplay>[];
-
-    for (final entry in child.history.reversed) {
-      // Format stocké : "📝 Note comportement — Sujet: valeur/max (date)"
-      if (!entry.contains('📝') && !entry.contains('Note comportement')) {
-        continue;
-      }
-      try {
-        // Extraction du sujet et de la note
-        final dashIdx = entry.indexOf('—');
-        if (dashIdx < 0) continue;
-        final afterDash = entry.substring(dashIdx + 1).trim();
-        // afterDash = "Sujet: valeur/max (date)"
-        final colonIdx = afterDash.indexOf(':');
-        if (colonIdx < 0) continue;
-        final subject = afterDash.substring(0, colonIdx).trim();
-        final rest = afterDash.substring(colonIdx + 1).trim();
-        // rest = "valeur/max (date)"
-        final parenIdx = rest.indexOf('(');
-        final scoreStr =
-            parenIdx >= 0 ? rest.substring(0, parenIdx).trim() : rest.trim();
-        final slashIdx = scoreStr.indexOf('/');
-        if (slashIdx < 0) continue;
-        final value = double.tryParse(scoreStr.substring(0, slashIdx).trim());
-        final maxVal =
-            double.tryParse(scoreStr.substring(slashIdx + 1).trim());
-        if (value == null || maxVal == null) continue;
-
-        // Date
-        DateTime date = DateTime.now();
-        if (parenIdx >= 0) {
-          final dateStr = rest
-              .substring(parenIdx + 1, rest.lastIndexOf(')'))
-              .trim();
-          date = DateTime.tryParse(dateStr) ?? DateTime.now();
-        }
-
-        notes.add(_SchoolNoteDisplay(
-          subject: subject,
-          value: value,
-          maxValue: maxVal,
-          date: date,
-          rawEntry: entry,
-        ));
-      } catch (_) {
-        continue;
-      }
-    }
-    return notes;
-  }
-
-  // ── suppression d'une note ───────────────────────────────────────────────
-  Future<void> _deleteNote(
-      BuildContext context, FamilyProvider fp, _SchoolNoteDisplay note) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Supprimer la note ?',
-            style: TextStyle(color: Colors.white)),
-        content: Text(
-          '${note.subject} : ${note.value.toStringAsFixed(0)}/${note.maxValue.toStringAsFixed(0)}',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler',
-                style: TextStyle(color: Colors.white54)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Supprimer', style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true && mounted) {
-      final child = fp.children
-          .firstWhere((c) => c.id == widget.childId);
-      // Supprime l'entrée de l'historique
-      child.history.remove(note.rawEntry);
-      fp.notifyListeners();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Note supprimée'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
-  }
-
-  // ── ajouter une note ─────────────────────────────────────────────────────
-  Future<void> _showAddNote(BuildContext context) async {
-    final fp = context.read<FamilyProvider>();
-    String selectedSubject = _quickSubjects[0];
-    final customCtrl = TextEditingController();
-    bool useCustom = false;
-    double value = 10;
-    int maxScore = 20; // Barème : 10 ou 20 uniquement
-    DateTime selectedDate = DateTime.now();
-
-    await showModalBottomSheet(
+    if (!mounted) return;
+    showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1A1A2E),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx2, setModal) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx2).viewInsets.bottom + 24,
-            left: 20,
-            right: 20,
-            top: 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── titre ──────────────────────────────────────────────────
-                const Center(
-                  child: Text('📝 Nouvelle note',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 20),
-
-                // ── sélecteur de date ───────────────────────────────────────
-                const Text('📅 Date de la note',
-                    style: TextStyle(
-                        color: Colors.white70, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                TvFocusWrapper(
-                  onActivate: () async {
-                    final picked = await showDatePicker(
-                      context: ctx2,
-                      initialDate: selectedDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                      locale: const Locale('fr'),
-                      builder: (context, child) => Theme(
-                        data: ThemeData.dark().copyWith(
-                          colorScheme: const ColorScheme.dark(
-                            primary: Colors.purpleAccent,
-                            onPrimary: Colors.white,
-                            surface: Color(0xFF2A2A3E),
-                          ),
-                          dialogBackgroundColor: const Color(0xFF1E1E2E),
-                        ),
-                        child: child!,
-                      ),
-                    );
-                    if (picked != null) {
-                      setModal(() => selectedDate = picked);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.purpleAccent.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: Colors.purpleAccent.withOpacity(0.35)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today_rounded,
-                            color: Colors.purpleAccent, size: 18),
-                        const SizedBox(width: 10),
-                        Text(
-                          '${selectedDate.day.toString().padLeft(2, '0')}/'
-                          '${selectedDate.month.toString().padLeft(2, '0')}/'
-                          '${selectedDate.year}',
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 15),
-                        ),
-                        const Spacer(),
-                        const Icon(Icons.edit_calendar_rounded,
-                            color: Colors.white38, size: 16),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // ── sujets rapides ──────────────────────────────────────────
-                const Text('📌 Sujet',
-                    style: TextStyle(
-                        color: Colors.white70, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: _quickSubjects
-                      .map((s) => GestureDetector(
-                            onTap: () => setModal(() {
-                              selectedSubject = s;
-                              useCustom = false;
-                            }),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 7),
-                              decoration: BoxDecoration(
-                                gradient: (!useCustom &&
-                                        selectedSubject == s)
-                                    ? const LinearGradient(colors: [
-                                        Color(0xFF7C3AED),
-                                        Color(0xFF9F67FA)
-                                      ])
-                                    : null,
-                                color: (!useCustom && selectedSubject == s)
-                                    ? null
-                                    : Colors.white12,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(s,
-                                  style: TextStyle(
-                                      color: (!useCustom &&
-                                              selectedSubject == s)
-                                          ? Colors.white
-                                          : Colors.white70,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600)),
-                            ),
-                          ))
-                      .toList(),
-                ),
-                const SizedBox(height: 12),
-
-                // ── sujet personnalisé ──────────────────────────────────────
-                TextField(
-                  controller: customCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Sujet personnalisé (optionnel)…',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                  ),
-                  onChanged: (v) => setModal(() => useCustom = v.isNotEmpty),
-                ),
-                const SizedBox(height: 20),
-
-                // ── barème : /10 ou /20 ─────────────────────────────────────
-                const Text('🎯 Barème',
-                    style: TextStyle(
-                        color: Colors.white70, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [10, 20].map((m) {
-                    final selected = maxScore == m;
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () => setModal(() {
-                          maxScore = m;
-                          // Réinitialise la valeur si elle dépasse le nouveau max
-                          if (value > m) value = m.toDouble();
-                        }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: EdgeInsets.only(
-                              right: m == 10 ? 8 : 0),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            gradient: selected
-                                ? const LinearGradient(colors: [
-                                    Color(0xFF7C3AED),
-                                    Color(0xFF9F67FA)
-                                  ])
-                                : null,
-                            color:
-                                selected ? null : Colors.white12,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: selected
-                                  ? Colors.purpleAccent
-                                  : Colors.transparent,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '/$m',
-                              style: TextStyle(
-                                color: selected
-                                    ? Colors.white
-                                    : Colors.white54,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 20),
-
-                // ── curseur de valeur ────────────────────────────────────────
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (context, setModalState) {
+          return DraggableScrollableSheet(
+            initialChildSize: 0.75,
+            minChildSize: 0.5,
+            maxChildSize: 0.9,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                    color: Colors.grey[900]?.withOpacity(0.95),
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24))),
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(20),
                   children: [
-                    const Text('✏️ Note obtenue',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.purpleAccent.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
+                    Center(
+                        child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                                color: Colors.white24,
+                                borderRadius:
+                                    BorderRadius.circular(2)))),
+                    const SizedBox(height: 16),
+                    Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.center,
+                        children: [
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration:
+                            const Duration(milliseconds: 600),
+                        curve: Curves.elasticOut,
+                        builder: (context, val, child) =>
+                            Transform.scale(
+                                scale: val, child: child),
+                        child: const Text('🧠',
+                            style: TextStyle(fontSize: 28)),
                       ),
-                      child: Text(
-                        '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} / $maxScore',
-                        style: const TextStyle(
-                            color: Colors.purpleAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16),
+                      const SizedBox(width: 10),
+                      const Text('Nouvelle note comportementale',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ]),
+                    const SizedBox(height: 24),
+                    const Text('Critère',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: quickSubjects.map((s) {
+                          final isSelected = subject == s;
+                          return TvFocusWrapper(
+                            onTap: () => setModalState(() {
+                              subject = isSelected ? '' : s;
+                              if (subject.isNotEmpty)
+                                subjectController.clear();
+                            }),
+                            child: GestureDetector(
+                              onTap: () => setModalState(() {
+                                subject = isSelected ? '' : s;
+                                if (subject.isNotEmpty)
+                                  subjectController.clear();
+                              }),
+                              child: AnimatedContainer(
+                                duration: const Duration(
+                                    milliseconds: 200),
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 8),
+                                decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.purpleAccent
+                                            .withOpacity(0.2)
+                                        : Colors.white
+                                            .withOpacity(0.06),
+                                    borderRadius:
+                                        BorderRadius.circular(20),
+                                    border: Border.all(
+                                        color: isSelected
+                                            ? Colors.purpleAccent
+                                            : Colors.white24)),
+                                child: Text(s,
+                                    style: TextStyle(
+                                        color: isSelected
+                                            ? Colors.purpleAccent
+                                            : Colors.white70,
+                                        fontSize: 13)),
+                              ),
+                            ),
+                          );
+                        }).toList()),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: subjectController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                          hintText: 'Ou saisissez un critère...',
+                          hintStyle: const TextStyle(
+                              color: Colors.white38),
+                          filled: true,
+                          fillColor:
+                              Colors.white.withOpacity(0.06),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(14),
+                              borderSide: BorderSide.none),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(14),
+                              borderSide: const BorderSide(
+                                  color: Colors.purpleAccent))),
+                      onChanged: (val) {
+                        if (val.isNotEmpty)
+                          setModalState(() => subject = '');
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Note',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.center,
+                        children: [
+                      TvFocusWrapper(
+                        onTap: () {
+                          if (value > 0)
+                            setModalState(() => value--);
+                        },
+                        child: GestureDetector(
+                          onTap: () {
+                            if (value > 0)
+                              setModalState(() => value--);
+                          },
+                          child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white
+                                      .withOpacity(0.1),
+                                  border: Border.all(
+                                      color: Colors.white24)),
+                              child: const Icon(Icons.remove,
+                                  color: Colors.white70)),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      TweenAnimationBuilder<double>(
+                        key: ValueKey(value),
+                        tween: Tween<double>(
+                            begin: (value - 1).toDouble(),
+                            end: value.toDouble()),
+                        duration:
+                            const Duration(milliseconds: 200),
+                        builder: (context, val, _) {
+                          final percent = maxValue > 0
+                              ? val / maxValue * 100
+                              : 0.0;
+                          return Text(
+                              '${val.round()} / $maxValue',
+                              style: TextStyle(
+                                  color: percent >= 50
+                                      ? Colors.greenAccent
+                                      : Colors.redAccent,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold));
+                        },
+                      ),
+                      const SizedBox(width: 16),
+                      TvFocusWrapper(
+                        onTap: () {
+                          if (value < maxValue)
+                            setModalState(() => value++);
+                        },
+                        child: GestureDetector(
+                          onTap: () {
+                            if (value < maxValue)
+                              setModalState(() => value++);
+                          },
+                          child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white
+                                      .withOpacity(0.1),
+                                  border: Border.all(
+                                      color: Colors.white24)),
+                              child: const Icon(Icons.add,
+                                  color: Colors.white70)),
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    const Text('Barème',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.center,
+                        children: [10, 20, 40, 100].map((val) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4),
+                            child: TvFocusWrapper(
+                              onTap: () => setModalState(() {
+                                maxValue = val;
+                                if (value > maxValue)
+                                  value = maxValue;
+                              }),
+                              child: OutlinedButton(
+                                onPressed: () =>
+                                    setModalState(() {
+                                  maxValue = val;
+                                  if (value > maxValue)
+                                    value = maxValue;
+                                }),
+                                style: OutlinedButton.styleFrom(
+                                    foregroundColor:
+                                        maxValue == val
+                                            ? Colors.purpleAccent
+                                            : Colors.white54,
+                                    side: BorderSide(
+                                        color: maxValue == val
+                                            ? Colors.purpleAccent
+                                            : Colors.white24),
+                                    shape:
+                                        RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius
+                                                    .circular(20))),
+                                child: Text('/$val'),
+                              ),
+                            ),
+                          );
+                        }).toList()),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: TvFocusWrapper(
+                        onTap: () => _submitNote(ctx, provider,
+                            subject, subjectController.text,
+                            value, maxValue),
+                        child: ElevatedButton.icon(
+                          onPressed: () => _submitNote(
+                              ctx,
+                              provider,
+                              subject,
+                              subjectController.text,
+                              value,
+                              maxValue),
+                          icon: const Icon(Icons.psychology),
+                          label: const Text('Ajouter la note',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  Colors.purple.shade700,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(16))),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                SliderTheme(
-                  data: SliderTheme.of(ctx2).copyWith(
-                    activeTrackColor: Colors.purpleAccent,
-                    thumbColor: Colors.purpleAccent,
-                    inactiveTrackColor: Colors.white12,
-                    overlayColor: Colors.purpleAccent.withOpacity(0.15),
-                  ),
-                  child: Slider(
-                    value: value,
-                    min: 0,
-                    max: maxScore.toDouble(),
-                    divisions: maxScore,
-                    onChanged: (v) => setModal(() => value = v),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // ── bouton valider ────────────────────────────────────────────
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                    icon: const Icon(Icons.check_circle_outline_rounded,
-                        color: Colors.white),
-                    label: const Text('Enregistrer la note',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
-                    onPressed: () async {
-                      final subject = useCustom && customCtrl.text.isNotEmpty
-                          ? customCtrl.text.trim()
-                          : selectedSubject;
-                      Navigator.pop(ctx2);
-                      await _submitNote(
-                          context, fp, subject, value, maxScore, selectedDate);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+              );
+            },
+          );
+        });
+      },
     );
   }
 
-  // ── soumettre la note ─────────────────────────────────────────────────────
-  Future<void> _submitNote(
-    BuildContext context,
-    FamilyProvider fp,
-    String subject,
-    double value,
-    int maxScore,
-    DateTime date,
-  ) async {
-    final pct = (value / maxScore) * 100;
-    final stars = _percentToStars(pct);
+  void _submitNote(BuildContext ctx, FamilyProvider provider,
+      String subject, String customSubject, int value,
+      int maxValue) async {
+    final finalSubject =
+        subject.isNotEmpty ? subject : customSubject.trim();
+    if (finalSubject.isEmpty) {
+      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+          content: Text('Indiquez un critère'),
+          backgroundColor: Colors.purpleAccent));
+      return;
+    }
+    final normalizedScore =
+        maxValue > 0 ? (value / maxValue * 20).round() : value;
+    final percent =
+        maxValue > 0 ? value / maxValue * 100 : 0.0;
 
-    // Format de stockage :
-    // "📝 Note comportement — Sujet: valeur/max (YYYY-MM-DD)"
-    final dateStr =
-        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final noteStr =
-        '📝 Note comportement — $subject: ${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)}/$maxScore ($dateStr)';
+    provider.addPoints(widget.childId, normalizedScore,
+        '$finalSubject: $value/$maxValue',
+        category: 'school_note', isBonus: true);
 
-    final child = fp.children.firstWhere((c) => c.id == widget.childId);
-    child.history.add(noteStr);
-    fp.notifyListeners();
+    if (ctx.mounted) Navigator.pop(ctx);
 
     if (!mounted) return;
-    await showSchoolNotebookAnimation(context);
-    if (!mounted) return;
-    Navigator.pop(context); // ferme l'anim cahier
-    await showStarsAnimation(context, stars);
+    await showStarsAnimation(context, percent);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              'Note ajoutée : $value/$maxValue – $finalSubject'),
+          backgroundColor: Colors.purple));
+    }
   }
 
-  // ── affichage détail note ─────────────────────────────────────────────────
-  void _showNoteDetail(BuildContext context, _SchoolNoteDisplay note) {
-    final stars = _percentToStars(note.percentage);
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(note.subject,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Text(
-              '${note.value.toStringAsFixed(note.value.truncateToDouble() == note.value ? 0 : 1)} / ${note.maxValue.toStringAsFixed(0)}',
-              style: const TextStyle(
-                  color: Colors.purpleAccent,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${note.percentage.toStringAsFixed(1)} %',
-              style: const TextStyle(color: Colors.white54, fontSize: 16),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                5,
-                (i) => Icon(
-                  i < stars
-                      ? Icons.star_rounded
-                      : Icons.star_outline_rounded,
-                  color: Colors.amber,
-                  size: 28,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${note.date.day.toString().padLeft(2, '0')}/'
-              '${note.date.month.toString().padLeft(2, '0')}/'
-              '${note.date.year}',
-              style: const TextStyle(color: Colors.white38, fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
+  List<_SchoolNoteDisplay> _getSchoolNotes(FamilyProvider provider) {
+    final history = provider.getHistoryForChild(widget.childId);
+    return history
+        .where((h) => h.category == 'school_note')
+        .map((h) {
+      String subject = h.reason;
+      int noteValue = h.points;
+      int noteMax = 20;
+      final match =
+          RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(h.reason);
+      if (match != null) {
+        subject = match.group(1)!.trim();
+        noteValue =
+            int.tryParse(match.group(2)!) ?? h.points;
+        noteMax =
+            int.tryParse(match.group(3)!) ?? 20;
+      }
+      return _SchoolNoteDisplay(
+          id: h.id,
+          subject: subject,
+          value: noteValue,
+          maxValue: noteMax,
+          date: h.date);
+    }).toList();
   }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  BUILD
-  // ══════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
-    final fp = context.watch<FamilyProvider>();
-    final notes = _getNotes(fp);
-    final avgPct = notes.isEmpty
-        ? 0.0
-        : notes.fold<double>(0, (s, n) => s + n.percentage) / notes.length;
-    final avgStars = notes.isEmpty ? 0 : _percentToStars(avgPct);
+    return Consumer<FamilyProvider>(
+      builder: (context, provider, _) {
+        final child = provider.getChild(widget.childId);
+        final notes = _getSchoolNotes(provider);
+        final avgPercent = notes.isNotEmpty
+            ? notes.fold<double>(
+                    0,
+                    (sum, n) => sum +
+                        (n.maxValue > 0
+                            ? n.value / n.maxValue * 100
+                            : 0)) /
+                notes.length
+            : 0.0;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          const AnimatedBackground(),
-          SafeArea(
-            child: Column(
-              children: [
-                // ── AppBar ────────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const Expanded(
-                        child: Text('📓 Notes de comportement',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      TvFocusWrapper(
-                        onActivate: () => _showAddNote(context),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [
-                              Color(0xFF7C3AED),
-                              Color(0xFF9F67FA),
-                            ]),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.add_rounded,
-                                color: Colors.white),
-                            onPressed: () => _showAddNote(context),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+        return AnimatedBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              title: Row(mainAxisSize: MainAxisSize.min, children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.elasticOut,
+                  builder: (context, val, child) =>
+                      Transform.scale(scale: val, child: child),
+                  child: const Text('🧠',
+                      style: TextStyle(fontSize: 22)),
                 ),
-
-                // ── moyenne globale ──────────────────────────────────────
-                if (notes.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 14),
-                        child: Row(
-                          children: [
-                            CircularPercentWidget(
-                                percent: avgPct / 100, size: 56),
-                            const SizedBox(width: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Moyenne générale',
-                                    style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 13)),
-                                Text(
-                                  '${avgPct.toStringAsFixed(1)} %',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            const Spacer(),
-                            Row(
-                              children: List.generate(
-                                5,
-                                (i) => Icon(
-                                  i < avgStars
-                                      ? Icons.star_rounded
-                                      : Icons.star_outline_rounded,
-                                  color: Colors.amber,
-                                  size: 22,
+                const SizedBox(width: 8),
+                Text('Notes comportementales – ${child?.name ?? ''}'),
+              ]),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+            ),
+            body: Column(children: [
+              if (notes.isNotEmpty)
+                Container(
+                  margin:
+                      const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [
+                      Colors.purpleAccent.withOpacity(0.12),
+                      Colors.purpleAccent.withOpacity(0.04)
+                    ]),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color:
+                            Colors.purpleAccent.withOpacity(0.3)),
+                  ),
+                  child: Row(children: [
+                    Row(
+                        children: List.generate(
+                            _percentToStars(avgPercent),
+                            (i) => const Padding(
+                                padding:
+                                    EdgeInsets.only(right: 2),
+                                child: Text('⭐',
+                                    style:
+                                        TextStyle(fontSize: 14))))),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                          const Text('Moyenne comportementale',
+                              style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12)),
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(
+                                begin: 0, end: avgPercent),
+                            duration: const Duration(
+                                milliseconds: 800),
+                            builder: (context, val, _) => Text(
+                                '${val.round()}%',
+                                style: TextStyle(
+                                    color: val >= 50
+                                        ? Colors.greenAccent
+                                        : Colors.redAccent,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ])),
+                    Text(
+                        '${notes.length} note${notes.length > 1 ? 's' : ''}',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.4),
+                            fontSize: 12)),
+                  ]),
+                ),
+              Expanded(
+                child: notes.isEmpty
+                    ? Center(
+                        child: Column(
+                            mainAxisAlignment:
+                                MainAxisAlignment.center,
+                            children: [
+                          TweenAnimationBuilder<double>(
+                            tween:
+                                Tween<double>(begin: 0, end: 1),
+                            duration: const Duration(
+                                milliseconds: 800),
+                            curve: Curves.elasticOut,
+                            builder: (context, val, child) =>
+                                Transform.scale(
+                                    scale: val, child: child),
+                            child: const Icon(Icons.psychology,
+                                size: 64,
+                                color: Colors.white24),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                              'Aucune note comportementale',
+                              style: TextStyle(
+                                  color: Colors.white54)),
+                        ]))
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(
+                            16, 16, 16, 16),
+                        itemCount: notes.length,
+                        itemBuilder: (context, index) {
+                          final note = notes[index];
+                          final percentage = note.maxValue > 0
+                              ? (note.value /
+                                      note.maxValue *
+                                      100)
+                              : 0.0;
+                          final isGood = percentage >= 50;
+                          final stars =
+                              _percentToStars(percentage);
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                                bottom: 8),
+                            child: TvFocusWrapper(
+                              onTap: () =>
+                                  _showNoteDetail(note, provider),
+                              child: GestureDetector(
+                                onTap: () => _showNoteDetail(
+                                    note, provider),
+                                child: GlassCard(
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.all(16),
+                                    child: Row(children: [
+                                      TweenAnimationBuilder<
+                                          double>(
+                                        tween: Tween<double>(
+                                            begin: 0,
+                                            end: percentage),
+                                        duration: Duration(
+                                            milliseconds:
+                                                600 + index * 100),
+                                        curve:
+                                            Curves.easeOutCubic,
+                                        builder: (context, val,
+                                                _) =>
+                                            Container(
+                                              width: 48,
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                  shape: BoxShape
+                                                      .circle,
+                                                  color: (isGood
+                                                          ? Colors
+                                                              .greenAccent
+                                                          : Colors
+                                                              .redAccent)
+                                                      .withOpacity(
+                                                          0.15)),
+                                              child: Center(
+                                                  child: Text(
+                                                      '${val.round()}%',
+                                                      style: TextStyle(
+                                                          color: isGood
+                                                              ? Colors
+                                                                  .greenAccent
+                                                              : Colors
+                                                                  .redAccent,
+                                                          fontWeight:
+                                                              FontWeight
+                                                                  .bold,
+                                                          fontSize:
+                                                              13))),
+                                            ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                          child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment
+                                                      .start,
+                                              children: [
+                                            Text(note.subject,
+                                                style: const TextStyle(
+                                                    color:
+                                                        Colors.white,
+                                                    fontSize: 15,
+                                                    fontWeight:
+                                                        FontWeight
+                                                            .w600)),
+                                            const SizedBox(
+                                                height: 4),
+                                            Row(children: [
+                                              Text(
+                                                  '${note.value}/${note.maxValue}',
+                                                  style: const TextStyle(
+                                                      color: Colors
+                                                          .white54,
+                                                      fontSize: 13)),
+                                              const SizedBox(
+                                                  width: 8),
+                                              ...List.generate(
+                                                  stars,
+                                                  (i) => const Padding(
+                                                      padding: EdgeInsets
+                                                          .only(
+                                                              right:
+                                                                  1),
+                                                      child: Text(
+                                                          '⭐',
+                                                          style: TextStyle(
+                                                              fontSize:
+                                                                  10)))),
+                                            ]),
+                                          ])),
+                                      Text(
+                                          '${note.date.day.toString().padLeft(2, '0')}/${note.date.month.toString().padLeft(2, '0')}',
+                                          style: const TextStyle(
+                                              color: Colors.white38,
+                                              fontSize: 12)),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                          Icons.chevron_right,
+                                          color: Colors.white24,
+                                          size: 18),
+                                    ]),
+                                  ),
                                 ),
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: TvFocusWrapper(
+                    onTap: () => _showAddNote(provider),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showAddNote(provider),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Ajouter une note comportementale',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Colors.purple.shade700,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(16))),
                     ),
                   ),
-                const SizedBox(height: 8),
-
-                // ── liste des notes ──────────────────────────────────────
-                Expanded(
-                  child: notes.isEmpty
-                      ? const Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('📭',
-                                  style: TextStyle(fontSize: 48)),
-                              SizedBox(height: 12),
-                              Text('Aucune note pour le moment',
-                                  style: TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 16)),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 4),
-                          itemCount: notes.length,
-                          itemBuilder: (ctx, i) {
-                            final note = notes[i];
-                            final stars = _percentToStars(note.percentage);
-                            final delay =
-                                Duration(milliseconds: i * 60);
-
-                            return FutureBuilder(
-                              future: Future.delayed(delay),
-                              builder: (_, snap) {
-                                return AnimatedOpacity(
-                                  opacity: snap.connectionState ==
-                                          ConnectionState.done
-                                      ? 1.0
-                                      : 0.0,
-                                  duration:
-                                      const Duration(milliseconds: 300),
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: 10),
-                                    // ── Swipe pour supprimer ────────────
-                                    child: Dismissible(
-                                      key: Key(note.rawEntry),
-                                      direction:
-                                          DismissDirection.endToStart,
-                                      background: Container(
-                                        alignment: Alignment.centerRight,
-                                        padding: const EdgeInsets.only(
-                                            right: 20),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(
-                                              0.25),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                        ),
-                                        child: const Icon(
-                                            Icons.delete_rounded,
-                                            color: Colors.redAccent,
-                                            size: 28),
-                                      ),
-                                      confirmDismiss: (_) async {
-                                        return await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            backgroundColor:
-                                                const Color(0xFF1E1E2E),
-                                            shape:
-                                                RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius
-                                                            .circular(
-                                                                16)),
-                                            title: const Text(
-                                                'Supprimer ?',
-                                                style: TextStyle(
-                                                    color:
-                                                        Colors.white)),
-                                            content: Text(
-                                              '${note.subject} : ${note.value.toStringAsFixed(0)}/${note.maxValue.toStringAsFixed(0)}',
-                                              style: const TextStyle(
-                                                  color: Colors
-                                                      .white70),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(
-                                                        context, false),
-                                                child: const Text(
-                                                    'Annuler',
-                                                    style: TextStyle(
-                                                        color: Colors
-                                                            .white54)),
-                                              ),
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(
-                                                        context, true),
-                                                child: const Text(
-                                                    'Supprimer',
-                                                    style: TextStyle(
-                                                        color: Colors
-                                                            .redAccent)),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                      onDismissed: (_) => _deleteNote(
-                                          context, fp, note),
-                                      child: TvFocusWrapper(
-                                        onActivate: () =>
-                                            _showNoteDetail(
-                                                context, note),
-                                        child: GlassCard(
-                                          child: Padding(
-                                            padding:
-                                                const EdgeInsets.all(14),
-                                            child: Row(
-                                              children: [
-                                                // ── % cercle ──────────
-                                                CircularPercentWidget(
-                                                  percent:
-                                                      note.percentage /
-                                                          100,
-                                                  size: 52,
-                                                ),
-                                                const SizedBox(width: 14),
-                                                // ── infos ─────────────
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        note.subject,
-                                                        style: const TextStyle(
-                                                            color: Colors
-                                                                .white,
-                                                            fontSize: 15,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w700),
-                                                      ),
-                                                      const SizedBox(
-                                                          height: 4),
-                                                      Text(
-                                                        '${note.value.toStringAsFixed(note.value.truncateToDouble() == note.value ? 0 : 1)} / ${note.maxValue.toStringAsFixed(0)}',
-                                                        style: const TextStyle(
-                                                            color: Colors
-                                                                .purpleAccent,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .bold,
-                                                            fontSize:
-                                                                16),
-                                                      ),
-                                                      const SizedBox(
-                                                          height: 4),
-                                                      Text(
-                                                        '${note.date.day.toString().padLeft(2, '0')}/'
-                                                        '${note.date.month.toString().padLeft(2, '0')}/'
-                                                        '${note.date.year}',
-                                                        style: const TextStyle(
-                                                            color: Colors
-                                                                .white38,
-                                                            fontSize:
-                                                                12),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                // ── étoiles ───────────
-                                                Column(
-                                                  children: [
-                                                    Row(
-                                                      children: List
-                                                          .generate(
-                                                        5,
-                                                        (si) => Icon(
-                                                          si < stars
-                                                              ? Icons
-                                                                  .star_rounded
-                                                              : Icons
-                                                                  .star_outline_rounded,
-                                                          color: Colors
-                                                              .amber,
-                                                          size: 16,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(
-                                                        height: 6),
-                                                    // bouton supprimer
-                                                    GestureDetector(
-                                                      onTap: () =>
-                                                          _deleteNote(
-                                                              context,
-                                                              fp,
-                                                              note),
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(6),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: Colors
-                                                              .red
-                                                              .withOpacity(
-                                                                  0.15),
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(
-                                                                      8),
-                                                        ),
-                                                        child: const Icon(
-                                                            Icons
-                                                                .delete_outline_rounded,
-                                                            color: Colors
-                                                                .redAccent,
-                                                            size: 16),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
                 ),
-              ],
-            ),
+              ),
+            ]),
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  void _showNoteDetail(
+      _SchoolNoteDisplay note, FamilyProvider provider) {
+    final percent = note.maxValue > 0
+        ? note.value / note.maxValue * 100
+        : 0.0;
+    final stars = _percentToStars(percent);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            color: Colors.grey[900]?.withOpacity(0.95),
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24))),
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+          Center(
+              child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2)))),
+          const SizedBox(height: 16),
+          Row(children: [
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.elasticOut,
+              builder: (context, val, child) =>
+                  Transform.scale(scale: val, child: child),
+              child: const Text('🧠',
+                  style: TextStyle(fontSize: 28)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+                child: Text(note.subject,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold))),
+          ]),
+          const SizedBox(height: 16),
+          Center(
+            child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(stars, (i) {
+                  return TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: 1),
+                    duration: Duration(
+                        milliseconds: 400 + i * 150),
+                    curve: Curves.elasticOut,
+                    builder: (context, val, child) =>
+                        Transform.scale(
+                            scale: val, child: child),
+                    child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 4),
+                        child: Text('⭐',
+                            style: TextStyle(fontSize: 28))),
+                  );
+                })),
+          ),
+          const SizedBox(height: 16),
+          _detailRow('Note', '${note.value}/${note.maxValue}'),
+          _detailRow('Pourcentage', '${percent.round()}%'),
+          _detailRow(
+              'Date',
+              '${note.date.day.toString().padLeft(2, '0')}/${note.date.month.toString().padLeft(2, '0')}/${note.date.year}'),
+          const SizedBox(height: 24),
+        ]),
       ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white54, fontSize: 14)),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600)),
+      ]),
     );
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  WIDGET CERCLE POURCENTAGE
-// ══════════════════════════════════════════════════════════════════════════════
-
-class CircularPercentWidget extends StatelessWidget {
-  final double percent; // 0.0 → 1.0
-  final double size;
-
-  const CircularPercentWidget(
-      {super.key, required this.percent, this.size = 52});
-
-  Color _color() {
-    if (percent >= 0.8) return Colors.greenAccent;
-    if (percent >= 0.6) return Colors.lightGreen;
-    if (percent >= 0.4) return Colors.orange;
-    return Colors.redAccent;
-  }
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        width: size,
-        height: size,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            CustomPaint(
-              size: Size(size, size),
-              painter: _CirclePainter(percent: percent, color: _color()),
-            ),
-            Text(
-              '${(percent * 100).toStringAsFixed(0)}%',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: size * 0.2,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
-class _CirclePainter extends CustomPainter {
-  final double percent;
-  final Color color;
-
-  const _CirclePainter({required this.percent, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bg = Paint()
-      ..color = Colors.white12
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-    final fg = Paint()
-      ..color = color
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final rect = Rect.fromCircle(
-        center: Offset(size.width / 2, size.height / 2),
-        radius: size.width / 2 - 3);
-
-    canvas.drawArc(rect, -pi / 2, 2 * pi, false, bg);
-    canvas.drawArc(rect, -pi / 2, 2 * pi * percent, false, fg);
-  }
-
-  @override
-  bool shouldRepaint(_CirclePainter old) =>
-      old.percent != percent || old.color != color;
+class _SchoolNoteDisplay {
+  final String id;
+  final String subject;
+  final int value;
+  final int maxValue;
+  final DateTime date;
+  const _SchoolNoteDisplay(
+      {required this.id,
+      required this.subject,
+      required this.value,
+      required this.maxValue,
+      required this.date});
 }
