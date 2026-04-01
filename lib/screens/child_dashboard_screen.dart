@@ -120,31 +120,24 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         .toList();
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  // CORRECTION PRINCIPALE : score comportemental basé UNIQUEMENT
-  // sur les jours cochés dans _joursSources (semaine en cours)
-  // ══════════════════════════════════════════════════════════════════
+  // Score comportemental basé UNIQUEMENT sur les jours cochés dans _joursSources
   double _getBehaviorScoreForSelectedDays(FamilyProvider fp) {
     if (_joursSources.isEmpty) return 10.0;
 
     final now = DateTime.now();
-    // Lundi de la semaine en cours
     final debutSemaine = now.subtract(Duration(days: now.weekday - 1));
 
-    // Construire la liste des dates correspondant aux jours cochés
     final datesCochees = _joursSources.map((jourIdx) {
       final d = debutSemaine.add(Duration(days: jourIdx));
       return DateTime(d.year, d.month, d.day);
     }).toSet();
 
-    // Filtrer l'historique : uniquement comportemental ET sur les jours cochés
     final entries = fp.getHistoryForChild(widget.childId).where((h) {
       if (h.category == 'school_note' ||
           h.category == 'screen_time_bonus' ||
           h.category == 'saturday_rating' ||
           h.category == 'tribunal_vote' ||
           h.category == 'tribunal_verdict') return false;
-
       final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
       return datesCochees.contains(entryDay);
     }).toList();
@@ -376,7 +369,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         Provider.of<PinProvider>(context, listen: false).isParentMode;
 
     final schoolAvg     = fp.getWeeklySchoolAverage(child.id);
-    // ══ CORRECTION : score comportemental sur les jours sélectionnés ══
     final behaviorScore = _getBehaviorScoreForSelectedDays(fp);
     final globalScore   = fp.getWeeklyGlobalScore(child.id);
     final bonusMinutes  = fp.getParentBonusMinutes(child.id);
@@ -481,7 +473,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             const SizedBox(height: 16),
           ],
 
-          // ── Résumé semaine ──
+          // Résumé semaine
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -532,7 +524,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       child: _miniScoreCard(
                           '🧠',
                           'Comportement',
-                          // ══ Affiche le score basé sur les jours sélectionnés ══
                           '${behaviorScore.toStringAsFixed(1)}/20',
                           behaviorScore >= 10
                               ? Colors.greenAccent
@@ -561,7 +552,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
           const SizedBox(height: 16),
 
-          // ── Calculateur ──
+          // Calculateur
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -761,7 +752,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
           const SizedBox(height: 16),
 
-          // ── Cercle dynamique basé sur _jourCible ──
+          // Cercle dynamique
           TweenAnimationBuilder<double>(
             key: ValueKey('$_jourCible-$tempsCalcule'),
             tween: Tween(begin: 0.0, end: ratio),
@@ -860,7 +851,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ],
           const SizedBox(height: 24),
 
-          // ── Notes récentes ──
+          // Notes récentes
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -881,7 +872,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           fontSize: 14,
                           fontWeight: FontWeight.w700)),
                   const Spacer(),
-                  // ══ Indicateur des jours sélectionnés ══
+                  // Indicateur des jours sélectionnés — CORRECTION .sorted() remplacé par ..sort()
                   if (_joursSources.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -893,9 +884,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             color: const Color(0xFF7C4DFF).withOpacity(0.3)),
                       ),
                       child: Text(
-                        _joursSources
-                            .toList()
-                            .sorted((a, b) => a.compareTo(b))
+                        (_joursSources.toList()
+                              ..sort((a, b) => a.compareTo(b)))
                             .map((i) => _jours[i].substring(0, 3))
                             .join(', '),
                         style: const TextStyle(
