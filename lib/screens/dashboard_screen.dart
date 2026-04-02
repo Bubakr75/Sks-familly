@@ -641,8 +641,12 @@ class _DashboardScreenState extends State<DashboardScreen>
       ),
       _ActWithBadge(
         act: _Act('📊 Notes', Icons.bar_chart, Colors.teal, false, () {
-          Navigator.push(
-              context, SlidePageRoute(page: SchoolNotesScreen()));
+          _showChildPickerForNav(fp, (childId) {
+            Navigator.push(
+                context,
+                SlidePageRoute(
+                    page: SchoolNotesScreen(childId: childId)));
+          });
         }),
         badge: 0,
       ),
@@ -892,8 +896,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         final child = fp.children[i];
                         return TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0.0, end: 1.0),
-                          duration:
-                              Duration(milliseconds: 300 + i * 100),
+                          duration: Duration(milliseconds: 300 + i * 100),
                           curve: Curves.easeOutBack,
                           builder: (context, value, ch) {
                             return Transform.translate(
