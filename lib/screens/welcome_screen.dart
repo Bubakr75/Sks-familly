@@ -10,6 +10,7 @@ import '../providers/pin_provider.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'home_screen.dart';
+import 'child_dashboard_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -40,40 +41,31 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.initState();
 
     _logoController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 1500));
+        vsync: this, duration: const Duration(milliseconds: 1500));
     _logoFade = CurvedAnimation(
         parent: _logoController,
         curve: const Interval(0.0, 0.5, curve: Curves.easeIn));
     _logoScale = CurvedAnimation(
         parent: _logoController,
-        curve:
-            const Interval(0.1, 0.7, curve: Curves.elasticOut));
+        curve: const Interval(0.1, 0.7, curve: Curves.elasticOut));
 
     _pulseController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 2000))
+        vsync: this, duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
-        CurvedAnimation(
-            parent: _pulseController,
-            curve: Curves.easeInOut));
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
     _buttonController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 1200));
+        vsync: this, duration: const Duration(milliseconds: 1200));
     _btn1Slide = CurvedAnimation(
         parent: _buttonController,
-        curve:
-            const Interval(0.0, 0.6, curve: Curves.easeOutBack));
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack));
     _btn2Slide = CurvedAnimation(
         parent: _buttonController,
-        curve:
-            const Interval(0.2, 0.8, curve: Curves.easeOutBack));
+        curve: const Interval(0.2, 0.8, curve: Curves.easeOutBack));
 
     _cardController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 800));
+        vsync: this, duration: const Duration(milliseconds: 800));
     _cardFade =
         CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
 
@@ -104,7 +96,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.dispose();
   }
 
-  // ── Mode Parent ───────────────────────────────────────────────────────────
+  // ── Mode Parent ────────────────────────────────────────────────────────────
   void _handleParentMode() {
     final pin = context.read<PinProvider>();
     if (!pin.isPinSet) {
@@ -123,16 +115,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
           backgroundColor: const Color(0xFF0D1B2A),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Row(children: [
             Icon(Icons.lock_rounded, color: Colors.amber),
             SizedBox(width: 8),
-            Text('Code Parental',
-                style: TextStyle(color: Colors.white)),
+            Text('Code Parental', style: TextStyle(color: Colors.white)),
           ]),
-          content:
-              Column(mainAxisSize: MainAxisSize.min, children: [
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
             const Text('Entrez votre code PIN',
                 style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 16),
@@ -144,36 +134,29 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               autofocus: true,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 24,
-                  letterSpacing: 8,
-                  color: Colors.white),
+                  fontSize: 24, letterSpacing: 8, color: Colors.white),
               decoration: InputDecoration(
                 counterText: '',
                 hintText: '• • • •',
                 hintStyle: const TextStyle(
-                    fontSize: 24,
-                    letterSpacing: 8,
-                    color: Colors.white30),
+                    fontSize: 24, letterSpacing: 8, color: Colors.white30),
                 suffixIcon: IconButton(
                   icon: Icon(
                       obscure
                           ? Icons.visibility_off_rounded
                           : Icons.visibility_rounded,
                       color: Colors.white54),
-                  onPressed: () =>
-                      setS(() => obscure = !obscure),
+                  onPressed: () => setS(() => obscure = !obscure),
                 ),
               ),
-              onSubmitted: (_) =>
-                  _validatePin(ctx, pinCtrl),
+              onSubmitted: (_) => _validatePin(ctx, pinCtrl),
             ),
           ]),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('Annuler',
-                    style:
-                        TextStyle(color: Colors.grey[400]))),
+                    style: TextStyle(color: Colors.grey[400]))),
             FilledButton(
               onPressed: () => _validatePin(ctx, pinCtrl),
               child: const Text('Valider'),
@@ -184,8 +167,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  void _validatePin(
-      BuildContext ctx, TextEditingController ctrl) {
+  void _validatePin(BuildContext ctx, TextEditingController ctrl) {
     final pin = context.read<PinProvider>();
     if (pin.verifyPin(ctrl.text.trim())) {
       Navigator.pop(ctx);
@@ -201,8 +183,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         ]),
         backgroundColor: Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 2),
       ));
     }
@@ -214,12 +196,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       context: context,
       backgroundColor: const Color(0xFF0D1B2A),
       shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(24))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(24),
-        child:
-            Column(mainAxisSize: MainAxisSize.min, children: [
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
               width: 40,
               height: 4,
@@ -242,8 +222,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 ),
                 title: Text(name,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600)),
+                        color: Colors.white, fontWeight: FontWeight.w600)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _navigateToHome(name);
@@ -255,7 +234,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ── CORRECTION ICI : HomeScreen() sans parentName ─────────────────────────
   void _navigateToHome(String parentName) {
     context.read<PinProvider>().unlockParentMode();
     context.read<FamilyProvider>().setCurrentParent(parentName);
@@ -270,97 +248,176 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ── Mode Enfant ───────────────────────────────────────────────────────────
+  // ══ CORRECTION MODE ENFANT : bascule en mode enfant + navigation directe ══
   void _handleChildMode() {
     final fp = context.read<FamilyProvider>();
+    final pin = context.read<PinProvider>();
+
     if (fp.children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:
-            Text('Aucun enfant enregistré pour l\'instant.'),
+        content: Text('Aucun enfant enregistré pour l\'instant.'),
         behavior: SnackBarBehavior.floating,
       ));
       return;
     }
+
+    // ── Bascule en mode enfant AVANT de naviguer ──
+    pin.enterChildMode();
+
     if (fp.children.length == 1) {
-      _navigateToHome(fp.children.first.name);
+      // Un seul enfant → on va directement sur son dashboard
+      _navigateToChildDashboard(fp.children.first.id);
       return;
     }
+
     _showChildPicker(fp.children);
   }
 
+  // ══ CORRECTION : navigation vers ChildDashboardScreen via HomeScreen ══
+  void _navigateToChildDashboard(String childId) {
+    // On va d'abord sur HomeScreen, puis le dashboard enfant s'ouvre dessus
+    // pour que le bouton retour revienne bien sur HomeScreen
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const HomeScreen(),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    ).then((_) {
+      // Petite sécurité : on navigue vers le dashboard enfant après
+    });
+
+    // Navigation directe vers le dashboard enfant par-dessus HomeScreen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChildDashboardScreen(childId: childId),
+          ),
+        );
+      }
+    });
+  }
+
+  // ══ CORRECTION SCROLL : DraggableScrollableSheet au lieu de Column min ══
   void _showChildPicker(List<ChildModel> children) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0D1B2A),
-      shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child:
-            Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          const Text('Qui es-tu ?',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          ...children.map((child) => ListTile(
-                leading: CircleAvatar(
-                  backgroundColor:
-                      const Color(0xFF7C4DFF).withOpacity(0.15),
-                  child: child.hasPhoto
-                      ? ClipOval(
-                          child: Image.memory(
-                            base64Decode(child.photoBase64),
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Text(
-                          child.avatar.isEmpty
-                              ? '🧒'
-                              : child.avatar,
-                          style: const TextStyle(fontSize: 22)),
-                ),
-                title: Text(child.name,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600)),
-                subtitle: Text(
-                    '${child.points} pts · Nv.${child.currentLevelNumber}',
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.35,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF0D1B2A),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Qui es-tu ?',
                     style: TextStyle(
-                        color: Colors.grey[500], fontSize: 12)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _navigateToHome(child.name);
-                },
-              )),
-          const SizedBox(height: 8),
-        ]),
-      ),
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  // ══ Liste scrollable ══
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      itemCount: children.length,
+                      itemBuilder: (_, i) {
+                        final child = children[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: ListTile(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                            tileColor: const Color(0xFF7C4DFF)
+                                .withOpacity(0.08),
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  const Color(0xFF7C4DFF).withOpacity(0.15),
+                              radius: 24,
+                              child: child.hasPhoto
+                                  ? ClipOval(
+                                      child: Image.memory(
+                                        base64Decode(child.photoBase64),
+                                        width: 48,
+                                        height: 48,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : Text(
+                                      child.avatar.isEmpty
+                                          ? '🧒'
+                                          : child.avatar,
+                                      style:
+                                          const TextStyle(fontSize: 22)),
+                            ),
+                            title: Text(
+                              child.name,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16),
+                            ),
+                            subtitle: Text(
+                              '${child.points} pts · Nv.${child.currentLevelNumber}',
+                              style: TextStyle(
+                                  color: Colors.grey[500], fontSize: 12),
+                            ),
+                            trailing: const Icon(Icons.chevron_right,
+                                color: Colors.white38),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              // ══ CORRECTION : navigue vers le dashboard enfant ══
+                              _navigateToChildDashboard(child.id);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  // ── Aide ──────────────────────────────────────────────────────────────────
   void _showInteractiveHelp() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('❔ Comment utiliser SKS Family ?',
-            style:
-                TextStyle(color: Colors.white, fontSize: 18)),
+            style: TextStyle(color: Colors.white, fontSize: 18)),
         content: SingleChildScrollView(
           child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -368,11 +425,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               children: const [
                 Text('👨‍👩‍👧‍👦 Mode Parent',
                     style: TextStyle(
-                        color: Colors.cyan,
-                        fontWeight: FontWeight.bold)),
+                        color: Colors.cyan, fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text(
-                    '• Gère les points, tâches, punitions et récompenses',
+                Text('• Gère les points, tâches, punitions et récompenses',
                     style: TextStyle(color: Colors.white70)),
                 Text('• Crée des objectifs et suit les progrès',
                     style: TextStyle(color: Colors.white70)),
@@ -388,12 +443,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     style: TextStyle(color: Colors.white70)),
                 Text('• Suit ses objectifs et punitions',
                     style: TextStyle(color: Colors.white70)),
-                Text(
-                    '• Peut faire des échanges avec les autres enfants',
+                Text('• Peut faire des échanges avec les autres enfants',
                     style: TextStyle(color: Colors.white70)),
                 SizedBox(height: 20),
-                Text(
-                    '💡 Le mode Parent est protégé par un code PIN.',
+                Text('💡 Le mode Parent est protégé par un code PIN.',
                     style: TextStyle(
                         color: Colors.amber,
                         fontStyle: FontStyle.italic)),
@@ -409,7 +462,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -420,13 +472,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         floatingActionButton: FloatingActionButton.small(
           onPressed: _showInteractiveHelp,
           backgroundColor: Colors.cyan.withOpacity(0.85),
-          child: const Icon(Icons.help_outline_rounded,
-              color: Colors.white),
+          child: const Icon(Icons.help_outline_rounded, color: Colors.white),
         ),
         body: SafeArea(
           child: Stack(
             children: [
-              // ── Particules ──────────────────────────────────────────
               AnimatedBuilder(
                 animation: _particleController,
                 builder: (_, __) => CustomPaint(
@@ -437,8 +487,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   ),
                 ),
               ),
-
-              // ── Contenu ─────────────────────────────────────────────
               SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Column(
@@ -468,8 +516,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(0xFF00E5FF)
-                                      .withOpacity(
-                                          _pulseAnim.value * 0.5),
+                                      .withOpacity(_pulseAnim.value * 0.5),
                                   blurRadius: 30,
                                   spreadRadius: 5,
                                 ),
@@ -477,8 +524,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             ),
                             child: const Center(
                               child: Text('👨‍👩‍👧‍👦',
-                                  style:
-                                      TextStyle(fontSize: 48)),
+                                  style: TextStyle(fontSize: 48)),
                             ),
                           ),
                         ),
@@ -491,8 +537,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     FadeTransition(
                       opacity: _logoFade,
                       child: ShaderMask(
-                        shaderCallback: (bounds) =>
-                            const LinearGradient(
+                        shaderCallback: (bounds) => const LinearGradient(
                           colors: [
                             Color(0xFF00E5FF),
                             Colors.white,
@@ -533,36 +578,30 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           return FadeTransition(
                             opacity: _cardFade,
                             child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 24),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24),
                               child: Container(
-                                padding:
-                                    const EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
                                   borderRadius:
                                       BorderRadius.circular(20),
-                                  color: Colors.white
-                                      .withOpacity(0.04),
+                                  color: Colors.white.withOpacity(0.04),
                                   border: Border.all(
-                                      color: Colors.white
-                                          .withOpacity(0.08)),
+                                      color:
+                                          Colors.white.withOpacity(0.08)),
                                 ),
                                 child: Column(children: [
                                   const Text('🏠',
-                                      style: TextStyle(
-                                          fontSize: 36)),
+                                      style: TextStyle(fontSize: 36)),
                                   const SizedBox(height: 8),
-                                  Text(
-                                      'Aucun enfant enregistré',
+                                  Text('Aucun enfant enregistré',
                                       style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 14)),
                                   const SizedBox(height: 4),
                                   Text(
                                       'Connectez-vous en mode Parent\npour commencer',
-                                      textAlign:
-                                          TextAlign.center,
+                                      textAlign: TextAlign.center,
                                       style: TextStyle(
                                           color: Colors.grey[600],
                                           fontSize: 12)),
@@ -584,20 +623,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                        horizontal: 24),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24),
                                 child: Row(children: [
                                   const Text('🏆 ',
-                                      style: TextStyle(
-                                          fontSize: 16)),
+                                      style: TextStyle(fontSize: 16)),
                                   Text(
                                     'Classement de la famille',
                                     style: TextStyle(
                                         color: Colors.grey[400],
                                         fontSize: 13,
-                                        fontWeight:
-                                            FontWeight.w600,
+                                        fontWeight: FontWeight.w600,
                                         letterSpacing: 0.5),
                                   ),
                                 ]),
@@ -606,11 +642,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               SizedBox(
                                 height: 130,
                                 child: ListView.builder(
-                                  scrollDirection:
-                                      Axis.horizontal,
-                                  padding:
-                                      const EdgeInsets.symmetric(
-                                          horizontal: 20),
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20),
                                   itemCount: sorted.length,
                                   itemBuilder: (_, i) =>
                                       _ChildStatCard(
@@ -643,8 +677,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             width: double.infinity,
                             height: 62,
                             decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20),
                               gradient: const LinearGradient(
                                 colors: [
                                   Color(0xFF00E5FF),
@@ -661,12 +694,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ],
                             ),
                             child: const Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.shield_rounded,
-                                    color: Colors.black,
-                                    size: 26),
+                                    color: Colors.black, size: 26),
                                 SizedBox(width: 12),
                                 Text(
                                   'Mode Parent',
@@ -700,8 +731,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             width: double.infinity,
                             height: 62,
                             decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: const Color(0xFF7C4DFF)
                                     .withOpacity(0.6),
@@ -709,20 +739,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                               gradient: LinearGradient(
                                 colors: [
-                                  const Color(0xFF7C4DFF)
-                                      .withOpacity(0.15),
-                                  const Color(0xFF7C4DFF)
-                                      .withOpacity(0.05),
+                                  const Color(0xFF7C4DFF).withOpacity(0.15),
+                                  const Color(0xFF7C4DFF).withOpacity(0.05),
                                 ],
                               ),
                             ),
                             child: const Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('🧒',
-                                    style:
-                                        TextStyle(fontSize: 26)),
+                                Text('🧒', style: TextStyle(fontSize: 26)),
                                 SizedBox(width: 12),
                                 Text(
                                   'Mode Enfant',
@@ -747,13 +772,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         if (fp.children.isEmpty) {
                           return const SizedBox.shrink();
                         }
-                        final totalPts = fp.children.fold<int>(
-                            0, (s, c) => s + c.points);
-                        final totalBadges =
-                            fp.children.fold<int>(
-                                0,
-                                (s, c) =>
-                                    s + c.badgeIds.length);
+                        final totalPts = fp.children
+                            .fold<int>(0, (s, c) => s + c.points);
+                        final totalBadges = fp.children.fold<int>(
+                            0, (s, c) => s + c.badgeIds.length);
                         final topChild =
                             fp.childrenSorted.isNotEmpty
                                 ? fp.childrenSorted.first
@@ -761,22 +783,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         return FadeTransition(
                           opacity: _cardFade,
                           child: Padding(
-                            padding:
-                                const EdgeInsets.symmetric(
-                                    horizontal: 24),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24),
                             child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                      horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 14, horizontal: 16),
                               decoration: BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(18),
-                                color: Colors.white
-                                    .withOpacity(0.04),
+                                borderRadius: BorderRadius.circular(18),
+                                color: Colors.white.withOpacity(0.04),
                                 border: Border.all(
-                                    color: Colors.white
-                                        .withOpacity(0.07)),
+                                    color:
+                                        Colors.white.withOpacity(0.07)),
                               ),
                               child: Row(
                                 mainAxisAlignment:
@@ -833,18 +850,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 // ══════════════════════════════════════════════════════════════════════════════
 //  CARTE ENFANT
 // ══════════════════════════════════════════════════════════════════════════════
-
 class _ChildStatCard extends StatefulWidget {
   final ChildModel child;
   final int rank;
   final int delay;
-
-  const _ChildStatCard({
-    required this.child,
-    required this.rank,
-    required this.delay,
-  });
-
+  const _ChildStatCard(
+      {required this.child, required this.rank, required this.delay});
   @override
   State<_ChildStatCard> createState() => _ChildStatCardState();
 }
@@ -853,15 +864,12 @@ class _ChildStatCardState extends State<_ChildStatCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
-
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 600));
-    _anim = CurvedAnimation(
-        parent: _ctrl, curve: Curves.easeOutBack);
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack);
     Future.delayed(Duration(milliseconds: widget.delay), () {
       if (mounted) _ctrl.forward();
     });
@@ -918,14 +926,13 @@ class _ChildStatCardState extends State<_ChildStatCard>
               _rankColor.withOpacity(0.04),
             ],
           ),
-          border: Border.all(
-              color: _rankColor.withOpacity(0.3), width: 1.5),
+          border:
+              Border.all(color: _rankColor.withOpacity(0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: _rankColor.withOpacity(0.1),
-              blurRadius: 12,
-              spreadRadius: 1,
-            ),
+                color: _rankColor.withOpacity(0.1),
+                blurRadius: 12,
+                spreadRadius: 1),
           ],
         ),
         child: Column(
@@ -941,8 +948,7 @@ class _ChildStatCardState extends State<_ChildStatCard>
                     shape: BoxShape.circle,
                     color: _rankColor.withOpacity(0.15),
                     border: Border.all(
-                        color: _rankColor.withOpacity(0.4),
-                        width: 2),
+                        color: _rankColor.withOpacity(0.4), width: 2),
                   ),
                   child: c.hasPhoto
                       ? ClipOval(
@@ -952,12 +958,8 @@ class _ChildStatCardState extends State<_ChildStatCard>
                           ),
                         )
                       : Center(
-                          child: Text(
-                              c.avatar.isEmpty
-                                  ? '🧒'
-                                  : c.avatar,
-                              style: const TextStyle(
-                                  fontSize: 22))),
+                          child: Text(c.avatar.isEmpty ? '🧒' : c.avatar,
+                              style: const TextStyle(fontSize: 22))),
                 ),
                 Positioned(
                   top: -6,
@@ -971,40 +973,31 @@ class _ChildStatCardState extends State<_ChildStatCard>
             Text(
               c.name.split(' ').first,
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-            Text(
-              '${c.points} pts',
-              style: TextStyle(
-                color: _rankColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text('${c.points} pts',
+                style: TextStyle(
+                    color: _rankColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: c.levelProgress.clamp(0.0, 1.0),
                 minHeight: 4,
-                backgroundColor:
-                    Colors.white.withOpacity(0.08),
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(_rankColor),
+                backgroundColor: Colors.white.withOpacity(0.08),
+                valueColor: AlwaysStoppedAnimation<Color>(_rankColor),
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              c.levelTitle,
-              style:
-                  TextStyle(color: Colors.grey[500], fontSize: 9),
-            ),
+            Text(c.levelTitle,
+                style: TextStyle(color: Colors.grey[500], fontSize: 9)),
           ],
         ),
       ),
@@ -1015,18 +1008,12 @@ class _ChildStatCardState extends State<_ChildStatCard>
 // ══════════════════════════════════════════════════════════════════════════════
 //  STAT BUBBLE
 // ══════════════════════════════════════════════════════════════════════════════
-
 class _StatBubble extends StatelessWidget {
   final String icon;
   final String value;
   final String label;
-
-  const _StatBubble({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
-
+  const _StatBubble(
+      {required this.icon, required this.value, required this.label});
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1034,19 +1021,13 @@ class _StatBubble extends StatelessWidget {
       children: [
         Text(icon, style: const TextStyle(fontSize: 18)),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        Text(
-          label,
-          style:
-              TextStyle(color: Colors.grey[500], fontSize: 10),
-        ),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800)),
+        Text(label,
+            style: TextStyle(color: Colors.grey[500], fontSize: 10)),
       ],
     );
   }
@@ -1055,10 +1036,8 @@ class _StatBubble extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 //  PARTICULES
 // ══════════════════════════════════════════════════════════════════════════════
-
 class _WelcomeParticle {
   late double x, y, speed, size;
-
   _WelcomeParticle(math.Random rng) {
     x = rng.nextDouble() * 400;
     y = rng.nextDouble() * 800;
@@ -1070,17 +1049,13 @@ class _WelcomeParticle {
 class _WelcomeParticlePainter extends CustomPainter {
   final List<_WelcomeParticle> particles;
   final double time;
-
   _WelcomeParticlePainter(
       {required this.particles, required this.time});
-
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.15);
+    final paint = Paint()..color = Colors.white.withOpacity(0.15);
     for (var p in particles) {
-      final yPos =
-          (p.y + time * p.speed * 50) % (size.height + 50);
+      final yPos = (p.y + time * p.speed * 50) % (size.height + 50);
       canvas.drawCircle(Offset(p.x, yPos), p.size, paint);
     }
   }
