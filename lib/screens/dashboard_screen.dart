@@ -6,6 +6,7 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../models/trade_model.dart';
+import '../models/tribunal_model.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
@@ -17,7 +18,7 @@ import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'tribunal_screen.dart';
-import 'school_grades_screen.dart';
+import 'school_notes_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -160,7 +161,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ── Badge de notification ─────────────────────────────────────────────────
   Widget _badgeWrapper({required Widget child, required int count}) {
     if (count == 0) return child;
     return Stack(
@@ -583,7 +583,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildQuickActions(FamilyProvider fp) {
     final isParent = _isParentMode();
 
-    // Compteurs pour les badges de notification
     final tribunalCount = fp.tribunalCases
         .where((c) => c.status != TribunalStatus.closed)
         .length;
@@ -613,7 +612,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         }),
         badge: 0,
       ),
-      // Fusion Écran + Profil → "Écran & Profil"
       _ActWithBadge(
         act: _Act('📺 Écran & Profil', Icons.tv, Colors.blue, true, () {
           PinGuard.guardAction(context, () {
@@ -625,7 +623,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         }),
         badge: 0,
       ),
-      // Tribunal avec badge
       _ActWithBadge(
         act: _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, false, () {
           Navigator.push(
@@ -633,7 +630,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         }),
         badge: tribunalCount,
       ),
-      // Vente avec badge
       _ActWithBadge(
         act: _Act('🏪 Vente', Icons.storefront, Colors.green, false, () {
           _showChildPickerForNav(fp, (childId) {
@@ -643,12 +639,10 @@ class _DashboardScreenState extends State<DashboardScreen>
         }),
         badge: venteCount,
       ),
-      // Nouvel onglet Notes → SchoolGradesScreen
       _ActWithBadge(
         act: _Act('📊 Notes', Icons.bar_chart, Colors.teal, false, () {
           Navigator.push(
-              context,
-              SlidePageRoute(page: const SchoolGradesScreen()));
+              context, SlidePageRoute(page: SchoolNotesScreen()));
         }),
         badge: 0,
       ),
@@ -743,7 +737,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
       ),
     );
-
     return _badgeWrapper(child: tile, count: item.badge);
   }
 
