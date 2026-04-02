@@ -269,11 +269,7 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<void> addChild(String name, String avatar) async {
-    final child = ChildModel(
-      id:     _uuid.v4(),
-      name:   name,
-      avatar: avatar,
-    );
+    final child = ChildModel(id: _uuid.v4(), name: name, avatar: avatar);
     _children.add(child);
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) await _firestore.saveChild(child);
@@ -319,8 +315,8 @@ class FamilyProvider extends ChangeNotifier {
     String childId,
     int points,
     String reason, {
-    String category      = 'Bonus',
-    bool isBonus         = true,
+    String category  = 'Bonus',
+    bool isBonus     = true,
     String? proofPhoto,
     String? proofPhotoBase64,
     DateTime? date,
@@ -403,11 +399,7 @@ class FamilyProvider extends ChangeNotifier {
   List<NoteModel> getNotesForChild(String childId) =>
       _notes.where((n) => n.childId == childId).toList();
 
-  Future<void> addNote(
-    String childId,
-    String text, {
-    String authorName = 'Parent',
-  }) async {
+  Future<void> addNote(String childId, String text, {String authorName = 'Parent'}) async {
     final note = NoteModel(
       id:         _uuid.v4(),
       childId:    childId,
@@ -449,6 +441,18 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // PUNITIONS — avec pénalité comportementale automatique
+  // Règle : 1 pénalité comportementale par tranche de 10 lignes
+  // (minimum 1 pénalité quelle que soit la quantité)
+  // ══════════════════════════════════════════════════════════════════
+
+  /// Calcule le nombre de points de pénalité selon le nombre de lignes
+  int _punishmentPenaltyPoints(int totalLines) {
+    // 1 point de pénalité par tranche de 10 lignes, minimum 1
+    return (totalLines / 10).ceil().clamp(1, 10);
+  }
+
   Future<void> addPunishment(String childId, String text, int totalLines) async {
     final p = PunishmentLines(
       id:         _uuid.v4(),
@@ -459,20 +463,64 @@ class FamilyProvider extends ChangeNotifier {
     _punishments.add(p);
     await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
     if (_firestore.isConnected) await _firestore.savePunishment(p);
+
+    // ══ AJOUT : pénalité comportementale automatique ══
+    final penaltyPoints = _punishmentPenaltyPoints(totalLines);
+    await addPoints(
+      childId,
+      penaltyPoints,
+      '📝 Punition ($totalLines lignes) : $text',
+      category: 'punishment',
+      isBonus:  false, // ← pénalité
+    );
+
     notifyListeners();
   }
 
   Future<void> removePunishment(String id) async {
+    // ══ AJOUT : retrouve la punition pour annuler la pénalité ══
+    PunishmentLines? punishment;
+    try {
+      punishment = _punishments.firstWhere((p) => p.id == id);
+    } catch (_) {}
+
     _punishments.removeWhere((p) => p.id == id);
     await _punishmentsBox.delete(id);
     if (_firestore.isConnected) await _firestore.deletePunishment(id);
+
+    // ── Si la punition n'était pas encore complétée → on rembourse la pénalité ──
+    if (punishment != null && !punishment.isCompleted) {
+      final penaltyPoints = _punishmentPenaltyPoints(punishment.totalLines);
+      await addPoints(
+        punishment.childId,
+        penaltyPoints,
+        '✅ Punition annulée : remboursement pénalité',
+        category: 'punishment',
+        isBonus:  true, // ← remboursement
+      );
+    }
+
     notifyListeners();
   }
 
   Future<void> updatePunishmentProgress(String id, int linesToAdd) async {
     try {
       final p = _punishments.firstWhere((p) => p.id == id);
+      final wasCompleted = p.isCompleted;
       p.completedLines = (p.completedLines + linesToAdd).clamp(0, p.totalLines);
+
+      // ══ AJOUT : si la punition vient d'être complétée → bonus comportemental ══
+      if (!wasCompleted && p.isCompleted) {
+        final penaltyPoints = _punishmentPenaltyPoints(p.totalLines);
+        await addPoints(
+          p.childId,
+          penaltyPoints,
+          '✅ Punition complétée : ${p.text}',
+          category: 'punishment',
+          isBonus:  true, // ← bonus car punition accomplie
+        );
+      }
+
       await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
       if (_firestore.isConnected) await _firestore.savePunishment(p);
       notifyListeners();
@@ -550,6 +598,19 @@ class FamilyProvider extends ChangeNotifier {
           .clamp(0, p.totalLines - p.completedLines);
       im.usedLines     += actualLines;
       p.completedLines  = (p.completedLines + actualLines).clamp(0, p.totalLines);
+
+      // ══ AJOUT : si l'immunité complète la punition → bonus comportemental ══
+      if (p.isCompleted) {
+        final penaltyPoints = _punishmentPenaltyPoints(p.totalLines);
+        await addPoints(
+          p.childId,
+          penaltyPoints,
+          '🛡️ Punition couverte par immunité : ${p.text}',
+          category: 'punishment',
+          isBonus:  true,
+        );
+      }
+
       await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
       await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
       if (_firestore.isConnected) {
@@ -606,10 +667,6 @@ class FamilyProvider extends ChangeNotifier {
     return '${childId}_${weekStart.year}_${weekStart.month}_${weekStart.day}_$key';
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  // MÉTHODES ORIGINALES (semaine entière)
-  // ══════════════════════════════════════════════════════════════════
-
   double getWeeklySchoolAverage(String childId) {
     final notes = _getWeekSchoolNotes(childId);
     if (notes.isEmpty) return -1;
@@ -629,18 +686,12 @@ class FamilyProvider extends ChangeNotifier {
     return ((bonusCount / total) * 20).clamp(0.0, 20.0);
   }
 
-  // ══ 50% scolaire + 50% comportemental ══
   double getWeeklyGlobalScore(String childId) {
     final sa = getWeeklySchoolAverage(childId);
     final bs = getWeeklyBehaviorScore(childId);
     if (sa < 0) return bs;
     return (sa * 0.5 + bs * 0.5);
   }
-
-  // ══════════════════════════════════════════════════════════════════
-  // NOUVELLES MÉTHODES : calcul sur les jours sélectionnés
-  // joursSources = Set d'indices (0=Lundi, 1=Mardi, ... 6=Dimanche)
-  // ══════════════════════════════════════════════════════════════════
 
   Set<DateTime> _getSelectedDates(Set<int> joursSources) {
     final now = DateTime.now();
@@ -685,15 +736,12 @@ class FamilyProvider extends ChangeNotifier {
     return ((bonusCount / total) * 20).clamp(0.0, 20.0);
   }
 
-  // ══ 50% scolaire + 50% comportemental sur les jours sélectionnés ══
   double getGlobalScoreForDays(String childId, Set<int> joursSources) {
     final sa = getSchoolAverageForDays(childId, joursSources);
     final bs = getBehaviorScoreForDays(childId, joursSources);
     if (sa < 0) return bs;
     return (sa * 0.5 + bs * 0.5);
   }
-
-  // ══════════════════════════════════════════════════════════════════
 
   int _minutesFromGlobalScore(double score) {
     if (score >= 18) return 180;
@@ -722,11 +770,7 @@ class FamilyProvider extends ChangeNotifier {
       (_screenTimeBox.get(_screenTimeKey(childId, 'sat_rating'), defaultValue: -1.0) as num)
           .toDouble();
 
-  Future<void> addScreenTimeBonus(
-    String childId,
-    int minutes,
-    String reason,
-  ) async {
+  Future<void> addScreenTimeBonus(String childId, int minutes, String reason) async {
     final key     = _screenTimeKey(childId, 'bonus');
     final current = _screenTimeBox.get(key, defaultValue: 0) as int;
     await _screenTimeBox.put(key, current + minutes);
@@ -913,11 +957,7 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> castTribunalVote(
-    String caseId,
-    String childId,
-    TribunalVerdict vote,
-  ) async {
+  Future<void> castTribunalVote(String caseId, String childId, TribunalVerdict vote) async {
     try {
       final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
       if (!tc.canVote(childId)) return;
@@ -928,11 +968,7 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> changeTribunalVote(
-    String caseId,
-    String childId,
-    TribunalVerdict newVote,
-  ) async {
+  Future<void> changeTribunalVote(String caseId, String childId, TribunalVerdict newVote) async {
     try {
       final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
       if (!tc.votingEnabled || tc.isClosed) return;
@@ -962,8 +998,7 @@ class FamilyProvider extends ChangeNotifier {
       final correct = vote.vote == tc.verdict;
       vote.pointsAwarded = correct ? 1 : -1;
       await addPoints(
-        vote.childId,
-        1,
+        vote.childId, 1,
         '🗳️ Tribunal (juré): ${correct ? "bon vote ✅" : "mauvais vote ❌"}',
         category: 'tribunal_vote',
         isBonus:  correct,
@@ -985,22 +1020,14 @@ class FamilyProvider extends ChangeNotifier {
       tc.verdictReason = reason;
       tc.verdictDate   = DateTime.now();
       if (accusedPoints != null && accusedPoints != 0) {
-        await addPoints(
-          tc.accusedId,
-          accusedPoints.abs(),
-          '⚖️ Verdict tribunal (accusé): $reason',
-          category: 'tribunal_verdict',
-          isBonus:  accusedPoints > 0,
-        );
+        await addPoints(tc.accusedId, accusedPoints.abs(),
+            '⚖️ Verdict tribunal (accusé): $reason',
+            category: 'tribunal_verdict', isBonus: accusedPoints > 0);
       }
       if (plaintiffPoints != null && plaintiffPoints != 0) {
-        await addPoints(
-          tc.plaintiffId,
-          plaintiffPoints.abs(),
-          '⚖️ Verdict tribunal (plaignant): $reason',
-          category: 'tribunal_verdict',
-          isBonus:  plaintiffPoints > 0,
-        );
+        await addPoints(tc.plaintiffId, plaintiffPoints.abs(),
+            '⚖️ Verdict tribunal (plaignant): $reason',
+            category: 'tribunal_verdict', isBonus: plaintiffPoints > 0);
       }
       await _distributeVotePoints(tc);
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
@@ -1015,12 +1042,7 @@ class FamilyProvider extends ChangeNotifier {
   List<TradeModel> getTradesForChild(String childId) =>
       _trades.where((t) => t.fromChildId == childId || t.toChildId == childId).toList();
 
-  Future<void> createTrade(
-    String fromChildId,
-    String toChildId,
-    int lines,
-    String service,
-  ) async {
+  Future<void> createTrade(String fromChildId, String toChildId, int lines, String service) async {
     final trade = TradeModel(
       id:                 _uuid.v4(),
       fromChildId:        fromChildId,
