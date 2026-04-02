@@ -165,6 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (count == 0) return child;
     return Stack(
       clipBehavior: Clip.none,
+      fit: StackFit.expand,
       children: [
         child,
         Positioned(
