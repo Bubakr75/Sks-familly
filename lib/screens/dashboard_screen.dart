@@ -17,6 +17,7 @@ import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'tribunal_screen.dart';
+import 'school_grades_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -151,12 +152,50 @@ class _DashboardScreenState extends State<DashboardScreen>
     return context.read<PinProvider>().canPerformParentAction();
   }
 
-  // ══ AJOUT : navigue vers un enfant en mode enfant ══
   void _goToChildDashboard(String childId) {
     context.read<PinProvider>().enterChildMode();
     Navigator.push(
       context,
       ZoomPageRoute(page: ChildDashboardScreen(childId: childId)),
+    );
+  }
+
+  // ── Badge de notification ─────────────────────────────────────────────────
+  Widget _badgeWrapper({required Widget child, required int count}) {
+    if (count == 0) return child;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          top: -6,
+          right: -6,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Colors.redAccent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red,
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+            child: Text(
+              count > 99 ? '99+' : '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -453,13 +492,13 @@ class _DashboardScreenState extends State<DashboardScreen>
               animation: _floatingAnim,
               builder: (context, ch) {
                 return Transform.translate(
-                  offset: Offset(
-                      0, rank == 1 ? _floatingAnim.value * 0.5 : 0),
+                  offset:
+                      Offset(0, rank == 1 ? _floatingAnim.value * 0.5 : 0),
                   child: ch,
                 );
               },
-              child: Text(medals[rank]!,
-                  style: const TextStyle(fontSize: 24)),
+              child:
+                  Text(medals[rank]!, style: const TextStyle(fontSize: 24)),
             ),
             const SizedBox(height: 6),
             if (rank == 1)
@@ -544,45 +583,75 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildQuickActions(FamilyProvider fp) {
     final isParent = _isParentMode();
 
+    // Compteurs pour les badges de notification
+    final tribunalCount = fp.tribunalCases
+        .where((c) => c.status != TribunalStatus.closed)
+        .length;
+    final venteCount = fp.trades
+        .where((t) => t.status == 'pending')
+        .length;
+
     final actions = [
-      _Act('📝 Punition', Icons.menu_book, Colors.red, true, () {
-        PinGuard.guardAction(context, () {
+      _ActWithBadge(
+        act: _Act('📝 Punition', Icons.menu_book, Colors.red, true, () {
+          PinGuard.guardAction(context, () {
+            Navigator.push(
+                context,
+                SlidePageRoute(
+                    page: const PunishmentLinesScreen(),
+                    direction: SlideDirection.up));
+          });
+        }),
+        badge: 0,
+      ),
+      _ActWithBadge(
+        act: _Act('🛡️ Immunité', Icons.shield, Colors.amber, true, () {
+          PinGuard.guardAction(context, () {
+            Navigator.push(
+                context, SpinPageRoute(page: const ImmunityLinesScreen()));
+          });
+        }),
+        badge: 0,
+      ),
+      // Fusion Écran + Profil → "Écran & Profil"
+      _ActWithBadge(
+        act: _Act('📺 Écran & Profil', Icons.tv, Colors.blue, true, () {
+          PinGuard.guardAction(context, () {
+            _showChildPickerForNav(fp, (childId) {
+              Navigator.push(context,
+                  ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
+            });
+          });
+        }),
+        badge: 0,
+      ),
+      // Tribunal avec badge
+      _ActWithBadge(
+        act: _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, false, () {
+          Navigator.push(
+              context, SlidePageRoute(page: const TribunalScreen()));
+        }),
+        badge: tribunalCount,
+      ),
+      // Vente avec badge
+      _ActWithBadge(
+        act: _Act('🏪 Vente', Icons.storefront, Colors.green, false, () {
+          _showChildPickerForNav(fp, (childId) {
+            Navigator.push(
+                context, DoorPageRoute(page: TradeScreen(childId: childId)));
+          });
+        }),
+        badge: venteCount,
+      ),
+      // Nouvel onglet Notes → SchoolGradesScreen
+      _ActWithBadge(
+        act: _Act('📊 Notes', Icons.bar_chart, Colors.teal, false, () {
           Navigator.push(
               context,
-              SlidePageRoute(
-                  page: const PunishmentLinesScreen(),
-                  direction: SlideDirection.up));
-        });
-      }),
-      _Act('🛡️ Immunité', Icons.shield, Colors.amber, true, () {
-        PinGuard.guardAction(context, () {
-          Navigator.push(
-              context, SpinPageRoute(page: const ImmunityLinesScreen()));
-        });
-      }),
-      _Act('📺 Écran', Icons.tv, Colors.blue, true, () {
-        PinGuard.guardAction(context, () {
-          _showChildPickerForNav(fp, (childId) {
-            Navigator.push(context,
-                ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
-          });
-        });
-      }),
-      _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, false, () {
-        Navigator.push(
-            context, SlidePageRoute(page: const TribunalScreen()));
-      }),
-      _Act('🏪 Vente', Icons.storefront, Colors.green, false, () {
-        _showChildPickerForNav(fp, (childId) {
-          Navigator.push(
-              context, DoorPageRoute(page: TradeScreen(childId: childId)));
-        });
-      }),
-      _Act('👤 Profil', Icons.person, Colors.cyan, false, () {
-        _showChildPickerForNav(fp, (childId) {
-          _goToChildDashboard(childId);
-        });
-      }),
+              SlidePageRoute(page: const SchoolGradesScreen()));
+        }),
+        badge: 0,
+      ),
     ];
 
     return Column(
@@ -614,9 +683,9 @@ class _DashboardScreenState extends State<DashboardScreen>
           crossAxisSpacing: 10,
           childAspectRatio: 1.05,
           children: List.generate(actions.length, (i) {
-            final action = actions[i];
+            final item = actions[i];
             final anim = i < _actionAnims.length ? _actionAnims[i] : null;
-            final tile = _actionTile(action, isParent);
+            final tile = _actionTileWithBadge(item, isParent);
             if (anim == null) return tile;
             return AnimatedBuilder(
               animation: anim,
@@ -635,8 +704,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _actionTile(_Act action, bool isParent) {
-    return TvFocusWrapper(
+  Widget _actionTileWithBadge(_ActWithBadge item, bool isParent) {
+    final action = item.act;
+    final tile = TvFocusWrapper(
       onTap: action.onTap,
       child: GlassCard(
         child: Column(
@@ -673,6 +743,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
       ),
     );
+
+    return _badgeWrapper(child: tile, count: item.badge);
   }
 
   Widget _buildActiveTrades(FamilyProvider fp) {
@@ -897,4 +969,10 @@ class _Act {
   final bool parentOnly;
   final VoidCallback onTap;
   _Act(this.label, this.icon, this.color, this.parentOnly, this.onTap);
+}
+
+class _ActWithBadge {
+  final _Act act;
+  final int badge;
+  _ActWithBadge({required this.act, required this.badge});
 }
