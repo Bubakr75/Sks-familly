@@ -396,7 +396,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ],
                 ],
               ),
-              // ── Bouton Timeline dans l'AppBar ──
+              // ── Bouton Timeline ajouté ici ──
               actions: [
                 IconButton(
                   icon: const Icon(Icons.timeline_rounded,
@@ -681,8 +681,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
-                        border:
-                            Border.all(color: Colors.orange.withOpacity(0.3)),
+                        border: Border.all(
+                            color: Colors.orange.withOpacity(0.3)),
                       ),
                       child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -917,8 +917,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       Colors.deepOrange.withOpacity(0.06),
                     ]),
                     borderRadius: BorderRadius.circular(14),
-                    border:
-                        Border.all(color: Colors.orange.withOpacity(0.25)),
+                    border: Border.all(
+                        color: Colors.orange.withOpacity(0.25)),
                   ),
                   child: Column(
                     children: [
@@ -1232,8 +1232,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                                   children: List.generate(
                                       stars,
                                       (i) => const Text('⭐',
-                                          style:
-                                              TextStyle(fontSize: 8)))),
+                                          style: TextStyle(fontSize: 8)))),
                             ],
                           ),
                         ),
