@@ -289,7 +289,6 @@ class FamilyProvider extends ChangeNotifier {
   List<HistoryEntry> getHistoryForChild(String childId) =>
       _history.where((h) => h.childId == childId).toList();
 
-  // ✅ CORRIGÉ : suppression de l'appel Firestore inexistant
   Future<void> deleteHistoryEntry(String entryId) async {
     _deletedEntryIds.add(entryId);
     _history.removeWhere((h) => h.id == entryId);
@@ -1067,7 +1066,7 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> acceptTrade(String tradeId) async {
     try {
       final trade = _trades.firstWhere((t) => t.id == tradeId);
-      trade.status = TradeStatus.accepted;
+      trade.status = 'accepted';
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
       if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
@@ -1077,7 +1076,7 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> rejectTrade(String tradeId) async {
     try {
       final trade = _trades.firstWhere((t) => t.id == tradeId);
-      trade.status = TradeStatus.rejected;
+      trade.status = 'rejected';
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
       if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
@@ -1087,7 +1086,7 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> cancelTrade(String tradeId) async {
     try {
       final trade = _trades.firstWhere((t) => t.id == tradeId);
-      trade.status = TradeStatus.cancelled;
+      trade.status = 'cancelled';
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
       if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
@@ -1097,7 +1096,7 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> markServiceDone(String tradeId) async {
     try {
       final trade = _trades.firstWhere((t) => t.id == tradeId);
-      trade.status = TradeStatus.serviceDone;
+      trade.status = 'service_done';
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
       if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
@@ -1106,22 +1105,22 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<void> completeTrade(String tradeId) async {
     try {
-      final trade = _trades.firstWhere((t) => t.id == tradeId);
+      final trade  = _trades.firstWhere((t) => t.id == tradeId);
       final seller = getChild(trade.fromChildId);
       final buyer  = getChild(trade.toChildId);
       if (seller == null || buyer == null) return;
-      // Transfert des immunités du vendeur vers l'acheteur
+      // Consomme les immunités du vendeur
       int remaining = trade.immunityLines;
       final sellerImmunities = getUsableImmunitiesForChild(trade.fromChildId);
       for (final im in sellerImmunities) {
         if (remaining <= 0) break;
-        final toUse = remaining.clamp(0, im.availableLines);
+        final toUse   = remaining.clamp(0, im.availableLines);
         im.usedLines += toUse;
         remaining    -= toUse;
         await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
         if (_firestore.isConnected) await _firestore.saveImmunity(im);
       }
-      // Créer une nouvelle immunité pour l'acheteur
+      // Crée une nouvelle immunité pour l'acheteur
       final newIm = ImmunityLines(
         id:      _uuid.v4(),
         childId: trade.toChildId,
@@ -1131,7 +1130,7 @@ class FamilyProvider extends ChangeNotifier {
       _immunities.add(newIm);
       await _immunitiesBox.put(newIm.id, jsonEncode(newIm.toMap()));
       if (_firestore.isConnected) await _firestore.saveImmunity(newIm);
-      trade.status = TradeStatus.completed;
+      trade.status = 'completed';
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
       if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
@@ -1139,7 +1138,6 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // ─── Réinitialisation & Nettoyage ──────────────────────────
-  // ✅ AJOUTÉ : méthodes manquantes pour settings_screen.dart
   Future<void> resetAllScores() async {
     for (final child in _children) {
       child.points  = 0;
@@ -1151,7 +1149,6 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ CORRIGÉ : clearAllHistory() est le vrai nom dans FirestoreService
   Future<void> clearHistory() async {
     _history.clear();
     await _historyBox.clear();
