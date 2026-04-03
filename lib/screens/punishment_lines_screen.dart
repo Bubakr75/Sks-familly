@@ -1,10 +1,11 @@
-import 'dart:convert';
+// lib/screens/punishment_lines_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
-import '../models/punishment_model.dart';
+import '../models/punishment_lines.dart';   // ✅ nom réel
+import '../models/immunity_lines.dart';     // ✅ nom réel
 import '../models/child_model.dart';
-import '../models/immunity_model.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/animated_page_transition.dart';
@@ -24,8 +25,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   bool _showAddForm = false;
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _linesController = TextEditingController();
-  final TextEditingController _subjectController = TextEditingController();
-  String _selectedPriority = 'normal';
 
   @override
   void initState() {
@@ -41,7 +40,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     _controller.dispose();
     _descController.dispose();
     _linesController.dispose();
-    _subjectController.dispose();
     super.dispose();
   }
 
@@ -72,7 +70,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           );
         }
 
-        final punishments = fp.getPunishmentsForChild(child!.id);
+        // ✅ getPunishmentsForChild → existe dans le provider
+        final punishments = fp.punishments
+            .where((p) => p.childId == child!.id)
+            .toList();
 
         return AnimatedBackground(
           child: Scaffold(
@@ -96,7 +97,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               opacity: _fadeAnim,
               child: Column(
                 children: [
-                  _buildChildSelector(children, child),
+                  _buildChildSelector(children, child!),
                   if (_showAddForm) _buildAddForm(fp, child),
                   Expanded(
                     child: punishments.isEmpty
@@ -124,8 +125,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       color: Colors.black12,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         itemCount: children.length,
         itemBuilder: (_, i) {
           final c = children[i];
@@ -138,21 +138,17 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               margin: const EdgeInsets.symmetric(horizontal: 6),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 gradient: isSelected
-                    ? const LinearGradient(colors: [
-                        Color(0xFF7C4DFF),
-                        Color(0xFF00BCD4)
-                      ])
+                    ? const LinearGradient(
+                        colors: [Color(0xFF7C4DFF), Color(0xFF00BCD4)])
                     : null,
                 color: isSelected ? null : Colors.white10,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: isSelected
-                        ? Colors.transparent
-                        : Colors.white24),
+                    color: isSelected ? Colors.transparent : Colors.white24),
               ),
               child: Row(
                 children: [
@@ -189,37 +185,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           const SizedBox(height: 12),
           _buildTextField(_descController, 'Description *', Icons.edit),
           const SizedBox(height: 8),
-          _buildTextField(
-              _subjectController, 'Matière (optionnel)', Icons.book),
-          const SizedBox(height: 8),
           _buildTextField(_linesController, 'Nombre de lignes *',
               Icons.format_list_numbered,
               isNumber: true),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            value: _selectedPriority,
-            dropdownColor: const Color(0xFF1A1A2E),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Priorité',
-              labelStyle: const TextStyle(color: Colors.white60),
-              filled: true,
-              fillColor: Colors.white10,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'low', child: Text('Faible')),
-              DropdownMenuItem(value: 'normal', child: Text('Normale')),
-              DropdownMenuItem(value: 'high', child: Text('Haute')),
-              DropdownMenuItem(
-                  value: 'critical', child: Text('Critique')),
-            ],
-            onChanged: (v) =>
-                setState(() => _selectedPriority = v ?? 'normal'),
-          ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -245,8 +213,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       {bool isNumber = false}) {
     return TextFormField(
       controller: ctrl,
-      keyboardType:
-          isNumber ? TextInputType.number : TextInputType.text,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
@@ -261,27 +228,15 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  Future<void> _savePunishment(
-      FamilyProvider fp, ChildModel child) async {
+  Future<void> _savePunishment(FamilyProvider fp, ChildModel child) async {
     final desc = _descController.text.trim();
-    final lines =
-        int.tryParse(_linesController.text.trim()) ?? 0;
+    final lines = int.tryParse(_linesController.text.trim()) ?? 0;
     if (desc.isEmpty || lines <= 0) return;
 
-    final p = PunishmentLines(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      childId: child.id,
-      description: desc,
-      totalLines: lines,
-      subject: _subjectController.text.trim(),
-      priority: _selectedPriority,
-      createdAt: DateTime.now(),
-    );
-
-    await fp.addPunishment(p);
+    // ✅ addPunishment(childId, text, totalLines) — 3 params comme dans le provider
+    await fp.addPunishment(child.id, desc, lines);
     _descController.clear();
     _linesController.clear();
-    _subjectController.clear();
     setState(() => _showAddForm = false);
   }
 
@@ -301,8 +256,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
 
   Widget _buildPunishmentCard(
       PunishmentLines p, ChildModel child, FamilyProvider fp) {
-    final progress = p.linesCompleted / p.totalLines;
-    final priorityColor = _priorityColor(p.priority);
+    // ✅ champs réels : completedLines, totalLines, text, isCompleted, progress
+    final progress = p.progress;
 
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
@@ -312,53 +267,28 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: priorityColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: priorityColor.withOpacity(0.5)),
-                ),
-                child: Text(p.priority.toUpperCase(),
-                    style: TextStyle(
-                        color: priorityColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 8),
               Expanded(
-                child: Text(p.description,
+                child: Text(p.text,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
+                        color: Colors.white, fontWeight: FontWeight.bold)),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline,
-                    color: Colors.redAccent),
+                icon:
+                    const Icon(Icons.delete_outline, color: Colors.redAccent),
                 onPressed: () => _confirmDelete(p, fp),
               ),
             ],
           ),
-          if (p.subject.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text('📚 ${p.subject}',
-                style: const TextStyle(
-                    color: Colors.white54, fontSize: 12)),
-          ],
           const SizedBox(height: 12),
           Row(
             children: [
-              Text(
-                  '${p.linesCompleted} / ${p.totalLines} lignes',
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 13)),
+              Text('${p.completedLines} / ${p.totalLines} lignes',
+                  style:
+                      const TextStyle(color: Colors.white70, fontSize: 13)),
               const Spacer(),
               Text('${(progress * 100).round()}%',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold)),
+                      color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 8),
@@ -374,15 +304,36 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               minHeight: 8,
             ),
           ),
+          if (p.pendingValidation) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+                border:
+                    Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.hourglass_top_rounded,
+                    color: Colors.orange, size: 14),
+                SizedBox(width: 6),
+                Text('En attente de validation parent',
+                    style: TextStyle(
+                        color: Colors.orange,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ],
           const SizedBox(height: 12),
-          // Ligne 1 : Avancer + Terminer
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(
-                        color: Color(0xFF7C4DFF)),
+                    side: const BorderSide(color: Color(0xFF7C4DFF)),
                     foregroundColor: const Color(0xFF7C4DFF),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
@@ -396,8 +347,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        Colors.greenAccent.withOpacity(0.2),
+                    backgroundColor: Colors.greenAccent.withOpacity(0.2),
                     foregroundColor: Colors.greenAccent,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
@@ -410,13 +360,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             ],
           ),
           const SizedBox(height: 8),
-          // Ligne 2 : Immunité (pleine largeur)
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    Colors.amberAccent.withOpacity(0.2),
+                backgroundColor: Colors.amberAccent.withOpacity(0.2),
                 foregroundColor: Colors.amberAccent,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
@@ -433,16 +381,14 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
 
   void _showImmunityPicker(
       PunishmentLines p, ChildModel child, FamilyProvider fp) {
-    final activeImmunities = fp
-        .getImmunitiesForChild(child.id)
-        .where((i) => i.isActive)
-        .toList();
+    // ✅ isUsable (pas isActive) — getter réel de ImmunityLines
+    final activeImmunities =
+        fp.getUsableImmunitiesForChild(child.id);
 
     if (activeImmunities.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content:
-              Text('Aucune immunité active pour cet enfant'),
+          content: Text('Aucune immunité disponible pour cet enfant'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -455,10 +401,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       isScrollControlled: true,
       builder: (_) => Consumer<FamilyProvider>(
         builder: (ctx, liveFp, __) {
-          final liveImmunities = liveFp
-              .getImmunitiesForChild(child.id)
-              .where((i) => i.isActive)
-              .toList();
+          final liveImmunities = liveFp.getUsableImmunitiesForChild(child.id);
 
           return DraggableScrollableSheet(
             initialChildSize: 0.55,
@@ -468,15 +411,14 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             builder: (_, scrollController) => Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF0D1B2A),
-                borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(24)),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
                   const SizedBox(height: 12),
                   Container(
-                    width: 40,
-                    height: 4,
+                    width: 40, height: 4,
                     decoration: BoxDecoration(
                       color: Colors.white38,
                       borderRadius: BorderRadius.circular(2),
@@ -489,8 +431,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                           fontSize: 18,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text(
-                      'Punition : ${p.description} (${p.totalLines} lignes)',
+                  Text('Punition : ${p.text} (${p.totalLines} lignes)',
                       style: const TextStyle(
                           color: Colors.white54, fontSize: 13)),
                   const SizedBox(height: 12),
@@ -499,8 +440,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                           child: Center(
                             child: Text(
                                 'Toutes les immunités ont été utilisées',
-                                style: TextStyle(
-                                    color: Colors.white54)),
+                                style:
+                                    TextStyle(color: Colors.white54)),
                           ),
                         )
                       : Expanded(
@@ -512,75 +453,56 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                             itemBuilder: (_, i) {
                               final imm = liveImmunities[i];
                               return GlassCard(
-                                margin: const EdgeInsets.only(
-                                    bottom: 12),
-                                padding:
-                                    const EdgeInsets.all(14),
+                                margin:
+                                    const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(14),
                                 child: InkWell(
                                   onTap: () =>
-                                      _confirmImmunityUse(
-                                          p, imm, liveFp),
+                                      _confirmImmunityUse(p, imm, liveFp),
                                   borderRadius:
                                       BorderRadius.circular(12),
                                   child: Row(
                                     children: [
                                       Container(
-                                        padding:
-                                            const EdgeInsets.all(
-                                                10),
+                                        padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: imm.typeColor
+                                          color: Colors.cyanAccent
                                               .withOpacity(0.15),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(imm.typeIcon,
-                                            color: imm.typeColor,
+                                        child: const Icon(
+                                            Icons.shield_rounded,
+                                            color: Colors.cyanAccent,
                                             size: 24),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment
-                                                  .start,
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Text(imm.name,
+                                            Text(imm.reason,
                                                 style: const TextStyle(
-                                                    color: Colors
-                                                        .white,
+                                                    color: Colors.white,
                                                     fontWeight:
-                                                        FontWeight
-                                                            .bold,
+                                                        FontWeight.bold,
                                                     fontSize: 15)),
-                                            const SizedBox(
-                                                height: 4),
-                                            Text(imm.typeLabel,
-                                                style: TextStyle(
-                                                    color: imm
-                                                        .typeColor,
-                                                    fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight
-                                                            .w600)),
-                                            const SizedBox(
-                                                height: 2),
+                                            const SizedBox(height: 4),
                                             Text(
-                                                '${imm.linesGranted} lignes couvertes',
+                                                '${imm.availableLines} lignes disponibles',
                                                 style: const TextStyle(
-                                                    color: Colors
-                                                        .white54,
+                                                    color: Colors.white54,
                                                     fontSize: 12)),
-                                            Text(
-                                                'Expire le ${_formatDate(imm.expiresAt)}',
-                                                style: const TextStyle(
-                                                    color: Colors
-                                                        .white38,
-                                                    fontSize: 11)),
+                                            if (imm.expiresAt != null)
+                                              Text(
+                                                  'Expire le ${_formatDate(imm.expiresAt!)}',
+                                                  style: const TextStyle(
+                                                      color: Colors.white38,
+                                                      fontSize: 11)),
                                           ],
                                         ),
                                       ),
-                                      const Icon(
-                                          Icons.chevron_right,
+                                      const Icon(Icons.chevron_right,
                                           color: Colors.white38),
                                     ],
                                   ),
@@ -609,55 +531,39 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           backgroundColor: const Color(0xFF1A1A2E),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16)),
-          title: const Text('Confirmer l\'immunité',
+          title: const Text("Confirmer l'immunité",
               style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                  'Tu es sur le point d\'autoriser l\'utilisation de :',
+                  "Utiliser cette immunité sur la punition ?",
                   style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: imm.typeColor.withOpacity(0.1),
+                  color: Colors.cyanAccent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: imm.typeColor.withOpacity(0.3)),
+                      color: Colors.cyanAccent.withOpacity(0.3)),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(imm.typeIcon,
-                        color: imm.typeColor, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          Text(imm.name,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                          Text(imm.typeLabel,
-                              style: TextStyle(
-                                  color: imm.typeColor,
-                                  fontSize: 12)),
-                          Text(
-                              '${imm.linesGranted} lignes couvertes',
-                              style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 12)),
-                        ],
-                      ),
-                    ),
+                    Text(imm.reason,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold)),
+                    Text('${imm.availableLines} lignes disponibles',
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12)),
                   ],
                 ),
               ),
               const SizedBox(height: 10),
-              Text('Sur la punition : ${p.description}',
+              Text('Sur la punition : ${p.text}',
                   style: const TextStyle(
                       color: Colors.white54, fontSize: 13)),
             ],
@@ -669,18 +575,19 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                     style: TextStyle(color: Colors.white38))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    Colors.amberAccent.withOpacity(0.2),
+                backgroundColor: Colors.amberAccent.withOpacity(0.2),
                 foregroundColor: Colors.amberAccent,
               ),
               onPressed: () async {
-                await fp.useImmunityOnPunishment(p.id, imm.id);
+                // ✅ useImmunityOnPunishment(immunityId, punishmentId, lines)
+                await fp.useImmunityOnPunishment(
+                    imm.id, p.id, imm.availableLines);
                 if (mounted) {
                   Navigator.pop(rootContext);
                   ScaffoldMessenger.of(rootContext).showSnackBar(
                     SnackBar(
                       content: Text(
-                          '🛡️ Immunité "${imm.name}" utilisée avec succès !'),
+                          '🛡️ Immunité utilisée avec succès !'),
                       backgroundColor:
                           Colors.amberAccent.withOpacity(0.8),
                     ),
@@ -699,19 +606,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 
-  Color _priorityColor(String priority) {
-    switch (priority) {
-      case 'low':
-        return Colors.greenAccent;
-      case 'high':
-        return Colors.orangeAccent;
-      case 'critical':
-        return Colors.redAccent;
-      default:
-        return Colors.blueAccent;
-    }
-  }
-
   void _confirmDelete(PunishmentLines p, FamilyProvider fp) {
     showDialog(
       context: context,
@@ -725,7 +619,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               child: const Text('Annuler')),
           TextButton(
               onPressed: () {
-                fp.deletePunishment(p.id);
+                // ✅ removePunishment (pas deletePunishment)
+                fp.removePunishment(p.id);
                 Navigator.pop(context);
               },
               child: const Text('Supprimer',
@@ -759,7 +654,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           TextButton(
               onPressed: () {
                 final n = int.tryParse(ctrl.text) ?? 0;
-                if (n > 0) fp.advancePunishmentLines(p.id, n);
+                // ✅ updatePunishmentProgress (pas advancePunishmentLines)
+                if (n > 0) fp.updatePunishmentProgress(p.id, n);
                 Navigator.pop(context);
               },
               child: const Text('Valider',
@@ -770,7 +666,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   }
 
   void _completePunishment(PunishmentLines p, FamilyProvider fp) {
-    fp.advancePunishmentLines(
-        p.id, p.totalLines - p.linesCompleted);
+    final remaining = p.totalLines - p.completedLines;
+    if (remaining > 0) fp.updatePunishmentProgress(p.id, remaining);
   }
 }
