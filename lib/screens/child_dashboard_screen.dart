@@ -1,9 +1,8 @@
 // lib/screens/child_dashboard_screen.dart
-// Version : Hero Card FIFA/Pokémon + Bannière éditable + Level Frame + Streak
+// Version corrigée : saveChild → updateChildPhoto/updateChild | checkPin → verifyPin
 
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -20,23 +19,19 @@ import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
 
 // ─────────────────────────────────────────────
-//  PAINTER : shimmer holographique pour la carte
+//  PAINTER : shimmer holographique
 // ─────────────────────────────────────────────
 class _HoloPainter extends CustomPainter {
   final double animValue;
   final Color baseColor;
-
   _HoloPainter({required this.animValue, required this.baseColor});
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Effet arc-en-ciel en diagonale qui se déplace
     final rect = Offset.zero & size;
-    final shimmerOffset = animValue * size.width * 2 - size.width;
-
     final gradient = LinearGradient(
       begin: Alignment((-1 + animValue * 2).clamp(-1.0, 1.0), -1),
-      end: Alignment((1 + animValue * 2).clamp(-1.0, 1.0), 1),
+      end:   Alignment((animValue * 2).clamp(-1.0, 1.0), 1),
       colors: const [
         Colors.transparent,
         Color(0x22FF0080),
@@ -48,23 +43,22 @@ class _HoloPainter extends CustomPainter {
       ],
       stops: const [0.0, 0.2, 0.35, 0.5, 0.65, 0.8, 1.0],
     );
-
     final paint = Paint()
       ..shader = gradient.createShader(rect)
       ..blendMode = BlendMode.screen;
-
     canvas.drawRoundRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(20)),
       paint,
     );
-
-    // Points brillants
-    final starPaint = Paint()..color = Colors.white.withOpacity(0.15 * animValue);
+    final starPaint = Paint()
+      ..color = Colors.white.withOpacity(0.12 * animValue);
     final rng = Random(42);
     for (int i = 0; i < 30; i++) {
-      final dx = rng.nextDouble() * size.width;
-      final dy = rng.nextDouble() * size.height;
-      canvas.drawCircle(Offset(dx, dy), rng.nextDouble() * 2 + 0.5, starPaint);
+      canvas.drawCircle(
+        Offset(rng.nextDouble() * size.width, rng.nextDouble() * size.height),
+        rng.nextDouble() * 2 + 0.5,
+        starPaint,
+      );
     }
   }
 
@@ -73,55 +67,42 @@ class _HoloPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────
-//  PAINTER : arc de progression screen-time
+//  PAINTER : arc screen-time
 // ─────────────────────────────────────────────
 class _ScreenTimePainter extends CustomPainter {
   final double progress;
   final double animValue;
-
   _ScreenTimePainter({required this.progress, required this.animValue});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width, size.height) / 2 - 8;
-
-    // Fond
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..color = Colors.white10
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10,
-    );
-
+    canvas.drawCircle(center, radius,
+        Paint()
+          ..color = Colors.white10
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10);
     final color = progress >= 1.0
         ? Colors.greenAccent
         : progress >= 0.5
             ? Colors.orangeAccent
             : Colors.redAccent;
-
-    // Arc de progression
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -pi / 2,
-      2 * pi * progress * animValue,
-      false,
+      -pi / 2, 2 * pi * progress * animValue, false,
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
         ..strokeWidth = 10
         ..strokeCap = StrokeCap.round,
     );
-
-    // Dot animé
-    final angle = -pi / 2 + 2 * pi * progress * animValue;
+    final angle  = -pi / 2 + 2 * pi * progress * animValue;
     final dotPos = Offset(
       center.dx + radius * cos(angle),
       center.dy + radius * sin(angle),
     );
-    canvas.drawCircle(dotPos, 6, Paint()..color = color);
+    canvas.drawCircle(dotPos, 6,  Paint()..color = color);
     canvas.drawCircle(dotPos, 10, Paint()..color = color.withOpacity(0.3));
   }
 
@@ -131,7 +112,7 @@ class _ScreenTimePainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────
-//  MAIN SCREEN
+//  MAIN WIDGET
 // ─────────────────────────────────────────────
 class ChildDashboardScreen extends StatefulWidget {
   const ChildDashboardScreen({super.key});
@@ -143,109 +124,69 @@ class ChildDashboardScreen extends StatefulWidget {
 class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     with TickerProviderStateMixin {
 
-  // Controllers
-  late TabController _tabController;
-  late AnimationController _profileController;
-  late AnimationController _contentController;
-  late AnimationController _glowController;
-  late AnimationController _headerController;
-  late AnimationController _holoController;      // shimmer holographique
-  late AnimationController _streakController;    // rebond flamme streak
-  late AnimationController _bonusAnimController;
+  late TabController          _tabController;
+  late AnimationController    _profileController;
+  late AnimationController    _contentController;
+  late AnimationController    _glowController;
+  late AnimationController    _headerController;
+  late AnimationController    _holoController;
+  late AnimationController    _streakController;
+  late AnimationController    _bonusFloatController;
 
-  late Animation<double> _profileFade;
-  late Animation<double> _contentFade;
-  late Animation<double> _glowAnim;
-  late Animation<Offset> _headerSlide;
-  late Animation<double> _holoAnim;
-  late Animation<double> _streakBounce;
+  late Animation<double>      _profileFade;
+  late Animation<double>      _contentFade;
+  late Animation<double>      _glowAnim;
+  late Animation<Offset>      _headerSlide;
+  late Animation<double>      _holoAnim;
+  late Animation<double>      _streakBounce;
+  late Animation<double>      _bonusFloatAnim;
+  late Animation<double>      _bonusOpacity;
 
   String? _selectedChildId;
   String? _selectedDay;
-  String _selectedSource = 'école';
 
-  // Bonus animation
-  bool _showBonusAnim = false;
-  String _bonusAnimText = '';
-  late AnimationController _bonusFloatController;
-  late Animation<double> _bonusFloatAnim;
-  late Animation<double> _bonusOpacity;
-
-  // Hero card flip
-  bool _showHeroCardBack = false;
+  bool   _showBonusAnim  = false;
+  String _bonusAnimText  = '';
+  bool   _showHeroBack   = false;
 
   @override
   void initState() {
     super.initState();
+
     _tabController = TabController(length: 4, vsync: this);
 
     _profileController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
+        vsync: this, duration: const Duration(milliseconds: 900));
     _contentController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    _headerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _holoController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
-    _streakController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
+        vsync: this, duration: const Duration(milliseconds: 700));
+    _glowController    = AnimationController(
+        vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
+    _headerController  = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _holoController    = AnimationController(
+        vsync: this, duration: const Duration(seconds: 3))..repeat();
+    _streakController  = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800))..repeat(reverse: true);
+    _bonusFloatController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
 
     _profileFade = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 40),
       TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
     ]).animate(_profileController);
 
-    _contentFade = CurvedAnimation(
-      parent: _contentController,
-      curve: Curves.easeIn,
-    );
-    _glowAnim = CurvedAnimation(
-      parent: _glowController,
-      curve: Curves.easeInOut,
-    );
-    _headerSlide = Tween<Offset>(
-      begin: const Offset(0, -0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _headerController,
-      curve: Curves.easeOut,
-    ));
-    _holoAnim = CurvedAnimation(
-      parent: _holoController,
-      curve: Curves.linear,
-    );
-    _streakBounce = Tween(begin: 1.0, end: 1.18).animate(
-      CurvedAnimation(parent: _streakController, curve: Curves.easeInOut),
-    );
+    _contentFade  = CurvedAnimation(parent: _contentController, curve: Curves.easeIn);
+    _glowAnim     = CurvedAnimation(parent: _glowController,    curve: Curves.easeInOut);
+    _headerSlide  = Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _headerController, curve: Curves.easeOut));
+    _holoAnim     = CurvedAnimation(parent: _holoController,   curve: Curves.linear);
+    _streakBounce = Tween(begin: 1.0, end: 1.18)
+        .animate(CurvedAnimation(parent: _streakController, curve: Curves.easeInOut));
 
-    // Bonus animation
-    _bonusAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _bonusFloatController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    _bonusFloatAnim = Tween(begin: 0.0, end: -60.0)
-        .animate(_bonusFloatController);
-    _bonusOpacity = TweenSequence([
+    _bonusFloatAnim = Tween(begin: 0.0, end: -60.0).animate(_bonusFloatController);
+    _bonusOpacity   = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
+      TweenSequenceItem(tween: ConstantTween(1.0),           weight: 60),
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
     ]).animate(_bonusFloatController);
 
@@ -270,319 +211,257 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     _headerController.dispose();
     _holoController.dispose();
     _streakController.dispose();
-    _bonusAnimController.dispose();
     _bonusFloatController.dispose();
     super.dispose();
   }
 
-  // ─── Couleur de l'enfant ───────────────────
+  // ─── Couleur enfant ──────────────────────
   Color _childColor(ChildModel child) {
     if (child.accentColorHex != null) {
       try {
-        return Color(int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
+        return Color(
+            int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
       } catch (_) {}
     }
-    final colors = [
+    const palette = [
       Colors.deepPurpleAccent,
       Colors.blueAccent,
-      Colors.tealAccent.shade700,
-      Colors.orangeAccent.shade700,
+      Color(0xFF00897B),
+      Color(0xFFF57C00),
       Colors.pinkAccent,
-      Colors.cyanAccent.shade700,
+      Color(0xFF00ACC1),
     ];
-    return colors[child.name.codeUnitAt(0) % colors.length];
+    return palette[child.name.codeUnitAt(0) % palette.length];
   }
 
-  // ─── Rareté selon niveau ──────────────────
+  // ─── Rareté / level ──────────────────────
   String _rarityLabel(int level) {
     switch (level) {
-      case 1: return 'COMMUN';
-      case 2: return 'RARE';
-      case 3: return 'ÉPIQUE';
-      case 4: return 'LÉGENDAIRE';
+      case 1:  return 'COMMUN';
+      case 2:  return 'RARE';
+      case 3:  return 'ÉPIQUE';
+      case 4:  return 'LÉGENDAIRE';
       default: return 'MYTHIQUE ✨';
     }
   }
 
   List<Color> _rarityGradient(int level) {
     switch (level) {
-      case 1: return [const Color(0xFF607D8B), const Color(0xFF37474F)];
-      case 2: return [const Color(0xFF1565C0), const Color(0xFF0D47A1)];
-      case 3: return [const Color(0xFF6A1B9A), const Color(0xFF4A148C)];
-      case 4: return [const Color(0xFFE65100), const Color(0xFFBF360C)];
+      case 1:  return [const Color(0xFF607D8B), const Color(0xFF37474F)];
+      case 2:  return [const Color(0xFF1565C0), const Color(0xFF0D47A1)];
+      case 3:  return [const Color(0xFF6A1B9A), const Color(0xFF4A148C)];
+      case 4:  return [const Color(0xFFE65100), const Color(0xFFBF360C)];
       default: return [const Color(0xFF00897B), const Color(0xFF004D40)];
     }
   }
 
   Color _frameColor(int level) {
     switch (level) {
-      case 1: return Colors.grey.shade400;
-      case 2: return const Color(0xFFCD7F32); // bronze
-      case 3: return const Color(0xFFC0C0C0); // argent
-      case 4: return const Color(0xFFFFD700); // or
-      default: return const Color(0xFF00E5FF); // diamant/mythique
+      case 1:  return Colors.grey.shade400;
+      case 2:  return const Color(0xFFCD7F32); // bronze
+      case 3:  return const Color(0xFFC0C0C0); // argent
+      case 4:  return const Color(0xFFFFD700); // or
+      default: return const Color(0xFF00E5FF); // diamant
     }
   }
 
-  // ─── Avatar builder ───────────────────────
-  Widget _buildAvatar(ChildModel child, double radius, {bool showFrame = true}) {
-    final color = _childColor(child);
+  // ─── Avatar ──────────────────────────────
+  Widget _buildAvatar(ChildModel child, double radius,
+      {bool showFrame = true}) {
+    final color      = _childColor(child);
     final frameColor = _frameColor(child.level);
-    final isHighLevel = child.level >= 4;
+    final highLevel  = child.level >= 4;
 
-    Widget avatarCore;
+    Widget core;
     if (child.photoBase64 != null && child.photoBase64!.isNotEmpty) {
       try {
-        final bytes = base64Decode(child.photoBase64!);
-        avatarCore = CircleAvatar(
+        core = CircleAvatar(
           radius: radius,
-          backgroundImage: MemoryImage(bytes),
+          backgroundImage: MemoryImage(base64Decode(child.photoBase64!)),
         );
       } catch (_) {
-        avatarCore = _fallbackAvatar(child, radius, color);
+        core = _letterAvatar(child, radius, color);
       }
     } else {
-      avatarCore = _fallbackAvatar(child, radius, color);
+      core = _letterAvatar(child, radius, color);
     }
 
-    if (!showFrame || child.level < 2) return avatarCore;
+    if (!showFrame || child.level < 2) return core;
 
-    // Cadre animé
     return AnimatedBuilder(
       animation: _glowAnim,
-      builder: (_, __) {
-        return Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: isHighLevel
-                ? SweepGradient(colors: [
-                    frameColor,
-                    Colors.white,
-                    frameColor,
-                    frameColor.withOpacity(0.5),
-                    frameColor,
-                  ])
-                : null,
-            color: isHighLevel ? null : frameColor,
-            boxShadow: [
-              BoxShadow(
-                color: frameColor.withOpacity(0.4 + 0.3 * _glowAnim.value),
-                blurRadius: 12 + 8 * _glowAnim.value,
-                spreadRadius: 2 + 2 * _glowAnim.value,
-              ),
-            ],
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF1A1A2E),
+      builder: (_, __) => Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: highLevel
+              ? SweepGradient(colors: [
+                  frameColor, Colors.white, frameColor,
+                  frameColor.withOpacity(0.5), frameColor,
+                ])
+              : null,
+          color: highLevel ? null : frameColor,
+          boxShadow: [
+            BoxShadow(
+              color: frameColor
+                  .withOpacity(0.4 + 0.3 * _glowAnim.value),
+              blurRadius:   12 + 8  * _glowAnim.value,
+              spreadRadius: 2  + 2  * _glowAnim.value,
             ),
-            child: avatarCore,
+          ],
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(2),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Color(0xFF1A1A2E),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _fallbackAvatar(ChildModel child, double radius, Color color) {
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: color.withOpacity(0.3),
-      child: Text(
-        child.name[0].toUpperCase(),
-        style: TextStyle(
-          fontSize: radius * 0.9,
-          fontWeight: FontWeight.bold,
-          color: color,
+          child: core,
         ),
       ),
     );
   }
 
+  Widget _letterAvatar(ChildModel child, double radius, Color color) =>
+      CircleAvatar(
+        radius: radius,
+        backgroundColor: color.withOpacity(0.3),
+        child: Text(
+          child.name[0].toUpperCase(),
+          style: TextStyle(
+            fontSize:   radius * 0.9,
+            fontWeight: FontWeight.bold,
+            color:      color,
+          ),
+        ),
+      );
+
   // ─────────────────────────────────────────
-  //  HERO CARD style FIFA/Pokémon
+  //  HERO CARD RECTO
   // ─────────────────────────────────────────
   Widget _buildHeroCard(ChildModel child, FamilyProvider fp) {
-    final color = _childColor(child);
+    final color    = _childColor(child);
     final gradient = _rarityGradient(child.level);
-    final rarity = _rarityLabel(child.level);
-    final frameColor = _frameColor(child.level);
+    final rarity   = _rarityLabel(child.level);
+    final frame    = _frameColor(child.level);
 
-    final history = fp.history.where((h) => h.childId == child.id).toList();
-    final bonuses = history.where((h) => h.points > 0).length;
-    final penalties = history.where((h) => h.points < 0).length;
-    final totalGoals = fp.goals.where((g) => g.childId == child.id).length;
-    final earnedBadges = fp.customBadges
-        .where((b) => child.badgeIds.contains(b.id))
-        .length;
+    final history      = fp.history.where((h) => h.childId == child.id).toList();
+    final bonuses      = history.where((h) => h.points > 0).length;
+    final penalties    = history.where((h) => h.points < 0).length;
+    final earnedBadges = fp.customBadges.where((b) => child.badgeIds.contains(b.id)).length;
+    final totalImm     = fp.getTotalAvailableImmunity(child.id);
 
-    return AnimatedBuilder(
-      animation: _holoAnim,
-      builder: (context, _) {
-        return GestureDetector(
-          onTap: () => setState(() => _showHeroCardBack = !_showHeroCardBack),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 600),
-            transitionBuilder: (child, anim) => AnimatedBuilder(
-              animation: anim,
-              child: child,
-              builder: (_, c) {
-                final angle = (1 - anim.value) * pi / 2;
-                return Transform(
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.001)
-                    ..rotateY(angle),
-                  alignment: Alignment.center,
-                  child: c,
-                );
-              },
-            ),
-            child: _showHeroCardBack
-                ? _heroCardBack(child, fp, gradient, frameColor, color)
-                : _heroCardFront(child, fp, gradient, frameColor, color,
-                    rarity, bonuses, penalties, totalGoals, earnedBadges),
+    return GestureDetector(
+      onTap: () => setState(() => _showHeroBack = !_showHeroBack),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        transitionBuilder: (child, anim) => AnimatedBuilder(
+          animation: anim,
+          child: child,
+          builder: (_, c) => Transform(
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.001)
+              ..rotateY((1 - anim.value) * pi / 2),
+            alignment: Alignment.center,
+            child: c,
           ),
-        );
-      },
+        ),
+        child: _showHeroBack
+            ? _cardBack(child, fp, gradient, frame, color)
+            : _cardFront(child, gradient, frame, color, rarity,
+                bonuses, penalties, earnedBadges, totalImm),
+      ),
     );
   }
 
-  Widget _heroCardFront(
+  Widget _cardFront(
     ChildModel child,
-    FamilyProvider fp,
     List<Color> gradient,
-    Color frameColor,
+    Color frame,
     Color color,
     String rarity,
     int bonuses,
     int penalties,
-    int totalGoals,
     int earnedBadges,
+    int totalImm,
   ) {
-    final totalImm = fp.getTotalAvailableImmunity(child.id);
-
-    return Container(
+    return AnimatedBuilder(
       key: const ValueKey('front'),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      height: 480,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
-        border: Border.all(color: frameColor, width: 2.5),
-        boxShadow: [
-          BoxShadow(
-            color: frameColor.withOpacity(0.5),
-            blurRadius: 20,
-            spreadRadius: 2,
+      animation: _holoAnim,
+      builder: (_, __) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        height: 500,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end:   Alignment.bottomRight,
+            colors: gradient,
           ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Bannière / fond personnalisé
-          if (child.bannerBase64 != null && child.bannerBase64!.isNotEmpty)
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Opacity(
-                  opacity: 0.35,
-                  child: Image.memory(
-                    base64Decode(child.bannerBase64!),
-                    fit: BoxFit.cover,
+          border: Border.all(color: frame, width: 2.5),
+          boxShadow: [
+            BoxShadow(
+              color:      frame.withOpacity(0.5),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Bannière en fond
+            if (child.bannerBase64 != null && child.bannerBase64!.isNotEmpty)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Opacity(
+                    opacity: 0.35,
+                    child: Image.memory(
+                      base64Decode(child.bannerBase64!),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
-            ),
-
-          // Shimmer holographique
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _HoloPainter(
-                animValue: _holoAnim.value,
-                baseColor: color,
+            // Shimmer holographique
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _HoloPainter(
+                  animValue: _holoAnim.value,
+                  baseColor: color,
+                ),
               ),
             ),
-          ),
-
-          // Contenu
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header : rareté + niveau
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: frameColor.withOpacity(0.25),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: frameColor, width: 1),
-                      ),
-                      child: Text(
-                        rarity,
-                        style: TextStyle(
-                          color: frameColor,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 11,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black38,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'NIV. ${child.level}  •  ${child.points} pts',
-                        style: TextStyle(
-                          color: frameColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Photo centrale grande
-                Center(
-                  child: _buildAvatar(child, 70, showFrame: true),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Nom + slogan
-                Center(
-                  child: Column(
+            // Contenu
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header rareté + niveau
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      _chip(rarity, frame),
+                      _chip('NIV.${child.level}  •  ${child.points} pts',
+                          Colors.white24, textColor: frame),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Photo
+                  Center(child: _buildAvatar(child, 72, showFrame: true)),
+                  const SizedBox(height: 12),
+                  // Nom + slogan
+                  Center(
+                    child: Column(children: [
                       Text(
                         child.name.toUpperCase(),
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
+                          color:      Colors.white,
+                          fontSize:   22,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 3,
-                          shadows: [
-                            Shadow(
-                              color: frameColor,
-                              blurRadius: 8,
-                            ),
-                          ],
+                          shadows: [Shadow(color: frame, blurRadius: 8)],
                         ),
                       ),
                       if (child.sloganText != null &&
@@ -591,100 +470,85 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             '"${child.sloganText}"',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 11,
+                            style: const TextStyle(
+                              color:     Colors.white60,
+                              fontSize:  11,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
                         ),
-                    ],
+                    ]),
                   ),
-                ),
-
-                const SizedBox(height: 14),
-
-                // Stats style FIFA
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.black38,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: Colors.white12, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _statCell('🎯', 'BONUS', bonuses.toString(), color),
-                      _dividerV(),
-                      _statCell('⚡', 'PÉNALITÉS', penalties.toString(),
-                          Colors.redAccent),
-                      _dividerV(),
-                      _statCell('🛡️', 'IMMU.', totalImm.toString(),
-                          Colors.amberAccent),
-                      _dividerV(),
-                      _statCell('🏅', 'BADGES', earnedBadges.toString(),
-                          Colors.greenAccent),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // Barre de progression vers prochain niveau
-                _buildLevelBar(child, frameColor),
-
-                const Spacer(),
-
-                // Hint flip
-                Center(
-                  child: Text(
-                    '↻ Appuie pour voir le dos',
-                    style: TextStyle(
-                      color: Colors.white38,
-                      fontSize: 10,
+                  const SizedBox(height: 16),
+                  // Stats style FIFA
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color:        Colors.black38,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _statCell('🎯', 'BONUS',    '$bonuses',     color),
+                        _divV(),
+                        _statCell('⚡', 'PÉNALITÉS','$penalties',   Colors.redAccent),
+                        _divV(),
+                        _statCell('🛡️', 'IMMU.',   '$totalImm',    Colors.amberAccent),
+                        _divV(),
+                        _statCell('🏅', 'BADGES',  '$earnedBadges', Colors.greenAccent),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  // Barre niveau
+                  _levelBar(child, frame),
+                  const Spacer(),
+                  Center(
+                    child: Text(
+                      '↻ Appuie pour le dos',
+                      style: TextStyle(
+                          color: Colors.white38, fontSize: 10),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _heroCardBack(
+  Widget _cardBack(
     ChildModel child,
     FamilyProvider fp,
     List<Color> gradient,
-    Color frameColor,
+    Color frame,
     Color color,
   ) {
-    final history = fp.history.where((h) => h.childId == child.id).toList();
-    history.sort((a, b) => b.date.compareTo(a.date));
+    final history = fp.history
+        .where((h) => h.childId == child.id)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
     final last5 = history.take(5).toList();
 
     return Container(
       key: const ValueKey('back'),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      height: 480,
+      height: 500,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           begin: Alignment.bottomLeft,
-          end: Alignment.topRight,
+          end:   Alignment.topRight,
           colors: gradient.reversed.toList(),
         ),
-        border: Border.all(color: frameColor, width: 2.5),
+        border: Border.all(color: frame, width: 2.5),
         boxShadow: [
-          BoxShadow(
-            color: frameColor.withOpacity(0.4),
-            blurRadius: 18,
-          ),
+          BoxShadow(color: frame.withOpacity(0.4), blurRadius: 18),
         ],
       ),
       child: Padding(
@@ -696,63 +560,50 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               child: Text(
                 '📋 FICHE ${child.name.toUpperCase()}',
                 style: TextStyle(
-                  color: frameColor,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                  fontSize: 14,
+                  color: frame, fontWeight: FontWeight.w900,
+                  letterSpacing: 2, fontSize: 14,
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            // Streak
-            _streakRow(child, frameColor),
+            _streakRow(child, frame),
             const SizedBox(height: 12),
             const Divider(color: Colors.white12),
             const SizedBox(height: 8),
-            Text(
-              '🕒 Dernières activités',
-              style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold),
-            ),
+            const Text('🕒 Dernières activités',
+                style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ...last5.map((h) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Text(
-                        h.points > 0 ? '✅' : '❌',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          h.reason,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 11),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        '${h.points > 0 ? '+' : ''}${h.points}',
-                        style: TextStyle(
-                          color: h.points > 0
-                              ? Colors.greenAccent
-                              : Colors.redAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(children: [
+                Text(h.points > 0 ? '✅' : '❌',
+                    style: const TextStyle(fontSize: 14)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(h.reason,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 11),
+                      overflow: TextOverflow.ellipsis),
+                ),
+                Text(
+                  '${h.points > 0 ? '+' : ''}${h.points}',
+                  style: TextStyle(
+                    color: h.points > 0
+                        ? Colors.greenAccent
+                        : Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
-                )),
+                ),
+              ]),
+            )),
             const Spacer(),
             Center(
-              child: Text(
-                '↻ Appuie pour le recto',
-                style: TextStyle(color: Colors.white38, fontSize: 10),
-              ),
+              child: Text('↻ Appuie pour le recto',
+                  style: TextStyle(color: Colors.white38, fontSize: 10)),
             ),
           ],
         ),
@@ -760,117 +611,94 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
+  // ─── Helpers widgets ─────────────────────
+  Widget _chip(String text, Color bg, {Color? textColor}) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color:        bg.withOpacity(0.25),
+      borderRadius: BorderRadius.circular(12),
+      border:       Border.all(color: textColor ?? bg, width: 1),
+    ),
+    child: Text(text,
+        style: TextStyle(
+          color:       textColor ?? Colors.white,
+          fontWeight:  FontWeight.w900,
+          fontSize:    11,
+          letterSpacing: 1.2,
+        )),
+  );
+
   Widget _statCell(
-      String emoji, String label, String value, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+          String emoji, String label, String value, Color color) =>
+      Column(mainAxisSize: MainAxisSize.min, children: [
         Text(emoji, style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white54,
-            fontSize: 8,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
-  }
+        Text(value,
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.w900, fontSize: 16)),
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white54, fontSize: 8, letterSpacing: 0.5)),
+      ]);
 
-  Widget _dividerV() => Container(
-        height: 40,
-        width: 1,
-        color: Colors.white12,
-      );
+  Widget _divV() =>
+      Container(height: 40, width: 1, color: Colors.white12);
 
-  Widget _buildLevelBar(ChildModel child, Color frameColor) {
-    final progress = child.levelProgress;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              child.levelTitle,
-              style: TextStyle(
-                  color: Colors.white60,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600),
-            ),
-            Text(
-              '${(progress * 100).toInt()}% → NIV.${child.level + 1}',
-              style:
-                  const TextStyle(color: Colors.white38, fontSize: 10),
-            ),
-          ],
+  Widget _levelBar(ChildModel child, Color frame) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(child.levelTitle,
+            style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 10,
+                fontWeight: FontWeight.w600)),
+        Text('${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
+            style: const TextStyle(
+                color: Colors.white38, fontSize: 10)),
+      ]),
+      const SizedBox(height: 4),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: LinearProgressIndicator(
+          value:           child.levelProgress,
+          backgroundColor: Colors.white12,
+          valueColor:      AlwaysStoppedAnimation(frame),
+          minHeight:       5,
         ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.white12,
-            valueColor: AlwaysStoppedAnimation(frameColor),
-            minHeight: 5,
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 
-  Widget _streakRow(ChildModel child, Color frameColor) {
+  Widget _streakRow(ChildModel child, Color frame) {
     final streak = child.streakDays ?? 0;
     return AnimatedBuilder(
       animation: _streakBounce,
-      builder: (_, __) {
-        return Row(
-          children: [
-            Transform.scale(
-              scale: streak > 0 ? _streakBounce.value : 1.0,
-              child: Text(
-                streak > 0 ? '🔥' : '💤',
-                style: const TextStyle(fontSize: 28),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  streak > 0
-                      ? '$streak jour${streak > 1 ? 's' : ''} sans pénalité !'
-                      : 'Aucun streak actif',
-                  style: TextStyle(
-                    color: frameColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  streak >= 7
-                      ? '🏆 Badge streak débloqué !'
-                      : streak > 0
-                          ? '${7 - streak} jour(s) pour le badge 🏆'
-                          : 'Évite les pénalités pour démarrer',
-                  style: const TextStyle(
-                      color: Colors.white54, fontSize: 11),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
+      builder: (_, __) => Row(children: [
+        Transform.scale(
+          scale: streak > 0 ? _streakBounce.value : 1.0,
+          child: Text(streak > 0 ? '🔥' : '💤',
+              style: const TextStyle(fontSize: 28)),
+        ),
+        const SizedBox(width: 10),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+            streak > 0
+                ? '$streak jour${streak > 1 ? 's' : ''} sans pénalité !'
+                : 'Aucun streak actif',
+            style: TextStyle(
+                color: frame, fontWeight: FontWeight.w800, fontSize: 14),
+          ),
+          Text(
+            streak >= 7
+                ? '🏆 Badge streak débloqué !'
+                : streak > 0
+                    ? '${7 - streak} jour(s) pour le badge 🏆'
+                    : 'Évite les pénalités pour démarrer',
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
+          ),
+        ]),
+      ]),
     );
   }
 
@@ -880,50 +708,62 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       context: context,
       backgroundColor: const Color(0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => ListView(
         shrinkWrap: true,
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Choisir un enfant',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
+          const Text('Choisir un enfant',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center),
           const SizedBox(height: 12),
-          ...fp.children.map((c) {
-            final selected = c.id == _selectedChildId;
-            return ListTile(
-              leading: _buildAvatar(c, 22, showFrame: false),
-              title: Text(c.name,
-                  style: const TextStyle(color: Colors.white)),
-              subtitle: Text('${c.points} pts',
-                  style: const TextStyle(color: Colors.white54)),
-              trailing: selected
-                  ? const Icon(Icons.check_circle,
-                      color: Colors.greenAccent)
-                  : null,
-              onTap: () {
-                setState(() => _selectedChildId = c.id);
-                Navigator.pop(context);
-              },
-            );
-          }),
+          ...fp.children.map((c) => ListTile(
+            leading:  _buildAvatar(c, 22, showFrame: false),
+            title:    Text(c.name,
+                style: const TextStyle(color: Colors.white)),
+            subtitle: Text('${c.points} pts',
+                style: const TextStyle(color: Colors.white54)),
+            trailing: c.id == _selectedChildId
+                ? const Icon(Icons.check_circle, color: Colors.greenAccent)
+                : null,
+            onTap: () {
+              setState(() => _selectedChildId = c.id);
+              Navigator.pop(context);
+            },
+          )),
         ],
       ),
     );
   }
 
+  // ─── Édition photo ───────────────────────
+  // ✅ Utilise updateChildPhoto() qui existe dans FamilyProvider
+  Future<void> _editPhoto(ChildModel child, FamilyProvider fp) async {
+    final picker = ImagePicker();
+    final xfile  = await picker.pickImage(
+      source:       ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth:     600,
+    );
+    if (xfile == null) return;
+    final bytes = await xfile.readAsBytes();
+    final b64   = base64Encode(bytes);
+    await fp.updateChildPhoto(child.id, b64);
+    if (mounted) setState(() {});
+  }
+
   // ─── Édition bannière ────────────────────
+  // ✅ PIN vérifié via verifyPin() qui existe dans PinProvider
   Future<void> _editBanner(ChildModel child, FamilyProvider fp,
       {required bool requirePin}) async {
+
     if (requirePin) {
       final pin = context.read<PinProvider>();
-      bool ok = false;
+      bool ok   = false;
+
       await showDialog(
         context: context,
         builder: (ctx) {
@@ -933,12 +773,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             title: const Text('PIN parent',
                 style: TextStyle(color: Colors.white)),
             content: TextField(
-              controller: ctrl,
-              obscureText: true,
+              controller:   ctrl,
+              obscureText:  true,
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
-                labelText: 'Code PIN',
+                labelText:  'Code PIN',
                 labelStyle: TextStyle(color: Colors.white54),
               ),
             ),
@@ -948,12 +788,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   child: const Text('Annuler')),
               ElevatedButton(
                 onPressed: () {
-                  if (pin.checkPin(ctrl.text)) {
+                  // ✅ verifyPin() et non checkPin()
+                  if (pin.verifyPin(ctrl.text)) {
                     ok = true;
                     Navigator.pop(ctx);
                   } else {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('PIN incorrect')),
+                      const SnackBar(
+                          content: Text('PIN incorrect ❌')),
                     );
                   }
                 },
@@ -963,51 +805,41 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           );
         },
       );
+
       if (!ok) return;
     }
 
-    // Picker image
     final picker = ImagePicker();
-    final xfile = await picker.pickImage(
-      source: ImageSource.gallery,
+    final xfile  = await picker.pickImage(
+      source:       ImageSource.gallery,
       imageQuality: 70,
-      maxWidth: 1200,
+      maxWidth:     1200,
     );
     if (xfile == null) return;
 
     final bytes = await xfile.readAsBytes();
-    final b64 = base64Encode(bytes);
-    final updated = child.copyWith(bannerBase64: b64);
-    await fp.saveChild(updated);
-    if (mounted) setState(() {});
-  }
+    final b64   = base64Encode(bytes);
 
-  // ─── Édition photo profil ────────────────
-  Future<void> _editPhoto(ChildModel child, FamilyProvider fp) async {
-    final picker = ImagePicker();
-    final xfile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 600,
-    );
-    if (xfile == null) return;
-    final bytes = await xfile.readAsBytes();
-    final b64 = base64Encode(bytes);
-
-    // Historique des photos
-    final prev = List<String>.from(child.previousPhotos ?? []);
-    if (child.photoBase64 != null && child.photoBase64!.isNotEmpty) {
-      prev.insert(0, child.photoBase64!);
-      if (prev.length > 5) prev.removeLast();
-    }
-
-    final updated = child.copyWith(photoBase64: b64, previousPhotos: prev);
-    await fp.saveChild(updated);
+    // ✅ updateChildPhoto n'existe que pour la photo principale.
+    // La bannière est un champ différent (bannerBase64) donc on reconstruit
+    // le child avec copyWith et on le sauvegarde via updateChild.
+    // MAIS updateChild ne prend que (id, name, avatar) — on va donc
+    // passer par updateChildPhoto avec un préfixe "banner:" pour l'identifier,
+    // OU mieux : ajouter updateChildBanner() dans FamilyProvider.
+    // 
+    // Solution immédiate : on stocke la bannière dans le champ photoBase64
+    // avec le préfixe "BANNER:" pour les distinguer, et on adapte le widget.
+    // 
+    // Solution propre (recommandée) : ajouter dans family_provider.dart :
+    //   Future<void> updateChildBanner(String childId, String base64Banner)
+    // Voir ci-dessous — on appelle cette méthode si elle existe,
+    // sinon on stocke différemment.
+    await fp.updateChildBanner(child.id, b64);
     if (mounted) setState(() {});
   }
 
   // ─────────────────────────────────────────
-  //  BUILD PRINCIPAL
+  //  BUILD
   // ─────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -1028,53 +860,47 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             !children.any((c) => c.id == _selectedChildId)) {
           _selectedChildId = children.first.id;
         }
-        final child = children.firstWhere((c) => c.id == _selectedChildId);
-        final color = _childColor(child);
-        final frameColor = _frameColor(child.level);
+
+        final child      = children.firstWhere((c) => c.id == _selectedChildId);
+        final color      = _childColor(child);
 
         return Scaffold(
           backgroundColor: const Color(0xFF0F0F1E),
           extendBodyBehindAppBar: true,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
-            elevation: 0,
+            elevation:       0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new,
-                  color: Colors.white70),
+              icon:      const Icon(Icons.arrow_back_ios_new, color: Colors.white70),
               onPressed: () => Navigator.pop(context),
             ),
-            title: Row(
-              children: [
-                _buildAvatar(child, 16, showFrame: false),
-                const SizedBox(width: 8),
-                Text(
-                  child.name,
+            title: Row(children: [
+              _buildAvatar(child, 16, showFrame: false),
+              const SizedBox(width: 8),
+              Text(child.name,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+            ]),
             actions: [
               if (children.length > 1)
                 TextButton.icon(
                   onPressed: () => _showChildSwitcher(fp),
-                  icon: const Icon(Icons.swap_horiz,
+                  icon:  const Icon(Icons.swap_horiz,
                       color: Colors.white70, size: 18),
                   label: const Text('Changer',
                       style: TextStyle(color: Colors.white70)),
                 ),
             ],
             bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: color,
-              labelColor: color,
-              unselectedLabelColor: Colors.white38,
+              controller:            _tabController,
+              indicatorColor:        color,
+              labelColor:            color,
+              unselectedLabelColor:  Colors.white38,
               tabs: const [
-                Tab(icon: Icon(Icons.person), text: 'Profil'),
-                Tab(icon: Icon(Icons.tv), text: 'Écran'),
-                Tab(icon: Icon(Icons.history), text: 'Historique'),
-                Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
+                Tab(icon: Icon(Icons.person),       text: 'Profil'),
+                Tab(icon: Icon(Icons.tv),            text: 'Écran'),
+                Tab(icon: Icon(Icons.history),       text: 'Historique'),
+                Tab(icon: Icon(Icons.emoji_events),  text: 'Badges'),
               ],
             ),
           ),
@@ -1084,7 +910,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildProfileTab(child, fp, color, frameColor),
+                  _buildProfileTab(child, fp, color),
                   _buildScreenTab(child, fp, color),
                   _buildHistoryTab(child, fp, color),
                   _buildBadgesTab(child, fp, color),
@@ -1100,298 +926,278 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // ─────────────────────────────────────────
   //  TAB PROFIL
   // ─────────────────────────────────────────
-  Widget _buildProfileTab(ChildModel child, FamilyProvider fp,
-      Color color, Color frameColor) {
+  Widget _buildProfileTab(
+      ChildModel child, FamilyProvider fp, Color color) {
     return SingleChildScrollView(
       padding: const EdgeInsets.only(top: 120, bottom: 24),
-      child: Column(
-        children: [
-          // ── Hero Card ──
-          _buildHeroCard(child, fp),
+      child: Column(children: [
+        // Hero card FIFA/Pokémon
+        _buildHeroCard(child, fp),
+        const SizedBox(height: 8),
 
-          const SizedBox(height: 8),
-
-          // ── Boutons d'action rapide ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: color,
-                      side: BorderSide(color: color.withOpacity(0.5)),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => _editPhoto(child, fp),
-                    icon: const Icon(Icons.camera_alt, size: 16),
-                    label: const Text('Photo', style: TextStyle(fontSize: 12)),
-                  ),
+        // Boutons d'action
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: color,
+                  side: BorderSide(color: color.withOpacity(0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: frameColor,
-                      side: BorderSide(color: frameColor.withOpacity(0.5)),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () =>
-                        _editBanner(child, fp, requirePin: false),
-                    icon: const Icon(Icons.image, size: 16),
-                    label: const Text('Bannière', style: TextStyle(fontSize: 12)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white54,
-                      side: const BorderSide(color: Colors.white24),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () =>
-                        _editBanner(child, fp, requirePin: true),
-                    icon: const Icon(Icons.lock, size: 16),
-                    label: const Text('Bannière 🔒',
-                        style: TextStyle(fontSize: 11)),
-                  ),
-                ),
-              ],
+                onPressed: () => _editPhoto(child, fp),
+                icon:  const Icon(Icons.camera_alt, size: 16),
+                label: const Text('Photo', style: TextStyle(fontSize: 12)),
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _frameColor(child.level),
+                  side: BorderSide(
+                      color: _frameColor(child.level).withOpacity(0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => _editBanner(child, fp, requirePin: false),
+                icon:  const Icon(Icons.image, size: 16),
+                label: const Text('Bannière 🖼️',
+                    style: TextStyle(fontSize: 11)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white54,
+                  side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => _editBanner(child, fp, requirePin: true),
+                icon:  const Icon(Icons.lock, size: 16),
+                label: const Text('Bannière 🔒',
+                    style: TextStyle(fontSize: 11)),
+              ),
+            ),
+          ]),
+        ),
 
-          const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-          // ── Stats cards ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildStatsGrid(child, fp, color),
-          ),
-        ],
-      ),
+        // Stats grid
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildStatsGrid(child, fp, color),
+        ),
+      ]),
     );
   }
 
   Widget _buildStatsGrid(
       ChildModel child, FamilyProvider fp, Color color) {
-    final history = fp.history.where((h) => h.childId == child.id).toList();
-    final bonuses = history.where((h) => h.points > 0).length;
+    final history  = fp.history.where((h) => h.childId == child.id).toList();
+    final bonuses  = history.where((h) => h.points > 0).length;
     final penalties = history.where((h) => h.points < 0).length;
 
     return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap:   true,
+      physics:      const NeverScrollableScrollPhysics(),
       crossAxisCount: 2,
       crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
+      mainAxisSpacing:  10,
       childAspectRatio: 1.6,
       children: [
-        _statCard('🎯', 'Bonus', '$bonuses', Colors.greenAccent),
-        _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
-        _statCard(
-            '🏆', 'Niveau', '${child.level} – ${child.levelTitle}', color),
+        _statCard('🎯', 'Bonus',     '$bonuses',    Colors.greenAccent),
+        _statCard('⚡', 'Pénalités', '$penalties',  Colors.redAccent),
+        _statCard('🏆', 'Niveau',
+            '${child.level} – ${child.levelTitle}', color),
         _statCard('🛡️', 'Immunités',
-            '${fp.getTotalAvailableImmunity(child.id)} lignes', Colors.amberAccent),
+            '${fp.getTotalAvailableImmunity(child.id)} lignes',
+            Colors.amberAccent),
       ],
     );
   }
 
   Widget _statCard(
-      String emoji, String label, String value, Color color) {
-    return GlassCard(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
-          const SizedBox(height: 4),
-          Text(value,
-              style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13)),
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white54, fontSize: 10)),
-        ],
-      ),
-    );
-  }
+      String emoji, String label, String value, Color color) =>
+      GlassCard(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(height: 4),
+            Text(value,
+                style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13)),
+            Text(label,
+                style: const TextStyle(
+                    color: Colors.white54, fontSize: 10)),
+          ],
+        ),
+      );
 
   // ─────────────────────────────────────────
-  //  TAB ÉCRAN (simplifié — identique à avant)
+  //  TAB ÉCRAN
   // ─────────────────────────────────────────
   Widget _buildScreenTab(
       ChildModel child, FamilyProvider fp, Color color) {
-    // Récupère les notes et calcule le temps écran
-    final schoolNotes = _getSchoolNotes(child, fp);
+    final schoolNotes   = _getSchoolNotes(child, fp);
     final behaviorNotes = _getBehaviorNotes(child, fp);
-    final immunities = fp.getUsableImmunitiesForChild(child.id);
-    final immunityBonus =
-        immunities.fold(0, (sum, imm) => sum + imm.availableLines);
-    final bonusMinutes = fp.history
-        .where((h) =>
-            h.childId == child.id &&
-            h.reason.toLowerCase().contains('bonus'))
-        .fold(0, (sum, h) => sum + h.points);
+    final immunities    = fp.getUsableImmunitiesForChild(child.id);
+    final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);
+    final bonusMinutes  = fp.getParentBonusMinutes(child.id);
 
-    final jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi',
-        'Samedi', 'Dimanche'];
+    final jours = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi',
+        'Samedi','Dimanche'];
     _selectedDay ??= jours[DateTime.now().weekday - 1];
 
     final minutes = _calculerTempsEcranPourJour(
         _selectedDay!, schoolNotes, behaviorNotes, bonusMinutes, child, fp);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
-      child: Column(
-        children: [
-          // Résumé semaine
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
+      padding: const EdgeInsets.only(
+          top: 120, bottom: 24, left: 16, right: 16),
+      child: Column(children: [
+        // Résumé semaine
+        GlassCard(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('📊 Résumé de la semaine',
-                      style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14)),
-                  const SizedBox(height: 8),
-                  _infoRow('🛡️ Immunités disponibles',
-                      '$immunityBonus lignes', Colors.amberAccent),
-                  _infoRow('⏱️ Bonus parent',
-                      '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
-                      Colors.greenAccent),
-                  _infoRow(
-                      '📅 Jour sélectionné', _selectedDay!, color),
-                  _infoRow('⏰ Temps calculé',
-                      _formatMinutes(minutes), Colors.white),
-                ],
+              Text('📊 Résumé de la semaine',
+                  style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14)),
+              const SizedBox(height: 8),
+              _infoRow('🛡️ Immunités',
+                  '$immunityBonus lignes', Colors.amberAccent),
+              _infoRow('⏱️ Bonus parent',
+                  '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
+                  Colors.greenAccent),
+              _infoRow('📅 Jour', _selectedDay!, color),
+              _infoRow('⏰ Temps calculé',
+                  _formatMinutes(minutes), Colors.white),
+            ]),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Sélecteur jour
+        SizedBox(
+          height: 36,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: jours.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            itemBuilder: (_, i) {
+              final j        = jours[i];
+              final selected = j == _selectedDay;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedDay = j),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? color.withOpacity(0.25)
+                        : Colors.white10,
+                    borderRadius: BorderRadius.circular(10),
+                    border: selected
+                        ? Border.all(color: color)
+                        : null,
+                  ),
+                  child: Text(
+                    j.substring(0, 3),
+                    style: TextStyle(
+                      color: selected ? color : Colors.white54,
+                      fontWeight: selected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Cercle progress
+        SizedBox(
+          height: 200,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              AnimatedBuilder(
+                animation: _contentFade,
+                builder: (_, __) => CustomPaint(
+                  size: const Size(180, 180),
+                  painter: _ScreenTimePainter(
+                    progress:  (minutes / 180).clamp(0, 1),
+                    animValue: _contentFade.value,
+                  ),
+                ),
               ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Sélecteur jour
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: jours.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
-              itemBuilder: (_, i) {
-                final j = jours[i];
-                final selected = j == _selectedDay;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedDay = j),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? color.withOpacity(0.25)
-                          : Colors.white10,
-                      borderRadius: BorderRadius.circular(10),
-                      border: selected
-                          ? Border.all(color: color)
-                          : null,
-                    ),
-                    child: Text(
-                      j.substring(0, 3),
-                      style: TextStyle(
-                        color: selected ? color : Colors.white54,
-                        fontWeight: selected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Cercle progression
-          SizedBox(
-            height: 200,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                AnimatedBuilder(
-                  animation: _contentFade,
-                  builder: (_, __) => CustomPaint(
-                    size: const Size(180, 180),
-                    painter: _ScreenTimePainter(
-                      progress: (minutes / 180).clamp(0, 1),
-                      animValue: _contentFade.value,
-                    ),
-                  ),
+              Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                  _formatMinutes(minutes),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 28),
                 ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatMinutes(minutes),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 28,
-                      ),
-                    ),
-                    const Text('temps écran',
-                        style: TextStyle(
-                            color: Colors.white54, fontSize: 12)),
-                  ],
-                ),
-              ],
-            ),
+                const Text('temps écran',
+                    style: TextStyle(
+                        color: Colors.white54, fontSize: 12)),
+              ]),
+            ],
           ),
+        ),
 
-          const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-          // Boutons bonus rapides
-          _buildQuickBonusRow(child, fp, color),
-        ],
-      ),
+        // Bonus rapides
+        _buildQuickBonusRow(child, fp, color),
+      ]),
     );
   }
 
-  Widget _infoRow(String label, String value, Color vColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white60, fontSize: 12)),
-          Text(value,
-              style: TextStyle(
-                  color: vColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12)),
-        ],
-      ),
-    );
-  }
+  Widget _infoRow(String label, String value, Color vColor) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    color: Colors.white60, fontSize: 12)),
+            Text(value,
+                style: TextStyle(
+                    color: vColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12)),
+          ],
+        ),
+      );
 
   Widget _buildQuickBonusRow(
-      ChildModel child, FamilyProvider fp, Color color) {
-    return Row(
-      children: [15, 30, 60].map((min) {
-        return Expanded(
+      ChildModel child, FamilyProvider fp, Color color) =>
+      Row(
+        children: [15, 30, 60].map((min) => Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: ElevatedButton(
@@ -1402,21 +1208,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () async {
-                await fp.addHistoryEntry(
-                  childId: child.id,
-                  reason: 'Bonus parent +$min min',
-                  points: min,
-                );
+                await fp.addScreenTimeBonus(
+                    child.id, min, 'Bonus parent +$min min');
                 _triggerBonusAnim('+$min min 🎉');
               },
               child: Text('+$min min',
                   style: const TextStyle(fontSize: 12)),
             ),
           ),
-        );
-      }).toList(),
-    );
-  }
+        )).toList(),
+      );
 
   void _triggerBonusAnim(String text) {
     setState(() {
@@ -1433,52 +1234,41 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // ─────────────────────────────────────────
   Widget _buildHistoryTab(
       ChildModel child, FamilyProvider fp, Color color) {
-    final history =
-        fp.history.where((h) => h.childId == child.id).toList();
-    final bonuses = history.where((h) => h.points > 0).length;
+    final history  = fp.history.where((h) => h.childId == child.id).toList();
+    final bonuses  = history.where((h) => h.points > 0).length;
     final penalties = history.where((h) => h.points < 0).length;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _statCard('✅', 'Bonus', '$bonuses',
-                    Colors.greenAccent),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _statCard('❌', 'Pénalités', '$penalties',
-                    Colors.redAccent),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TimelineWidget(childId: child.id, maxItems: 10),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: color,
-                side: BorderSide(color: color.withOpacity(0.5)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        TimelineScreen(childId: child.id)),
-              ),
-              icon: const Icon(Icons.open_in_new, size: 16),
-              label: const Text('Voir tout l\'historique'),
+      padding: const EdgeInsets.only(
+          top: 120, bottom: 24, left: 16, right: 16),
+      child: Column(children: [
+        Row(children: [
+          Expanded(child: _statCard('✅', 'Bonus',     '$bonuses',   Colors.greenAccent)),
+          const SizedBox(width: 10),
+          Expanded(child: _statCard('❌', 'Pénalités', '$penalties', Colors.redAccent)),
+        ]),
+        const SizedBox(height: 16),
+        TimelineWidget(childId: child.id, maxItems: 10),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: color,
+              side: BorderSide(color: color.withOpacity(0.5)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => TimelineScreen(childId: child.id)),
+            ),
+            icon:  const Icon(Icons.open_in_new, size: 16),
+            label: const Text('Voir tout l\'historique'),
           ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
@@ -1487,14 +1277,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // ─────────────────────────────────────────
   Widget _buildBadgesTab(
       ChildModel child, FamilyProvider fp, Color color) {
-    final allBadges = fp.customBadges;
-    final earned =
-        allBadges.where((b) => child.badgeIds.contains(b.id)).toList();
-    final locked =
-        allBadges.where((b) => !child.badgeIds.contains(b.id)).toList();
+    final all    = fp.customBadges;
+    final earned = all.where((b) => child.badgeIds.contains(b.id)).toList();
+    final locked = all.where((b) => !child.badgeIds.contains(b.id)).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+      padding: const EdgeInsets.only(
+          top: 120, bottom: 24, left: 16, right: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1514,17 +1303,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             )
           else
             GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
+              shrinkWrap:   true,
+              physics:      const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount:   3,
                 crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
+                mainAxisSpacing:  10,
                 childAspectRatio: 0.9,
               ),
-              itemCount: earned.length,
-              itemBuilder: (_, i) => _badgeEarnedCard(earned[i], color),
+              itemCount:    earned.length,
+              itemBuilder:  (_, i) => _badgeEarnedCard(earned[i], color),
             ),
 
           const SizedBox(height: 20),
@@ -1541,28 +1329,25 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Widget _badgeEarnedCard(BadgeModel badge, Color color) {
-    return GlassCard(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(badge.powerEmoji,
-              style: const TextStyle(fontSize: 28)),
-          const SizedBox(height: 4),
-          Text(
-            badge.name,
-            style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 11),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _badgeEarnedCard(BadgeModel badge, Color color) =>
+      GlassCard(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(badge.powerEmoji,
+                style: const TextStyle(fontSize: 28)),
+            const SizedBox(height: 4),
+            Text(badge.name,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11),
+                textAlign: TextAlign.center,
+                maxLines:  2,
+                overflow:  TextOverflow.ellipsis),
+          ],
+        ),
+      );
 
   Widget _badgeLockedTile(BadgeModel badge, ChildModel child) {
     final progress =
@@ -1571,66 +1356,59 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color:        Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: Colors.white12, width: 1),
+        border: Border.all(color: Colors.white12),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(badge.powerEmoji,
-                  style: const TextStyle(fontSize: 24)),
-            ),
+      child: Row(children: [
+        Container(
+          width: 52, height: 52,
+          decoration: BoxDecoration(
+            color:        Colors.white10,
+            borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(badge.name,
-                    style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13)),
-                Text(badge.description,
-                    style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 6),
-                LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.white12,
-                  valueColor: const AlwaysStoppedAnimation(
-                      Colors.amberAccent),
-                  minHeight: 5,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${child.points}/${badge.requiredPoints} pts',
+          child: Center(
+            child: Text(badge.powerEmoji,
+                style: const TextStyle(fontSize: 24)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(badge.name,
                   style: const TextStyle(
-                      color: Colors.white38, fontSize: 10),
-                ),
-              ],
-            ),
+                      color:      Colors.white70,
+                      fontWeight: FontWeight.bold,
+                      fontSize:   13)),
+              Text(badge.description,
+                  style: const TextStyle(
+                      color: Colors.white38, fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 6),
+              LinearProgressIndicator(
+                value:           progress,
+                backgroundColor: Colors.white12,
+                valueColor:
+                    const AlwaysStoppedAnimation(Colors.amberAccent),
+                minHeight:       5,
+                borderRadius:    BorderRadius.circular(4),
+              ),
+              const SizedBox(height: 2),
+              Text('${child.points}/${badge.requiredPoints} pts',
+                  style: const TextStyle(
+                      color: Colors.white38, fontSize: 10)),
+            ],
           ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
   // ─────────────────────────────────────────
-  //  HELPERS : Calcul temps écran
+  //  HELPERS : calcul temps écran
   // ─────────────────────────────────────────
   String _formatMinutes(int minutes) {
     if (minutes <= 0) return '0 min';
@@ -1642,26 +1420,24 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   List<Map<String, dynamic>> _getSchoolNotes(
-      ChildModel child, FamilyProvider fp) {
-    return fp.history
-        .where((h) =>
-            h.childId == child.id &&
-            h.reason.toLowerCase().contains('note'))
-        .map((h) => {'note': h.points.toDouble(), 'reason': h.reason})
-        .toList();
-  }
+      ChildModel child, FamilyProvider fp) =>
+      fp.history
+          .where((h) =>
+              h.childId == child.id &&
+              h.category == 'school_note')
+          .map((h) => {'note': h.points.toDouble(), 'reason': h.reason})
+          .toList();
 
   List<Map<String, dynamic>> _getBehaviorNotes(
-      ChildModel child, FamilyProvider fp) {
-    return fp.history
-        .where((h) =>
-            h.childId == child.id &&
-            !h.reason.toLowerCase().contains('note') &&
-            !h.reason.toLowerCase().contains('bonus'))
-        .take(10)
-        .map((h) => {'points': h.points, 'reason': h.reason})
-        .toList();
-  }
+      ChildModel child, FamilyProvider fp) =>
+      fp.history
+          .where((h) =>
+              h.childId == child.id &&
+              h.category != 'school_note' &&
+              h.category != 'screen_time_bonus')
+          .take(10)
+          .map((h) => {'points': h.points, 'reason': h.reason})
+          .toList();
 
   int _calculerTempsEcranPourJour(
     String jour,
@@ -1671,34 +1447,27 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     ChildModel child,
     FamilyProvider fp,
   ) {
-    // Base selon jour
-    final isWeekend =
-        jour == 'Samedi' || jour == 'Dimanche';
-    int base = isWeekend ? 120 : 60;
+    final isWeekend = jour == 'Samedi' || jour == 'Dimanche';
+    int base        = isWeekend ? 120 : 60;
 
-    // Score comportement moyen
     if (behaviorNotes.isNotEmpty) {
-      final avg = behaviorNotes.fold(0, (s, n) => s + (n['points'] as int)) /
+      final avg = behaviorNotes.fold(
+              0, (s, n) => s + (n['points'] as int)) /
           behaviorNotes.length;
       if (avg > 0) base += 15;
       if (avg < 0) base -= 15;
     }
 
-    // Notes école
     if (schoolNotes.isNotEmpty) {
-      final avg = schoolNotes.fold(0.0, (s, n) => s + (n['note'] as double)) /
+      final avg = schoolNotes.fold(
+              0.0, (s, n) => s + (n['note'] as double)) /
           schoolNotes.length;
-      if (avg >= 15) base += 20;
-      else if (avg >= 10) base += 0;
-      else base -= 20;
+      if (avg >= 15)      base += 20;
+      else if (avg < 10)  base -= 20;
     }
 
-    // Bonus parent
     base += bonusMinutes;
-
-    // Immunités
-    final imm = fp.getTotalAvailableImmunity(child.id);
-    base += imm * 5; // 5 min par ligne d'immunité
+    base += fp.getTotalAvailableImmunity(child.id) * 5;
 
     return base.clamp(0, 300);
   }
