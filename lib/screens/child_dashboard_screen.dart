@@ -1,4 +1,3 @@
-// lib/screens/child_dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' show cos, sin;
@@ -9,6 +8,7 @@ import '../models/badge_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
+import 'timeline_screen.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
   final String childId;
@@ -89,7 +89,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       ..forward();
   }
 
-  // ══ CORRECTION : bottom sheet scrollable avec DraggableScrollableSheet ══
   void _showChildSwitcher(BuildContext context, FamilyProvider fp) {
     final children = fp.children;
     if (children.length <= 1) return;
@@ -131,7 +130,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // ── Liste scrollable prenant tout l'espace restant ──
                   Expanded(
                     child: ListView.builder(
                       controller: scrollController,
@@ -355,9 +353,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               body: Center(child: Text('Enfant introuvable')));
         }
 
-        // ══ CORRECTION MODE ENFANT : on lit isParentMode UNE FOIS ici ══
-        final isParent =
-            context.watch<PinProvider>().isParentMode;
+        final isParent = context.watch<PinProvider>().isParentMode;
         final hasMultipleChildren = fp.children.length > 1;
 
         return AnimatedBackground(
@@ -400,7 +396,23 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ],
                 ],
               ),
-              // ══ CORRECTION MODE ENFANT : bandeau si mode enfant actif ══
+              // ── Bouton Timeline dans l'AppBar ──
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.timeline_rounded,
+                      color: Colors.cyanAccent),
+                  tooltip: 'Timeline',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TimelineScreen(
+                            initialChildId: _currentChildId),
+                      ),
+                    );
+                  },
+                ),
+              ],
               flexibleSpace: !isParent
                   ? Align(
                       alignment: Alignment.bottomCenter,
@@ -587,7 +599,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     }).toList();
   }
 
-  // ══ CORRECTION : isParent passé en paramètre pour masquer les actions ══
   Widget _buildScreenTimeTab(
       ChildModel child, FamilyProvider fp, bool isParent) {
     final schoolAvg = fp.getWeeklySchoolAverage(child.id);
@@ -621,7 +632,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Punitions actives ──
           if (punishmentsActives.isNotEmpty) ...[
             Container(
               width: double.infinity,
@@ -693,8 +703,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
             const SizedBox(height: 16),
           ],
-
-          // ── Résumé semaine ──
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -772,8 +780,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 16),
-
-          // ── Calculateur ──
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -971,8 +977,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 16),
-
-          // ── Cercle dynamique ──
           TweenAnimationBuilder<double>(
             key: ValueKey('$_jourCible-$tempsCalcule'),
             tween: Tween(begin: 0.0, end: ratio),
@@ -991,10 +995,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           children: [
                             TweenAnimationBuilder<int>(
                               key: ValueKey(cercleMinutes),
-                              tween:
-                                  IntTween(begin: 0, end: cercleMinutes),
-                              duration:
-                                  const Duration(milliseconds: 2000),
+                              tween: IntTween(begin: 0, end: cercleMinutes),
+                              duration: const Duration(milliseconds: 2000),
                               builder: (context, val, _) => Text(
                                   _formatMinutes(val),
                                   style: const TextStyle(
@@ -1013,8 +1015,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             },
           ),
           const SizedBox(height: 16),
-
-          // ══ CORRECTION MODE ENFANT : bonus rapide visible UNIQUEMENT si parent ══
           if (isParent) ...[
             const Text('Bonus rapide',
                 style: TextStyle(
@@ -1072,8 +1072,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ],
           const SizedBox(height: 24),
-
-          // ── Notes récentes ──
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -1102,8 +1100,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         color: const Color(0xFF7C4DFF).withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color:
-                                const Color(0xFF7C4DFF).withOpacity(0.3)),
+                            color: const Color(0xFF7C4DFF).withOpacity(0.3)),
                       ),
                       child: Text(
                         (_joursSources.toList()
@@ -1332,8 +1329,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             curve: Curves.elasticOut,
             builder: (context, value, child) => Transform.scale(
                 scale: value,
-                child:
-                    Opacity(opacity: value.clamp(0.0, 1.0), child: child)),
+                child: Opacity(opacity: value.clamp(0.0, 1.0), child: child)),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
