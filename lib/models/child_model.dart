@@ -10,7 +10,7 @@ class ChildModel {
   List<String> badgeIds;
   DateTime createdAt;
 
-  // ✅ NOUVEAUX champs pour la personnalisation
+  // ✅ Nouveaux champs personnalisation
   String? bannerBase64;
   String? sloganText;
   String? accentColorHex;
@@ -25,7 +25,7 @@ class ChildModel {
     this.points          = 0,
     this.level           = 1,
     List<String>? badgeIds,
-    DateTime? createdAt,
+    DateTime?     createdAt,
     this.bannerBase64,
     this.sloganText,
     this.accentColorHex,
@@ -36,7 +36,6 @@ class ChildModel {
 
   bool get hasPhoto => photoBase64.isNotEmpty;
 
-  // ─── Niveaux ───────────────────────────────────────────────
   String get levelTitle {
     if (points >= 300) return 'Niveau MAX ⭐';
     if (points >= 220) return 'Niveau 5';
@@ -75,7 +74,6 @@ class ChildModel {
     return 1;
   }
 
-  // ─── copyWith ──────────────────────────────────────────────
   ChildModel copyWith({
     String?       id,
     String?       name,
@@ -108,7 +106,6 @@ class ChildModel {
     );
   }
 
-  // ─── Sérialisation ─────────────────────────────────────────
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'id':          id,
@@ -159,8 +156,7 @@ class ChildModel {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ChildModel && other.id == id);
+      identical(this, other) || (other is ChildModel && other.id == id);
 
   @override
   int get hashCode => id.hashCode;
