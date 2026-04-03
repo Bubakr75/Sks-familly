@@ -1158,5 +1158,24 @@ class FamilyProvider extends ChangeNotifier {
     await _tradesBox.put(tradeId, jsonEncode(_trades[index].toMap()));
     if (_firestore.isConnected) await _firestore.saveTrade(_trades[index]);
     notifyListeners();
+      // ─── Réinitialisation & Nettoyage ──────────────────────
+  Future<void> resetAllScores() async {
+    for (final child in _children) {
+      child.points  = 0;
+      child.level   = 1;
+      child.badgeIds.clear();
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      if (_firestore.isConnected) await _firestore.saveChild(child);
+    }
+    notifyListeners();
+  }
+
+  Future<void> clearHistory() async {
+    _history.clear();
+    await _historyBox.clear();
+    if (_firestore.isConnected) await _firestore.clearHistory();
+    notifyListeners();
+  }
+
   }
 }
