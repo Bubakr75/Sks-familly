@@ -22,6 +22,7 @@ import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
 import 'child_dashboard_screen.dart';
+import 'timeline_screen.dart';
 import '../widgets/animated_page_transition.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -100,7 +101,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return;
     }
     if (children.length == 1) {
-      // ══ CORRECTION : enterChildMode avant de naviguer ══
       context.read<PinProvider>().enterChildMode();
       onSelected(children.first);
       return;
@@ -155,10 +155,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           child: TvFocusWrapper(
                             onTap: () {
                               Navigator.pop(ctx);
-                              // ══ CORRECTION : bascule en mode enfant ══
-                              context
-                                  .read<PinProvider>()
-                                  .enterChildMode();
+                              context.read<PinProvider>().enterChildMode();
                               onSelected(child);
                             },
                             child: GlassCard(
@@ -951,8 +948,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             Navigator.push(
                               context,
                               SlidePageRoute(
-                                page:
-                                    SchoolNotesScreen(childId: child.id),
+                                page: SchoolNotesScreen(childId: child.id),
                               ),
                             );
                           });
@@ -1038,6 +1034,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Navigator.push(
                         context,
                         ZoomPageRoute(page: const BadgesScreen()),
+                      );
+                    },
+                  ),
+                  // ── Timeline ajoutée ici ──
+                  _drawerItem(
+                    icon: Icons.timeline_rounded,
+                    label: 'Timeline',
+                    color: Colors.cyanAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        SlidePageRoute(
+                            page: const TimelineScreen()),
                       );
                     },
                   ),
