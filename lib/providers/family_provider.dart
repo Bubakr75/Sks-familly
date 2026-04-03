@@ -45,7 +45,7 @@ class FamilyProvider extends ChangeNotifier {
   final Set<String> _deletedEntryIds = {};
 
   String? _familyCode;
-  String _currentParentName = 'Parent';
+  String  _currentParentName = 'Parent';
 
   String                get currentParentName => _currentParentName;
   List<ChildModel>      get children          => _children;
@@ -72,7 +72,7 @@ class FamilyProvider extends ChangeNotifier {
   List<TribunalCase> get closedTribunalCases =>
       _tribunalCases.where((c) => c.status == TribunalStatus.closed).toList();
 
-  // ─────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────
   Future<void> init() async {
     _childrenBox    = await Hive.openBox('children');
     _historyBox     = await Hive.openBox('history');
@@ -89,7 +89,7 @@ class FamilyProvider extends ChangeNotifier {
     try {
       await _firestore.init();
       _familyCode = await _firestore.getFamilyCode();
-      if (_firestore.isConnected) { _setupFirestoreCallbacks(); }
+      if (_firestore.isConnected) _setupFirestoreCallbacks();
     } catch (e) {
       if (kDebugMode) debugPrint('Firestore init error: $e');
     }
@@ -102,7 +102,7 @@ class FamilyProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────
   void _loadLocal() {
     _children = _childrenBox.values
         .map((v) => ChildModel.fromMap(
@@ -146,20 +146,17 @@ class FamilyProvider extends ChangeNotifier {
         _metaBox.get('current_parent', defaultValue: 'Parent') as String;
   }
 
-  // ─────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────
   void _setupFirestoreCallbacks() {
     _firestore.onChildrenChanged = (list, _) {
       _children = list;
-      _saveBoxFromList(
-          _childrenBox, _children, (e) => e.id, (e) => e.toMap());
+      _saveBoxFromList(_childrenBox, _children, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
     _firestore.onHistoryChanged = (list, _) {
-      _history =
-          list.where((h) => !_deletedEntryIds.contains(h.id)).toList();
+      _history = list.where((h) => !_deletedEntryIds.contains(h.id)).toList();
       _history.sort((a, b) => b.date.compareTo(a.date));
-      _saveBoxFromList(
-          _historyBox, _history, (e) => e.id, (e) => e.toMap());
+      _saveBoxFromList(_historyBox, _history, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
     _firestore.onGoalsChanged = (list, _) {
@@ -169,8 +166,7 @@ class FamilyProvider extends ChangeNotifier {
     };
     _firestore.onPunishmentsChanged = (list, _) {
       _punishments = list;
-      _saveBoxFromList(
-          _punishmentsBox, _punishments, (e) => e.id, (e) => e.toMap());
+      _saveBoxFromList(_punishmentsBox, _punishments, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
     _firestore.onNotesChanged = (list) {
@@ -180,26 +176,22 @@ class FamilyProvider extends ChangeNotifier {
     };
     _firestore.onImmunitiesChanged = (list) {
       _immunities = list;
-      _saveBoxFromList(
-          _immunitiesBox, _immunities, (e) => e.id, (e) => e.toMap());
+      _saveBoxFromList(_immunitiesBox, _immunities, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
     _firestore.onTradesChanged = (list) {
       _trades = list;
-      _saveBoxFromList(
-          _tradesBox, _trades, (e) => e.id, (e) => e.toMap());
+      _saveBoxFromList(_tradesBox, _trades, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
     _firestore.onTribunalChanged = (list) {
       _tribunalCases = list;
-      _saveBoxFromList(
-          _tribunalBox, _tribunalCases, (e) => e.id, (e) => e.toMap());
+      _saveBoxFromList(_tribunalBox, _tribunalCases, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
     _firestore.onBadgesChanged = (list) {
       _customBadges = list;
-      _saveBoxFromList(
-          _badgesBox, _customBadges, (e) => e.id, (e) => e.toMap());
+      _saveBoxFromList(_badgesBox, _customBadges, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
     _firestore.onScreenTimeChanged = (data) {
@@ -211,7 +203,7 @@ class FamilyProvider extends ChangeNotifier {
     };
   }
 
-  // ─────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────
   void _saveBoxFromList<T>(
     Box box,
     List<T> items,
@@ -225,21 +217,16 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<void> _saveAllLocal() async {
-    _saveBoxFromList(
-        _childrenBox, _children, (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(
-        _historyBox, _history, (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_goalsBox, _goals, (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_notesBox, _notes, (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(
-        _punishmentsBox, _punishments, (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(
-        _immunitiesBox, _immunities, (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(
-        _tradesBox, _trades, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_childrenBox,    _children,    (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_historyBox,     _history,     (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_goalsBox,       _goals,       (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_notesBox,       _notes,       (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_punishmentsBox, _punishments, (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_immunitiesBox,  _immunities,  (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_tradesBox,      _trades,      (e) => e.id, (e) => e.toMap());
   }
 
-  // ─────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────
   Future<void> reconnectFirestore() async {
     if (_firestore.isConnected) {
       _firestore.reconnect();
@@ -254,8 +241,7 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<String> createFamily({String? customCode}) async {
-    final code =
-        await _firestore.createFamily(customCode: customCode);
+    final code = await _firestore.createFamily(customCode: customCode);
     _familyCode = code;
     _setupFirestoreCallbacks();
     await _firestore.uploadAllData(
@@ -294,8 +280,7 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<void> changeFamilyCode(String newCode) async {
     if (!_firestore.isConnected) {
-      throw Exception(
-          'Vous devez être connecté pour changer le code.');
+      throw Exception('Vous devez être connecté pour changer le code.');
     }
     await _firestore.changeFamilyCode(newCode);
     _familyCode = newCode;
@@ -312,11 +297,8 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── Enfants ───────────────────────────────────────────────
   ChildModel? getChild(String id) {
-    try {
-      return _children.firstWhere((c) => c.id == id);
-    } catch (_) {
-      return null;
-    }
+    try { return _children.firstWhere((c) => c.id == id); }
+    catch (_) { return null; }
   }
 
   List<HistoryEntry> getHistoryForChild(String childId) =>
@@ -330,19 +312,14 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<void> addChild(String name, String avatar) async {
-    final child = ChildModel(
-      id:     _uuid.v4(),
-      name:   name,
-      avatar: avatar,
-    );
+    final child = ChildModel(id: _uuid.v4(), name: name, avatar: avatar);
     _children.add(child);
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) await _firestore.saveChild(child);
     notifyListeners();
   }
 
-  Future<void> updateChild(
-      String id, String name, String avatar) async {
+  Future<void> updateChild(String id, String name, String avatar) async {
     final child = getChild(id);
     if (child == null) return;
     child.name   = name;
@@ -352,9 +329,8 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ Existant — mise à jour photo de profil
-  Future<void> updateChildPhoto(
-      String childId, String base64Photo) async {
+  // ✅ Photo de profil
+  Future<void> updateChildPhoto(String childId, String base64Photo) async {
     final child = getChild(childId);
     if (child == null) return;
     child.photoBase64 = base64Photo;
@@ -363,9 +339,8 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ NOUVEAU — mise à jour bannière de fond
-  Future<void> updateChildBanner(
-      String childId, String base64Banner) async {
+  // ✅ NOUVEAU — bannière de fond
+  Future<void> updateChildBanner(String childId, String base64Banner) async {
     final child = getChild(childId);
     if (child == null) return;
     child.bannerBase64 = base64Banner;
@@ -374,9 +349,8 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ NOUVEAU — mise à jour slogan
-  Future<void> updateChildSlogan(
-      String childId, String slogan) async {
+  // ✅ NOUVEAU — slogan
+  Future<void> updateChildSlogan(String childId, String slogan) async {
     final child = getChild(childId);
     if (child == null) return;
     child.sloganText = slogan;
@@ -385,58 +359,39 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ NOUVEAU — mise à jour streak
-  Future<void> updateChildStreak(
-      String childId, int streakDays) async {
-    final child = getChild(childId);
-    if (child == null) return;
-    child.streakDays = streakDays;
-    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-    if (_firestore.isConnected) await _firestore.saveChild(child);
-    notifyListeners();
-  }
-
-  // ✅ NOUVEAU — recalcule le streak automatiquement
-  // Appelé après chaque addPoints() pour mettre à jour le streak
+  // ✅ NOUVEAU — recalcul streak automatique
   Future<void> recalculateStreak(String childId) async {
     final child = getChild(childId);
     if (child == null) return;
-
-    final now      = DateTime.now();
-    final today    = DateTime(now.year, now.month, now.day);
-    final history  = _history
+    final now     = DateTime.now();
+    final today   = DateTime(now.year, now.month, now.day);
+    final history = _history
         .where((h) => h.childId == childId)
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
-
-    // Cherche si une pénalité a eu lieu aujourd'hui ou hier
-    int streak = child.streakDays ?? 0;
 
     final hasPenaltyToday = history.any((h) {
       final d = DateTime(h.date.year, h.date.month, h.date.day);
       return d == today && !h.isBonus && h.category != 'screen_time_bonus';
     });
 
+    int streak;
     if (hasPenaltyToday) {
-      // Reset streak
       streak = 0;
     } else {
-      // Vérifie si le dernier streak date d'hier (continuité)
       final lastPenalty = history
-          .where((h) =>
-              !h.isBonus && h.category != 'screen_time_bonus')
+          .where((h) => !h.isBonus && h.category != 'screen_time_bonus')
           .firstOrNull;
-
       if (lastPenalty == null) {
-        // Aucune pénalité dans toute l'histoire → streak = nb jours depuis création
         final created = child.createdAt;
-        streak = today.difference(
-                DateTime(created.year, created.month, created.day))
+        streak = today
+            .difference(DateTime(
+                created.year, created.month, created.day))
             .inDays;
       } else {
-        final lastPenaltyDay = DateTime(lastPenalty.date.year,
+        final lastDay = DateTime(lastPenalty.date.year,
             lastPenalty.date.month, lastPenalty.date.day);
-        streak = today.difference(lastPenaltyDay).inDays;
+        streak = today.difference(lastDay).inDays;
       }
     }
 
@@ -454,14 +409,11 @@ class FamilyProvider extends ChangeNotifier {
     _notes.removeWhere((n) => n.childId == id);
     _punishments.removeWhere((p) => p.childId == id);
     _immunities.removeWhere((im) => im.childId == id);
-    _trades.removeWhere(
-        (t) => t.fromChildId == id || t.toChildId == id);
+    _trades.removeWhere((t) => t.fromChildId == id || t.toChildId == id);
     final keysToRemove = _screenTimeBox.keys
         .where((k) => k.toString().startsWith(id))
         .toList();
-    for (final key in keysToRemove) {
-      await _screenTimeBox.delete(key);
-    }
+    for (final key in keysToRemove) await _screenTimeBox.delete(key);
     await _saveAllLocal();
     if (_firestore.isConnected) await _firestore.deleteChild(id);
     notifyListeners();
@@ -472,19 +424,16 @@ class FamilyProvider extends ChangeNotifier {
     String childId,
     int points,
     String reason, {
-    String category       = 'Bonus',
-    bool isBonus          = true,
-    String? proofPhoto,
-    String? proofPhotoBase64,
+    String    category         = 'Bonus',
+    bool      isBonus          = true,
+    String?   proofPhoto,
+    String?   proofPhotoBase64,
     DateTime? date,
   }) async {
     final child = getChild(childId);
     if (child == null) return;
-    if (isBonus) {
-      child.points += points;
-    } else {
-      child.points -= points;
-    }
+    if (isBonus) { child.points += points; }
+    else         { child.points -= points; }
     child.level = child.currentLevelNumber;
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) await _firestore.saveChild(child);
@@ -503,16 +452,22 @@ class FamilyProvider extends ChangeNotifier {
     await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
     if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
     await _checkBadgeUnlock(child);
-    // ✅ Recalcule automatiquement le streak après chaque action
     await recalculateStreak(childId);
     notifyListeners();
   }
 
+  // ✅ clearHistory — appelé par settings_screen.dart
+  Future<void> clearHistory() async {
+    _history.clear();
+    await _historyBox.clear();
+    notifyListeners();
+  }
+
+  // ✅ Alias
+  Future<void> clearAllHistory() async => clearHistory();
+
   Future<void> _checkBadgeUnlock(ChildModel child) async {
-    final allBadges = [
-      ...BadgeModel.defaultBadges,
-      ..._customBadges
-    ];
+    final allBadges = [...BadgeModel.defaultBadges, ..._customBadges];
     bool changed = false;
     for (final badge in allBadges) {
       if (child.points >= badge.requiredPoints &&
@@ -531,13 +486,10 @@ class FamilyProvider extends ChangeNotifier {
   List<GoalModel> getGoalsForChild(String childId) =>
       _goals.where((g) => g.childId == childId).toList();
 
-  Future<void> addGoal(
-      String childId, String title, int targetPoints) async {
+  Future<void> addGoal(String childId, String title, int targetPoints) async {
     final goal = GoalModel(
-      id:           _uuid.v4(),
-      childId:      childId,
-      title:        title,
-      targetPoints: targetPoints,
+      id: _uuid.v4(), childId: childId,
+      title: title, targetPoints: targetPoints,
     );
     _goals.add(goal);
     await _goalsBox.put(goal.id, jsonEncode(goal.toMap()));
@@ -547,7 +499,7 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<void> toggleGoal(String goalId) async {
     try {
-      final goal = _goals.firstWhere((g) => g.id == goalId);
+      final goal     = _goals.firstWhere((g) => g.id == goalId);
       goal.completed = !goal.completed;
       await _goalsBox.put(goal.id, jsonEncode(goal.toMap()));
       if (_firestore.isConnected) await _firestore.saveGoal(goal);
@@ -566,16 +518,11 @@ class FamilyProvider extends ChangeNotifier {
   List<NoteModel> getNotesForChild(String childId) =>
       _notes.where((n) => n.childId == childId).toList();
 
-  Future<void> addNote(
-    String childId,
-    String text, {
-    String authorName = 'Parent',
-  }) async {
+  Future<void> addNote(String childId, String text,
+      {String authorName = 'Parent'}) async {
     final note = NoteModel(
-      id:         _uuid.v4(),
-      childId:    childId,
-      text:       text,
-      authorName: authorName,
+      id: _uuid.v4(), childId: childId,
+      text: text, authorName: authorName,
     );
     _notes.add(note);
     await _notesBox.put(note.id, jsonEncode(note.toMap()));
@@ -586,7 +533,7 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> updateNote(String noteId, String newText) async {
     try {
       final note = _notes.firstWhere((n) => n.id == noteId);
-      note.text = newText;
+      note.text  = newText;
       await _notesBox.put(note.id, jsonEncode(note.toMap()));
       if (_firestore.isConnected) await _firestore.saveNote(note);
       notifyListeners();
@@ -604,7 +551,7 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<void> toggleNotePin(String noteId) async {
     try {
-      final note = _notes.firstWhere((n) => n.id == noteId);
+      final note    = _notes.firstWhere((n) => n.id == noteId);
       note.isPinned = !note.isPinned;
       await _notesBox.put(note.id, jsonEncode(note.toMap()));
       if (_firestore.isConnected) await _firestore.saveNote(note);
@@ -622,13 +569,10 @@ class FamilyProvider extends ChangeNotifier {
     return 5.00;
   }
 
-  Future<void> addPunishment(
-      String childId, String text, int totalLines) async {
+  Future<void> addPunishment(String childId, String text, int totalLines) async {
     final p = PunishmentLines(
-      id:         _uuid.v4(),
-      childId:    childId,
-      text:       text,
-      totalLines: totalLines,
+      id: _uuid.v4(), childId: childId,
+      text: text, totalLines: totalLines,
     );
     _punishments.add(p);
     await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
@@ -638,8 +582,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   (deduction * 100).round(),
-      reason:
-          'Déduction automatique : $totalLines lignes ($deduction pt comportement)',
+      reason:   'Déduction automatique : $totalLines lignes ($deduction pt)',
       category: 'punition',
       isBonus:  false,
       actionBy: _currentParentName,
@@ -648,7 +591,6 @@ class FamilyProvider extends ChangeNotifier {
     _history.insert(0, entry);
     await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
     if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
-    // Recalcule le streak après une punition
     await recalculateStreak(childId);
     notifyListeners();
   }
@@ -660,20 +602,17 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updatePunishmentProgress(
-      String id, int linesToAdd) async {
+  Future<void> updatePunishmentProgress(String id, int linesToAdd) async {
     try {
-      final p = _punishments.firstWhere((p) => p.id == id);
-      p.completedLines =
-          (p.completedLines + linesToAdd).clamp(0, p.totalLines);
+      final p          = _punishments.firstWhere((p) => p.id == id);
+      p.completedLines = (p.completedLines + linesToAdd).clamp(0, p.totalLines);
       await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
       if (_firestore.isConnected) await _firestore.savePunishment(p);
       notifyListeners();
     } catch (_) {}
   }
 
-  Future<void> addPhotoToPunishment(
-      String id, String base64Photo) async {
+  Future<void> addPhotoToPunishment(String id, String base64Photo) async {
     try {
       final p = _punishments.firstWhere((p) => p.id == id);
       p.photoUrls.add(base64Photo);
@@ -683,8 +622,7 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> removePhotoFromPunishment(
-      String id, int index) async {
+  Future<void> removePhotoFromPunishment(String id, int index) async {
     try {
       final p = _punishments.firstWhere((p) => p.id == id);
       if (index >= 0 && index < p.photoUrls.length) {
@@ -697,18 +635,11 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // ─── Immunités ─────────────────────────────────────────────
-  Future<void> addImmunity(
-    String childId,
-    String reason,
-    int lines, {
-    DateTime? expiresAt,
-  }) async {
+  Future<void> addImmunity(String childId, String reason, int lines,
+      {DateTime? expiresAt}) async {
     final im = ImmunityLines(
-      id:        _uuid.v4(),
-      childId:   childId,
-      reason:    reason,
-      lines:     lines,
-      expiresAt: expiresAt,
+      id: _uuid.v4(), childId: childId,
+      reason: reason, lines: lines, expiresAt: expiresAt,
     );
     _immunities.add(im);
     await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
@@ -737,13 +668,10 @@ class FamilyProvider extends ChangeNotifier {
       _immunities.where((im) => im.childId == childId).toList();
 
   Future<void> useImmunityOnPunishment(
-    String immunityId,
-    String punishmentId,
-    int lines,
-  ) async {
+      String immunityId, String punishmentId, int lines) async {
     try {
-      final im = _immunities.firstWhere((i) => i.id == immunityId);
-      final p  = _punishments.firstWhere((p) => p.id == punishmentId);
+      final im          = _immunities.firstWhere((i) => i.id == immunityId);
+      final p           = _punishments.firstWhere((p) => p.id == punishmentId);
       final actualLines = lines
           .clamp(0, im.availableLines)
           .clamp(0, p.totalLines - p.completedLines);
@@ -764,22 +692,13 @@ class FamilyProvider extends ChangeNotifier {
   List<BadgeModel> getBadgesForChild(String childId) {
     final child = getChild(childId);
     if (child == null) return [];
-    final allBadges = [
-      ...BadgeModel.defaultBadges,
-      ..._customBadges
-    ];
-    return allBadges
-        .where((b) => child.badgeIds.contains(b.id))
-        .toList();
+    final allBadges = [...BadgeModel.defaultBadges, ..._customBadges];
+    return allBadges.where((b) => child.badgeIds.contains(b.id)).toList();
   }
 
-  Future<void> addCustomBadge(
-    String name,
-    String icon,
-    String description,
-    int requiredPoints, {
-    String powerType = 'custom',
-  }) async {
+  Future<void> addCustomBadge(String name, String icon,
+      String description, int requiredPoints,
+      {String powerType = 'custom'}) async {
     final badge = BadgeModel(
       id:             'custom_${_uuid.v4()}',
       name:           name,
@@ -821,12 +740,10 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   double getWeeklyBehaviorScore(String childId) {
-    final weekEntries = _getWeekHistory(childId)
-        .where((h) =>
-            h.category != 'school_note' &&
-            h.category != 'screen_time_bonus' &&
-            h.category != 'saturday_rating')
-        .toList();
+    final weekEntries = _getWeekHistory(childId).where((h) =>
+        h.category != 'school_note' &&
+        h.category != 'screen_time_bonus' &&
+        h.category != 'saturday_rating').toList();
     if (weekEntries.isEmpty) return 10.0;
     final bonusCount   = weekEntries.where((h) => h.isBonus).length;
     final penaltyCount = weekEntries.where((h) => !h.isBonus).length;
@@ -844,43 +761,37 @@ class FamilyProvider extends ChangeNotifier {
 
   Set<DateTime> _getSelectedDates(Set<int> joursSources) {
     final now          = DateTime.now();
-    final debutSemaine =
-        now.subtract(Duration(days: now.weekday - 1));
+    final debutSemaine = now.subtract(Duration(days: now.weekday - 1));
     return joursSources.map((jourIdx) {
       final d = debutSemaine.add(Duration(days: jourIdx));
       return DateTime(d.year, d.month, d.day);
     }).toSet();
   }
 
-  double getSchoolAverageForDays(
-      String childId, Set<int> joursSources) {
+  double getSchoolAverageForDays(String childId, Set<int> joursSources) {
     if (joursSources.isEmpty) return -1;
     final datesCochees = _getSelectedDates(joursSources);
-    final notes        = _history.where((h) {
+    final notes = _history.where((h) {
       if (h.childId != childId) return false;
       if (h.category != 'school_note') return false;
-      final entryDay =
-          DateTime(h.date.year, h.date.month, h.date.day);
+      final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
       return datesCochees.contains(entryDay);
     }).toList();
     if (notes.isEmpty) return -1;
-    return notes.fold<int>(0, (s, n) => s + n.points) /
-        notes.length;
+    return notes.fold<int>(0, (s, n) => s + n.points) / notes.length;
   }
 
-  double getBehaviorScoreForDays(
-      String childId, Set<int> joursSources) {
+  double getBehaviorScoreForDays(String childId, Set<int> joursSources) {
     if (joursSources.isEmpty) return 10.0;
     final datesCochees = _getSelectedDates(joursSources);
-    final entries      = _history.where((h) {
+    final entries = _history.where((h) {
       if (h.childId != childId) return false;
       if (h.category == 'school_note'       ||
           h.category == 'screen_time_bonus'  ||
           h.category == 'saturday_rating'    ||
           h.category == 'tribunal_vote'      ||
           h.category == 'tribunal_verdict') return false;
-      final entryDay =
-          DateTime(h.date.year, h.date.month, h.date.day);
+      final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
       return datesCochees.contains(entryDay);
     }).toList();
     if (entries.isEmpty) return 10.0;
@@ -891,8 +802,7 @@ class FamilyProvider extends ChangeNotifier {
     return ((bonusCount / total) * 20).clamp(0.0, 20.0);
   }
 
-  double getGlobalScoreForDays(
-      String childId, Set<int> joursSources) {
+  double getGlobalScoreForDays(String childId, Set<int> joursSources) {
     final sa = getSchoolAverageForDays(childId, joursSources);
     final bs = getBehaviorScoreForDays(childId, joursSources);
     if (sa < 0) return bs;
@@ -911,15 +821,13 @@ class FamilyProvider extends ChangeNotifier {
 
   int getSaturdayMinutes(String childId) =>
       (_minutesFromGlobalScore(getWeeklyGlobalScore(childId)) +
-              getParentBonusMinutes(childId))
-          .clamp(0, 480);
+       getParentBonusMinutes(childId)).clamp(0, 480);
 
   int getSundayMinutes(String childId) {
     final sr = getSaturdayBehaviorRating(childId);
     if (sr < 0) return getSaturdayMinutes(childId);
     return (_minutesFromGlobalScore(sr) +
-            getParentBonusMinutes(childId))
-        .clamp(0, 480);
+            getParentBonusMinutes(childId)).clamp(0, 480);
   }
 
   int getParentBonusMinutes(String childId) =>
@@ -943,8 +851,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   minutes.abs(),
-      reason:
-          '⏱ $reason (${minutes > 0 ? '+' : ''}${minutes}min)',
+      reason:   '⏱ $reason (${minutes > 0 ? '+' : ''}${minutes}min)',
       category: 'screen_time_bonus',
       isBonus:  minutes > 0,
       actionBy: _currentParentName,
@@ -964,8 +871,7 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> rateSaturdayBehavior(
-      String childId, int rating) async {
+  Future<void> rateSaturdayBehavior(String childId, int rating) async {
     final key = _screenTimeKey(childId, 'sat_rating');
     await _screenTimeBox.put(key, rating.toDouble());
     if (_firestore.isConnected) {
@@ -988,13 +894,10 @@ class FamilyProvider extends ChangeNotifier {
 
   List<HistoryEntry> _getWeekHistory(String childId) {
     final now       = DateTime.now();
-    final weekStart =
-        now.subtract(Duration(days: now.weekday - 1));
-    final start =
-        DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final start     = DateTime(weekStart.year, weekStart.month, weekStart.day);
     return _history
-        .where((h) =>
-            h.childId == childId && h.date.isAfter(start))
+        .where((h) => h.childId == childId && h.date.isAfter(start))
         .toList();
   }
 
@@ -1033,20 +936,18 @@ class FamilyProvider extends ChangeNotifier {
     required String description,
     required String plaintiffId,
     required String accusedId,
-    String? prosecutionLawyerId,
-    String? defenseLawyerId,
+    String?       prosecutionLawyerId,
+    String?       defenseLawyerId,
     List<String>? witnessIds,
   }) async {
     final participants = <TribunalParticipant>[
-      TribunalParticipant(
-          childId: plaintiffId, role: TribunalRole.plaintiff),
-      TribunalParticipant(
-          childId: accusedId, role: TribunalRole.accused),
+      TribunalParticipant(childId: plaintiffId, role: TribunalRole.plaintiff),
+      TribunalParticipant(childId: accusedId,   role: TribunalRole.accused),
     ];
     if (prosecutionLawyerId != null) {
       participants.add(TribunalParticipant(
-          childId:  prosecutionLawyerId,
-          role:     TribunalRole.prosecutionLawyer));
+          childId: prosecutionLawyerId,
+          role:    TribunalRole.prosecutionLawyer));
     }
     if (defenseLawyerId != null) {
       participants.add(TribunalParticipant(
@@ -1151,8 +1052,8 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> changeTribunalVote(String caseId, String childId,
-      TribunalVerdict newVote) async {
+  Future<void> changeTribunalVote(
+      String caseId, String childId, TribunalVerdict newVote) async {
     try {
       final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
       if (!tc.votingEnabled || tc.isClosed) return;
@@ -1165,8 +1066,7 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> removeTribunalVote(
-      String caseId, String childId) async {
+  Future<void> removeTribunalVote(String caseId, String childId) async {
     try {
       final tc = _tribunalCases.firstWhere((c) => c.id == caseId);
       if (!tc.votingEnabled || tc.isClosed) return;
@@ -1184,8 +1084,7 @@ class FamilyProvider extends ChangeNotifier {
       final correct      = vote.vote == tc.verdict;
       vote.pointsAwarded = correct ? 1 : -1;
       await addPoints(
-        vote.childId,
-        1,
+        vote.childId, 1,
         '⚖️ Tribunal (juré): ${correct ? "bon vote ✅" : "mauvais vote ❌"}',
         category: 'tribunal_vote',
         isBonus:  correct,
@@ -1207,22 +1106,14 @@ class FamilyProvider extends ChangeNotifier {
       tc.verdictReason = reason;
       tc.verdictDate   = DateTime.now();
       if (accusedPoints != null && accusedPoints != 0) {
-        await addPoints(
-          tc.accusedId,
-          accusedPoints.abs(),
-          '⚖️ Verdict tribunal (accusé): $reason',
-          category: 'tribunal_verdict',
-          isBonus:  accusedPoints > 0,
-        );
+        await addPoints(tc.accusedId, accusedPoints.abs(),
+            '⚖️ Verdict tribunal (accusé): $reason',
+            category: 'tribunal_verdict', isBonus: accusedPoints > 0);
       }
       if (plaintiffPoints != null && plaintiffPoints != 0) {
-        await addPoints(
-          tc.plaintiffId,
-          plaintiffPoints.abs(),
-          '⚖️ Verdict tribunal (plaignant): $reason',
-          category: 'tribunal_verdict',
-          isBonus:  plaintiffPoints > 0,
-        );
+        await addPoints(tc.plaintiffId, plaintiffPoints.abs(),
+            '⚖️ Verdict tribunal (plaignant): $reason',
+            category: 'tribunal_verdict', isBonus: plaintiffPoints > 0);
       }
       await _distributeVotePoints(tc);
       await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
@@ -1233,22 +1124,14 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── Trades ────────────────────────────────────────────────
   List<TradeModel> getTradesForChild(String childId) =>
-      _trades
-          .where((t) =>
-              t.fromChildId == childId || t.toChildId == childId)
-          .toList();
+      _trades.where((t) =>
+          t.fromChildId == childId || t.toChildId == childId).toList();
 
   List<TradeModel> getPendingTradesForChild(String childId) =>
-      _trades
-          .where((t) => t.toChildId == childId && t.isPending)
-          .toList();
+      _trades.where((t) => t.toChildId == childId && t.isPending).toList();
 
-  Future<void> createTrade(
-    String fromChildId,
-    String toChildId,
-    int    immunityLines,
-    String serviceDescription,
-  ) async {
+  Future<void> createTrade(String fromChildId, String toChildId,
+      int immunityLines, String serviceDescription) async {
     final trade = TradeModel(
       id:                 _uuid.v4(),
       fromChildId:        fromChildId,
@@ -1262,18 +1145,17 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ✅ status est une String dans TradeModel
   Future<void> acceptTrade(String tradeId) async {
     try {
-      final trade = _trades.firstWhere((t) => t.id == tradeId);
-      trade.status = TradeStatus.accepted;
-      // Transfère les lignes d'immunité
+      final trade      = _trades.firstWhere((t) => t.id == tradeId);
+      trade.status     = 'accepted';
+      trade.acceptedAt = DateTime.now();
       final im = _immunities
-          .where((i) =>
-              i.childId == trade.fromChildId && i.isUsable)
+          .where((i) => i.childId == trade.fromChildId && i.isUsable)
           .firstOrNull;
       if (im != null) {
-        final toTransfer =
-            trade.immunityLines.clamp(0, im.availableLines);
+        final toTransfer = trade.immunityLines.clamp(0, im.availableLines);
         im.usedLines += toTransfer;
         await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
         await addImmunity(
@@ -1292,7 +1174,41 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> rejectTrade(String tradeId) async {
     try {
       final trade  = _trades.firstWhere((t) => t.id == tradeId);
-      trade.status = TradeStatus.rejected;
+      trade.status = 'rejected';
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  // ✅ cancelTrade — demandé par trade_screen.dart
+  Future<void> cancelTrade(String tradeId) async {
+    try {
+      final trade  = _trades.firstWhere((t) => t.id == tradeId);
+      trade.status = 'cancelled';
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  // ✅ markServiceDone — demandé par trade_screen.dart
+  Future<void> markServiceDone(String tradeId) async {
+    try {
+      final trade  = _trades.firstWhere((t) => t.id == tradeId);
+      trade.status = 'service_done';
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  // ✅ completeTrade — demandé par trade_screen.dart
+  Future<void> completeTrade(String tradeId) async {
+    try {
+      final trade       = _trades.firstWhere((t) => t.id == tradeId);
+      trade.status      = 'completed';
+      trade.completedAt = DateTime.now();
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
       if (_firestore.isConnected) await _firestore.saveTrade(trade);
       notifyListeners();
@@ -1309,20 +1225,13 @@ class FamilyProvider extends ChangeNotifier {
   // ─── Reset / Clear ─────────────────────────────────────────
   Future<void> resetAllScores() async {
     for (final child in _children) {
-      child.points = 0;
-      child.level  = 1;
-      child.badgeIds.clear();
+      child.points     = 0;
+      child.level      = 1;
       child.streakDays = 0;
+      child.badgeIds.clear();
       await _childrenBox.put(child.id, jsonEncode(child.toMap()));
       if (_firestore.isConnected) await _firestore.saveChild(child);
     }
-    notifyListeners();
-  }
-
-  Future<void> clearAllHistory() async {
-    _history.clear();
-    await _historyBox.clear();
-    if (_firestore.isConnected) await _firestore.clearHistory();
     notifyListeners();
   }
 }
