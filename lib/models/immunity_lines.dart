@@ -1,3 +1,6 @@
+// lib/models/immunity_lines.dart
+import 'package:flutter/material.dart';
+
 class ImmunityLines {
   String id;
   String childId;
@@ -17,6 +20,7 @@ class ImmunityLines {
     this.expiresAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
+  // ── Getters existants ──────────────────────────────────
   int get availableLines => lines - usedLines;
   bool get isFullyUsed => availableLines <= 0;
 
@@ -27,21 +31,36 @@ class ImmunityLines {
 
   bool get isUsable => !isExpired && availableLines > 0;
 
+  // ── Getters manquants ajoutés ──────────────────────────
+  bool get isActive => isUsable;
+
+  String get name => reason;
+
+  int get linesGranted => lines;
+
+  String get typeLabel => 'Immunité';
+
+  Color get typeColor => const Color(0xFF00E676);
+
+  IconData get typeIcon => Icons.shield_rounded;
+
+  // ── Labels ─────────────────────────────────────────────
   String get expiresLabel {
     if (expiresAt == null) return 'Pas d\'expiration';
-    if (isExpired) return 'Expiree';
+    if (isExpired) return 'Expirée';
     final diff = expiresAt!.difference(DateTime.now());
     if (diff.inDays > 0) return 'Expire dans ${diff.inDays}j';
     if (diff.inHours > 0) return 'Expire dans ${diff.inHours}h';
-    return 'Expire bientot';
+    return 'Expire bientôt';
   }
 
   String get statusLabel {
-    if (isExpired) return 'Expiree';
-    if (isFullyUsed) return 'Entierement utilisee';
+    if (isExpired) return 'Expirée';
+    if (isFullyUsed) return 'Entièrement utilisée';
     return '$availableLines lignes disponibles';
   }
 
+  // ── Sérialisation ──────────────────────────────────────
   Map<String, dynamic> toMap() => {
         'id': id,
         'childId': childId,
