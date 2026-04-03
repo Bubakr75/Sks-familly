@@ -1,9 +1,14 @@
 // lib/screens/child_dashboard_screen.dart
+// Version : Hero Card FIFA/Pokémon + Bannière éditable + Level Frame + Streak
 
 import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' show cos, sin, pi;
+import 'package:image_picker/image_picker.dart';
+
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
@@ -14,77 +19,245 @@ import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
 
+// ─────────────────────────────────────────────
+//  PAINTER : shimmer holographique pour la carte
+// ─────────────────────────────────────────────
+class _HoloPainter extends CustomPainter {
+  final double animValue;
+  final Color baseColor;
+
+  _HoloPainter({required this.animValue, required this.baseColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Effet arc-en-ciel en diagonale qui se déplace
+    final rect = Offset.zero & size;
+    final shimmerOffset = animValue * size.width * 2 - size.width;
+
+    final gradient = LinearGradient(
+      begin: Alignment((-1 + animValue * 2).clamp(-1.0, 1.0), -1),
+      end: Alignment((1 + animValue * 2).clamp(-1.0, 1.0), 1),
+      colors: const [
+        Colors.transparent,
+        Color(0x22FF0080),
+        Color(0x33FF8C00),
+        Color(0x2200E5FF),
+        Color(0x2276FF03),
+        Color(0x22FF0080),
+        Colors.transparent,
+      ],
+      stops: const [0.0, 0.2, 0.35, 0.5, 0.65, 0.8, 1.0],
+    );
+
+    final paint = Paint()
+      ..shader = gradient.createShader(rect)
+      ..blendMode = BlendMode.screen;
+
+    canvas.drawRoundRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(20)),
+      paint,
+    );
+
+    // Points brillants
+    final starPaint = Paint()..color = Colors.white.withOpacity(0.15 * animValue);
+    final rng = Random(42);
+    for (int i = 0; i < 30; i++) {
+      final dx = rng.nextDouble() * size.width;
+      final dy = rng.nextDouble() * size.height;
+      canvas.drawCircle(Offset(dx, dy), rng.nextDouble() * 2 + 0.5, starPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HoloPainter old) => old.animValue != animValue;
+}
+
+// ─────────────────────────────────────────────
+//  PAINTER : arc de progression screen-time
+// ─────────────────────────────────────────────
+class _ScreenTimePainter extends CustomPainter {
+  final double progress;
+  final double animValue;
+
+  _ScreenTimePainter({required this.progress, required this.animValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = min(size.width, size.height) / 2 - 8;
+
+    // Fond
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.white10
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10,
+    );
+
+    final color = progress >= 1.0
+        ? Colors.greenAccent
+        : progress >= 0.5
+            ? Colors.orangeAccent
+            : Colors.redAccent;
+
+    // Arc de progression
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      2 * pi * progress * animValue,
+      false,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Dot animé
+    final angle = -pi / 2 + 2 * pi * progress * animValue;
+    final dotPos = Offset(
+      center.dx + radius * cos(angle),
+      center.dy + radius * sin(angle),
+    );
+    canvas.drawCircle(dotPos, 6, Paint()..color = color);
+    canvas.drawCircle(dotPos, 10, Paint()..color = color.withOpacity(0.3));
+  }
+
+  @override
+  bool shouldRepaint(_ScreenTimePainter old) =>
+      old.progress != progress || old.animValue != animValue;
+}
+
+// ─────────────────────────────────────────────
+//  MAIN SCREEN
+// ─────────────────────────────────────────────
 class ChildDashboardScreen extends StatefulWidget {
-  final String childId;
-  const ChildDashboardScreen({super.key, required this.childId});
+  const ChildDashboardScreen({super.key});
+
   @override
   State<ChildDashboardScreen> createState() => _ChildDashboardScreenState();
 }
 
 class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     with TickerProviderStateMixin {
+
+  // Controllers
   late TabController _tabController;
   late AnimationController _profileController;
   late AnimationController _contentController;
   late AnimationController _glowController;
   late AnimationController _headerController;
+  late AnimationController _holoController;      // shimmer holographique
+  late AnimationController _streakController;    // rebond flamme streak
+  late AnimationController _bonusAnimController;
 
-  // ✅ CORRECTIF photo : animations séparées proprement
-  late Animation<double> _profileScale;
   late Animation<double> _profileFade;
+  late Animation<double> _contentFade;
   late Animation<double> _glowAnim;
-  late Animation<double> _headerSlide;
+  late Animation<Offset> _headerSlide;
+  late Animation<double> _holoAnim;
+  late Animation<double> _streakBounce;
 
-  late String _currentChildId;
+  String? _selectedChildId;
+  String? _selectedDay;
+  String _selectedSource = 'école';
 
-  static const _jours = [
-    'Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'
-  ];
-  int _jourCible = 5;
-  final Set<int> _joursSources = {0, 1, 2, 3, 4};
+  // Bonus animation
+  bool _showBonusAnim = false;
+  String _bonusAnimText = '';
+  late AnimationController _bonusFloatController;
+  late Animation<double> _bonusFloatAnim;
+  late Animation<double> _bonusOpacity;
+
+  // Hero card flip
+  bool _showHeroCardBack = false;
 
   @override
   void initState() {
     super.initState();
-    _currentChildId = widget.childId;
     _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(() => setState(() {}));
 
-    // Profile : scale + fade sur le même controller, complètement indépendant du glow
     _profileController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
-    _profileScale = CurvedAnimation(
-        parent: _profileController, curve: Curves.elasticOut);
-    // ✅ CORRECTIF : fade va de 0→1 sur 0%→40% puis RESTE à 1 — plus jamais 0
-    _profileFade = TweenSequence<double>([
-      TweenSequenceItem(
-          tween: Tween(begin: 0.0, end: 1.0)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 40),
-      TweenSequenceItem(
-          tween: ConstantTween(1.0),
-          weight: 60),
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _contentController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _headerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _holoController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+    _streakController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+
+    _profileFade = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 40),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
     ]).animate(_profileController);
 
-    _contentController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
+    _contentFade = CurvedAnimation(
+      parent: _contentController,
+      curve: Curves.easeIn,
+    );
+    _glowAnim = CurvedAnimation(
+      parent: _glowController,
+      curve: Curves.easeInOut,
+    );
+    _headerSlide = Tween<Offset>(
+      begin: const Offset(0, -0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _headerController,
+      curve: Curves.easeOut,
+    ));
+    _holoAnim = CurvedAnimation(
+      parent: _holoController,
+      curve: Curves.linear,
+    );
+    _streakBounce = Tween(begin: 1.0, end: 1.18).animate(
+      CurvedAnimation(parent: _streakController, curve: Curves.easeInOut),
+    );
 
-    // Glow : controller SÉPARÉ qui ne touche PAS à la photo
-    _glowController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2500))
-      ..repeat(reverse: true);
-    _glowAnim = Tween<double>(begin: 0.3, end: 0.9).animate(
-        CurvedAnimation(parent: _glowController, curve: Curves.easeInOut));
-
-    _headerController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900));
-    _headerSlide = CurvedAnimation(
-        parent: _headerController, curve: Curves.easeOutCubic);
+    // Bonus animation
+    _bonusAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _bonusFloatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _bonusFloatAnim = Tween(begin: 0.0, end: -60.0)
+        .animate(_bonusFloatController);
+    _bonusOpacity = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_bonusFloatController);
 
     _profileController.forward();
+    _contentController.forward();
     _headerController.forward();
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) _contentController.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final fp = context.read<FamilyProvider>();
+      if (fp.children.isNotEmpty && _selectedChildId == null) {
+        setState(() => _selectedChildId = fp.children.first.id);
+      }
     });
   }
 
@@ -95,428 +268,828 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     _contentController.dispose();
     _glowController.dispose();
     _headerController.dispose();
+    _holoController.dispose();
+    _streakController.dispose();
+    _bonusAnimController.dispose();
+    _bonusFloatController.dispose();
     super.dispose();
   }
 
-  void _switchToChild(String newChildId) {
-    if (newChildId == _currentChildId) return;
-    setState(() {
-      _currentChildId = newChildId;
-      _jourCible = 5;
-      _joursSources..clear()..addAll({0, 1, 2, 3, 4});
-    });
-    _profileController..reset()..forward();
-    _headerController..reset()..forward();
-  }
-
-  void _showChildSwitcher(BuildContext context, FamilyProvider fp) {
-    final children = fp.children;
-    if (children.length <= 1) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.55,
-        minChildSize: 0.35,
-        maxChildSize: 0.92,
-        expand: false,
-        builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 16),
-              const Text('Changer d\'enfant',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                  itemCount: children.length,
-                  itemBuilder: (_, i) {
-                    final c = children[i];
-                    final isCurrent = c.id == _currentChildId;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: TvFocusWrapper(
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _switchToChild(c.id);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: isCurrent
-                                ? Colors.cyanAccent.withOpacity(0.15)
-                                : Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: isCurrent
-                                  ? Colors.cyanAccent
-                                  : Colors.white24,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              _buildChildAvatar(c, radius: 22),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Text(c.name,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600)),
-                              ),
-                              Text('${c.points} pts',
-                                  style: const TextStyle(
-                                      color: Colors.cyanAccent,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14)),
-                              if (isCurrent) ...[
-                                const SizedBox(width: 8),
-                                const Icon(Icons.check_circle,
-                                    color: Colors.cyanAccent, size: 20),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ✅ Avatar : photo base64 > emoji > initiale gradient
-  Widget _buildChildAvatar(ChildModel child, {double radius = 50}) {
-    if (child.photoBase64.isNotEmpty) {
+  // ─── Couleur de l'enfant ───────────────────
+  Color _childColor(ChildModel child) {
+    if (child.accentColorHex != null) {
       try {
-        final bytes = base64Decode(child.photoBase64);
-        return CircleAvatar(
+        return Color(int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
+      } catch (_) {}
+    }
+    final colors = [
+      Colors.deepPurpleAccent,
+      Colors.blueAccent,
+      Colors.tealAccent.shade700,
+      Colors.orangeAccent.shade700,
+      Colors.pinkAccent,
+      Colors.cyanAccent.shade700,
+    ];
+    return colors[child.name.codeUnitAt(0) % colors.length];
+  }
+
+  // ─── Rareté selon niveau ──────────────────
+  String _rarityLabel(int level) {
+    switch (level) {
+      case 1: return 'COMMUN';
+      case 2: return 'RARE';
+      case 3: return 'ÉPIQUE';
+      case 4: return 'LÉGENDAIRE';
+      default: return 'MYTHIQUE ✨';
+    }
+  }
+
+  List<Color> _rarityGradient(int level) {
+    switch (level) {
+      case 1: return [const Color(0xFF607D8B), const Color(0xFF37474F)];
+      case 2: return [const Color(0xFF1565C0), const Color(0xFF0D47A1)];
+      case 3: return [const Color(0xFF6A1B9A), const Color(0xFF4A148C)];
+      case 4: return [const Color(0xFFE65100), const Color(0xFFBF360C)];
+      default: return [const Color(0xFF00897B), const Color(0xFF004D40)];
+    }
+  }
+
+  Color _frameColor(int level) {
+    switch (level) {
+      case 1: return Colors.grey.shade400;
+      case 2: return const Color(0xFFCD7F32); // bronze
+      case 3: return const Color(0xFFC0C0C0); // argent
+      case 4: return const Color(0xFFFFD700); // or
+      default: return const Color(0xFF00E5FF); // diamant/mythique
+    }
+  }
+
+  // ─── Avatar builder ───────────────────────
+  Widget _buildAvatar(ChildModel child, double radius, {bool showFrame = true}) {
+    final color = _childColor(child);
+    final frameColor = _frameColor(child.level);
+    final isHighLevel = child.level >= 4;
+
+    Widget avatarCore;
+    if (child.photoBase64 != null && child.photoBase64!.isNotEmpty) {
+      try {
+        final bytes = base64Decode(child.photoBase64!);
+        avatarCore = CircleAvatar(
           radius: radius,
           backgroundImage: MemoryImage(bytes),
         );
-      } catch (_) {}
+      } catch (_) {
+        avatarCore = _fallbackAvatar(child, radius, color);
+      }
+    } else {
+      avatarCore = _fallbackAvatar(child, radius, color);
     }
-    if (child.avatar.isNotEmpty &&
-        !RegExp(r'^[a-zA-Z0-9]$').hasMatch(child.avatar)) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: _childColor(child).withOpacity(0.25),
-        child: Text(child.avatar,
-            style: TextStyle(fontSize: radius * 0.85)),
-      );
-    }
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [
-            _childColor(child).withOpacity(0.8),
-            _childColor(child).withOpacity(0.4),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
-          style: TextStyle(
-              color: Colors.white,
-              fontSize: radius * 0.85,
-              fontWeight: FontWeight.bold),
+
+    if (!showFrame || child.level < 2) return avatarCore;
+
+    // Cadre animé
+    return AnimatedBuilder(
+      animation: _glowAnim,
+      builder: (_, __) {
+        return Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: isHighLevel
+                ? SweepGradient(colors: [
+                    frameColor,
+                    Colors.white,
+                    frameColor,
+                    frameColor.withOpacity(0.5),
+                    frameColor,
+                  ])
+                : null,
+            color: isHighLevel ? null : frameColor,
+            boxShadow: [
+              BoxShadow(
+                color: frameColor.withOpacity(0.4 + 0.3 * _glowAnim.value),
+                blurRadius: 12 + 8 * _glowAnim.value,
+                spreadRadius: 2 + 2 * _glowAnim.value,
+              ),
+            ],
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF1A1A2E),
+            ),
+            child: avatarCore,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _fallbackAvatar(ChildModel child, double radius, Color color) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: color.withOpacity(0.3),
+      child: Text(
+        child.name[0].toUpperCase(),
+        style: TextStyle(
+          fontSize: radius * 0.9,
+          fontWeight: FontWeight.bold,
+          color: color,
         ),
       ),
     );
   }
 
-  Color _childColor(ChildModel child) {
-    final colors = [
-      Colors.cyan, Colors.purple, Colors.orange,
-      Colors.green, Colors.pink, Colors.indigo,
-    ];
-    final idx = child.name.isNotEmpty
-        ? child.name.codeUnitAt(0) % colors.length
-        : 0;
-    return colors[idx];
+  // ─────────────────────────────────────────
+  //  HERO CARD style FIFA/Pokémon
+  // ─────────────────────────────────────────
+  Widget _buildHeroCard(ChildModel child, FamilyProvider fp) {
+    final color = _childColor(child);
+    final gradient = _rarityGradient(child.level);
+    final rarity = _rarityLabel(child.level);
+    final frameColor = _frameColor(child.level);
+
+    final history = fp.history.where((h) => h.childId == child.id).toList();
+    final bonuses = history.where((h) => h.points > 0).length;
+    final penalties = history.where((h) => h.points < 0).length;
+    final totalGoals = fp.goals.where((g) => g.childId == child.id).length;
+    final earnedBadges = fp.customBadges
+        .where((b) => child.badgeIds.contains(b.id))
+        .length;
+
+    return AnimatedBuilder(
+      animation: _holoAnim,
+      builder: (context, _) {
+        return GestureDetector(
+          onTap: () => setState(() => _showHeroCardBack = !_showHeroCardBack),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 600),
+            transitionBuilder: (child, anim) => AnimatedBuilder(
+              animation: anim,
+              child: child,
+              builder: (_, c) {
+                final angle = (1 - anim.value) * pi / 2;
+                return Transform(
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.001)
+                    ..rotateY(angle),
+                  alignment: Alignment.center,
+                  child: c,
+                );
+              },
+            ),
+            child: _showHeroCardBack
+                ? _heroCardBack(child, fp, gradient, frameColor, color)
+                : _heroCardFront(child, fp, gradient, frameColor, color,
+                    rarity, bonuses, penalties, totalGoals, earnedBadges),
+          ),
+        );
+      },
+    );
   }
 
-  String _formatMinutes(int m) {
-    if (m < 60) return '${m}min';
-    final h = m ~/ 60;
-    final r = m % 60;
-    return r == 0 ? '${h}h' : '${h}h${r.toString().padLeft(2, '0')}';
-  }
+  Widget _heroCardFront(
+    ChildModel child,
+    FamilyProvider fp,
+    List<Color> gradient,
+    Color frameColor,
+    Color color,
+    String rarity,
+    int bonuses,
+    int penalties,
+    int totalGoals,
+    int earnedBadges,
+  ) {
+    final totalImm = fp.getTotalAvailableImmunity(child.id);
 
-  List<Map<String, dynamic>> _getSchoolNotes(FamilyProvider fp) {
-    final history = fp.getHistoryForChild(_currentChildId);
-    return history.where((h) => h.category == 'school_note').map((h) {
-      String subject = h.reason;
-      int noteValue = h.points;
-      int noteMax = 20;
-      final match = RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(h.reason);
-      if (match != null) {
-        subject   = match.group(1)!.trim();
-        noteValue = int.tryParse(match.group(2)!) ?? h.points;
-        noteMax   = int.tryParse(match.group(3)!) ?? 20;
-      }
-      return {
-        'subject': subject, 'value': noteValue,
-        'max': noteMax,
-        'percent': noteMax > 0 ? noteValue / noteMax * 100 : 0.0,
-        'date': h.date,
-      };
-    }).toList();
-  }
-
-  List<Map<String, dynamic>> _getBehaviorNotes(FamilyProvider fp) {
-    final history = fp.getHistoryForChild(_currentChildId);
-    return history
-        .where((h) =>
-            h.category != 'school_note' &&
-            h.category != 'screen_time_bonus' &&
-            h.category != 'saturday_rating' &&
-            h.category != 'tribunal_vote' &&
-            h.category != 'tribunal_verdict')
-        .take(10)
-        .map((h) => {
-              'subject': h.reason,
-              'points': h.isBonus ? h.points : -h.points,
-              'date': h.date,
-              'isBonus': h.isBonus,
-            })
-        .toList();
-  }
-
-  double _getBehaviorScoreForSelectedDays(FamilyProvider fp) {
-    if (_joursSources.isEmpty) return 10.0;
-    final now = DateTime.now();
-    final debutSemaine = now.subtract(Duration(days: now.weekday - 1));
-    final datesCochees = _joursSources.map((jourIdx) {
-      final d = debutSemaine.add(Duration(days: jourIdx));
-      return DateTime(d.year, d.month, d.day);
-    }).toSet();
-    final entries = fp.getHistoryForChild(_currentChildId).where((h) {
-      if (h.category == 'school_note' || h.category == 'screen_time_bonus' ||
-          h.category == 'saturday_rating' || h.category == 'tribunal_vote' ||
-          h.category == 'tribunal_verdict') return false;
-      final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
-      return datesCochees.contains(entryDay);
-    }).toList();
-    if (entries.isEmpty) return 10.0;
-    final bonusCount = entries.where((h) => h.isBonus).length;
-    final total = entries.length;
-    if (total == 0) return 10.0;
-    return ((bonusCount / total) * 20).clamp(0.0, 20.0);
-  }
-
-  int _percentToStars(double percent) {
-    if (percent >= 90) return 5;
-    if (percent >= 75) return 4;
-    if (percent >= 60) return 3;
-    if (percent >= 40) return 2;
-    return 1;
-  }
-
-  int _calculerTempsEcranPourJour(FamilyProvider fp) {
-    if (_joursSources.isEmpty) return 0;
-    final now = DateTime.now();
-    final debutSemaine = now.subtract(Duration(days: now.weekday - 1));
-    final history = fp.getHistoryForChild(_currentChildId);
-    final notesSources = <Map<String, dynamic>>[];
-    for (final jourIdx in _joursSources) {
-      final jourDate = DateTime(debutSemaine.year, debutSemaine.month,
-          debutSemaine.day + jourIdx);
-      final notesJour = history.where((h) =>
-          h.category == 'school_note' &&
-          h.date.year == jourDate.year &&
-          h.date.month == jourDate.month &&
-          h.date.day == jourDate.day);
-      for (final n in notesJour) {
-        int noteValue = n.points;
-        int noteMax = 20;
-        final match = RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(n.reason);
-        if (match != null) {
-          noteValue = int.tryParse(match.group(2)!) ?? n.points;
-          noteMax = int.tryParse(match.group(3)!) ?? 20;
-        }
-        notesSources.add(
-            {'percent': noteMax > 0 ? noteValue / noteMax * 100 : 0.0});
-      }
-    }
-    final bonus = fp.getParentBonusMinutes(_currentChildId);
-    if (notesSources.isEmpty) {
-      final globalScore =
-          fp.getGlobalScoreForDays(_currentChildId, _joursSources);
-      return ((globalScore / 20 * 180).round() + bonus).clamp(0, 180);
-    }
-    final avgPercent = notesSources.fold<double>(
-            0, (s, n) => s + (n['percent'] as double)) /
-        notesSources.length;
-    return ((avgPercent / 100 * 180).round() + bonus).clamp(0, 180);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<FamilyProvider>(
-      builder: (context, fp, _) {
-        final child = fp.children
-            .cast<ChildModel?>()
-            .firstWhere((c) => c!.id == _currentChildId,
-                orElse: () => null);
-        if (child == null) {
-          return const Scaffold(
-              body: Center(child: Text('Enfant introuvable')));
-        }
-        final isParent = context.watch<PinProvider>().isParentMode;
-        final hasMultipleChildren = fp.children.length > 1;
-        final childColor = _childColor(child);
-
-        return AnimatedBackground(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: Navigator.canPop(context)
-                  ? IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white70),
-                      onPressed: () => Navigator.pop(context),
-                    )
-                  : null,
-              title: AnimatedBuilder(
-                animation: _headerSlide,
-                builder: (_, ch) => Transform.translate(
-                  offset: Offset(-20 * (1 - _headerSlide.value), 0),
-                  child: Opacity(
-                      opacity: _headerSlide.value.clamp(0.0, 1.0),
-                      child: ch),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildChildAvatar(child, radius: 16),
-                    const SizedBox(width: 10),
-                    Text(child.name,
-                        style: TextStyle(
-                            color: childColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18)),
-                    if (hasMultipleChildren) ...[
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => _showChildSwitcher(context, fp),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: childColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: childColor.withOpacity(0.4)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.swap_horiz_rounded,
-                                  color: childColor, size: 14),
-                              const SizedBox(width: 3),
-                              Text('Changer',
-                                  style: TextStyle(
-                                      color: childColor, fontSize: 10)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+    return Container(
+      key: const ValueKey('front'),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      height: 480,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradient,
+        ),
+        border: Border.all(color: frameColor, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: frameColor.withOpacity(0.5),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Bannière / fond personnalisé
+          if (child.bannerBase64 != null && child.bannerBase64!.isNotEmpty)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Opacity(
+                  opacity: 0.35,
+                  child: Image.memory(
+                    base64Decode(child.bannerBase64!),
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.timeline_rounded, color: childColor),
-                  tooltip: 'Timeline complète',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          TimelineScreen(initialChildId: _currentChildId),
+            ),
+
+          // Shimmer holographique
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _HoloPainter(
+                animValue: _holoAnim.value,
+                baseColor: color,
+              ),
+            ),
+          ),
+
+          // Contenu
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header : rareté + niveau
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: frameColor.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: frameColor, width: 1),
+                      ),
+                      child: Text(
+                        rarity,
+                        style: TextStyle(
+                          color: frameColor,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black38,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'NIV. ${child.level}  •  ${child.points} pts',
+                        style: TextStyle(
+                          color: frameColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Photo centrale grande
+                Center(
+                  child: _buildAvatar(child, 70, showFrame: true),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Nom + slogan
+                Center(
+                  child: Column(
+                    children: [
+                      Text(
+                        child.name.toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 3,
+                          shadows: [
+                            Shadow(
+                              color: frameColor,
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (child.sloganText != null &&
+                          child.sloganText!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '"${child.sloganText}"',
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Stats style FIFA
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                        color: Colors.white12, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _statCell('🎯', 'BONUS', bonuses.toString(), color),
+                      _dividerV(),
+                      _statCell('⚡', 'PÉNALITÉS', penalties.toString(),
+                          Colors.redAccent),
+                      _dividerV(),
+                      _statCell('🛡️', 'IMMU.', totalImm.toString(),
+                          Colors.amberAccent),
+                      _dividerV(),
+                      _statCell('🏅', 'BADGES', earnedBadges.toString(),
+                          Colors.greenAccent),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // Barre de progression vers prochain niveau
+                _buildLevelBar(child, frameColor),
+
+                const Spacer(),
+
+                // Hint flip
+                Center(
+                  child: Text(
+                    '↻ Appuie pour voir le dos',
+                    style: TextStyle(
+                      color: Colors.white38,
+                      fontSize: 10,
                     ),
                   ),
                 ),
               ],
-              flexibleSpace: !isParent
-                  ? Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Container(
-                        width: double.infinity,
-                        color: Colors.orange.withOpacity(0.15),
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.child_care,
-                                color: Colors.orange, size: 13),
-                            SizedBox(width: 4),
-                            Text('Mode enfant · lecture seule',
-                                style: TextStyle(
-                                    color: Colors.orange,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    )
-                  : null,
-              bottom: TabBar(
-                controller: _tabController,
-                indicatorColor: childColor,
-                indicatorWeight: 3,
-                labelColor: childColor,
-                unselectedLabelColor: Colors.white38,
-                tabs: const [
-                  Tab(icon: Icon(Icons.person), text: 'Profil'),
-                  Tab(icon: Icon(Icons.timer), text: 'Écran'),
-                  Tab(icon: Icon(Icons.timeline_rounded), text: 'Historique'),
-                  Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
-                ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroCardBack(
+    ChildModel child,
+    FamilyProvider fp,
+    List<Color> gradient,
+    Color frameColor,
+    Color color,
+  ) {
+    final history = fp.history.where((h) => h.childId == child.id).toList();
+    history.sort((a, b) => b.date.compareTo(a.date));
+    final last5 = history.take(5).toList();
+
+    return Container(
+      key: const ValueKey('back'),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      height: 480,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.bottomLeft,
+          end: Alignment.topRight,
+          colors: gradient.reversed.toList(),
+        ),
+        border: Border.all(color: frameColor, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: frameColor.withOpacity(0.4),
+            blurRadius: 18,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Text(
+                '📋 FICHE ${child.name.toUpperCase()}',
+                style: TextStyle(
+                  color: frameColor,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                  fontSize: 14,
+                ),
               ),
             ),
-            body: TabBarView(
-              controller: _tabController,
+            const SizedBox(height: 16),
+            // Streak
+            _streakRow(child, frameColor),
+            const SizedBox(height: 12),
+            const Divider(color: Colors.white12),
+            const SizedBox(height: 8),
+            Text(
+              '🕒 Dernières activités',
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ...last5.map((h) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Text(
+                        h.points > 0 ? '✅' : '❌',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          h.reason,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '${h.points > 0 ? '+' : ''}${h.points}',
+                        style: TextStyle(
+                          color: h.points > 0
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+            const Spacer(),
+            Center(
+              child: Text(
+                '↻ Appuie pour le recto',
+                style: TextStyle(color: Colors.white38, fontSize: 10),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statCell(
+      String emoji, String label, String value, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 16)),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white54,
+            fontSize: 8,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _dividerV() => Container(
+        height: 40,
+        width: 1,
+        color: Colors.white12,
+      );
+
+  Widget _buildLevelBar(ChildModel child, Color frameColor) {
+    final progress = child.levelProgress;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              child.levelTitle,
+              style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600),
+            ),
+            Text(
+              '${(progress * 100).toInt()}% → NIV.${child.level + 1}',
+              style:
+                  const TextStyle(color: Colors.white38, fontSize: 10),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.white12,
+            valueColor: AlwaysStoppedAnimation(frameColor),
+            minHeight: 5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _streakRow(ChildModel child, Color frameColor) {
+    final streak = child.streakDays ?? 0;
+    return AnimatedBuilder(
+      animation: _streakBounce,
+      builder: (_, __) {
+        return Row(
+          children: [
+            Transform.scale(
+              scale: streak > 0 ? _streakBounce.value : 1.0,
+              child: Text(
+                streak > 0 ? '🔥' : '💤',
+                style: const TextStyle(fontSize: 28),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildProfileTab(child, fp),
-                _buildScreenTimeTab(child, fp, isParent),
-                _buildHistoryTab(child, fp),
-                _buildBadgesTab(child, fp),
+                Text(
+                  streak > 0
+                      ? '$streak jour${streak > 1 ? 's' : ''} sans pénalité !'
+                      : 'Aucun streak actif',
+                  style: TextStyle(
+                    color: frameColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  streak >= 7
+                      ? '🏆 Badge streak débloqué !'
+                      : streak > 0
+                          ? '${7 - streak} jour(s) pour le badge 🏆'
+                          : 'Évite les pénalités pour démarrer',
+                  style: const TextStyle(
+                      color: Colors.white54, fontSize: 11),
+                ),
               ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ─── Sélecteur enfant ────────────────────
+  void _showChildSwitcher(FamilyProvider fp) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text(
+            'Choisir un enfant',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          ...fp.children.map((c) {
+            final selected = c.id == _selectedChildId;
+            return ListTile(
+              leading: _buildAvatar(c, 22, showFrame: false),
+              title: Text(c.name,
+                  style: const TextStyle(color: Colors.white)),
+              subtitle: Text('${c.points} pts',
+                  style: const TextStyle(color: Colors.white54)),
+              trailing: selected
+                  ? const Icon(Icons.check_circle,
+                      color: Colors.greenAccent)
+                  : null,
+              onTap: () {
+                setState(() => _selectedChildId = c.id);
+                Navigator.pop(context);
+              },
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ─── Édition bannière ────────────────────
+  Future<void> _editBanner(ChildModel child, FamilyProvider fp,
+      {required bool requirePin}) async {
+    if (requirePin) {
+      final pin = context.read<PinProvider>();
+      bool ok = false;
+      await showDialog(
+        context: context,
+        builder: (ctx) {
+          final ctrl = TextEditingController();
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1A1A2E),
+            title: const Text('PIN parent',
+                style: TextStyle(color: Colors.white)),
+            content: TextField(
+              controller: ctrl,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Code PIN',
+                labelStyle: TextStyle(color: Colors.white54),
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Annuler')),
+              ElevatedButton(
+                onPressed: () {
+                  if (pin.checkPin(ctrl.text)) {
+                    ok = true;
+                    Navigator.pop(ctx);
+                  } else {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('PIN incorrect')),
+                    );
+                  }
+                },
+                child: const Text('Valider'),
+              ),
+            ],
+          );
+        },
+      );
+      if (!ok) return;
+    }
+
+    // Picker image
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1200,
+    );
+    if (xfile == null) return;
+
+    final bytes = await xfile.readAsBytes();
+    final b64 = base64Encode(bytes);
+    final updated = child.copyWith(bannerBase64: b64);
+    await fp.saveChild(updated);
+    if (mounted) setState(() {});
+  }
+
+  // ─── Édition photo profil ────────────────
+  Future<void> _editPhoto(ChildModel child, FamilyProvider fp) async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 600,
+    );
+    if (xfile == null) return;
+    final bytes = await xfile.readAsBytes();
+    final b64 = base64Encode(bytes);
+
+    // Historique des photos
+    final prev = List<String>.from(child.previousPhotos ?? []);
+    if (child.photoBase64 != null && child.photoBase64!.isNotEmpty) {
+      prev.insert(0, child.photoBase64!);
+      if (prev.length > 5) prev.removeLast();
+    }
+
+    final updated = child.copyWith(photoBase64: b64, previousPhotos: prev);
+    await fp.saveChild(updated);
+    if (mounted) setState(() {});
+  }
+
+  // ─────────────────────────────────────────
+  //  BUILD PRINCIPAL
+  // ─────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<FamilyProvider>(
+      builder: (context, fp, _) {
+        final children = fp.children;
+        if (children.isEmpty) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF0F0F1E),
+            body: Center(
+              child: Text('Aucun enfant',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+          );
+        }
+
+        if (_selectedChildId == null ||
+            !children.any((c) => c.id == _selectedChildId)) {
+          _selectedChildId = children.first.id;
+        }
+        final child = children.firstWhere((c) => c.id == _selectedChildId);
+        final color = _childColor(child);
+        final frameColor = _frameColor(child.level);
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF0F0F1E),
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new,
+                  color: Colors.white70),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Row(
+              children: [
+                _buildAvatar(child, 16, showFrame: false),
+                const SizedBox(width: 8),
+                Text(
+                  child.name,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            actions: [
+              if (children.length > 1)
+                TextButton.icon(
+                  onPressed: () => _showChildSwitcher(fp),
+                  icon: const Icon(Icons.swap_horiz,
+                      color: Colors.white70, size: 18),
+                  label: const Text('Changer',
+                      style: TextStyle(color: Colors.white70)),
+                ),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: color,
+              labelColor: color,
+              unselectedLabelColor: Colors.white38,
+              tabs: const [
+                Tab(icon: Icon(Icons.person), text: 'Profil'),
+                Tab(icon: Icon(Icons.tv), text: 'Écran'),
+                Tab(icon: Icon(Icons.history), text: 'Historique'),
+                Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
+              ],
+            ),
+          ),
+          body: AnimatedBackground(
+            child: FadeTransition(
+              opacity: _contentFade,
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildProfileTab(child, fp, color, frameColor),
+                  _buildScreenTab(child, fp, color),
+                  _buildHistoryTab(child, fp, color),
+                  _buildBadgesTab(child, fp, color),
+                ],
+              ),
             ),
           ),
         );
@@ -524,1316 +1097,119 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─── Onglet Profil ────────────────────────────────────────────────────────
-  Widget _buildProfileTab(ChildModel child, FamilyProvider fp) {
-    final childColor = _childColor(child);
-    final history = fp.getHistoryForChild(child.id);
-    final level = child.currentLevelNumber;
-
+  // ─────────────────────────────────────────
+  //  TAB PROFIL
+  // ─────────────────────────────────────────
+  Widget _buildProfileTab(ChildModel child, FamilyProvider fp,
+      Color color, Color frameColor) {
     return SingleChildScrollView(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(top: 120, bottom: 24),
       child: Column(
         children: [
-          // ✅ CORRECTIF photo : AnimatedBuilder sur profileController SEUL
-          // Le glow est dans un AnimatedBuilder séparé qui ne touche PAS à l'Opacity
-          AnimatedBuilder(
-            animation: _profileController,
-            builder: (context, _) {
-              final scaleVal = _profileScale.value.clamp(0.0, 1.05);
-              final fadeVal  = _profileFade.value.clamp(0.0, 1.0);
-              return Opacity(
-                opacity: fadeVal,
-                child: Transform.scale(
-                  scale: scaleVal,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 32),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          childColor.withOpacity(0.25),
-                          childColor.withOpacity(0.05),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // ✅ Halo dans son propre AnimatedBuilder
-                            AnimatedBuilder(
-                              animation: _glowAnim,
-                              builder: (_, __) => Container(
-                                width: 130,
-                                height: 130,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: childColor.withOpacity(
-                                          _glowAnim.value * 0.6),
-                                      blurRadius: 40,
-                                      spreadRadius: 12,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            // Anneau
-                            Container(
-                              width: 118,
-                              height: 118,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: childColor, width: 3),
-                              ),
-                            ),
-                            // ✅ Photo stable — pas dans le AnimatedBuilder du glow
-                            _buildChildAvatar(child, radius: 54),
-                            // Badge niveau
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: childColor,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                      color: Colors.black38, width: 2),
-                                ),
-                                child: Text('Niv.$level',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(child.name.toUpperCase(),
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.5,
-                                shadows: [
-                                  Shadow(
-                                      color: childColor.withOpacity(0.7),
-                                      blurRadius: 12)
-                                ])),
-                        const SizedBox(height: 6),
-                        TweenAnimationBuilder<int>(
-                          tween: IntTween(begin: 0, end: child.points),
-                          duration: const Duration(milliseconds: 2000),
-                          curve: Curves.easeOut,
-                          builder: (context, value, _) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18, vertical: 8),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: [
-                                  childColor.withOpacity(0.3),
-                                  childColor.withOpacity(0.1),
-                                ]),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                    color: childColor.withOpacity(0.5)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.stars_rounded,
-                                      color: childColor, size: 18),
-                                  const SizedBox(width: 6),
-                                  Text('$value points',
-                                      style: TextStyle(
-                                          color: childColor,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        _buildMiniEarnedBadges(child, fp),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+          // ── Hero Card ──
+          _buildHeroCard(child, fp),
 
+          const SizedBox(height: 8),
+
+          // ── Boutons d'action rapide ──
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
               children: [
-                Row(children: [
-                  Expanded(child: _buildStatCard(
-                    icon: Icons.timeline_rounded,
-                    label: 'Activités',
-                    value: '${history.length}',
-                    color: childColor,
-                  )),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildStatCard(
-                    icon: Icons.military_tech_rounded,
-                    label: 'Niveau',
-                    value: 'Niv. $level',
-                    color: Colors.amber,
-                  )),
-                ]),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(child: _buildStatCard(
-                    icon: Icons.thumb_up_rounded,
-                    label: 'Bonus',
-                    value: '${history.where((h) => h.isBonus).length}',
-                    color: Colors.greenAccent,
-                  )),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildStatCard(
-                    icon: Icons.thumb_down_rounded,
-                    label: 'Pénalités',
-                    value: '${history.where((h) => !h.isBonus).length}',
-                    color: Colors.redAccent,
-                  )),
-                ]),
-                const SizedBox(height: 12),
-                _buildStatCard(
-                  icon: Icons.tv_rounded,
-                  label: 'Temps écran samedi',
-                  value: _formatMinutes(fp.getSaturdayMinutes(child.id)),
-                  color: Colors.blueAccent,
-                  fullWidth: true,
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: color,
+                      side: BorderSide(color: color.withOpacity(0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => _editPhoto(child, fp),
+                    icon: const Icon(Icons.camera_alt, size: 16),
+                    label: const Text('Photo', style: TextStyle(fontSize: 12)),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                _buildNextBadgeProgress(child, fp),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniEarnedBadges(ChildModel child, FamilyProvider fp) {
-    final earned = fp.getBadgesForChild(child.id);
-    if (earned.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ...earned.take(5).map((b) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: Container(
-                  width: 32, height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.1),
-                    border: Border.all(color: Colors.white24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: frameColor,
+                      side: BorderSide(color: frameColor.withOpacity(0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () =>
+                        _editBanner(child, fp, requirePin: false),
+                    icon: const Icon(Icons.image, size: 16),
+                    label: const Text('Bannière', style: TextStyle(fontSize: 12)),
                   ),
-                  child: Center(
-                      child: Text(b.powerEmoji,  // ✅ powerEmoji pas icon
-                          style: const TextStyle(fontSize: 16))),
                 ),
-              )),
-          if (earned.length > 5)
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.1)),
-              child: Center(
-                child: Text('+${earned.length - 5}',
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 10)),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    bool fullWidth = false,
-  }) {
-    return Container(
-      width: fullWidth ? double.infinity : null,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.25)),
-      ),
-      child: fullWidth
-          ? Row(children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: color.withOpacity(0.15)),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                  child: Text(label,
-                      style: TextStyle(
-                          color: color.withOpacity(0.7), fontSize: 13))),
-              Text(value,
-                  style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20)),
-            ])
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Icon(icon, color: color, size: 18),
-                  const SizedBox(width: 6),
-                  Text(label,
-                      style: TextStyle(
-                          color: color.withOpacity(0.7), fontSize: 12)),
-                ]),
-                const SizedBox(height: 8),
-                Text(value,
-                    style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22)),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildNextBadgeProgress(ChildModel child, FamilyProvider fp) {
-    final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
-    final childColor = _childColor(child);
-    final nextBadge = allBadges
-        .where((b) =>
-            !child.badgeIds.contains(b.id) &&
-            b.requiredPoints > child.points)
-        .fold<BadgeModel?>(null, (closest, b) {
-      if (closest == null) return b;
-      return b.requiredPoints < closest.requiredPoints ? b : closest;
-    });
-
-    if (nextBadge == null) {
-      return GlassCard(
-        child: Row(children: [
-          const Text('🏆', style: TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text('Tous les badges débloqués !',
-                style: TextStyle(
-                    color: Colors.amber, fontWeight: FontWeight.bold)),
-          ),
-        ]),
-      );
-    }
-
-    final progress =
-        (child.points / nextBadge.requiredPoints).clamp(0.0, 1.0);
-    final remaining = nextBadge.requiredPoints - child.points;
-
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Text(nextBadge.powerEmoji,  // ✅ powerEmoji
-                style: const TextStyle(fontSize: 22)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Prochain : ${nextBadge.name}',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13)),
-                  Text('Encore $remaining pts',
-                      style: const TextStyle(
-                          color: Colors.white54, fontSize: 11)),
-                ],
-              ),
-            ),
-            Text('${(progress * 100).round()}%',
-                style: TextStyle(
-                    color: childColor, fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 6,
-              backgroundColor: Colors.white12,
-              valueColor: AlwaysStoppedAnimation(childColor),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Onglet Temps écran ───────────────────────────────────────────────────
-  Widget _buildScreenTimeTab(
-      ChildModel child, FamilyProvider fp, bool isParent) {
-    final schoolAvg = fp.getWeeklySchoolAverage(child.id);
-    final behaviorScore = _getBehaviorScoreForSelectedDays(fp);
-    final globalScore =
-        fp.getGlobalScoreForDays(_currentChildId, _joursSources);
-    final bonusMinutes = fp.getParentBonusMinutes(child.id);
-    final immunities = fp.getImmunitiesForChild(child.id);
-    final immunityBonus = immunities
-        .where((im) => im.isUsable)
-        .fold<int>(0, (s, im) => s + im.availableLines);
-    final tempsCalcule = _calculerTempsEcranPourJour(fp);
-    final schoolNotes = _getSchoolNotes(fp);
-    final behaviorNotes = _getBehaviorNotes(fp);
-    final cercleMinutes = tempsCalcule;
-    final ratio = (cercleMinutes / 180).clamp(0.0, 1.0);
-    final punishmentsActives = fp.punishments
-        .where((p) => p.childId == child.id && !p.isCompleted)
-        .toList();
-    final totalLignesRestantes = punishmentsActives.fold<int>(
-        0, (s, p) => s + (p.totalLines - p.completedLines));
-    final hasPendingValidation =
-        punishmentsActives.any((p) => p.pendingValidation);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (punishmentsActives.isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  Colors.red.withOpacity(0.14),
-                  Colors.deepOrange.withOpacity(0.08),
-                ]),
-                borderRadius: BorderRadius.circular(16),
-                border:
-                    Border.all(color: Colors.redAccent.withOpacity(0.45)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(children: [
-                    Text('✏️', style: TextStyle(fontSize: 20)),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text('Lignes de punition en cours',
-                          style: TextStyle(
-                              color: Colors.redAccent,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white54,
+                      side: const BorderSide(color: Colors.white24),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
-                  ]),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Il te reste $totalLignesRestantes ligne${totalLignesRestantes > 1 ? 's' : ''} à écrire.',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 13),
+                    onPressed: () =>
+                        _editBanner(child, fp, requirePin: true),
+                    icon: const Icon(Icons.lock, size: 16),
+                    label: const Text('Bannière 🔒',
+                        style: TextStyle(fontSize: 11)),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '⚠️ Pense à les faire avant de jouer à la console !',
-                    style: TextStyle(
-                        color: Colors.orangeAccent,
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic),
-                  ),
-                  if (hasPendingValidation) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: Colors.orange.withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.hourglass_top_rounded,
-                                color: Colors.orange, size: 14),
-                            SizedBox(width: 6),
-                            Text('En attente de validation parent',
-                                style: TextStyle(
-                                    color: Colors.orange,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600)),
-                          ]),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                Colors.cyan.withOpacity(0.12),
-                Colors.blue.withOpacity(0.06),
-              ]),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.cyan.withOpacity(0.25)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.cyan.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.bar_chart_rounded,
-                        color: Colors.cyan, size: 16),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('Résumé de la semaine',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700)),
-                ]),
-                const SizedBox(height: 14),
-                Row(children: [
-                  Expanded(child: _miniScoreCard('📚', 'Scolaire',
-                      schoolAvg < 0 ? '--' : '${schoolAvg.toStringAsFixed(1)}/20',
-                      schoolAvg < 0 ? Colors.white38 : schoolAvg >= 10 ? Colors.greenAccent : Colors.redAccent)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _miniScoreCard('🧠', 'Comportement',
-                      '${behaviorScore.toStringAsFixed(1)}/20',
-                      behaviorScore >= 10 ? Colors.greenAccent : Colors.redAccent)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _miniScoreCard('🌟', 'Global',
-                      '${globalScore.toStringAsFixed(1)}/20',
-                      globalScore >= 10 ? Colors.amber : Colors.orangeAccent)),
-                ]),
-                const SizedBox(height: 12),
-                _miniDetailRow('🛡️ Immunités dispo',
-                    '$immunityBonus lignes', Colors.cyanAccent),
-                _miniDetailRow('🎁 Bonus parent',
-                    '+${_formatMinutes(bonusMinutes)}', Colors.purpleAccent),
-                const Divider(color: Colors.white12, height: 16),
-                _miniDetailRow('⭐ Score global',
-                    '${globalScore.toStringAsFixed(1)}/20', Colors.amber,
-                    bold: true),
+                ),
               ],
             ),
           ),
+
           const SizedBox(height: 16),
 
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.calculate_rounded,
-                        color: Colors.orange, size: 16),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('Calculer le temps d\'écran',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700)),
-                ]),
-                const SizedBox(height: 14),
-                const Text('Jour à calculer :',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 36,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _jours.length,
-                    itemBuilder: (context, i) {
-                      final isSelected = _jourCible == i;
-                      final minSource = _joursSources.isNotEmpty
-                          ? _joursSources.reduce((a, b) => a > b ? a : b)
-                          : -1;
-                      final isAvailable = i > minSource;
-                      return GestureDetector(
-                        onTap: isAvailable
-                            ? () => setState(() {
-                                  _jourCible = i;
-                                  _joursSources.removeWhere((s) => s >= i);
-                                })
-                            : null,
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.orange
-                                : isAvailable
-                                    ? Colors.white.withOpacity(0.06)
-                                    : Colors.white.withOpacity(0.02),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                                color: isSelected
-                                    ? Colors.orange
-                                    : Colors.white.withOpacity(
-                                        isAvailable ? 0.12 : 0.04)),
-                          ),
-                          child: Text(_jours[i],
-                              style: TextStyle(
-                                  color: isSelected
-                                      ? Colors.white
-                                      : isAvailable
-                                          ? Colors.white70
-                                          : Colors.white24,
-                                  fontSize: 11,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w700
-                                      : FontWeight.w400)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text('Basé sur les notes de :',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: List.generate(_jourCible, (i) {
-                    final isSelected = _joursSources.contains(i);
-                    return GestureDetector(
-                      onTap: () => setState(() {
-                        if (isSelected) _joursSources.remove(i);
-                        else _joursSources.add(i);
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF7C4DFF).withOpacity(0.25)
-                              : Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF7C4DFF)
-                                  : Colors.white.withOpacity(0.12)),
-                        ),
-                        child: Text(_jours[i],
-                            style: TextStyle(
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.white54,
-                                fontSize: 11,
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w400)),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      Colors.orange.withOpacity(0.12),
-                      Colors.deepOrange.withOpacity(0.06),
-                    ]),
-                    borderRadius: BorderRadius.circular(14),
-                    border:
-                        Border.all(color: Colors.orange.withOpacity(0.25)),
-                  ),
-                  child: Column(
-                    children: [
-                      Text('${_jours[_jourCible]} :',
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12)),
-                      const SizedBox(height: 4),
-                      TweenAnimationBuilder<int>(
-                        key: ValueKey(tempsCalcule),
-                        tween: IntTween(begin: 0, end: tempsCalcule),
-                        duration: const Duration(milliseconds: 800),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, val, _) => Text(
-                          _formatMinutes(val),
-                          style: TextStyle(
-                              color: tempsCalcule >= 120
-                                  ? Colors.greenAccent
-                                  : tempsCalcule >= 60
-                                      ? Colors.orange
-                                      : Colors.redAccent,
-                              fontSize: 36,
-                              fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                      Text('sur 3h max',
-                          style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
-                              fontSize: 11)),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: (tempsCalcule / 180).clamp(0.0, 1.0),
-                          minHeight: 7,
-                          backgroundColor: Colors.white.withOpacity(0.08),
-                          valueColor: AlwaysStoppedAnimation(
-                              tempsCalcule >= 120
-                                  ? Colors.greenAccent
-                                  : tempsCalcule >= 60
-                                      ? Colors.orange
-                                      : Colors.redAccent),
-                        ),
-                      ),
-                      if (bonusMinutes > 0) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          '+ ${_formatMinutes(bonusMinutes)} bonus parent inclus',
-                          style: const TextStyle(
-                              color: Colors.purpleAccent, fontSize: 11),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          // ── Stats cards ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildStatsGrid(child, fp, color),
           ),
-          const SizedBox(height: 16),
-
-          TweenAnimationBuilder<double>(
-            key: ValueKey('$_jourCible-$tempsCalcule'),
-            tween: Tween(begin: 0.0, end: ratio),
-            duration: const Duration(milliseconds: 2000),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, _) {
-              return Center(
-                child: SizedBox(
-                  width: 160,
-                  height: 160,
-                  child: CustomPaint(
-                    painter: _ScreenTimePainter(value, cercleMinutes),
-                    child: Center(
-                      child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TweenAnimationBuilder<int>(
-                              key: ValueKey(cercleMinutes),
-                              tween:
-                                  IntTween(begin: 0, end: cercleMinutes),
-                              duration:
-                                  const Duration(milliseconds: 2000),
-                              builder: (context, val, _) => Text(
-                                  _formatMinutes(val),
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                            Text(_jours[_jourCible],
-                                style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 11)),
-                          ]),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-
-          if (isParent) ...[
-            const Text('Bonus rapide',
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [15, 30, 60].map((mins) {
-                return TvFocusWrapper(
-                  onTap: () {
-                    fp.addScreenTimeBonus(
-                        child.id, mins, 'Bonus écran +${mins}min');
-                    _showBonusAnimation(mins);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        Colors.cyan.withOpacity(0.3),
-                        Colors.blue.withOpacity(0.3)
-                      ]),
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: Colors.cyan.withOpacity(0.5)),
-                    ),
-                    child: Text('+${mins}min',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold)),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            TvFocusWrapper(
-              onTap: () => _showCustomBonusDialog(child, fp),
-              child: GlassCard(
-                child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                  Icon(Icons.add_circle, color: Colors.cyan[300]),
-                  const SizedBox(width: 8),
-                  Text('Bonus personnalisé',
-                      style: TextStyle(color: Colors.cyan[300])),
-                ]),
-              ),
-            ),
-          ],
-          const SizedBox(height: 24),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  const Text('🧠', style: TextStyle(fontSize: 18)),
-                  const SizedBox(width: 8),
-                  const Text('Notes comportementales',
-                      style: TextStyle(
-                          color: Colors.purpleAccent,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700)),
-                  const Spacer(),
-                  if (_joursSources.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color:
-                            const Color(0xFF7C4DFF).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: const Color(0xFF7C4DFF)
-                                .withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        (_joursSources.toList()
-                              ..sort((a, b) => a.compareTo(b)))
-                            .map((i) => _jours[i].substring(0, 3))
-                            .join(', '),
-                        style: const TextStyle(
-                            color: Color(0xFF7C4DFF),
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                ]),
-                const SizedBox(height: 10),
-                if (behaviorNotes.isEmpty)
-                  _emptyNotes('Aucune note comportementale',
-                      Icons.psychology_outlined)
-                else
-                  ...behaviorNotes.take(4).map((n) {
-                    final pts = n['points'] as int;
-                    final isPos = pts >= 0;
-                    final c = isPos ? Colors.greenAccent : Colors.redAccent;
-                    final date = n['date'] as DateTime;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: c.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: c.withOpacity(0.2)),
-                      ),
-                      child: Row(children: [
-                        Container(
-                          width: 38, height: 38,
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: c.withOpacity(0.15)),
-                          child: Center(
-                              child: Text(isPos ? '+$pts' : '$pts',
-                                  style: TextStyle(
-                                      color: c,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 13))),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                            child: Text(n['subject'] as String,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2)),
-                        Text(
-                            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}',
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 10)),
-                      ]),
-                    );
-                  }),
-                const SizedBox(height: 14),
-                const Divider(color: Colors.white12),
-                const SizedBox(height: 10),
-                Row(children: [
-                  const Text('📝', style: TextStyle(fontSize: 14)),
-                  const SizedBox(width: 8),
-                  const Text('Notes scolaires',
-                      style: TextStyle(
-                          color: Colors.orangeAccent,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600)),
-                  const Spacer(),
-                  if (schoolNotes.isNotEmpty)
-                    Text(
-                      'Moy. ${(schoolNotes.fold<double>(0, (s, n) => s + (n['percent'] as double)) / schoolNotes.length).round()}%',
-                      style: const TextStyle(
-                          color: Colors.orangeAccent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600),
-                    ),
-                ]),
-                const SizedBox(height: 8),
-                if (schoolNotes.isEmpty)
-                  _emptyNotes(
-                      'Aucune note scolaire', Icons.school_outlined)
-                else
-                  ...schoolNotes.take(3).map((note) {
-                    final percent = note['percent'] as double;
-                    final isGood = percent >= 50;
-                    final nc =
-                        isGood ? Colors.greenAccent : Colors.redAccent;
-                    final stars = _percentToStars(percent);
-                    final date = note['date'] as DateTime;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: nc.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
-                        border:
-                            Border.all(color: nc.withOpacity(0.12)),
-                      ),
-                      child: Row(children: [
-                        Container(
-                          width: 32, height: 32,
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: nc.withOpacity(0.1)),
-                          child: Center(
-                              child: Text('${percent.round()}%',
-                                  style: TextStyle(
-                                      color: nc,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 9))),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Text(note['subject'] as String,
-                                  style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500),
-                                  overflow: TextOverflow.ellipsis),
-                              Row(
-                                  children: List.generate(
-                                      stars,
-                                      (i) => const Text('⭐',
-                                          style: TextStyle(
-                                              fontSize: 8)))),
-                            ],
-                          ),
-                        ),
-                        Text(
-                            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}',
-                            style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 10)),
-                      ]),
-                    );
-                  }),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  // ─── Onglet Historique ────────────────────────────────────────────────────
-  Widget _buildHistoryTab(ChildModel child, FamilyProvider fp) {
-    final history = fp.getHistoryForChild(child.id);
-    final childColor = _childColor(child);
-    return Column(
+  Widget _buildStatsGrid(
+      ChildModel child, FamilyProvider fp, Color color) {
+    final history = fp.history.where((h) => h.childId == child.id).toList();
+    final bonuses = history.where((h) => h.points > 0).length;
+    final penalties = history.where((h) => h.points < 0).length;
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.6,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(
-            children: [
-              _summaryChip('${history.where((h) => h.isBonus).length}',
-                  '✅ Bonus', Colors.greenAccent),
-              const SizedBox(width: 8),
-              _summaryChip(
-                  '${history.where((h) => !h.isBonus).length}',
-                  '❌ Pénalités',
-                  Colors.redAccent),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        TimelineScreen(initialChildId: child.id),
-                  ),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: childColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: childColor.withOpacity(0.5)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.open_in_full_rounded,
-                          color: childColor, size: 14),
-                      const SizedBox(width: 4),
-                      Text('Tout voir',
-                          style: TextStyle(
-                              color: childColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(child: TimelineWidget(entries: history)),
+        _statCard('🎯', 'Bonus', '$bonuses', Colors.greenAccent),
+        _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
+        _statCard(
+            '🏆', 'Niveau', '${child.level} – ${child.levelTitle}', color),
+        _statCard('🛡️', 'Immunités',
+            '${fp.getTotalAvailableImmunity(child.id)} lignes', Colors.amberAccent),
       ],
     );
   }
 
-  Widget _summaryChip(String value, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(value,
-              style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13)),
-          const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  color: color.withOpacity(0.7), fontSize: 11)),
-        ],
-      ),
-    );
-  }
-
-  // ─── Onglet Badges ────────────────────────────────────────────────────────
-  // ✅ Style carré avec barre de progression — comme l'original mais amélioré
-  Widget _buildBadgesTab(ChildModel child, FamilyProvider fp) {
-    final earned = fp.getBadgesForChild(child.id);
-    final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
-    final locked =
-        allBadges.where((b) => !child.badgeIds.contains(b.id)).toList();
-    final childColor = _childColor(child);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-
-          // ── Badges débloqués ──
-          if (earned.isNotEmpty) ...[
-            Row(children: [
-              Text('🏆 Badges débloqués',
-                  style: TextStyle(
-                      color: childColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16)),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: childColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text('${earned.length}',
-                    style: TextStyle(
-                        color: childColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12)),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            // ✅ Style liste rectangulaire avec barre (comme l'original)
-            ...earned.asMap().entries.map((entry) {
-              final i = entry.key;
-              final badge = entry.value;
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: Duration(milliseconds: 300 + i * 80),
-                curve: Curves.easeOutBack,
-                builder: (_, val, ch) => Transform.translate(
-                    offset: Offset(30 * (1 - val), 0),
-                    child: Opacity(opacity: val.clamp(0.0, 1.0), child: ch)),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      Colors.amber.withOpacity(0.15),
-                      Colors.orange.withOpacity(0.05),
-                    ]),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.amber.withOpacity(0.35)),
-                  ),
-                  child: Row(children: [
-                    // Emoji dans un carré
-                    Container(
-                      width: 52, height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: Colors.amber.withOpacity(0.3)),
-                      ),
-                      child: Center(
-                        child: Text(badge.powerEmoji,  // ✅ powerEmoji
-                            style: const TextStyle(fontSize: 26)),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(badge.name,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14)),
-                          const SizedBox(height: 2),
-                          Text(badge.description,
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 11),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Badge "Débloqué"
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text('✓',
-                          style: TextStyle(
-                              color: Colors.amber,
-                              fontWeight: FontWeight.bold)),
-                    ),
-                  ]),
-                ),
-              );
-            }),
-            const SizedBox(height: 24),
-          ],
-
-          // ── À débloquer avec barre de progression ──
-          if (locked.isNotEmpty) ...[
-            Row(children: [
-              const Text('🔒 À débloquer',
-                  style: TextStyle(
-                      color: Colors.white54,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14)),
-              const Spacer(),
-              Text('${child.points} pts actuels',
-                  style: const TextStyle(
-                      color: Colors.white38, fontSize: 11)),
-            ]),
-            const SizedBox(height: 12),
-            ...locked.map((badge) {
-              final progress =
-                  (child.points / badge.requiredPoints).clamp(0.0, 1.0);
-              final remaining = badge.requiredPoints - child.points;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.03),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Row(children: [
-                  // Emoji grisé dans carré
-                  Opacity(
-                    opacity: 0.3,
-                    child: Container(
-                      width: 52, height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: Center(
-                        child: Text(badge.powerEmoji,  // ✅ powerEmoji
-                            style: const TextStyle(fontSize: 26)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(badge.name,
-                            style: const TextStyle(
-                                color: Colors.white54,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14)),
-                        const SizedBox(height: 6),
-                        // ✅ Barre de progression dans le rectangle
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 6,
-                            backgroundColor: Colors.white10,
-                            valueColor:
-                                AlwaysStoppedAnimation(childColor),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          remaining > 0
-                              ? '${child.points} / ${badge.requiredPoints} pts — encore $remaining pts'
-                              : '${badge.requiredPoints} pts',
-                          style: const TextStyle(
-                              color: Colors.white30, fontSize: 10),
-                        ),
-                      ],
-                    ),
-                  ),
-                ]),
-              );
-            }),
-          ],
-
-          if (earned.isEmpty && locked.isEmpty)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(40),
-                child: Text('Aucun badge disponible',
-                    style: TextStyle(color: Colors.white38)),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Helpers UI ───────────────────────────────────────────────────────────
-  Widget _miniScoreCard(
+  Widget _statCard(
       String emoji, String label, String value, Color color) {
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
+    return GlassCard(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 18)),
+          Text(emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
@@ -1842,161 +1218,488 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   fontSize: 13)),
           Text(label,
               style: const TextStyle(
-                  color: Colors.white38, fontSize: 9)),
+                  color: Colors.white54, fontSize: 10)),
         ],
       ),
     );
   }
 
-  Widget _miniDetailRow(String label, String value, Color color,
-      {bool bold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(children: [
-        Text(label,
-            style: TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                fontWeight:
-                    bold ? FontWeight.w700 : FontWeight.normal)),
-        const Spacer(),
-        Text(value,
-            style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: bold ? 14 : 12)),
-      ]),
-    );
-  }
+  // ─────────────────────────────────────────
+  //  TAB ÉCRAN (simplifié — identique à avant)
+  // ─────────────────────────────────────────
+  Widget _buildScreenTab(
+      ChildModel child, FamilyProvider fp, Color color) {
+    // Récupère les notes et calcule le temps écran
+    final schoolNotes = _getSchoolNotes(child, fp);
+    final behaviorNotes = _getBehaviorNotes(child, fp);
+    final immunities = fp.getUsableImmunitiesForChild(child.id);
+    final immunityBonus =
+        immunities.fold(0, (sum, imm) => sum + imm.availableLines);
+    final bonusMinutes = fp.history
+        .where((h) =>
+            h.childId == child.id &&
+            h.reason.toLowerCase().contains('bonus'))
+        .fold(0, (sum, h) => sum + h.points);
 
-  Widget _emptyNotes(String msg, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+    final jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi',
+        'Samedi', 'Dimanche'];
+    _selectedDay ??= jours[DateTime.now().weekday - 1];
+
+    final minutes = _calculerTempsEcranPourJour(
+        _selectedDay!, schoolNotes, behaviorNotes, bonusMinutes, child, fp);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+      child: Column(
         children: [
-          Icon(icon, color: Colors.white24, size: 18),
-          const SizedBox(width: 8),
-          Text(msg,
-              style: const TextStyle(
-                  color: Colors.white24, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  void _showBonusAnimation(int minutes) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (_) => Positioned(
-        top: MediaQuery.of(context).size.height * 0.3,
-        left: 0, right: 0,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.elasticOut,
-          builder: (_, v, ch) =>
-              Transform.scale(scale: v, child: ch),
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 24, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  Colors.cyan.withOpacity(0.9),
-                  Colors.blue.withOpacity(0.9),
-                ]),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.cyan.withOpacity(0.4),
-                      blurRadius: 20)
+          // Résumé semaine
+          GlassCard(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('📊 Résumé de la semaine',
+                      style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                  const SizedBox(height: 8),
+                  _infoRow('🛡️ Immunités disponibles',
+                      '$immunityBonus lignes', Colors.amberAccent),
+                  _infoRow('⏱️ Bonus parent',
+                      '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
+                      Colors.greenAccent),
+                  _infoRow(
+                      '📅 Jour sélectionné', _selectedDay!, color),
+                  _infoRow('⏰ Temps calculé',
+                      _formatMinutes(minutes), Colors.white),
                 ],
               ),
-              child: Text('+${minutes}min ⏱',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold)),
             ),
           ),
-        ),
+
+          const SizedBox(height: 16),
+
+          // Sélecteur jour
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: jours.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (_, i) {
+                final j = jours[i];
+                final selected = j == _selectedDay;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedDay = j),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? color.withOpacity(0.25)
+                          : Colors.white10,
+                      borderRadius: BorderRadius.circular(10),
+                      border: selected
+                          ? Border.all(color: color)
+                          : null,
+                    ),
+                    child: Text(
+                      j.substring(0, 3),
+                      style: TextStyle(
+                        color: selected ? color : Colors.white54,
+                        fontWeight: selected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Cercle progression
+          SizedBox(
+            height: 200,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedBuilder(
+                  animation: _contentFade,
+                  builder: (_, __) => CustomPaint(
+                    size: const Size(180, 180),
+                    painter: _ScreenTimePainter(
+                      progress: (minutes / 180).clamp(0, 1),
+                      animValue: _contentFade.value,
+                    ),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatMinutes(minutes),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 28,
+                      ),
+                    ),
+                    const Text('temps écran',
+                        style: TextStyle(
+                            color: Colors.white54, fontSize: 12)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Boutons bonus rapides
+          _buildQuickBonusRow(child, fp, color),
+        ],
       ),
     );
-    overlay.insert(entry);
-    Future.delayed(
-        const Duration(milliseconds: 1800), entry.remove);
   }
 
-  void _showCustomBonusDialog(ChildModel child, FamilyProvider fp) {
-    final ctrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Bonus personnalisé',
-            style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: 'Minutes',
-            labelStyle: TextStyle(color: Colors.white54),
-            suffixText: 'min',
-            suffixStyle: TextStyle(color: Colors.white38),
+  Widget _infoRow(String label, String value, Color vColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white60, fontSize: 12)),
+          Text(value,
+              style: TextStyle(
+                  color: vColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickBonusRow(
+      ChildModel child, FamilyProvider fp, Color color) {
+    return Row(
+      children: [15, 30, 60].map((min) {
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color.withOpacity(0.2),
+                foregroundColor: color,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                await fp.addHistoryEntry(
+                  childId: child.id,
+                  reason: 'Bonus parent +$min min',
+                  points: min,
+                );
+                _triggerBonusAnim('+$min min 🎉');
+              },
+              child: Text('+$min min',
+                  style: const TextStyle(fontSize: 12)),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler')),
-          FilledButton(
-            onPressed: () {
-              final mins = int.tryParse(ctrl.text) ?? 0;
-              if (mins > 0) {
-                fp.addScreenTimeBonus(child.id, mins,
-                    'Bonus écran personnalisé +${mins}min');
-                _showBonusAnimation(mins);
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Ajouter'),
+        );
+      }).toList(),
+    );
+  }
+
+  void _triggerBonusAnim(String text) {
+    setState(() {
+      _showBonusAnim = true;
+      _bonusAnimText = text;
+    });
+    _bonusFloatController.forward(from: 0).then((_) {
+      if (mounted) setState(() => _showBonusAnim = false);
+    });
+  }
+
+  // ─────────────────────────────────────────
+  //  TAB HISTORIQUE
+  // ─────────────────────────────────────────
+  Widget _buildHistoryTab(
+      ChildModel child, FamilyProvider fp, Color color) {
+    final history =
+        fp.history.where((h) => h.childId == child.id).toList();
+    final bonuses = history.where((h) => h.points > 0).length;
+    final penalties = history.where((h) => h.points < 0).length;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _statCard('✅', 'Bonus', '$bonuses',
+                    Colors.greenAccent),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _statCard('❌', 'Pénalités', '$penalties',
+                    Colors.redAccent),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TimelineWidget(childId: child.id, maxItems: 10),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: color,
+                side: BorderSide(color: color.withOpacity(0.5)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        TimelineScreen(childId: child.id)),
+              ),
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Voir tout l\'historique'),
+            ),
           ),
         ],
       ),
     );
   }
+
+  // ─────────────────────────────────────────
+  //  TAB BADGES
+  // ─────────────────────────────────────────
+  Widget _buildBadgesTab(
+      ChildModel child, FamilyProvider fp, Color color) {
+    final allBadges = fp.customBadges;
+    final earned =
+        allBadges.where((b) => child.badgeIds.contains(b.id)).toList();
+    final locked =
+        allBadges.where((b) => !child.badgeIds.contains(b.id)).toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('🏅 Badges obtenus (${earned.length})',
+              style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14)),
+          const SizedBox(height: 10),
+          if (earned.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text('Aucun badge encore obtenu',
+                    style: TextStyle(color: Colors.white38)),
+              ),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.9,
+              ),
+              itemCount: earned.length,
+              itemBuilder: (_, i) => _badgeEarnedCard(earned[i], color),
+            ),
+
+          const SizedBox(height: 20),
+
+          Text('🔒 Badges à débloquer (${locked.length})',
+              style: const TextStyle(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14)),
+          const SizedBox(height: 10),
+          ...locked.map((b) => _badgeLockedTile(b, child)),
+        ],
+      ),
+    );
+  }
+
+  Widget _badgeEarnedCard(BadgeModel badge, Color color) {
+    return GlassCard(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(badge.powerEmoji,
+              style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 4),
+          Text(
+            badge.name,
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 11),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _badgeLockedTile(BadgeModel badge, ChildModel child) {
+    final progress =
+        (child.points / badge.requiredPoints).clamp(0.0, 1.0);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border:
+            Border.all(color: Colors.white12, width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white10,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(badge.powerEmoji,
+                  style: const TextStyle(fontSize: 24)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(badge.name,
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13)),
+                Text(badge.description,
+                    style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: Colors.white12,
+                  valueColor: const AlwaysStoppedAnimation(
+                      Colors.amberAccent),
+                  minHeight: 5,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${child.points}/${badge.requiredPoints} pts',
+                  style: const TextStyle(
+                      color: Colors.white38, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────
+  //  HELPERS : Calcul temps écran
+  // ─────────────────────────────────────────
+  String _formatMinutes(int minutes) {
+    if (minutes <= 0) return '0 min';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h == 0) return '${m}min';
+    if (m == 0) return '${h}h';
+    return '${h}h${m.toString().padLeft(2, '0')}';
+  }
+
+  List<Map<String, dynamic>> _getSchoolNotes(
+      ChildModel child, FamilyProvider fp) {
+    return fp.history
+        .where((h) =>
+            h.childId == child.id &&
+            h.reason.toLowerCase().contains('note'))
+        .map((h) => {'note': h.points.toDouble(), 'reason': h.reason})
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _getBehaviorNotes(
+      ChildModel child, FamilyProvider fp) {
+    return fp.history
+        .where((h) =>
+            h.childId == child.id &&
+            !h.reason.toLowerCase().contains('note') &&
+            !h.reason.toLowerCase().contains('bonus'))
+        .take(10)
+        .map((h) => {'points': h.points, 'reason': h.reason})
+        .toList();
+  }
+
+  int _calculerTempsEcranPourJour(
+    String jour,
+    List<Map<String, dynamic>> schoolNotes,
+    List<Map<String, dynamic>> behaviorNotes,
+    int bonusMinutes,
+    ChildModel child,
+    FamilyProvider fp,
+  ) {
+    // Base selon jour
+    final isWeekend =
+        jour == 'Samedi' || jour == 'Dimanche';
+    int base = isWeekend ? 120 : 60;
+
+    // Score comportement moyen
+    if (behaviorNotes.isNotEmpty) {
+      final avg = behaviorNotes.fold(0, (s, n) => s + (n['points'] as int)) /
+          behaviorNotes.length;
+      if (avg > 0) base += 15;
+      if (avg < 0) base -= 15;
+    }
+
+    // Notes école
+    if (schoolNotes.isNotEmpty) {
+      final avg = schoolNotes.fold(0.0, (s, n) => s + (n['note'] as double)) /
+          schoolNotes.length;
+      if (avg >= 15) base += 20;
+      else if (avg >= 10) base += 0;
+      else base -= 20;
+    }
+
+    // Bonus parent
+    base += bonusMinutes;
+
+    // Immunités
+    final imm = fp.getTotalAvailableImmunity(child.id);
+    base += imm * 5; // 5 min par ligne d'immunité
+
+    return base.clamp(0, 300);
+  }
 }
-
-// ─── Painter cercle temps écran ──────────────────────────────────────────────
-class _ScreenTimePainter extends CustomPainter {
-  final double progress;
-  final int minutes;
-  _ScreenTimePainter(this.progress, this.minutes);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 12;
-
-    final bgPaint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10;
-    canvas.drawCircle(center, radius, bgPaint);
-
-    final color = minutes >= 120
-        ? Colors.greenAccent
-        : minutes >= 60
-            ? Colors.orange
-            : Colors.redAccent;
-
-    final fgPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: -pi / 2,
-        endAngle: -pi / 2 + 2 * pi * progress,
-        colors: [color.withOpacity(0.4), color],
-      ).createShader(
-          Rect.fromCircle(center:
