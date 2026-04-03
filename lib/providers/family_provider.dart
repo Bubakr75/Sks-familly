@@ -1,3 +1,5 @@
+// lib/providers/family_provider.dart
+
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -45,19 +47,19 @@ class FamilyProvider extends ChangeNotifier {
   String? _familyCode;
   String _currentParentName = 'Parent';
 
-  String               get currentParentName => _currentParentName;
-  List<ChildModel>     get children          => _children;
-  List<HistoryEntry>   get history           => _history;
-  List<GoalModel>      get goals             => _goals;
-  List<NoteModel>      get notes             => _notes;
-  List<PunishmentLines> get punishments      => _punishments;
-  List<ImmunityLines>  get immunities        => _immunities;
-  List<TribunalCase>   get tribunalCases     => _tribunalCases;
-  List<BadgeModel>     get customBadges      => _customBadges;
-  List<TradeModel>     get trades            => _trades;
-  String?              get familyCode        => _familyCode;
-  String?              get familyId          => _familyCode;
-  bool                 get isSyncEnabled     => _firestore.isConnected;
+  String                get currentParentName => _currentParentName;
+  List<ChildModel>      get children          => _children;
+  List<HistoryEntry>    get history           => _history;
+  List<GoalModel>       get goals             => _goals;
+  List<NoteModel>       get notes             => _notes;
+  List<PunishmentLines> get punishments       => _punishments;
+  List<ImmunityLines>   get immunities        => _immunities;
+  List<TribunalCase>    get tribunalCases     => _tribunalCases;
+  List<BadgeModel>      get customBadges      => _customBadges;
+  List<TradeModel>      get trades            => _trades;
+  String?               get familyCode        => _familyCode;
+  String?               get familyId          => _familyCode;
+  bool                  get isSyncEnabled     => _firestore.isConnected;
 
   List<ChildModel> get childrenSorted {
     final sorted = List<ChildModel>.from(_children);
@@ -70,6 +72,7 @@ class FamilyProvider extends ChangeNotifier {
   List<TribunalCase> get closedTribunalCases =>
       _tribunalCases.where((c) => c.status == TribunalStatus.closed).toList();
 
+  // ─────────────────────────────────────────────────────────
   Future<void> init() async {
     _childrenBox    = await Hive.openBox('children');
     _historyBox     = await Hive.openBox('history');
@@ -99,6 +102,7 @@ class FamilyProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  // ─────────────────────────────────────────────────────────
   void _loadLocal() {
     _children = _childrenBox.values
         .map((v) => ChildModel.fromMap(Map<String, dynamic>.from(jsonDecode(v as String))))
@@ -132,6 +136,7 @@ class FamilyProvider extends ChangeNotifier {
     _currentParentName = _metaBox.get('current_parent', defaultValue: 'Parent') as String;
   }
 
+  // ─────────────────────────────────────────────────────────
   void _setupFirestoreCallbacks() {
     _firestore.onChildrenChanged = (list, _) {
       _children = list;
@@ -188,6 +193,7 @@ class FamilyProvider extends ChangeNotifier {
     };
   }
 
+  // ─────────────────────────────────────────────────────────
   void _saveBoxFromList<T>(
     Box box,
     List<T> items,
@@ -200,6 +206,17 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _saveAllLocal() async {
+    _saveBoxFromList(_childrenBox,    _children,      (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_historyBox,     _history,       (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_goalsBox,       _goals,         (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_notesBox,       _notes,         (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_punishmentsBox, _punishments,   (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_immunitiesBox,  _immunities,    (e) => e.id, (e) => e.toMap());
+    _saveBoxFromList(_tradesBox,      _trades,        (e) => e.id, (e) => e.toMap());
+  }
+
+  // ─────────────────────────────────────────────────────────
   Future<void> reconnectFirestore() async {
     if (_firestore.isConnected) {
       _firestore.reconnect();
@@ -264,8 +281,21 @@ class FamilyProvider extends ChangeNotifier {
     return data;
   }
 
+  // ─── Enfants ───────────────────────────────────────────────
   ChildModel? getChild(String id) {
     try { return _children.firstWhere((c) => c.id == id); } catch (_) { return null; }
+  }
+
+  // ✅ AJOUT : méthodes history manquantes
+  List<HistoryEntry> getHistoryForChild(String childId) =>
+      _history.where((h) => h.childId == childId).toList();
+
+  Future<void> deleteHistoryEntry(String entryId) async {
+    _deletedEntryIds.add(entryId);
+    _history.removeWhere((h) => h.id == entryId);
+    await _historyBox.delete(entryId);
+    if (_firestore.isConnected) await _firestore.deleteHistoryEntry(entryId);
+    notifyListeners();
   }
 
   Future<void> addChild(String name, String avatar) async {
@@ -315,12 +345,13 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── Points & Historique ───────────────────────────────────
   Future<void> addPoints(
     String childId,
     int points,
     String reason, {
-    String category      = 'Bonus',
-    bool isBonus         = true,
+    String category       = 'Bonus',
+    bool isBonus          = true,
     String? proofPhoto,
     String? proofPhotoBase64,
     DateTime? date,
@@ -367,6 +398,7 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
+  // ─── Objectifs ─────────────────────────────────────────────
   List<GoalModel> getGoalsForChild(String childId) =>
       _goals.where((g) => g.childId == childId).toList();
 
@@ -400,6 +432,7 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── Notes texte ───────────────────────────────────────────
   List<NoteModel> getNotesForChild(String childId) =>
       _notes.where((n) => n.childId == childId).toList();
 
@@ -449,13 +482,14 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  // ── BARÈME PUNITIONS ──────────────────────────────────────────────────────
-  // 1–10   lignes → −0,80 pt
-  // 11–20  lignes → −1,20 pt
-  // 21–50  lignes → −1,80 pt
-  // 51–100 lignes → −2,50 pts
-  // 101–200 lignes → −3,50 pts
-  // 200+   lignes → −5,00 pts
+  // ─── Punitions ─────────────────────────────────────────────
+  // Barème :
+  // 1–10   lignes → 0.80 pt
+  // 11–20  lignes → 1.20 pt
+  // 21–50  lignes → 1.80 pt
+  // 51–100 lignes → 2.50 pts
+  // 101–200 lignes → 3.50 pts
+  // 200+   lignes → 5.00 pts
   double _calculerDeductionPunition(int totalLignes) {
     if (totalLignes <= 10)  return 0.80;
     if (totalLignes <= 20)  return 1.20;
@@ -481,7 +515,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   (deduction * 100).round(),
-      reason:   'Déduction automatique : $totalLines lignes (−$deduction pt comportement)',
+      reason:   'Déduction automatique : $totalLines lignes ($deduction pt comportement)',
       category: 'punition',
       isBonus:  false,
       actionBy: _currentParentName,
@@ -490,7 +524,6 @@ class FamilyProvider extends ChangeNotifier {
     _history.insert(0, entry);
     await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
     if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
-
     notifyListeners();
   }
 
@@ -533,6 +566,7 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ─── Immunités ─────────────────────────────────────────────
   Future<void> addImmunity(
     String childId,
     String reason,
@@ -560,7 +594,8 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   int getTotalAvailableImmunity(String childId) =>
-      _immunities.where((im) => im.childId == childId && im.isUsable)
+      _immunities
+          .where((im) => im.childId == childId && im.isUsable)
           .fold<int>(0, (s, im) => s + im.availableLines);
 
   List<ImmunityLines> getUsableImmunitiesForChild(String childId) =>
@@ -592,6 +627,7 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ─── Badges ────────────────────────────────────────────────
   List<BadgeModel> getBadgesForChild(String childId) {
     final child = getChild(childId); if (child == null) return [];
     final allBadges = [...BadgeModel.defaultBadges, ..._customBadges];
@@ -632,6 +668,7 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── Temps écran ───────────────────────────────────────────
   String _screenTimeKey(String childId, String key) {
     final now       = DateTime.now().toUtc();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
@@ -691,10 +728,10 @@ class FamilyProvider extends ChangeNotifier {
     final datesCochees = _getSelectedDates(joursSources);
     final entries = _history.where((h) {
       if (h.childId != childId) return false;
-      if (h.category == 'school_note' ||
+      if (h.category == 'school_note'      ||
           h.category == 'screen_time_bonus' ||
-          h.category == 'saturday_rating' ||
-          h.category == 'tribunal_vote' ||
+          h.category == 'saturday_rating'   ||
+          h.category == 'tribunal_vote'     ||
           h.category == 'tribunal_verdict') return false;
       final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
       return datesCochees.contains(entryDay);
@@ -756,7 +793,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   minutes.abs(),
-      reason:   '📺 $reason (${minutes > 0 ? '+' : ''}${minutes}min)',
+      reason:   '⏱ $reason (${minutes > 0 ? '+' : ''}${minutes}min)',
       category: 'screen_time_bonus',
       isBonus:  minutes > 0,
       actionBy: _currentParentName,
@@ -784,7 +821,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   rating,
-      reason:   '📋 Note samedi: $rating/20',
+      reason:   '⭐ Note samedi: $rating/20',
       category: 'saturday_rating',
       isBonus:  true,
       actionBy: _currentParentName,
@@ -805,6 +842,7 @@ class FamilyProvider extends ChangeNotifier {
   List<HistoryEntry> _getWeekSchoolNotes(String childId) =>
       _getWeekHistory(childId).where((h) => h.category == 'school_note').toList();
 
+  // ─── Tribunal ──────────────────────────────────────────────
   Future<void> addTribunalCase(TribunalCase tc) async {
     _tribunalCases.add(tc);
     await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
@@ -843,10 +881,12 @@ class FamilyProvider extends ChangeNotifier {
       TribunalParticipant(childId: accusedId,   role: TribunalRole.accused),
     ];
     if (prosecutionLawyerId != null) {
-      participants.add(TribunalParticipant(childId: prosecutionLawyerId, role: TribunalRole.prosecutionLawyer));
+      participants.add(TribunalParticipant(
+          childId: prosecutionLawyerId, role: TribunalRole.prosecutionLawyer));
     }
     if (defenseLawyerId != null) {
-      participants.add(TribunalParticipant(childId: defenseLawyerId, role: TribunalRole.defenseLawyer));
+      participants.add(TribunalParticipant(
+          childId: defenseLawyerId, role: TribunalRole.defenseLawyer));
     }
     if (witnessIds != null) {
       for (final wId in witnessIds) {
@@ -983,7 +1023,7 @@ class FamilyProvider extends ChangeNotifier {
       await addPoints(
         vote.childId,
         1,
-        '🗳️ Tribunal (juré): ${correct ? "bon vote ✅" : "mauvais vote ❌"}',
+        '⚖️ Tribunal (juré): ${correct ? "bon vote ✅" : "mauvais vote ❌"}',
         category: 'tribunal_vote',
         isBonus:  correct,
       );
@@ -1028,6 +1068,7 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ─── Échanges (Trades) ─────────────────────────────────────
   List<TradeModel> getPendingTradesForChild(String childId) =>
       _trades.where((t) => t.toChildId == childId && t.status == 'pending').toList();
 
@@ -1058,7 +1099,8 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> acceptTrade(String tradeId) async {
     final index = _trades.indexWhere((t) => t.id == tradeId);
     if (index == -1) return;
-    _trades[index] = _trades[index].copyWith(status: 'accepted', acceptedAt: DateTime.now());
+    _trades[index] = _trades[index].copyWith(
+        status: 'accepted', acceptedAt: DateTime.now());
     await _tradesBox.put(tradeId, jsonEncode(_trades[index].toMap()));
     if (_firestore.isConnected) await _firestore.saveTrade(_trades[index]);
     notifyListeners();
@@ -1091,99 +1133,30 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> completeTrade(String tradeId, {String? parentNote}) async {
+  Future<void> completeTrade(String tradeId) async {
     final index = _trades.indexWhere((t) => t.id == tradeId);
     if (index == -1) return;
-    _trades[index] = _trades[index].copyWith(
-      status:              'completed',
-      completedAt:         DateTime.now(),
-      parentValidatorNote: parentNote,
+    final trade = _trades[index];
+    // Transférer les lignes d'immunité
+    final fromImmunities = getUsableImmunitiesForChild(trade.fromChildId);
+    int linesToTransfer = trade.immunityLines;
+    for (final im in fromImmunities) {
+      if (linesToTransfer <= 0) break;
+      final use = linesToTransfer.clamp(0, im.availableLines);
+      im.usedLines += use;
+      linesToTransfer -= use;
+      await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
+      if (_firestore.isConnected) await _firestore.saveImmunity(im);
+    }
+    // Créer l'immunité côté destinataire
+    await addImmunity(
+      trade.toChildId,
+      'Échange avec ${getChild(trade.fromChildId)?.name ?? "?"} : ${trade.serviceDescription}',
+      trade.immunityLines,
     );
+    _trades[index] = _trades[index].copyWith(status: 'completed');
     await _tradesBox.put(tradeId, jsonEncode(_trades[index].toMap()));
     if (_firestore.isConnected) await _firestore.saveTrade(_trades[index]);
     notifyListeners();
-  }
-
-  List<HistoryEntry> getHistoryForChild(String childId) =>
-      _history.where((h) => h.childId == childId).toList();
-
-  List<HistoryEntry> getWeeklyPoints(String childId) => _getWeekHistory(childId);
-
-  List<HistoryEntry> getRecentHistory(String childId, {int limit = 20}) =>
-      _history.where((h) => h.childId == childId).take(limit).toList();
-
-  Map<String, dynamic> getWeeklyStats(String childId) {
-    final weekHistory    = _getWeekHistory(childId);
-    final bonusEntries   = weekHistory.where((h) => h.isBonus).toList();
-    final penaltyEntries = weekHistory.where((h) => !h.isBonus).toList();
-    final totalBonus     = bonusEntries.fold<int>(0, (s, h) => s + h.points);
-    final totalPenalty   = penaltyEntries.fold<int>(0, (s, h) => s + h.points);
-    return {
-      'totalEntries':  weekHistory.length,
-      'bonusCount':    bonusEntries.length,
-      'penaltyCount':  penaltyEntries.length,
-      'totalBonus':    totalBonus,
-      'totalPenalty':  totalPenalty,
-      'net':           totalBonus - totalPenalty,
-      'schoolAverage': getWeeklySchoolAverage(childId),
-      'behaviorScore': getWeeklyBehaviorScore(childId),
-      'globalScore':   getWeeklyGlobalScore(childId),
-    };
-  }
-
-  List<HistoryEntry> getHistoryForDate(DateTime date) =>
-      _history.where((h) =>
-          h.date.year  == date.year  &&
-          h.date.month == date.month &&
-          h.date.day   == date.day).toList();
-
-  Future<void> resetAllScores() async {
-    for (final child in _children) {
-      child.points = 0;
-      child.level  = 1;
-      child.badgeIds.clear();
-      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-      if (_firestore.isConnected) await _firestore.saveChild(child);
-    }
-    notifyListeners();
-  }
-
-  Future<void> clearHistory() async {
-    _history.clear();
-    _deletedEntryIds.clear();
-    await _historyBox.clear();
-    if (_firestore.isConnected) await _firestore.clearAllHistory();
-    notifyListeners();
-  }
-
-  Future<void> deleteHistoryEntry(String entryId) async {
-    _deletedEntryIds.add(entryId);
-    _history.removeWhere((h) => h.id == entryId);
-    await _historyBox.delete(entryId);
-    if (_firestore.isConnected && _firestore.familyId != null) {
-      try {
-        await FirebaseFirestore.instance
-            .collection('families')
-            .doc(_firestore.familyId)
-            .collection('history')
-            .doc(entryId)
-            .delete();
-      } catch (e) {
-        if (kDebugMode) debugPrint('deleteHistoryEntry Firestore error: $e');
-      }
-    }
-    notifyListeners();
-  }
-
-  Future<void> _saveAllLocal() async {
-    _saveBoxFromList(_childrenBox,    _children,      (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_historyBox,     _history,       (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_goalsBox,       _goals,         (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_notesBox,       _notes,         (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_punishmentsBox, _punishments,   (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_immunitiesBox,  _immunities,    (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_tribunalBox,    _tribunalCases, (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_badgesBox,      _customBadges,  (e) => e.id, (e) => e.toMap());
-    _saveBoxFromList(_tradesBox,      _trades,        (e) => e.id, (e) => e.toMap());
   }
 }
