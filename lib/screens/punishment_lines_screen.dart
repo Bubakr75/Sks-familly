@@ -3,12 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
-import '../models/punishment_lines.dart';   // ✅ nom réel
-import '../models/immunity_lines.dart';     // ✅ nom réel
+import '../models/punishment_lines.dart';
+import '../models/immunity_lines.dart';
 import '../models/child_model.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
-import '../widgets/animated_page_transition.dart';
 
 class PunishmentLinesScreen extends StatefulWidget {
   const PunishmentLinesScreen({super.key});
@@ -70,10 +69,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           );
         }
 
-        // ✅ getPunishmentsForChild → existe dans le provider
-        final punishments = fp.punishments
-            .where((p) => p.childId == child!.id)
-            .toList();
+        final punishments =
+            fp.punishments.where((p) => p.childId == child!.id).toList();
 
         return AnimatedBackground(
           child: Scaffold(
@@ -118,6 +115,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
+  // ─── Sélecteur d'enfant ────────────────────────────────────────────────────
   Widget _buildChildSelector(
       List<ChildModel> children, ChildModel selected) {
     return Container(
@@ -148,7 +146,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 color: isSelected ? null : Colors.white10,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: isSelected ? Colors.transparent : Colors.white24),
+                    color:
+                        isSelected ? Colors.transparent : Colors.white24),
               ),
               child: Row(
                 children: [
@@ -170,6 +169,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
+  // ─── Formulaire d'ajout ────────────────────────────────────────────────────
   Widget _buildAddForm(FamilyProvider fp, ChildModel child) {
     return GlassCard(
       margin: const EdgeInsets.all(16),
@@ -232,14 +232,13 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     final desc = _descController.text.trim();
     final lines = int.tryParse(_linesController.text.trim()) ?? 0;
     if (desc.isEmpty || lines <= 0) return;
-
-    // ✅ addPunishment(childId, text, totalLines) — 3 params comme dans le provider
     await fp.addPunishment(child.id, desc, lines);
     _descController.clear();
     _linesController.clear();
     setState(() => _showAddForm = false);
   }
 
+  // ─── État vide ─────────────────────────────────────────────────────────────
   Widget _buildEmpty() {
     return const Center(
       child: Column(
@@ -254,10 +253,12 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
+  // ─── Carte punition ────────────────────────────────────────────────────────
   Widget _buildPunishmentCard(
       PunishmentLines p, ChildModel child, FamilyProvider fp) {
-    // ✅ champs réels : completedLines, totalLines, text, isCompleted, progress
     final progress = p.progress;
+    final remaining = p.totalLines - p.completedLines;
+    final totalImmunity = fp.getTotalAvailableImmunity(child.id);
 
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
@@ -265,30 +266,35 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── En-tête ──
           Row(
             children: [
               Expanded(
                 child: Text(p.text,
                     style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold)),
               ),
               IconButton(
-                icon:
-                    const Icon(Icons.delete_outline, color: Colors.redAccent),
+                icon: const Icon(Icons.delete_outline,
+                    color: Colors.redAccent),
                 onPressed: () => _confirmDelete(p, fp),
               ),
             ],
           ),
           const SizedBox(height: 12),
+
+          // ── Progression ──
           Row(
             children: [
               Text('${p.completedLines} / ${p.totalLines} lignes',
-                  style:
-                      const TextStyle(color: Colors.white70, fontSize: 13)),
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 13)),
               const Spacer(),
               Text('${(progress * 100).round()}%',
                   style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 8),
@@ -304,6 +310,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               minHeight: 8,
             ),
           ),
+
+          // ── Badge validation en attente ──
           if (p.pendingValidation) ...[
             const SizedBox(height: 8),
             Container(
@@ -315,19 +323,23 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 border:
                     Border.all(color: Colors.orange.withOpacity(0.3)),
               ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.hourglass_top_rounded,
-                    color: Colors.orange, size: 14),
-                SizedBox(width: 6),
-                Text('En attente de validation parent',
-                    style: TextStyle(
-                        color: Colors.orange,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600)),
-              ]),
+              child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.hourglass_top_rounded,
+                        color: Colors.orange, size: 14),
+                    SizedBox(width: 6),
+                    Text('En attente de validation parent',
+                        style: TextStyle(
+                            color: Colors.orange,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                  ]),
             ),
           ],
           const SizedBox(height: 12),
+
+          // ── Boutons Avancer / Terminer ──
           Row(
             children: [
               Expanded(
@@ -347,7 +359,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.greenAccent.withOpacity(0.2),
+                    backgroundColor:
+                        Colors.greenAccent.withOpacity(0.2),
                     foregroundColor: Colors.greenAccent,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
@@ -360,18 +373,30 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             ],
           ),
           const SizedBox(height: 8),
+
+          // ── Bouton immunité — désactivé si punition terminée ou 0 lignes dispo ──
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amberAccent.withOpacity(0.2),
-                foregroundColor: Colors.amberAccent,
+                backgroundColor: totalImmunity > 0 && remaining > 0
+                    ? Colors.amberAccent.withOpacity(0.2)
+                    : Colors.white10,
+                foregroundColor: totalImmunity > 0 && remaining > 0
+                    ? Colors.amberAccent
+                    : Colors.white30,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
               icon: const Icon(Icons.shield, size: 16),
-              label: const Text('🛡️ Utiliser une immunité'),
-              onPressed: () => _showImmunityPicker(p, child, fp),
+              label: Text(
+                totalImmunity > 0
+                    ? '🛡️ Utiliser une immunité ($totalImmunity lignes dispo)'
+                    : '🛡️ Aucune immunité disponible',
+              ),
+              onPressed: totalImmunity > 0 && remaining > 0
+                  ? () => _showImmunityPicker(p, child, fp)
+                  : null,
             ),
           ),
         ],
@@ -379,11 +404,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
+  // ─── Sélecteur d'immunité ──────────────────────────────────────────────────
   void _showImmunityPicker(
       PunishmentLines p, ChildModel child, FamilyProvider fp) {
-    // ✅ isUsable (pas isActive) — getter réel de ImmunityLines
-    final activeImmunities =
-        fp.getUsableImmunitiesForChild(child.id);
+    final activeImmunities = fp.getUsableImmunitiesForChild(child.id);
 
     if (activeImmunities.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -401,7 +425,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       isScrollControlled: true,
       builder: (_) => Consumer<FamilyProvider>(
         builder: (ctx, liveFp, __) {
-          final liveImmunities = liveFp.getUsableImmunitiesForChild(child.id);
+          final liveImmunities =
+              liveFp.getUsableImmunitiesForChild(child.id);
 
           return DraggableScrollableSheet(
             initialChildSize: 0.55,
@@ -418,11 +443,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 children: [
                   const SizedBox(height: 12),
                   Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white38,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                        color: Colors.white38,
+                        borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(height: 16),
                   const Text('🛡️ Choisir une immunité',
@@ -431,7 +456,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                           fontSize: 18,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text('Punition : ${p.text} (${p.totalLines} lignes)',
+                  Text(
+                      'Punition : ${p.text} — ${p.totalLines - p.completedLines} lignes restantes',
                       style: const TextStyle(
                           color: Colors.white54, fontSize: 13)),
                   const SizedBox(height: 12),
@@ -452,19 +478,26 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                             itemCount: liveImmunities.length,
                             itemBuilder: (_, i) {
                               final imm = liveImmunities[i];
+                              // Calcul réel : on n'utilise que ce qu'il faut
+                              final needed =
+                                  p.totalLines - p.completedLines;
+                              final willUse = imm.availableLines
+                                  .clamp(0, needed);
+
                               return GlassCard(
                                 margin:
                                     const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(14),
                                 child: InkWell(
-                                  onTap: () =>
-                                      _confirmImmunityUse(p, imm, liveFp),
+                                  onTap: () => _confirmImmunityUse(
+                                      p, imm, liveFp, willUse),
                                   borderRadius:
                                       BorderRadius.circular(12),
                                   child: Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(10),
+                                        padding:
+                                            const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
                                           color: Colors.cyanAccent
                                               .withOpacity(0.15),
@@ -479,7 +512,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                              CrossAxisAlignment
+                                                  .start,
                                           children: [
                                             Text(imm.reason,
                                                 style: const TextStyle(
@@ -488,20 +522,43 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                                                         FontWeight.bold,
                                                     fontSize: 15)),
                                             const SizedBox(height: 4),
+                                            // ✅ Affiche les deux informations clés
                                             Text(
-                                                '${imm.availableLines} lignes disponibles',
+                                                '${imm.availableLines} lignes dispo · ${willUse} seront utilisées',
                                                 style: const TextStyle(
-                                                    color: Colors.white54,
+                                                    color:
+                                                        Colors.white54,
                                                     fontSize: 12)),
                                             if (imm.expiresAt != null)
                                               Text(
                                                   'Expire le ${_formatDate(imm.expiresAt!)}',
                                                   style: const TextStyle(
-                                                      color: Colors.white38,
+                                                      color:
+                                                          Colors.white38,
                                                       fontSize: 11)),
                                           ],
                                         ),
                                       ),
+                                      // ✅ Badge visuel sur les lignes à consommer
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amberAccent
+                                              .withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '-$willUse',
+                                          style: const TextStyle(
+                                              color: Colors.amberAccent,
+                                              fontWeight:
+                                                  FontWeight.bold,
+                                              fontSize: 13),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
                                       const Icon(Icons.chevron_right,
                                           color: Colors.white38),
                                     ],
@@ -520,10 +577,16 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
+  // ─── Confirmation utilisation immunité ─────────────────────────────────────
   void _confirmImmunityUse(
-      PunishmentLines p, ImmunityLines imm, FamilyProvider fp) {
+      PunishmentLines p,
+      ImmunityLines imm,
+      FamilyProvider fp,
+      int willUse, // ✅ nombre réel de lignes à consommer
+      ) {
     final rootContext = context;
     Navigator.of(rootContext).pop();
+
     Future.microtask(() {
       showDialog(
         context: rootContext,
@@ -537,10 +600,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                  "Utiliser cette immunité sur la punition ?",
+              const Text("Utiliser cette immunité sur la punition ?",
                   style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 10),
+              // ── Bloc immunité ──
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -556,16 +619,40 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold)),
-                    Text('${imm.availableLines} lignes disponibles',
+                    const SizedBox(height: 4),
+                    Text(
+                        '${imm.availableLines} lignes disponibles → $willUse seront consommées',
                         style: const TextStyle(
                             color: Colors.white54, fontSize: 12)),
                   ],
                 ),
               ),
               const SizedBox(height: 10),
-              Text('Sur la punition : ${p.text}',
-                  style: const TextStyle(
-                      color: Colors.white54, fontSize: 13)),
+              // ── Bloc punition ──
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amberAccent.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: Colors.amberAccent.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(p.text,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text(
+                        '${p.completedLines} / ${p.totalLines} lignes · après : ${(p.completedLines + willUse).clamp(0, p.totalLines)} / ${p.totalLines}',
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12)),
+                  ],
+                ),
+              ),
             ],
           ),
           actions: [
@@ -575,26 +662,26 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                     style: TextStyle(color: Colors.white38))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amberAccent.withOpacity(0.2),
+                backgroundColor: Colors.amberAccent.withOpacity(0.25),
                 foregroundColor: Colors.amberAccent,
               ),
               onPressed: () async {
-                // ✅ useImmunityOnPunishment(immunityId, punishmentId, lines)
+                // ✅ On passe willUse et non imm.availableLines
                 await fp.useImmunityOnPunishment(
-                    imm.id, p.id, imm.availableLines);
+                    imm.id, p.id, willUse);
                 if (mounted) {
                   Navigator.pop(rootContext);
                   ScaffoldMessenger.of(rootContext).showSnackBar(
                     SnackBar(
                       content: Text(
-                          '🛡️ Immunité utilisée avec succès !'),
+                          '🛡️ $willUse ligne(s) d\'immunité utilisée(s) !'),
                       backgroundColor:
                           Colors.amberAccent.withOpacity(0.8),
                     ),
                   );
                 }
               },
-              child: const Text('Autoriser'),
+              child: const Text('Confirmer'),
             ),
           ],
         ),
@@ -602,9 +689,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     });
   }
 
-  String _formatDate(DateTime d) {
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-  }
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+  String _formatDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   void _confirmDelete(PunishmentLines p, FamilyProvider fp) {
     showDialog(
@@ -619,7 +706,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               child: const Text('Annuler')),
           TextButton(
               onPressed: () {
-                // ✅ removePunishment (pas deletePunishment)
                 fp.removePunishment(p.id);
                 Navigator.pop(context);
               },
@@ -654,7 +740,6 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           TextButton(
               onPressed: () {
                 final n = int.tryParse(ctrl.text) ?? 0;
-                // ✅ updatePunishmentProgress (pas advancePunishmentLines)
                 if (n > 0) fp.updatePunishmentProgress(p.id, n);
                 Navigator.pop(context);
               },
