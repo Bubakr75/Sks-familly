@@ -1,6 +1,8 @@
+// lib/screens/child_dashboard_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' show cos, sin;
+import 'dart:math' show cos, sin, pi;
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
@@ -8,6 +10,7 @@ import '../models/badge_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
+import '../widgets/timeline_widget.dart';  // ✅ import du widget timeline
 import 'timeline_screen.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
@@ -107,28 +110,24 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             return Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
                   const SizedBox(height: 12),
                   Container(
-                    width: 40,
-                    height: 4,
+                    width: 40, height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Changer d\'enfant',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  const Text('Changer d\'enfant',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Expanded(
                     child: ListView.builder(
@@ -171,31 +170,24 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                                           ? child.name[0].toUpperCase()
                                           : '?',
                                       style: const TextStyle(
-                                        color: Colors.cyanAccent,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                      ),
+                                          color: Colors.cyanAccent,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18),
                                     ),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
-                                    child: Text(
-                                      child.name,
+                                    child: Text(child.name,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600)),
+                                  ),
+                                  Text('${child.points} pts',
                                       style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    '${child.points} pts',
-                                    style: const TextStyle(
-                                      color: Colors.cyanAccent,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
+                                          color: Colors.cyanAccent,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14)),
                                   if (isCurrent) ...[
                                     const SizedBox(width: 8),
                                     const Icon(Icons.check_circle,
@@ -233,16 +225,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       int noteMax = 20;
       final match = RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(h.reason);
       if (match != null) {
-        subject = match.group(1)!.trim();
+        subject   = match.group(1)!.trim();
         noteValue = int.tryParse(match.group(2)!) ?? h.points;
-        noteMax = int.tryParse(match.group(3)!) ?? 20;
+        noteMax   = int.tryParse(match.group(3)!) ?? 20;
       }
       return {
         'subject': subject,
-        'value': noteValue,
-        'max': noteMax,
+        'value':   noteValue,
+        'max':     noteMax,
         'percent': noteMax > 0 ? noteValue / noteMax * 100 : 0.0,
-        'date': h.date,
+        'date':    h.date,
       };
     }).toList();
   }
@@ -259,8 +251,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         .take(10)
         .map((h) => {
               'subject': h.reason,
-              'points': h.isBonus ? h.points : -h.points,
-              'date': h.date,
+              'points':  h.isBonus ? h.points : -h.points,
+              'date':    h.date,
               'isBonus': h.isBonus,
             })
         .toList();
@@ -276,17 +268,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     }).toSet();
 
     final entries = fp.getHistoryForChild(_currentChildId).where((h) {
-      if (h.category == 'school_note' ||
+      if (h.category == 'school_note'      ||
           h.category == 'screen_time_bonus' ||
-          h.category == 'saturday_rating' ||
-          h.category == 'tribunal_vote' ||
+          h.category == 'saturday_rating'   ||
+          h.category == 'tribunal_vote'     ||
           h.category == 'tribunal_verdict') return false;
       final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
       return datesCochees.contains(entryDay);
     }).toList();
 
     if (entries.isEmpty) return 10.0;
-    final bonusCount = entries.where((h) => h.isBonus).length;
+    final bonusCount   = entries.where((h) => h.isBonus).length;
     final penaltyCount = entries.where((h) => !h.isBonus).length;
     final total = bonusCount + penaltyCount;
     if (total == 0) return 10.0;
@@ -313,16 +305,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           debutSemaine.year, debutSemaine.month, debutSemaine.day + jourIdx);
       final notesJour = history.where((h) =>
           h.category == 'school_note' &&
-          h.date.year == jourDate.year &&
+          h.date.year  == jourDate.year  &&
           h.date.month == jourDate.month &&
-          h.date.day == jourDate.day);
+          h.date.day   == jourDate.day);
       for (final n in notesJour) {
         int noteValue = n.points;
-        int noteMax = 20;
+        int noteMax   = 20;
         final match = RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(n.reason);
         if (match != null) {
           noteValue = int.tryParse(match.group(2)!) ?? n.points;
-          noteMax = int.tryParse(match.group(3)!) ?? 20;
+          noteMax   = int.tryParse(match.group(3)!) ?? 20;
         }
         notesSources
             .add({'percent': noteMax > 0 ? noteValue / noteMax * 100 : 0.0});
@@ -341,13 +333,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return ((avgPercent / 100 * 180).round() + bonus).clamp(0, 180);
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
       builder: (context, fp, _) {
         final child = fp.children
             .cast<ChildModel?>()
-            .firstWhere((c) => c!.id == _currentChildId, orElse: () => null);
+            .firstWhere((c) => c!.id == _currentChildId,
+                orElse: () => null);
         if (child == null) {
           return const Scaffold(
               body: Center(child: Text('Enfant introuvable')));
@@ -366,7 +360,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(child.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style:
+                          const TextStyle(fontWeight: FontWeight.bold)),
                   if (hasMultipleChildren) ...[
                     const SizedBox(width: 6),
                     GestureDetector(
@@ -388,7 +383,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             SizedBox(width: 4),
                             Text('Changer',
                                 style: TextStyle(
-                                    color: Colors.cyanAccent, fontSize: 11)),
+                                    color: Colors.cyanAccent,
+                                    fontSize: 11)),
                           ],
                         ),
                       ),
@@ -396,21 +392,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ],
                 ],
               ),
-              // ── Bouton Timeline ajouté ici ──
               actions: [
                 IconButton(
                   icon: const Icon(Icons.timeline_rounded,
                       color: Colors.cyanAccent),
-                  tooltip: 'Timeline',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TimelineScreen(
-                            initialChildId: _currentChildId),
-                      ),
-                    );
-                  },
+                  tooltip: 'Timeline complète',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          TimelineScreen(initialChildId: _currentChildId),
+                    ),
+                  ),
                 ),
               ],
               flexibleSpace: !isParent
@@ -427,7 +420,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                                 color: Colors.orange, size: 13),
                             SizedBox(width: 4),
                             Text(
-                              'Mode enfant — lecture seule',
+                              'Mode enfant · lecture seule',
                               style: TextStyle(
                                   color: Colors.orange,
                                   fontSize: 11,
@@ -444,10 +437,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white38,
                 tabs: const [
-                  Tab(icon: Icon(Icons.person), text: 'Profil'),
-                  Tab(icon: Icon(Icons.timer), text: 'Écran'),
-                  Tab(icon: Icon(Icons.history), text: 'Historique'),
-                  Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
+                  Tab(icon: Icon(Icons.person),        text: 'Profil'),
+                  Tab(icon: Icon(Icons.timer),          text: 'Écran'),
+                  Tab(icon: Icon(Icons.timeline_rounded), text: 'Historique'),
+                  Tab(icon: Icon(Icons.emoji_events),   text: 'Badges'),
                 ],
               ),
             ),
@@ -456,7 +449,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               children: [
                 _buildProfileTab(child, fp),
                 _buildScreenTimeTab(child, fp, isParent),
-                _buildHistoryTab(child, fp),
+                _buildHistoryTab(child, fp),   // ✅ remplacé par timeline
                 _buildBadgesTab(child, fp),
               ],
             ),
@@ -466,6 +459,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
+  // ─── Onglet Profil ────────────────────────────────────────────────────────
   Widget _buildProfileTab(ChildModel child, FamilyProvider fp) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -531,35 +525,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   List<Widget> _buildProfileStats(ChildModel child, FamilyProvider fp) {
-    final history = fp.getHistoryForChild(child.id);
-    final bonus = history.where((h) => h.isBonus).length;
-    final penalty = history.where((h) => !h.isBonus).length;
+    final history      = fp.getHistoryForChild(child.id);
+    final bonus        = history.where((h) => h.isBonus).length;
+    final penalty      = history.where((h) => !h.isBonus).length;
     final screenMinutes = fp.getSaturdayMinutes(child.id);
     final stats = [
-      {
-        'label': 'Total activités',
-        'value': '${history.length}',
-        'icon': Icons.timeline,
-        'color': Colors.cyan
-      },
-      {
-        'label': 'Bonus',
-        'value': '$bonus',
-        'icon': Icons.thumb_up,
-        'color': Colors.green
-      },
-      {
-        'label': 'Pénalités',
-        'value': '$penalty',
-        'icon': Icons.thumb_down,
-        'color': Colors.red
-      },
-      {
-        'label': 'Écran samedi',
-        'value': _formatMinutes(screenMinutes),
-        'icon': Icons.tv,
-        'color': Colors.blue
-      },
+      {'label': 'Total activités', 'value': '${history.length}', 'icon': Icons.timeline,  'color': Colors.cyan},
+      {'label': 'Bonus',           'value': '$bonus',             'icon': Icons.thumb_up,  'color': Colors.green},
+      {'label': 'Pénalités',       'value': '$penalty',           'icon': Icons.thumb_down,'color': Colors.red},
+      {'label': 'Écran samedi',    'value': _formatMinutes(screenMinutes), 'icon': Icons.tv, 'color': Colors.blue},
     ];
     return stats.asMap().entries.map((entry) {
       final i = entry.key;
@@ -599,25 +573,23 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     }).toList();
   }
 
+  // ─── Onglet Temps écran ───────────────────────────────────────────────────
   Widget _buildScreenTimeTab(
       ChildModel child, FamilyProvider fp, bool isParent) {
-    final schoolAvg = fp.getWeeklySchoolAverage(child.id);
+    final schoolAvg     = fp.getWeeklySchoolAverage(child.id);
     final behaviorScore = _getBehaviorScoreForSelectedDays(fp);
-    final globalScore =
-        fp.getGlobalScoreForDays(_currentChildId, _joursSources);
-    final bonusMinutes = fp.getParentBonusMinutes(child.id);
-    final immunities = fp.getImmunitiesForChild(child.id);
+    final globalScore   = fp.getGlobalScoreForDays(_currentChildId, _joursSources);
+    final bonusMinutes  = fp.getParentBonusMinutes(child.id);
+    final immunities    = fp.getImmunitiesForChild(child.id);
     final immunityBonus = immunities
         .where((im) => im.isUsable)
         .fold<int>(0, (s, im) => s + im.availableLines);
 
-    final tempsCalcule = _calculerTempsEcranPourJour(fp);
-    final schoolNotes = _getSchoolNotes(fp);
+    final tempsCalcule  = _calculerTempsEcranPourJour(fp);
+    final schoolNotes   = _getSchoolNotes(fp);
     final behaviorNotes = _getBehaviorNotes(fp);
-
     final cercleMinutes = tempsCalcule;
-    const maxMinutes = 180;
-    final ratio = (cercleMinutes / maxMinutes).clamp(0.0, 1.0);
+    final ratio         = (cercleMinutes / 180).clamp(0.0, 1.0);
 
     final punishmentsActives = fp.punishments
         .where((p) => p.childId == child.id && !p.isCompleted)
@@ -632,6 +604,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Alerte punitions ──
           if (punishmentsActives.isNotEmpty) ...[
             Container(
               width: double.infinity,
@@ -642,13 +615,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   Colors.deepOrange.withOpacity(0.08),
                 ]),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.45)),
+                border:
+                    Border.all(color: Colors.redAccent.withOpacity(0.45)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(children: [
-                    Text('📝', style: TextStyle(fontSize: 20)),
+                    Text('✏️', style: TextStyle(fontSize: 20)),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -663,7 +637,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   const SizedBox(height: 6),
                   Text(
                     'Il te reste $totalLignesRestantes ligne${totalLignesRestantes > 1 ? 's' : ''} à écrire.',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 4),
                   const Text(
@@ -703,6 +678,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
             const SizedBox(height: 16),
           ],
+
+          // ── Résumé semaine ──
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -738,8 +715,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 Row(children: [
                   Expanded(
                       child: _miniScoreCard(
-                          '📚',
-                          'Scolaire',
+                          '📚', 'Scolaire',
                           schoolAvg < 0
                               ? '--'
                               : '${schoolAvg.toStringAsFixed(1)}/20',
@@ -751,8 +727,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   const SizedBox(width: 8),
                   Expanded(
                       child: _miniScoreCard(
-                          '🧠',
-                          'Comportement',
+                          '🧠', 'Comportement',
                           '${behaviorScore.toStringAsFixed(1)}/20',
                           behaviorScore >= 10
                               ? Colors.greenAccent
@@ -760,18 +735,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   const SizedBox(width: 8),
                   Expanded(
                       child: _miniScoreCard(
-                          '⭐',
-                          'Global',
+                          '🌟', 'Global',
                           '${globalScore.toStringAsFixed(1)}/20',
                           globalScore >= 10
                               ? Colors.amber
                               : Colors.orangeAccent)),
                 ]),
                 const SizedBox(height: 12),
-                _miniDetailRow('🛡️ Immunités dispo', '$immunityBonus lignes',
-                    Colors.cyanAccent),
-                _miniDetailRow('⏰ Bonus parent',
-                    '+${_formatMinutes(bonusMinutes)}', Colors.purpleAccent),
+                _miniDetailRow('🛡️ Immunités dispo',
+                    '$immunityBonus lignes', Colors.cyanAccent),
+                _miniDetailRow('🎁 Bonus parent',
+                    '+${_formatMinutes(bonusMinutes)}',
+                    Colors.purpleAccent),
                 const Divider(color: Colors.white12, height: 16),
                 _miniDetailRow('⭐ Score global',
                     '${globalScore.toStringAsFixed(1)}/20', Colors.amber,
@@ -780,13 +755,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 16),
+
+          // ── Calculateur temps écran ──
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border:
+                  Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -810,7 +788,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ]),
                 const SizedBox(height: 14),
                 const Text('Jour à calculer :',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    style:
+                        TextStyle(color: Colors.white70, fontSize: 12)),
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 36,
@@ -820,14 +799,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     itemBuilder: (context, i) {
                       final isSelected = _jourCible == i;
                       final minSource = _joursSources.isNotEmpty
-                          ? _joursSources.reduce((a, b) => a > b ? a : b)
+                          ? _joursSources
+                              .reduce((a, b) => a > b ? a : b)
                           : -1;
                       final isAvailable = i > minSource;
                       return GestureDetector(
                         onTap: isAvailable
                             ? () => setState(() {
                                   _jourCible = i;
-                                  _joursSources.removeWhere((s) => s >= i);
+                                  _joursSources
+                                      .removeWhere((s) => s >= i);
                                 })
                             : null,
                         child: Container(
@@ -865,7 +846,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 const SizedBox(height: 12),
                 const Text('Basé sur les notes de :',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    style:
+                        TextStyle(color: Colors.white70, fontSize: 12)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
@@ -886,7 +868,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? const Color(0xFF7C4DFF).withOpacity(0.25)
+                              ? const Color(0xFF7C4DFF)
+                                  .withOpacity(0.25)
                               : Colors.white.withOpacity(0.06),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
@@ -953,7 +936,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         child: LinearProgressIndicator(
                           value: (tempsCalcule / 180).clamp(0.0, 1.0),
                           minHeight: 7,
-                          backgroundColor: Colors.white.withOpacity(0.08),
+                          backgroundColor:
+                              Colors.white.withOpacity(0.08),
                           valueColor: AlwaysStoppedAnimation(
                               tempsCalcule >= 120
                                   ? Colors.greenAccent
@@ -977,6 +961,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 16),
+
+          // ── Cercle animé ──
           TweenAnimationBuilder<double>(
             key: ValueKey('$_jourCible-$tempsCalcule'),
             tween: Tween(begin: 0.0, end: ratio),
@@ -995,8 +981,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           children: [
                             TweenAnimationBuilder<int>(
                               key: ValueKey(cercleMinutes),
-                              tween: IntTween(begin: 0, end: cercleMinutes),
-                              duration: const Duration(milliseconds: 2000),
+                              tween: IntTween(
+                                  begin: 0, end: cercleMinutes),
+                              duration:
+                                  const Duration(milliseconds: 2000),
                               builder: (context, val, _) => Text(
                                   _formatMinutes(val),
                                   style: const TextStyle(
@@ -1006,7 +994,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             ),
                             Text(_jours[_jourCible],
                                 style: const TextStyle(
-                                    color: Colors.white54, fontSize: 11)),
+                                    color: Colors.white54,
+                                    fontSize: 11)),
                           ]),
                     ),
                   ),
@@ -1015,6 +1004,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             },
           ),
           const SizedBox(height: 16),
+
+          // ── Bonus parent ──
           if (isParent) ...[
             const Text('Bonus rapide',
                 style: TextStyle(
@@ -1031,8 +1022,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       Transform.scale(scale: value, child: ch),
                   child: TvFocusWrapper(
                     onTap: () {
-                      fp.addScreenTimeBonus(
-                          child.id, mins, 'Bonus écran +${mins}min');
+                      fp.addScreenTimeBonus(child.id, mins,
+                          'Bonus écran +${mins}min');
                       _showBonusAnimation(mins);
                     },
                     child: Container(
@@ -1072,13 +1063,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ],
           const SizedBox(height: 24),
+
+          // ── Notes comportementales + scolaires ──
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border:
+                  Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1100,7 +1094,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         color: const Color(0xFF7C4DFF).withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: const Color(0xFF7C4DFF).withOpacity(0.3)),
+                            color: const Color(0xFF7C4DFF)
+                                .withOpacity(0.3)),
                       ),
                       child: Text(
                         (_joursSources.toList()
@@ -1120,9 +1115,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       Icons.psychology_outlined)
                 else
                   ...behaviorNotes.take(4).map((n) {
-                    final pts = n['points'] as int;
+                    final pts  = n['points'] as int;
                     final isPos = pts >= 0;
-                    final c = isPos ? Colors.greenAccent : Colors.redAccent;
+                    final c    = isPos
+                        ? Colors.greenAccent
+                        : Colors.redAccent;
                     final date = n['date'] as DateTime;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -1134,8 +1131,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       ),
                       child: Row(children: [
                         Container(
-                          width: 38,
-                          height: 38,
+                          width: 38, height: 38,
                           decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: c.withOpacity(0.15)),
@@ -1166,7 +1162,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 const Divider(color: Colors.white12),
                 const SizedBox(height: 10),
                 Row(children: [
-                  const Text('📚', style: TextStyle(fontSize: 14)),
+                  const Text('📝', style: TextStyle(fontSize: 14)),
                   const SizedBox(width: 8),
                   const Text('Notes scolaires',
                       style: TextStyle(
@@ -1185,15 +1181,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ]),
                 const SizedBox(height: 8),
                 if (schoolNotes.isEmpty)
-                  _emptyNotes('Aucune note scolaire', Icons.school_outlined)
+                  _emptyNotes(
+                      'Aucune note scolaire', Icons.school_outlined)
                 else
                   ...schoolNotes.take(3).map((note) {
                     final percent = note['percent'] as double;
-                    final isGood = percent >= 50;
-                    final nc =
-                        isGood ? Colors.greenAccent : Colors.redAccent;
-                    final stars = _percentToStars(percent);
-                    final date = note['date'] as DateTime;
+                    final isGood  = percent >= 50;
+                    final nc      = isGood
+                        ? Colors.greenAccent
+                        : Colors.redAccent;
+                    final stars   = _percentToStars(percent);
+                    final date    = note['date'] as DateTime;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 6),
                       padding: const EdgeInsets.symmetric(
@@ -1201,12 +1199,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       decoration: BoxDecoration(
                         color: nc.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: nc.withOpacity(0.12)),
+                        border:
+                            Border.all(color: nc.withOpacity(0.12)),
                       ),
                       child: Row(children: [
                         Container(
-                          width: 32,
-                          height: 32,
+                          width: 32, height: 32,
                           decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: nc.withOpacity(0.1)),
@@ -1220,7 +1218,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
                             children: [
                               Text(note['subject'] as String,
                                   style: const TextStyle(
@@ -1232,14 +1231,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                                   children: List.generate(
                                       stars,
                                       (i) => const Text('⭐',
-                                          style: TextStyle(fontSize: 8)))),
+                                          style: TextStyle(
+                                              fontSize: 8)))),
                             ],
                           ),
                         ),
                         Text(
                             '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}',
                             style: const TextStyle(
-                                color: Colors.white38, fontSize: 10)),
+                                color: Colors.white38,
+                                fontSize: 10)),
                       ]),
                     );
                   }),
@@ -1252,6 +1253,249 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
+  // ─── Onglet Historique — REMPLACÉ PAR TIMELINE ────────────────────────────
+  Widget _buildHistoryTab(ChildModel child, FamilyProvider fp) {
+    final history = fp.getHistoryForChild(child.id);
+
+    return Column(
+      children: [
+        // ── Barre résumé + bouton plein écran ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: [
+              _summaryChip(
+                '${history.where((h) => h.isBonus).length}',
+                '✅ Bonus',
+                Colors.greenAccent,
+              ),
+              const SizedBox(width: 8),
+              _summaryChip(
+                '${history.where((h) => !h.isBonus).length}',
+                '❌ Pénalités',
+                Colors.redAccent,
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        TimelineScreen(initialChildId: child.id),
+                  ),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C4DFF).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: const Color(0xFF7C4DFF).withOpacity(0.5)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.open_in_full_rounded,
+                          color: Color(0xFF7C4DFF), size: 14),
+                      SizedBox(width: 4),
+                      Text('Tout voir',
+                          style: TextStyle(
+                              color: Color(0xFF7C4DFF),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // ── Timeline ──
+        Expanded(
+          child: TimelineWidget(entries: history),
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryChip(String value, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value,
+              style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13)),
+          const SizedBox(width: 4),
+          Text(label,
+              style:
+                  TextStyle(color: color.withOpacity(0.7), fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  // ─── Onglet Badges ────────────────────────────────────────────────────────
+  Widget _buildBadgesTab(ChildModel child, FamilyProvider fp) {
+    final earned  = fp.getBadgesForChild(child.id);
+    final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
+    final locked  = allBadges
+        .where((b) => !child.badgeIds.contains(b.id))
+        .toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (earned.isNotEmpty) ...[
+            const Text('🏆 Badges débloqués',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 0.85,
+              ),
+              itemCount: earned.length,
+              itemBuilder: (_, i) {
+                final badge = earned[i];
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(milliseconds: 400 + i * 100),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) => Transform.scale(
+                      scale: value, child: child),
+                  child: GlassCard(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(badge.icon,
+                            style: const TextStyle(fontSize: 32)),
+                        const SizedBox(height: 6),
+                        Text(badge.name,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Text('${badge.requiredPoints} pts',
+                            style: const TextStyle(
+                                color: Colors.amber, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+          if (locked.isNotEmpty) ...[
+            const Text('🔒 Badges verrouillés',
+                style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 0.85,
+              ),
+              itemCount: locked.length,
+              itemBuilder: (_, i) {
+                final badge = locked[i];
+                final progress = child.points / badge.requiredPoints;
+                return GlassCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Opacity(
+                    opacity: 0.45,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Stack(alignment: Alignment.center, children: [
+                          Text(badge.icon,
+                              style: const TextStyle(fontSize: 28)),
+                          const Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Icon(Icons.lock,
+                                color: Colors.white54, size: 14),
+                          ),
+                        ]),
+                        const SizedBox(height: 6),
+                        Text(badge.name,
+                            style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Text('${badge.requiredPoints} pts',
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 10)),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: progress.clamp(0.0, 1.0),
+                            minHeight: 4,
+                            backgroundColor: Colors.white12,
+                            valueColor:
+                                const AlwaysStoppedAnimation(
+                                    Colors.amber),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+          if (earned.isEmpty && locked.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: Text('Aucun badge disponible',
+                    style: TextStyle(
+                        color: Colors.white38, fontSize: 16)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Helpers UI ───────────────────────────────────────────────────────────
   Widget _miniScoreCard(
       String emoji, String label, String value, Color color) {
     return Container(
@@ -1272,7 +1516,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   fontSize: 13)),
           const SizedBox(height: 2),
           Text(label,
-              style: const TextStyle(color: Colors.white54, fontSize: 9),
+              style:
+                  const TextStyle(color: Colors.white54, fontSize: 9),
               textAlign: TextAlign.center),
         ],
       ),
@@ -1288,11 +1533,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           Expanded(
               child: Text(label,
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.55), fontSize: 11))),
+                      color: Colors.white.withOpacity(0.55),
+                      fontSize: 11))),
           Text(value,
               style: TextStyle(
                   color: color,
-                  fontWeight: bold ? FontWeight.w900 : FontWeight.w600,
+                  fontWeight:
+                      bold ? FontWeight.w900 : FontWeight.w600,
                   fontSize: bold ? 13 : 11)),
         ],
       ),
@@ -1302,13 +1549,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Widget _emptyNotes(String text, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(icon, color: Colors.white24, size: 16),
         const SizedBox(width: 6),
         Text(text,
-            style: const TextStyle(color: Colors.white38, fontSize: 11)),
+            style:
+                const TextStyle(color: Colors.white38, fontSize: 11)),
       ]),
     );
   }
@@ -1328,10 +1574,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             curve: Curves.elasticOut,
             builder: (context, value, child) => Transform.scale(
                 scale: value,
-                child: Opacity(opacity: value.clamp(0.0, 1.0), child: child)),
+                child: Opacity(
+                    opacity: value.clamp(0.0, 1.0), child: child)),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 32, vertical: 20),
               decoration: BoxDecoration(
                   color: Colors.green.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(20),
@@ -1341,7 +1588,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         blurRadius: 30,
                         spreadRadius: 5)
                   ]),
-              child: Text('⏰ +${mins}min !',
+              child: Text('🎉 +${mins}min !',
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,
@@ -1392,8 +1639,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   Navigator.pop(context);
                   _showBonusAnimation(customMins);
                 },
-                style:
-                    ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyan.shade700),
                 child: const Text('Ajouter'),
               ),
             ],
@@ -1402,232 +1649,60 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       },
     );
   }
-
-  Widget _buildHistoryTab(ChildModel child, FamilyProvider fp) {
-    final history = fp.getHistoryForChild(_currentChildId);
-    if (history.isEmpty) {
-      return Center(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 800),
-          builder: (context, value, child) =>
-              Opacity(opacity: value, child: child),
-          child: const Text('Aucune activité',
-              style: TextStyle(color: Colors.white54, fontSize: 16)),
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: history.length,
-      itemBuilder: (context, index) {
-        final h = history[index];
-        final pts = h.isBonus ? h.points : -h.points;
-        final isPositive = pts >= 0;
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration:
-              Duration(milliseconds: 400 + (index.clamp(0, 15) * 50)),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) => Transform.translate(
-              offset: Offset(0, 20 * (1 - value)),
-              child: Opacity(opacity: value, child: child)),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: GlassCard(
-              child: Row(children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                        colors: isPositive
-                            ? [Colors.green, Colors.green.shade700]
-                            : [Colors.red, Colors.red.shade700]),
-                    boxShadow: [
-                      BoxShadow(
-                          color: (isPositive ? Colors.green : Colors.red)
-                              .withOpacity(0.3),
-                          blurRadius: 8)
-                    ],
-                  ),
-                  child: Center(
-                      child: Text(isPositive ? '+$pts' : '$pts',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13))),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text(h.reason,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold)),
-                    if (h.category.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: Colors.cyan.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8)),
-                        child: Text(h.category,
-                            style: TextStyle(
-                                color: Colors.cyan[300], fontSize: 10)),
-                      ),
-                  ]),
-                ),
-                Text(_formatDate(h.date),
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 10)),
-              ]),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  String _formatDate(DateTime dt) =>
-      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
-      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-
-  Widget _buildBadgesTab(ChildModel child, FamilyProvider fp) {
-    final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
-    if (allBadges.isEmpty) {
-      return Center(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 800),
-          builder: (context, value, ch) => Opacity(
-              opacity: value,
-              child: Transform.scale(scale: value, child: ch)),
-          child: const Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('🏆', style: TextStyle(fontSize: 50)),
-            SizedBox(height: 8),
-            Text('Aucun badge encore',
-                style: TextStyle(color: Colors.white54)),
-          ]),
-        ),
-      );
-    }
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.8),
-      itemCount: allBadges.length,
-      itemBuilder: (context, index) {
-        final badge = allBadges[index];
-        final isUnlocked = child.badgeIds.contains(badge.id);
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: Duration(milliseconds: 500 + index * 120),
-          curve: Curves.elasticOut,
-          builder: (context, value, ch) => Transform.scale(
-            scale: value.clamp(0.0, 1.0),
-            child: Transform.rotate(
-                angle: (1 - value) * 0.3,
-                child: Opacity(
-                    opacity: value.clamp(0.0, 1.0), child: ch)),
-          ),
-          child: GlassCard(
-            child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isUnlocked
-                      ? Colors.amber.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.1),
-                  boxShadow: isUnlocked
-                      ? [
-                          BoxShadow(
-                              color: Colors.amber.withOpacity(0.4),
-                              blurRadius: 12,
-                              spreadRadius: 2)
-                        ]
-                      : [],
-                ),
-                child: Icon(
-                    isUnlocked ? Icons.emoji_events : Icons.lock,
-                    color: isUnlocked ? Colors.amber : Colors.grey,
-                    size: 28),
-              ),
-              const SizedBox(height: 8),
-              Text(badge.name,
-                  style: TextStyle(
-                      color: isUnlocked ? Colors.white : Colors.white38,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
-            ]),
-          ),
-        );
-      },
-    );
-  }
 }
 
+// ─── Painter cercle temps écran ───────────────────────────────────────────────
 class _ScreenTimePainter extends CustomPainter {
   final double progress;
   final int minutes;
-  _ScreenTimePainter(this.progress, this.minutes);
+  const _ScreenTimePainter(this.progress, this.minutes);
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 10;
-    final bgPaint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 12;
-    canvas.drawCircle(center, radius, bgPaint);
-    final color = progress > 0.5
-        ? Colors.cyan
-        : progress > 0.2
+
+    // Fond
+    canvas.drawCircle(
+      center, radius,
+      Paint()
+        ..color = Colors.white.withOpacity(0.06)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10,
+    );
+
+    // Arc coloré
+    final color = minutes >= 120
+        ? Colors.greenAccent
+        : minutes >= 60
             ? Colors.orange
-            : Colors.red;
-    final progressPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: -1.5708,
-        endAngle: -1.5708 + 6.2832 * progress,
-        colors: [color.withOpacity(0.5), color],
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 12
-      ..strokeCap = StrokeCap.round;
+            : Colors.redAccent;
+
     canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -1.5708,
-        6.2832 * progress,
-        false,
-        progressPaint);
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      2 * pi * progress,
+      false,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Points décoratifs
+    final dotPaint = Paint()..color = color.withOpacity(0.4);
     for (int i = 0; i < 12; i++) {
-      final angle = -1.5708 + (i / 12) * 6.2832;
-      final dotX = center.dx + (radius + 8) * cos(angle);
-      final dotY = center.dy + (radius + 8) * sin(angle);
-      canvas.drawCircle(
-          Offset(dotX, dotY),
-          2,
-          Paint()
-            ..color = Colors.white.withOpacity(0.2)
-            ..style = PaintingStyle.fill);
+      final angle = (i / 12) * 2 * pi - pi / 2;
+      final dotCenter = Offset(
+        center.dx + (radius + 14) * cos(angle),
+        center.dy + (radius + 14) * sin(angle),
+      );
+      canvas.drawCircle(dotCenter, 2, dotPaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ScreenTimePainter old) =>
-      old.progress != progress;
+  bool shouldRepaint(_ScreenTimePainter old) =>
+      old.progress != progress || old.minutes != minutes;
 }
