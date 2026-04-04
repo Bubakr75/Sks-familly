@@ -10,7 +10,7 @@ class ChildModel {
   List<String> badgeIds;
   DateTime createdAt;
 
-  // ✅ Nouveaux champs personnalisation
+  // Champs personnalisation
   String? bannerBase64;
   String? sloganText;
   String? accentColorHex;
