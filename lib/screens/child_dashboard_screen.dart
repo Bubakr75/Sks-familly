@@ -101,8 +101,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   bool   _showBonusAnim = false;
   String _bonusAnimText = '';
 
-  // Badges personnalisés locaux (ajoutés par l'enfant/parent)
-  List<_CustomBadgeItem> _customLocalBadges = [];
+  List<_CustomBadgeItem> _customLocalBadges   = [];
+  List<String>           _hiddenDefaultBadgeIds = [];
 
   @override
   void initState() {
@@ -139,7 +139,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ? widget.childId!
             : fp.children.first.id;
         setState(() => _selectedChildId = id);
-        _loadCustomBadges(id);
+        _loadPrefs(id);
       }
     });
   }
@@ -153,10 +153,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     super.dispose();
   }
 
-  // ─── Chargement / sauvegarde badges locaux ───────────────
-  Future<void> _loadCustomBadges(String childId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw   = prefs.getStringList('custom_badges_$childId') ?? [];
+  // ─── Chargement prefs ────────────────────────────────────
+  Future<void> _loadPrefs(String childId) async {
+    final prefs  = await SharedPreferences.getInstance();
+    final raw    = prefs.getStringList('custom_badges_$childId') ?? [];
+    final hidden = prefs.getStringList('hidden_badges_$childId') ?? [];
     setState(() {
       _customLocalBadges = raw.map((s) {
         final parts = s.split('||');
@@ -165,6 +166,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           label: parts.length > 1 ? parts[1] : s,
         );
       }).toList();
+      _hiddenDefaultBadgeIds = hidden;
     });
   }
 
@@ -176,7 +178,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─── Ajouter un badge personnalisé ───────────────────────
+  Future<void> _saveHiddenBadges(String childId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+        'hidden_badges_$childId', _hiddenDefaultBadgeIds);
+  }
+
+  // ─── Ajouter un badge perso ───────────────────────────────
   Future<void> _addCustomBadge(String childId) async {
     final emojiCtrl = TextEditingController();
     final labelCtrl = TextEditingController();
@@ -210,7 +218,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:   const BorderSide(color: Colors.deepPurpleAccent),
+                  borderSide:
+                      const BorderSide(color: Colors.deepPurpleAccent),
                 ),
               ),
             ),
@@ -229,7 +238,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:   const BorderSide(color: Colors.deepPurpleAccent),
+                  borderSide:
+                      const BorderSide(color: Colors.deepPurpleAccent),
                 ),
               ),
             ),
@@ -262,10 +272,22 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─── Supprimer un badge personnalisé ─────────────────────
+  // ─── Supprimer un badge perso ─────────────────────────────
   void _removeCustomBadge(int index, String childId) {
     setState(() => _customLocalBadges.removeAt(index));
     _saveCustomBadges(childId);
+  }
+
+  // ─── Masquer un badge par défaut ─────────────────────────
+  Future<void> _hideDefaultBadge(String badgeId, String childId) async {
+    setState(() => _hiddenDefaultBadgeIds.add(badgeId));
+    await _saveHiddenBadges(childId);
+  }
+
+  // ─── Réafficher tous les badges par défaut ───────────────
+  Future<void> _resetHiddenBadges(String childId) async {
+    setState(() => _hiddenDefaultBadgeIds = []);
+    await _saveHiddenBadges(childId);
   }
 
   // ─── Couleur enfant ──────────────────────────────────────
@@ -387,12 +409,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             subtitle: Text('${c.points} pts',
                 style: const TextStyle(color: Colors.white54)),
             trailing: c.id == _selectedChildId
-                ? const Icon(Icons.check_circle, color: Colors.greenAccent)
+                ? const Icon(Icons.check_circle,
+                    color: Colors.greenAccent)
                 : null,
             onTap: () {
               setState(() => _selectedChildId = c.id);
               Navigator.pop(context);
-              _loadCustomBadges(c.id);
+              _loadPrefs(c.id);
             },
           )),
         ],
@@ -444,9 +467,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     ok = true;
                     Navigator.pop(ctx);
                   } else {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(
-                            content: Text('PIN incorrect ❌')));
+                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                        content: Text('PIN incorrect ❌')));
                   }
                 },
                 child: const Text('Valider'),
@@ -479,8 +501,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           style:      const TextStyle(color: Colors.white),
           maxLength:  60,
           decoration: const InputDecoration(
-            labelText:   'Slogan',
-            labelStyle:  TextStyle(color: Colors.white54),
+            labelText:    'Slogan',
+            labelStyle:   TextStyle(color: Colors.white54),
             counterStyle: TextStyle(color: Colors.white38),
           ),
         ),
@@ -526,13 +548,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       final color = _childColor(child);
 
       return Scaffold(
-        backgroundColor:       const Color(0xFF0F0F1E),
+        backgroundColor:        const Color(0xFF0F0F1E),
         extendBodyBehindAppBar: true,
         appBar: AppBar(
-          backgroundColor:  Colors.transparent,
-          elevation:        0,
+          backgroundColor: Colors.transparent,
+          elevation:       0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70),
+            icon: const Icon(Icons.arrow_back_ios_new,
+                color: Colors.white70),
             onPressed: () => Navigator.pop(context),
           ),
           title: Row(children: [
@@ -589,7 +612,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return SingleChildScrollView(
       padding: const EdgeInsets.only(top: 120, bottom: 24),
       child: Column(children: [
-        // ── Carte profil simple (comme avant) ──
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: GlassCard(
@@ -598,7 +620,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               child: Column(children: [
                 // Bannière
                 if (child.bannerBase64 != null &&
-                    child.bannerBase64!.isNotEmpty)
+                    child.bannerBase64!.isNotEmpty) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: SizedBox(
@@ -610,9 +632,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       ),
                     ),
                   ),
-                if (child.bannerBase64 != null &&
-                    child.bannerBase64!.isNotEmpty)
                   const SizedBox(height: 16),
+                ],
                 // Photo + cadre niveau
                 _buildAvatar(child, 52, showFrame: true),
                 const SizedBox(height: 12),
@@ -634,7 +655,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             fontStyle: FontStyle.italic)),
                   ),
                 const SizedBox(height: 16),
-                // Niveau + barre HP
+                // Niveau
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -649,7 +670,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ],
                 ),
                 const SizedBox(height: 6),
-                // Barre de progression (carré avec barre inside)
+                // Barre HP rectangulaire
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
@@ -670,9 +691,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                      '${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 10)),
+                    '${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
+                    style: const TextStyle(
+                        color: Colors.white38, fontSize: 10),
+                  ),
                 ),
               ]),
             ),
@@ -708,7 +730,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () => _editBanner(child, fp, requirePin: false),
+                onPressed: () =>
+                    _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
                 label: const Text('Bannière 🖼️',
                     style: TextStyle(fontSize: 11)),
@@ -724,7 +747,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () => _editBanner(child, fp, requirePin: true),
+                onPressed: () =>
+                    _editBanner(child, fp, requirePin: true),
                 icon:  const Icon(Icons.lock, size: 16),
                 label: const Text('Bannière 🔒',
                     style: TextStyle(fontSize: 11)),
@@ -767,7 +791,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount:  2,
+      crossAxisCount:   2,
       crossAxisSpacing: 10,
       mainAxisSpacing:  10,
       childAspectRatio: 1.6,
@@ -785,14 +809,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   Widget _statCard(String emoji, String label, String value, Color color) =>
       GlassCard(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
           Text(emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+                  color: color, fontWeight: FontWeight.bold,
+                  fontSize: 13)),
           Text(label,
-              style: const TextStyle(color: Colors.white54, fontSize: 10)),
+              style: const TextStyle(
+                  color: Colors.white54, fontSize: 10)),
         ]),
       );
 
@@ -809,7 +837,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final schoolNotes   = _getSchoolNotes(child, fp);
     final behaviorNotes = _getBehaviorNotes(child, fp);
     final minutes = _calculerTempsEcranPourJour(
-        _selectedDay!, schoolNotes, behaviorNotes, bonusMinutes, child, fp);
+        _selectedDay!, schoolNotes, behaviorNotes,
+        bonusMinutes, child, fp);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(
@@ -854,7 +883,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: selected
-                        ? color.withOpacity(0.25) : Colors.white10,
+                        ? color.withOpacity(0.25)
+                        : Colors.white10,
                     borderRadius: BorderRadius.circular(10),
                     border: selected ? Border.all(color: color) : null,
                   ),
@@ -889,8 +919,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               Column(mainAxisSize: MainAxisSize.min, children: [
                 Text(_formatMinutes(minutes),
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900, fontSize: 28)),
+                        color:      Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize:   28)),
                 const Text('temps écran',
                     style: TextStyle(
                         color: Colors.white54, fontSize: 12)),
@@ -901,13 +932,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         const SizedBox(height: 16),
         _buildQuickBonusRow(child, fp, color),
         const SizedBox(height: 16),
-        _buildImmunitySection(child, fp, color),
+        _buildImmunitySection(child, fp),
       ]),
     );
   }
 
-  Widget _buildImmunitySection(
-      ChildModel child, FamilyProvider fp, Color color) {
+  Widget _buildImmunitySection(ChildModel child, FamilyProvider fp) {
     final immunities = fp.getUsableImmunitiesForChild(child.id);
     if (immunities.isEmpty) return const SizedBox.shrink();
     return GlassCard(
@@ -925,7 +955,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ...immunities.map((imm) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(children: [
-                const Text('🛡️', style: TextStyle(fontSize: 16)),
+                const Text('🛡️',
+                    style: TextStyle(fontSize: 16)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(imm.reason,
@@ -951,10 +982,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        Text(label,
+            style: const TextStyle(color: Colors.white60, fontSize: 12)),
         Text(value,
             style: TextStyle(
-                color: vColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                color: vColor, fontWeight: FontWeight.bold,
+                fontSize: 12)),
       ],
     ),
   );
@@ -1035,7 +1068,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   // ─── TAB BADGES ──────────────────────────────────────────
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
-    final all    = fp.customBadges;
+    final all = fp.customBadges
+        .where((b) => !_hiddenDefaultBadgeIds.contains(b.id))
+        .toList();
     final earned = all.where((b) => child.badgeIds.contains(b.id)).toList();
     final locked = all.where((b) => !child.badgeIds.contains(b.id)).toList();
 
@@ -1044,7 +1079,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           top: 120, bottom: 24, left: 16, right: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── Badges personnalisés (ajoutables / supprimables) ──
+        // ── Badges perso ─────────────────────────────────
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -1067,10 +1102,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: color.withOpacity(0.5)),
+                          border:
+                              Border.all(color: color.withOpacity(0.5)),
                         ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                           Icon(Icons.add, color: color, size: 14),
                           const SizedBox(width: 4),
                           Text('Ajouter',
@@ -1110,44 +1147,42 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     itemCount: _customLocalBadges.length,
                     itemBuilder: (_, i) {
                       final b = _customLocalBadges[i];
-                      return Stack(
-                        children: [
-                          GlassCard(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(b.emoji,
-                                    style: const TextStyle(fontSize: 30)),
-                                const SizedBox(height: 4),
-                                Text(b.label,
-                                    style: const TextStyle(
-                                        color:      Colors.white,
-                                        fontSize:   10,
-                                        fontWeight: FontWeight.bold),
-                                    textAlign: TextAlign.center,
-                                    maxLines:  2,
-                                    overflow:  TextOverflow.ellipsis),
-                              ],
+                      return Stack(children: [
+                        GlassCard(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(b.emoji,
+                                  style:
+                                      const TextStyle(fontSize: 30)),
+                              const SizedBox(height: 4),
+                              Text(b.label,
+                                  style: const TextStyle(
+                                      color:      Colors.white,
+                                      fontSize:   10,
+                                      fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                  maxLines:  2,
+                                  overflow:  TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                        Positioned(
+                          top: 4, right: 4,
+                          child: GestureDetector(
+                            onTap: () =>
+                                _removeCustomBadge(i, child.id),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                  color: Colors.redAccent,
+                                  shape: BoxShape.circle),
+                              child: const Icon(Icons.close,
+                                  color: Colors.white, size: 12),
                             ),
                           ),
-                          Positioned(
-                            top:   4,
-                            right: 4,
-                            child: GestureDetector(
-                              onTap: () => _removeCustomBadge(i, child.id),
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  color:     Colors.redAccent,
-                                  shape:     BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.close,
-                                    color: Colors.white, size: 12),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
+                        ),
+                      ]);
                     },
                   ),
               ],
@@ -1156,7 +1191,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 20),
 
-        // ── Badges gagnés ──
+        // ── Badges gagnés ────────────────────────────────
         Text('🏅 Badges obtenus (${earned.length})',
             style: TextStyle(
                 color:      color,
@@ -1186,7 +1221,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
         const SizedBox(height: 20),
 
-        // ── Badges à débloquer ──
+        // ── Badges à débloquer (supprimables) ────────────
         Text('🔒 Badges à débloquer (${locked.length})',
             style: const TextStyle(
                 color:      Colors.white54,
@@ -1194,6 +1229,26 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 fontSize:   14)),
         const SizedBox(height: 10),
         ...locked.map((b) => _badgeLockedTile(b, child)),
+
+        // ── Bouton réinitialiser ──────────────────────────
+        if (_hiddenDefaultBadgeIds.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white38,
+                side: const BorderSide(color: Colors.white12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => _resetHiddenBadges(child.id),
+              icon:  const Icon(Icons.refresh, size: 16),
+              label: const Text('Réafficher les badges supprimés',
+                  style: TextStyle(fontSize: 12)),
+            ),
+          ),
+        ],
       ]),
     );
   }
@@ -1241,15 +1296,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               children: [
             Text(badge.name,
                 style: const TextStyle(
-                    color: Colors.white70,
+                    color:      Colors.white70,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13)),
+                    fontSize:   13)),
             Text(badge.description,
                 style: const TextStyle(
                     color: Colors.white38, fontSize: 11),
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 6),
-            // Carré avec barre de progression à l'intérieur
+            // Barre rectangulaire avec progression
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
@@ -1261,8 +1316,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 child: LinearProgressIndicator(
                   value:           progress,
                   backgroundColor: Colors.transparent,
-                  valueColor:
-                      AlwaysStoppedAnimation(Colors.deepPurpleAccent),
+                  valueColor: const AlwaysStoppedAnimation(
+                      Colors.deepPurpleAccent),
                   minHeight: 12,
                 ),
               ),
@@ -1272,6 +1327,46 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 style: const TextStyle(
                     color: Colors.white38, fontSize: 10)),
           ]),
+        ),
+        // Bouton supprimer
+        GestureDetector(
+          onTap: () => showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF1A1A2E),
+              title: const Text('Supprimer ce badge ?',
+                  style: TextStyle(color: Colors.white)),
+              content: Text(
+                'Le badge "${badge.name}" sera masqué. Tu pourras le réafficher en bas de la liste.',
+                style: const TextStyle(color: Colors.white60),
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Annuler')),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _hideDefaultBadge(badge.id, child.id);
+                  },
+                  child: const Text('Supprimer'),
+                ),
+              ],
+            ),
+          ),
+          child: Container(
+            margin: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+                color:  Colors.redAccent.withOpacity(0.15),
+                shape:  BoxShape.circle,
+                border: Border.all(
+                    color: Colors.redAccent.withOpacity(0.4))),
+            child: const Icon(Icons.close,
+                color: Colors.redAccent, size: 16),
+          ),
         ),
       ]),
     );
