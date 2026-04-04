@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
@@ -12,7 +13,6 @@ import '../models/child_model.dart';
 import '../models/badge_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
 
@@ -71,11 +71,14 @@ class _ScreenTimePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width, size.height) / 2 - 8;
-    canvas.drawCircle(center, radius,
-        Paint()
-          ..color = Colors.white10
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 10);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.white10
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10,
+    );
     final color = progress >= 1.0
         ? Colors.greenAccent
         : progress >= 0.5
@@ -83,7 +86,9 @@ class _ScreenTimePainter extends CustomPainter {
             : Colors.redAccent;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -pi / 2, 2 * pi * progress * animValue, false,
+      -pi / 2,
+      2 * pi * progress * animValue,
+      false,
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
@@ -104,11 +109,21 @@ class _ScreenTimePainter extends CustomPainter {
       old.progress != progress || old.animValue != animValue;
 }
 
+// ─── Modèle bonus ─────────────────────────────────────────────
+class _BonusItem {
+  String emoji;
+  String label;
+  _BonusItem({required this.emoji, required this.label});
+
+  Map<String, String> toMap() => {'emoji': emoji, 'label': label};
+  factory _BonusItem.fromMap(Map<String, dynamic> m) =>
+      _BonusItem(emoji: m['emoji'] ?? '⭐', label: m['label'] ?? '');
+}
+
 // ─────────────────────────────────────────────────────────────
 //  MAIN WIDGET
 // ─────────────────────────────────────────────────────────────
 class ChildDashboardScreen extends StatefulWidget {
-  // ✅ childId optionnel — compatibilité avec welcome_screen et dashboard_screen
   final String? childId;
   const ChildDashboardScreen({super.key, this.childId});
 
@@ -120,15 +135,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     with TickerProviderStateMixin {
 
   late TabController       _tabController;
-  late AnimationController _profileController;
   late AnimationController _contentController;
   late AnimationController _glowController;
-  late AnimationController _headerController;
   late AnimationController _holoController;
   late AnimationController _streakController;
   late AnimationController _bonusFloatController;
 
-  late Animation<double>   _profileFade;
   late Animation<double>   _contentFade;
   late Animation<double>   _glowAnim;
   late Animation<double>   _holoAnim;
@@ -143,20 +155,21 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   String _bonusAnimText = '';
   bool   _showHeroBack  = false;
 
+  // Bonus personnalisés
+  List<_BonusItem> _bonusItems = [];
+
+  static const List<_BonusItem> _defaultBonus = [];
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
 
-    _profileController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900));
     _contentController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _glowController = AnimationController(
         vsync: this, duration: const Duration(seconds: 2))
       ..repeat(reverse: true);
-    _headerController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
     _holoController = AnimationController(
         vsync: this, duration: const Duration(seconds: 3))
       ..repeat();
@@ -165,11 +178,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       ..repeat(reverse: true);
     _bonusFloatController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200));
-
-    _profileFade = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 40),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
-    ]).animate(_profileController);
 
     _contentFade  = CurvedAnimation(parent: _contentController, curve: Curves.easeIn);
     _glowAnim     = CurvedAnimation(parent: _glowController, curve: Curves.easeInOut);
@@ -183,11 +191,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
     ]).animate(_bonusFloatController);
 
-    _profileController.forward();
     _contentController.forward();
-    _headerController.forward();
 
-    // ✅ Initialise avec le childId passé en paramètre si disponible
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final fp = context.read<FamilyProvider>();
       if (fp.children.isNotEmpty) {
@@ -199,6 +204,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             _selectedChildId = fp.children.first.id;
           }
         });
+        _loadBonusItems(_selectedChildId!);
       }
     });
   }
@@ -206,14 +212,136 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _profileController.dispose();
     _contentController.dispose();
     _glowController.dispose();
-    _headerController.dispose();
     _holoController.dispose();
     _streakController.dispose();
     _bonusFloatController.dispose();
     super.dispose();
+  }
+
+  // ─── Chargement / sauvegarde bonus ───────────────────────
+  Future<void> _loadBonusItems(String childId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw   = prefs.getStringList('bonus_$childId');
+    if (raw == null || raw.isEmpty) {
+      // Bonus par défaut
+      setState(() => _bonusItems = [
+        _BonusItem(emoji: '🎮', label: 'Jeux vidéo'),
+        _BonusItem(emoji: '📺', label: 'Télévision'),
+        _BonusItem(emoji: '🍕', label: 'Pizza du vendredi'),
+        _BonusItem(emoji: '🎬', label: 'Film en famille'),
+        _BonusItem(emoji: '🛍️', label: 'Shopping'),
+      ]);
+    } else {
+      setState(() => _bonusItems = raw.map((s) {
+        final parts = s.split('||');
+        return _BonusItem(
+          emoji: parts.isNotEmpty ? parts[0] : '⭐',
+          label: parts.length > 1 ? parts[1] : s,
+        );
+      }).toList());
+    }
+  }
+
+  Future<void> _saveBonusItems(String childId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      'bonus_$childId',
+      _bonusItems.map((b) => '${b.emoji}||${b.label}').toList(),
+    );
+  }
+
+  // ─── Ajouter un bonus ─────────────────────────────────────
+  Future<void> _addBonus(String childId) async {
+    final emojiCtrl = TextEditingController();
+    final labelCtrl = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text('Ajouter un bonus',
+            style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '💡 Appuie sur le champ émoji et utilise le clavier de ton téléphone pour choisir un émoji',
+              style: TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller:  emojiCtrl,
+              style: const TextStyle(color: Colors.white, fontSize: 28),
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                labelText:  'Émoji',
+                labelStyle: const TextStyle(color: Colors.white54),
+                hintText:   '🎮',
+                hintStyle:  const TextStyle(color: Colors.white24),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.deepPurpleAccent),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller:  labelCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText:  'Nom du bonus',
+                labelStyle: const TextStyle(color: Colors.white54),
+                hintText:   'ex: Jeux vidéo',
+                hintStyle:  const TextStyle(color: Colors.white24),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.deepPurpleAccent),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurpleAccent),
+            onPressed: () {
+              final e = emojiCtrl.text.trim();
+              final l = labelCtrl.text.trim();
+              if (l.isNotEmpty) {
+                setState(() => _bonusItems.add(
+                  _BonusItem(emoji: e.isEmpty ? '⭐' : e, label: l),
+                ));
+                _saveBonusItems(childId);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Ajouter'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Supprimer un bonus ───────────────────────────────────
+  void _removeBonus(int index, String childId) {
+    setState(() => _bonusItems.removeAt(index));
+    _saveBonusItems(childId);
   }
 
   // ─── Couleur enfant ──────────────────────────────────────
@@ -269,9 +397,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // ─── Avatar ──────────────────────────────────────────────
   Widget _buildAvatar(ChildModel child, double radius,
       {bool showFrame = true}) {
-    final color     = _childColor(child);
+    final color      = _childColor(child);
     final frameColor = _frameColor(child.level);
-    final highLevel = child.level >= 4;
+    final highLevel  = child.level >= 4;
 
     Widget core;
     if (child.photoBase64.isNotEmpty) {
@@ -297,16 +425,19 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           shape: BoxShape.circle,
           gradient: highLevel
               ? SweepGradient(colors: [
-                  frameColor, Colors.white, frameColor,
-                  frameColor.withOpacity(0.5), frameColor,
+                  frameColor,
+                  Colors.white,
+                  frameColor,
+                  frameColor.withOpacity(0.5),
+                  frameColor,
                 ])
               : null,
           color: highLevel ? null : frameColor,
           boxShadow: [
             BoxShadow(
-              color: frameColor.withOpacity(0.4 + 0.3 * _glowAnim.value),
-              blurRadius:   12 + 8 * _glowAnim.value,
-              spreadRadius: 2  + 2 * _glowAnim.value,
+              color:       frameColor.withOpacity(0.4 + 0.3 * _glowAnim.value),
+              blurRadius:  12 + 8 * _glowAnim.value,
+              spreadRadius: 2 + 2 * _glowAnim.value,
             ),
           ],
         ),
@@ -345,7 +476,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final penalties    = history.where((h) => h.points < 0).length;
     final earnedBadges = fp.customBadges
         .where((b) => child.badgeIds.contains(b.id)).length;
-    final totalImm     = fp.getTotalAvailableImmunity(child.id);
+    final totalImm = fp.getTotalAvailableImmunity(child.id);
 
     return GestureDetector(
       onTap: () => setState(() => _showHeroBack = !_showHeroBack),
@@ -397,8 +528,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
           border: Border.all(color: frame, width: 2.5),
           boxShadow: [
-            BoxShadow(color: frame.withOpacity(0.5),
-                blurRadius: 20, spreadRadius: 2),
+            BoxShadow(
+                color: frame.withOpacity(0.5), blurRadius: 20, spreadRadius: 2),
           ],
         ),
         child: Stack(
@@ -446,8 +577,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       Text(
                         child.name.toUpperCase(),
                         style: TextStyle(
-                          color: Colors.white, fontSize: 22,
-                          fontWeight: FontWeight.w900, letterSpacing: 3,
+                          color:      Colors.white,
+                          fontSize:   22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 3,
                           shadows: [Shadow(color: frame, blurRadius: 8)],
                         ),
                       ),
@@ -458,8 +591,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           child: Text(
                             '"${child.sloganText}"',
                             style: const TextStyle(
-                              color: Colors.white60, fontSize: 11,
-                              fontStyle: FontStyle.italic,
+                              color:      Colors.white60,
+                              fontSize:   11,
+                              fontStyle:  FontStyle.italic,
                             ),
                           ),
                         ),
@@ -477,13 +611,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _statCell('🎯', 'BONUS',    '$bonuses',     color),
+                        _statCell('🎯', 'BONUS',     '$bonuses',     color),
                         _divV(),
-                        _statCell('⚡', 'PÉNALITÉS','$penalties',   Colors.redAccent),
+                        _statCell('⚡', 'PÉNALITÉS', '$penalties',   Colors.redAccent),
                         _divV(),
-                        _statCell('🛡️', 'IMMU.',   '$totalImm',    Colors.amberAccent),
+                        _statCell('🛡️', 'IMMU.',    '$totalImm',    Colors.amberAccent),
                         _divV(),
-                        _statCell('🏅', 'BADGES',  '$earnedBadges', Colors.greenAccent),
+                        _statCell('🏅', 'BADGES',   '$earnedBadges', Colors.greenAccent),
                       ],
                     ),
                   ),
@@ -492,7 +626,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   const Spacer(),
                   Center(
                     child: Text('↻ Appuie pour le dos',
-                        style: TextStyle(color: Colors.white38, fontSize: 10)),
+                        style:
+                            TextStyle(color: Colors.white38, fontSize: 10)),
                   ),
                 ],
               ),
@@ -536,8 +671,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               child: Text(
                 '📋 FICHE ${child.name.toUpperCase()}',
                 style: TextStyle(
-                  color: frame, fontWeight: FontWeight.w900,
-                  letterSpacing: 2, fontSize: 14,
+                  color:       frame,
+                  fontWeight:  FontWeight.w900,
+                  letterSpacing: 2,
+                  fontSize:    14,
                 ),
               ),
             ),
@@ -547,8 +684,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             const Divider(color: Colors.white12),
             const SizedBox(height: 8),
             const Text('🕒 Dernières activités',
-                style: TextStyle(color: Colors.white70,
-                    fontSize: 12, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ...last5.map((h) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -566,8 +705,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   '${h.points > 0 ? '+' : ''}${h.points}',
                   style: TextStyle(
                     color: h.points > 0
-                        ? Colors.greenAccent : Colors.redAccent,
-                    fontWeight: FontWeight.bold, fontSize: 12,
+                        ? Colors.greenAccent
+                        : Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
                 ),
               ]),
@@ -575,7 +716,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             const Spacer(),
             Center(
               child: Text('↻ Appuie pour le recto',
-                  style: TextStyle(color: Colors.white38, fontSize: 10)),
+                  style:
+                      TextStyle(color: Colors.white38, fontSize: 10)),
             ),
           ],
         ),
@@ -593,9 +735,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     ),
     child: Text(text,
         style: TextStyle(
-          color: textColor ?? Colors.white,
-          fontWeight: FontWeight.w900,
-          fontSize: 11, letterSpacing: 1.2,
+          color:       textColor ?? Colors.white,
+          fontWeight:  FontWeight.w900,
+          fontSize:    11,
+          letterSpacing: 1.2,
         )),
   );
 
@@ -603,33 +746,37 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       Column(mainAxisSize: MainAxisSize.min, children: [
         Text(emoji, style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 2),
-        Text(value, style: TextStyle(
-            color: color, fontWeight: FontWeight.w900, fontSize: 16)),
-        Text(label, style: const TextStyle(
-            color: Colors.white54, fontSize: 8, letterSpacing: 0.5)),
+        Text(value,
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.w900, fontSize: 16)),
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white54, fontSize: 8, letterSpacing: 0.5)),
       ]);
 
-  Widget _divV() =>
-      Container(height: 40, width: 1, color: Colors.white12);
+  Widget _divV() => Container(height: 40, width: 1, color: Colors.white12);
 
   Widget _levelBar(ChildModel child, Color frame) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(child.levelTitle, style: const TextStyle(
-            color: Colors.white60, fontSize: 10,
-            fontWeight: FontWeight.w600)),
-        Text('${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
+        Text(child.levelTitle,
+            style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 10,
+                fontWeight: FontWeight.w600)),
+        Text(
+            '${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
             style: const TextStyle(color: Colors.white38, fontSize: 10)),
       ]),
       const SizedBox(height: 4),
       ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: LinearProgressIndicator(
-          value: child.levelProgress,
+          value:           child.levelProgress,
           backgroundColor: Colors.white12,
-          valueColor: AlwaysStoppedAnimation(frame),
-          minHeight: 5,
+          valueColor:      AlwaysStoppedAnimation(frame),
+          minHeight:       5,
         ),
       ),
     ],
@@ -651,8 +798,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             streak > 0
                 ? '$streak jour${streak > 1 ? 's' : ''} sans pénalité !'
                 : 'Aucun streak actif',
-            style: TextStyle(color: frame,
-                fontWeight: FontWeight.w800, fontSize: 14),
+            style: TextStyle(
+                color:      frame,
+                fontWeight: FontWeight.w800,
+                fontSize:   14),
           ),
           Text(
             streak >= 7
@@ -679,8 +828,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         padding: const EdgeInsets.all(16),
         children: [
           const Text('Choisir un enfant',
-              style: TextStyle(color: Colors.white,
-                  fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
               textAlign: TextAlign.center),
           const SizedBox(height: 12),
           ...fp.children.map((c) => ListTile(
@@ -695,6 +846,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             onTap: () {
               setState(() => _selectedChildId = c.id);
               Navigator.pop(context);
+              _loadBonusItems(c.id);
             },
           )),
         ],
@@ -743,7 +895,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   child: const Text('Annuler')),
               ElevatedButton(
                 onPressed: () {
-                  // ✅ verifyPin() — nom exact dans PinProvider
                   if (pin.verifyPin(ctrl.text)) {
                     ok = true;
                     Navigator.pop(ctx);
@@ -766,9 +917,44 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         source: ImageSource.gallery, imageQuality: 70, maxWidth: 1200);
     if (xfile == null) return;
     final bytes = await xfile.readAsBytes();
-    // ✅ updateChildBanner() — méthode ajoutée dans family_provider.dart
     await fp.updateChildBanner(child.id, base64Encode(bytes));
     if (mounted) setState(() {});
+  }
+
+  // ─── Édition slogan ──────────────────────────────────────
+  Future<void> _editSlogan(ChildModel child, FamilyProvider fp) async {
+    final ctrl = TextEditingController(text: child.sloganText ?? '');
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text('Modifier le slogan',
+            style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ctrl,
+          style: const TextStyle(color: Colors.white),
+          maxLength: 60,
+          decoration: const InputDecoration(
+            labelText:  'Slogan',
+            labelStyle: TextStyle(color: Colors.white54),
+            counterStyle: TextStyle(color: Colors.white38),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () async {
+              await fp.updateChildSlogan(child.id, ctrl.text.trim());
+              if (mounted) setState(() {});
+              Navigator.pop(ctx);
+            },
+            child: const Text('Sauvegarder'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ─────────────────────────────────────────────────────────
@@ -782,8 +968,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         if (children.isEmpty) {
           return const Scaffold(
             backgroundColor: Color(0xFF0F0F1E),
-            body: Center(child: Text('Aucun enfant',
-                style: TextStyle(color: Colors.white54))),
+            body: Center(
+                child: Text('Aucun enfant',
+                    style: TextStyle(color: Colors.white54))),
           );
         }
 
@@ -802,7 +989,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             backgroundColor:  Colors.transparent,
             elevation:        0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70),
+              icon: const Icon(Icons.arrow_back_ios_new,
+                  color: Colors.white70),
               onPressed: () => Navigator.pop(context),
             ),
             title: Row(children: [
@@ -810,7 +998,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               const SizedBox(width: 8),
               Text(child.name,
                   style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
+                      color:      Colors.white,
+                      fontWeight: FontWeight.bold)),
             ]),
             actions: [
               if (children.length > 1)
@@ -828,10 +1017,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               labelColor:           color,
               unselectedLabelColor: Colors.white38,
               tabs: const [
-                Tab(icon: Icon(Icons.person),       text: 'Profil'),
-                Tab(icon: Icon(Icons.tv),            text: 'Écran'),
-                Tab(icon: Icon(Icons.history),       text: 'Historique'),
-                Tab(icon: Icon(Icons.emoji_events),  text: 'Badges'),
+                Tab(icon: Icon(Icons.person),      text: 'Profil'),
+                Tab(icon: Icon(Icons.tv),           text: 'Écran'),
+                Tab(icon: Icon(Icons.history),      text: 'Historique'),
+                Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
               ],
             ),
           ),
@@ -875,7 +1064,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editPhoto(child, fp),
                 icon:  const Icon(Icons.camera_alt, size: 16),
-                label: const Text('Photo', style: TextStyle(fontSize: 12)),
+                label: const Text('Photo',
+                    style: TextStyle(fontSize: 12)),
               ),
             ),
             const SizedBox(width: 8),
@@ -889,7 +1079,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () => _editBanner(child, fp, requirePin: false),
+                onPressed: () =>
+                    _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
                 label: const Text('Bannière 🖼️',
                     style: TextStyle(fontSize: 11)),
@@ -905,13 +1096,33 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () => _editBanner(child, fp, requirePin: true),
+                onPressed: () =>
+                    _editBanner(child, fp, requirePin: true),
                 icon:  const Icon(Icons.lock, size: 16),
                 label: const Text('Bannière 🔒',
                     style: TextStyle(fontSize: 11)),
               ),
             ),
           ]),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white54,
+                side: const BorderSide(color: Colors.white24),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => _editSlogan(child, fp),
+              icon:  const Icon(Icons.edit, size: 16),
+              label: const Text('Modifier le slogan',
+                  style: TextStyle(fontSize: 12)),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         Padding(
@@ -934,8 +1145,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       mainAxisSpacing: 10,
       childAspectRatio: 1.6,
       children: [
-        _statCard('🎯', 'Bonus',     '$bonuses',    Colors.greenAccent),
-        _statCard('⚡', 'Pénalités', '$penalties',  Colors.redAccent),
+        _statCard('🎯', 'Bonus',     '$bonuses',   Colors.greenAccent),
+        _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
         _statCard('🏆', 'Niveau',
             '${child.level} – ${child.levelTitle}', color),
         _statCard('🛡️', 'Immunités',
@@ -947,28 +1158,37 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   Widget _statCard(String emoji, String label, String value, Color color) =>
       GlassCard(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
           Text(emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(
-              color: color, fontWeight: FontWeight.bold, fontSize: 13)),
-          Text(label, style: const TextStyle(
-              color: Colors.white54, fontSize: 10)),
+          Text(value,
+              style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13)),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white54, fontSize: 10)),
         ]),
       );
 
   // ─── TAB ÉCRAN ───────────────────────────────────────────
   Widget _buildScreenTab(ChildModel child, FamilyProvider fp, Color color) {
-    final schoolNotes   = _getSchoolNotes(child, fp);
-    final behaviorNotes = _getBehaviorNotes(child, fp);
-    final immunities    = fp.getUsableImmunitiesForChild(child.id);
+    final immunities   = fp.getUsableImmunitiesForChild(child.id);
     final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);
     final bonusMinutes  = fp.getParentBonusMinutes(child.id);
 
-    final jours = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi',
-        'Samedi','Dimanche'];
+    final jours = [
+      'Lundi', 'Mardi', 'Mercredi', 'Jeudi',
+      'Vendredi', 'Samedi', 'Dimanche'
+    ];
     _selectedDay ??= jours[DateTime.now().weekday - 1];
 
+    // Calcul simplifié du temps écran (en minutes)
+    final schoolNotes   = _getSchoolNotes(child, fp);
+    final behaviorNotes = _getBehaviorNotes(child, fp);
     final minutes = _calculerTempsEcranPourJour(
         _selectedDay!, schoolNotes, behaviorNotes, bonusMinutes, child, fp);
 
@@ -983,12 +1203,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
               Text('📊 Résumé de la semaine',
-                  style: TextStyle(color: color,
-                      fontWeight: FontWeight.bold, fontSize: 14)),
+                  style: TextStyle(
+                      color:      color,
+                      fontWeight: FontWeight.bold,
+                      fontSize:   14)),
               const SizedBox(height: 8),
               _infoRow('🛡️ Immunités',
                   '$immunityBonus lignes', Colors.amberAccent),
-              _infoRow('⏱️ Bonus parent',
+              _infoRow(
+                  '⏱️ Bonus parent',
                   '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
                   Colors.greenAccent),
               _infoRow('📅 Jour', _selectedDay!, color),
@@ -998,6 +1221,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
         ),
         const SizedBox(height: 16),
+        // Sélecteur de jour
         SizedBox(
           height: 36,
           child: ListView.separated(
@@ -1023,7 +1247,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       style: TextStyle(
                         color: selected ? color : Colors.white54,
                         fontWeight: selected
-                            ? FontWeight.bold : FontWeight.normal,
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                         fontSize: 12,
                       )),
                 ),
@@ -1032,6 +1257,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
         ),
         const SizedBox(height: 20),
+        // Arc temps écran
         SizedBox(
           height: 200,
           child: Stack(
@@ -1049,33 +1275,182 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               ),
               Column(mainAxisSize: MainAxisSize.min, children: [
                 Text(_formatMinutes(minutes),
-                    style: const TextStyle(color: Colors.white,
-                        fontWeight: FontWeight.w900, fontSize: 28)),
+                    style: const TextStyle(
+                        color:      Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize:   28)),
                 const Text('temps écran',
-                    style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    style: TextStyle(
+                        color: Colors.white54, fontSize: 12)),
               ]),
             ],
           ),
         ),
         const SizedBox(height: 16),
+        // Bonus rapides parent
         _buildQuickBonusRow(child, fp, color),
+        const SizedBox(height: 20),
+        // Bonus personnalisés
+        _buildBonusSection(child, color),
+        const SizedBox(height: 16),
+        // Immunités utilisables
+        _buildImmunitySection(child, fp, color),
       ]),
     );
   }
 
-  Widget _infoRow(String label, String value, Color vColor) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ─── Section Bonus personnalisés ─────────────────────────
+  Widget _buildBonusSection(ChildModel child, Color color) {
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(
-                color: Colors.white60, fontSize: 12)),
-            Text(value, style: TextStyle(
-                color: vColor, fontWeight: FontWeight.bold, fontSize: 12)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('🎁 Mes bonus',
+                    style: TextStyle(
+                        color:      color,
+                        fontWeight: FontWeight.bold,
+                        fontSize:   14)),
+                GestureDetector(
+                  onTap: () => _addBonus(child.id),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: color.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, color: color, size: 14),
+                        const SizedBox(width: 4),
+                        Text('Ajouter',
+                            style: TextStyle(
+                                color:    color,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (_bonusItems.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    'Aucun bonus. Appuie sur "Ajouter" pour en créer !',
+                    style: TextStyle(color: Colors.white38, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: List.generate(_bonusItems.length, (i) {
+                  final b = _bonusItems[i];
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.07),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(b.emoji,
+                            style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 6),
+                        Text(b.label,
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 12)),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => _removeBonus(i, child.id),
+                          child: const Icon(Icons.close,
+                              color: Colors.redAccent, size: 14),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
           ],
         ),
-      );
+      ),
+    );
+  }
+
+  // ─── Section Immunités ────────────────────────────────────
+  Widget _buildImmunitySection(
+      ChildModel child, FamilyProvider fp, Color color) {
+    final immunities = fp.getUsableImmunitiesForChild(child.id);
+    if (immunities.isEmpty) return const SizedBox.shrink();
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('🛡️ Immunités disponibles',
+                style: TextStyle(
+                    color:      Colors.amberAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize:   14)),
+            const SizedBox(height: 8),
+            ...immunities.map((imm) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(children: [
+                const Text('🛡️',
+                    style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(imm.reason,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 12),
+                      overflow: TextOverflow.ellipsis),
+                ),
+                Text('${imm.availableLines} ligne(s)',
+                    style: const TextStyle(
+                        color:      Colors.amberAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize:   12)),
+              ]),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value, Color vColor) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white60, fontSize: 12)),
+        Text(value,
+            style: TextStyle(
+                color:      vColor,
+                fontWeight: FontWeight.bold,
+                fontSize:   12)),
+      ],
+    ),
+  );
 
   Widget _buildQuickBonusRow(
       ChildModel child, FamilyProvider fp, Color color) =>
@@ -1103,7 +1478,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       );
 
   void _triggerBonusAnim(String text) {
-    setState(() { _showBonusAnim = true; _bonusAnimText = text; });
+    setState(() {
+      _showBonusAnim = true;
+      _bonusAnimText = text;
+    });
     _bonusFloatController.forward(from: 0).then((_) {
       if (mounted) setState(() => _showBonusAnim = false);
     });
@@ -1114,9 +1492,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final history   = fp.history.where((h) => h.childId == child.id).toList();
     final bonuses   = history.where((h) => h.points > 0).length;
     final penalties = history.where((h) => h.points < 0).length;
-
-    // ✅ TimelineWidget prend entries (pas childId)
-    final entries = fp.getHistoryForChild(child.id);
+    final entries   = fp.getHistoryForChild(child.id);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(
@@ -1146,11 +1522,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            // ✅ TimelineScreen prend initialChildId (pas childId)
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) =>
-                  TimelineScreen(initialChildId: child.id)),
+              MaterialPageRoute(
+                  builder: (_) =>
+                      TimelineScreen(initialChildId: child.id)),
             ),
             icon:  const Icon(Icons.open_in_new, size: 16),
             label: const Text('Voir tout l\'historique'),
@@ -1173,14 +1549,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('🏅 Badges obtenus (${earned.length})',
-              style: TextStyle(color: color,
-                  fontWeight: FontWeight.bold, fontSize: 14)),
+              style: TextStyle(
+                  color:      color,
+                  fontWeight: FontWeight.bold,
+                  fontSize:   14)),
           const SizedBox(height: 10),
           if (earned.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: Text('Aucun badge encore obtenu',
-                  style: TextStyle(color: Colors.white38))),
+              child: Center(
+                  child: Text('Aucun badge encore obtenu',
+                      style: TextStyle(color: Colors.white38))),
             )
           else
             GridView.builder(
@@ -1188,16 +1567,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate:
                   const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3, crossAxisSpacing: 10,
-                mainAxisSpacing: 10, childAspectRatio: 0.9,
+                crossAxisCount:   3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing:  10,
+                childAspectRatio: 0.9,
               ),
               itemCount: earned.length,
               itemBuilder: (_, i) => _badgeEarnedCard(earned[i], color),
             ),
           const SizedBox(height: 20),
           Text('🔒 Badges à débloquer (${locked.length})',
-              style: const TextStyle(color: Colors.white54,
-                  fontWeight: FontWeight.bold, fontSize: 14)),
+              style: const TextStyle(
+                  color:      Colors.white54,
+                  fontWeight: FontWeight.bold,
+                  fontSize:   14)),
           const SizedBox(height: 10),
           ...locked.map((b) => _badgeLockedTile(b, child)),
         ],
@@ -1205,21 +1588,27 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  Widget _badgeEarnedCard(BadgeModel badge, Color color) =>
-      GlassCard(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(badge.powerEmoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(height: 4),
-          Text(badge.name,
-              style: const TextStyle(color: Colors.white,
-                  fontWeight: FontWeight.bold, fontSize: 11),
-              textAlign: TextAlign.center,
-              maxLines: 2, overflow: TextOverflow.ellipsis),
-        ]),
-      );
+  Widget _badgeEarnedCard(BadgeModel badge, Color color) => GlassCard(
+    child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+      Text(badge.powerEmoji,
+          style: const TextStyle(fontSize: 28)),
+      const SizedBox(height: 4),
+      Text(badge.name,
+          style: const TextStyle(
+              color:      Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize:   11),
+          textAlign:  TextAlign.center,
+          maxLines:   2,
+          overflow:   TextOverflow.ellipsis),
+    ]),
+  );
 
   Widget _badgeLockedTile(BadgeModel badge, ChildModel child) {
-    final progress = (child.points / badge.requiredPoints).clamp(0.0, 1.0);
+    final progress =
+        (child.points / badge.requiredPoints).clamp(0.0, 1.0);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -1235,29 +1624,42 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             color: Colors.white10,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Center(child: Text(badge.powerEmoji,
-              style: const TextStyle(fontSize: 24))),
+          child: Center(
+              child: Text(badge.powerEmoji,
+                  style: const TextStyle(fontSize: 24))),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(badge.name, style: const TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.bold, fontSize: 13)),
-            Text(badge.description, style: const TextStyle(
-                color: Colors.white38, fontSize: 11),
-                maxLines: 1, overflow: TextOverflow.ellipsis),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            Text(badge.name,
+                style: const TextStyle(
+                    color:      Colors.white70,
+                    fontWeight: FontWeight.bold,
+                    fontSize:   13)),
+            Text(badge.description,
+                style: const TextStyle(
+                    color: Colors.white38, fontSize: 11),
+                maxLines:  1,
+                overflow:  TextOverflow.ellipsis),
             const SizedBox(height: 6),
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white12,
-              valueColor: const AlwaysStoppedAnimation(Colors.amberAccent),
-              minHeight: 5,
+            ClipRRect(
               borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value:           progress,
+                backgroundColor: Colors.white10,
+                valueColor: const AlwaysStoppedAnimation(
+                    Colors.deepPurpleAccent),
+                minHeight: 4,
+              ),
             ),
             const SizedBox(height: 2),
-            Text('${child.points}/${badge.requiredPoints} pts',
-                style: const TextStyle(color: Colors.white38, fontSize: 10)),
+            Text(
+              '${child.points} / ${badge.requiredPoints} pts',
+              style: const TextStyle(
+                  color: Colors.white38, fontSize: 10),
+            ),
           ]),
         ),
       ]),
@@ -1265,61 +1667,49 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   // ─── Helpers calcul temps écran ──────────────────────────
-  String _formatMinutes(int minutes) {
-    if (minutes <= 0) return '0 min';
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    if (h == 0) return '${m}min';
-    if (m == 0) return '${h}h';
-    return '${h}h${m.toString().padLeft(2, '0')}';
-  }
-
-  List<Map<String, dynamic>> _getSchoolNotes(
-      ChildModel child, FamilyProvider fp) =>
+  List<dynamic> _getSchoolNotes(ChildModel child, FamilyProvider fp) =>
       fp.history
-          .where((h) => h.childId == child.id &&
-              h.category == 'school_note')
-          .map((h) => {'note': h.points.toDouble(), 'reason': h.reason})
+          .where((h) =>
+              h.childId == child.id && h.category == 'school_note')
           .toList();
 
-  List<Map<String, dynamic>> _getBehaviorNotes(
-      ChildModel child, FamilyProvider fp) =>
+  List<dynamic> _getBehaviorNotes(ChildModel child, FamilyProvider fp) =>
       fp.history
-          .where((h) => h.childId == child.id &&
+          .where((h) =>
+              h.childId == child.id &&
               h.category != 'school_note' &&
               h.category != 'screen_time_bonus')
-          .take(10)
-          .map((h) => {'points': h.points, 'reason': h.reason})
           .toList();
 
   int _calculerTempsEcranPourJour(
     String jour,
-    List<Map<String, dynamic>> schoolNotes,
-    List<Map<String, dynamic>> behaviorNotes,
+    List<dynamic> schoolNotes,
+    List<dynamic> behaviorNotes,
     int bonusMinutes,
     ChildModel child,
     FamilyProvider fp,
   ) {
-    final isWeekend = jour == 'Samedi' || jour == 'Dimanche';
-    int base        = isWeekend ? 120 : 60;
+    // Base selon le jour
+    int base = 60;
+    if (jour == 'Samedi' || jour == 'Dimanche') base = 90;
+    if (jour == 'Mercredi') base = 75;
 
-    if (behaviorNotes.isNotEmpty) {
-      final avg = behaviorNotes.fold(
-              0, (s, n) => s + (n['points'] as int)) /
-          behaviorNotes.length;
-      if (avg > 0) base += 15;
-      if (avg < 0) base -= 15;
-    }
-    if (schoolNotes.isNotEmpty) {
-      final avg = schoolNotes.fold(
-              0.0, (s, n) => s + (n['note'] as double)) /
-          schoolNotes.length;
-      if (avg >= 15)     base += 20;
-      else if (avg < 10) base -= 20;
-    }
+    // Ajustement selon les points comportement de la semaine
+    final pts = child.points;
+    if (pts >= 50)       base += 30;
+    else if (pts >= 20)  base += 15;
+    else if (pts < 0)    base -= 20;
 
+    // Ajout bonus parent
     base += bonusMinutes;
-    base += fp.getTotalAvailableImmunity(child.id) * 5;
+
     return base.clamp(0, 300);
+  }
+
+  String _formatMinutes(int minutes) {
+    if (minutes < 60) return '${minutes}min';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m == 0 ? '${h}h' : '${h}h${m.toString().padLeft(2, '0')}';
   }
 }
