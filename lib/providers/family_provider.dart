@@ -1262,5 +1262,121 @@ class FamilyProvider extends ChangeNotifier {
     await _tradesBox.delete(tradeId);
     if (_firestore.isConnected) await _firestore.deleteTrade(tradeId);
     notifyListeners();
+      // ─── Trades manquants ─────────────────────────────────────
+
+  List<TradeModel> getPendingTradesForChild(String childId) =>
+      _trades
+          .where((t) => t.isPending && t.toChildId == childId)
+          .toList();
+
+  Future<void> createTrade(
+      String fromChildId,
+      String toChildId,
+      int immunityLines,
+      String serviceDescription,
+  ) async {
+    final from = getChild(fromChildId);
+    if (from == null) return;
+    final available = getTotalAvailableImmunity(fromChildId);
+    if (available < immunityLines) return;
+
+    final trade = TradeModel(
+      id:                 _uuid.v4(),
+      fromChildId:        fromChildId,
+      toChildId:          toChildId,
+      immunityLines:      immunityLines,
+      serviceDescription: serviceDescription,
+      status:             TradeStatus.pending,
+      createdAt:          DateTime.now(),
+    );
+    _markPending(trade.id);
+    _trades.add(trade);
+    await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+    if (_firestore.isConnected) await _firestore.saveTrade(trade);
+    notifyListeners();
+  }
+
+  Future<void> markServiceDone(String tradeId) async {
+    try {
+      final trade  = _trades.firstWhere((t) => t.id == tradeId);
+      trade.status = TradeStatus.serviceDone;
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> completeTrade(String tradeId) async {
+    try {
+      final trade = _trades.firstWhere((t) => t.id == tradeId);
+
+      // Transférer les immunités du vendeur vers l'acheteur
+      final sellerImmunities = _immunities
+          .where((im) => im.childId == trade.fromChildId && im.isUsable)
+          .toList();
+
+      int linesToTransfer = trade.immunityLines;
+      for (final im in sellerImmunities) {
+        if (linesToTransfer <= 0) break;
+        final take = linesToTransfer.clamp(0, im.availableLines);
+        im.usedLines += take;
+        linesToTransfer -= take;
+        await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
+        if (_firestore.isConnected) await _firestore.saveImmunity(im);
+      }
+
+      // Créer une nouvelle immunité pour l'acheteur
+      final newImmunity = ImmunityLines(
+        id:      _uuid.v4(),
+        childId: trade.toChildId,
+        reason:  '🔄 Acheté à ${getChild(trade.fromChildId)?.name ?? "?"} : ${trade.serviceDescription}',
+        lines:   trade.immunityLines,
+      );
+      _markPending(newImmunity.id);
+      _immunities.add(newImmunity);
+      await _immunitiesBox.put(newImmunity.id, jsonEncode(newImmunity.toMap()));
+      if (_firestore.isConnected) await _firestore.saveImmunity(newImmunity);
+
+      // Marquer le trade comme complété
+      trade.status      = TradeStatus.completed;
+      trade.answeredAt  = DateTime.now();
+      await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTrade(trade);
+
+      // Entrées historique pour les deux enfants
+      final entrySeller = HistoryEntry(
+        id:       _uuid.v4(),
+        childId:  trade.fromChildId,
+        points:   trade.immunityLines,
+        reason:   '🔄 Vente d\'immunité à ${getChild(trade.toChildId)?.name ?? "?"} : ${trade.serviceDescription}',
+        category: 'échange',
+        isBonus:  false,
+        actionBy: _currentParentName,
+        date:     DateTime.now(),
+      );
+      final entryBuyer = HistoryEntry(
+        id:       _uuid.v4(),
+        childId:  trade.toChildId,
+        points:   trade.immunityLines,
+        reason:   '🔄 Achat d\'immunité de ${getChild(trade.fromChildId)?.name ?? "?"} : ${trade.serviceDescription}',
+        category: 'échange',
+        isBonus:  true,
+        actionBy: _currentParentName,
+        date:     DateTime.now(),
+      );
+      _markPending(entrySeller.id);
+      _markPending(entryBuyer.id);
+      _history.insert(0, entrySeller);
+      _history.insert(0, entryBuyer);
+      await _historyBox.put(entrySeller.id, jsonEncode(entrySeller.toMap()));
+      await _historyBox.put(entryBuyer.id,  jsonEncode(entryBuyer.toMap()));
+      if (_firestore.isConnected) {
+        await _firestore.saveHistoryEntry(entrySeller);
+        await _firestore.saveHistoryEntry(entryBuyer);
+      }
+
+      notifyListeners();
+    } catch (_) {}
+  }
   }
 }
