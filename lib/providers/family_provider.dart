@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/child_model.dart';
@@ -42,11 +41,10 @@ class FamilyProvider extends ChangeNotifier {
   List<BadgeModel>      _customBadges  = [];
   List<TradeModel>      _trades        = [];
 
-  // IDs supprimés — ne jamais réafficher
   final Set<String> _deletedEntryIds = {};
 
   // ══════════════════════════════════════════════════════════
-  // CORRECTIF ANTI-DISPARITION (race condition Firestore)
+  // CORRECTIF ANTI-DISPARITION
   // ══════════════════════════════════════════════════════════
   final Set<String> _pendingIds = {};
 
@@ -170,8 +168,6 @@ class FamilyProvider extends ChangeNotifier {
         _metaBox.get('current_parent', defaultValue: 'Parent') as String;
   }
 
-  // ───────────────────────────────────────────────────────────
-  // CALLBACKS FIRESTORE — tous protégés par _mergeWithPending
   // ───────────────────────────────────────────────────────────
   void _setupFirestoreCallbacks() {
     _firestore.onChildrenChanged = (list, _) {
@@ -387,14 +383,14 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> recalculateStreak(String childId) async {
     final child = getChild(childId);
     if (child == null) return;
-    final now     = DateTime.now();
-    final today   = DateTime(now.year, now.month, now.day);
-    final history = _history
+    final now   = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final hist  = _history
         .where((h) => h.childId == childId)
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
-    final hasPenaltyToday = history.any((h) {
+    final hasPenaltyToday = hist.any((h) {
       final d = DateTime(h.date.year, h.date.month, h.date.day);
       return d == today && !h.isBonus && h.category != 'screen_time_bonus';
     });
@@ -403,7 +399,7 @@ class FamilyProvider extends ChangeNotifier {
     if (hasPenaltyToday) {
       streak = 0;
     } else {
-      final lastPenalty = history
+      final lastPenalty = hist
           .where((h) => !h.isBonus && h.category != 'screen_time_bonus')
           .firstOrNull;
       if (lastPenalty == null) {
@@ -996,13 +992,11 @@ class FamilyProvider extends ChangeNotifier {
     ];
     if (prosecutionLawyerId != null) {
       participants.add(TribunalParticipant(
-          childId: prosecutionLawyerId,
-          role:    TribunalRole.prosecutionLawyer));
+          childId: prosecutionLawyerId, role: TribunalRole.prosecutionLawyer));
     }
     if (defenseLawyerId != null) {
       participants.add(TribunalParticipant(
-          childId: defenseLawyerId,
-          role:    TribunalRole.defenseLawyer));
+          childId: defenseLawyerId, role: TribunalRole.defenseLawyer));
     }
     if (witnessIds != null) {
       for (final wId in witnessIds) {
@@ -1127,6 +1121,7 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ✅ CORRIGÉ : utilise TribunalVerdict.innocent (plus notGuilty)
   Future<void> renderTribunalVerdict(
     String caseId,
     TribunalVerdict verdict,
@@ -1146,10 +1141,41 @@ class FamilyProvider extends ChangeNotifier {
         await addPoints(tc.accusedId, penaltyPoints,
             '⚖️ Verdict tribunal : $reason',
             category: 'tribunal_verdict', isBonus: false);
-      } else if (verdict == TribunalVerdict.notGuilty && rewardPoints != null) {
+      } else if (verdict == TribunalVerdict.innocent && rewardPoints != null) {
+        // ✅ innocent au lieu de notGuilty
         await addPoints(tc.plaintiffId, rewardPoints,
             '⚖️ Verdict tribunal : $reason',
             category: 'tribunal_verdict', isBonus: true);
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  // ✅ AJOUTÉ : alias attendu par tribunal_screen.dart
+  Future<void> renderVerdict({
+    required String          caseId,
+    required TribunalVerdict verdict,
+    required String          reason,
+    int?                     accusedPoints,
+  }) async {
+    try {
+      final tc         = _tribunalCases.firstWhere((c) => c.id == caseId);
+      tc.status        = TribunalStatus.closed;
+      tc.verdict       = verdict;
+      tc.verdictReason = reason;
+      tc.verdictDate   = DateTime.now();
+      await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
+      if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
+
+      if (accusedPoints != null && accusedPoints != 0) {
+        final isBonus = accusedPoints > 0;
+        await addPoints(
+          tc.accusedId,
+          accusedPoints.abs(),
+          '⚖️ Verdict tribunal : $reason',
+          category: 'tribunal_verdict',
+          isBonus:  isBonus,
+        );
       }
       notifyListeners();
     } catch (_) {}
@@ -1308,7 +1334,6 @@ class FamilyProvider extends ChangeNotifier {
         await _firestore.saveHistoryEntry(entrySeller);
         await _firestore.saveHistoryEntry(entryBuyer);
       }
-
       notifyListeners();
     } catch (_) {}
   }
@@ -1317,6 +1342,18 @@ class FamilyProvider extends ChangeNotifier {
     _trades.removeWhere((t) => t.id == tradeId);
     await _tradesBox.delete(tradeId);
     if (_firestore.isConnected) await _firestore.deleteTrade(tradeId);
+    notifyListeners();
+  }
+
+  // ✅ AJOUTÉ : resetAllScores attendu par settings_screen.dart
+  Future<void> resetAllScores() async {
+    for (final child in _children) {
+      child.points   = 0;
+      child.level    = 1;
+      child.badgeIds = [];
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      if (_firestore.isConnected) await _firestore.saveChild(child);
+    }
     notifyListeners();
   }
 }
