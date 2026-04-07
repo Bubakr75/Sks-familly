@@ -11,6 +11,7 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../models/badge_model.dart';
+import '../models/history_entry.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
@@ -26,14 +27,11 @@ class _ScreenTimePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width, size.height) / 2 - 8;
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..color = Colors.white10
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10,
-    );
+    canvas.drawCircle(center, radius,
+        Paint()
+          ..color = Colors.white10
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10);
     final color = progress >= 1.0
         ? Colors.greenAccent
         : progress >= 0.5
@@ -90,19 +88,26 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   late AnimationController _glowController;
   late AnimationController _bonusFloatController;
 
-  late Animation<double>   _contentFade;
-  late Animation<double>   _glowAnim;
-  late Animation<double>   _bonusFloatAnim;
-  late Animation<double>   _bonusOpacity;
+  late Animation<double> _contentFade;
+  late Animation<double> _glowAnim;
+  late Animation<double> _bonusFloatAnim;
+  late Animation<double> _bonusOpacity;
 
   String? _selectedChildId;
   String? _selectedDay;
 
+  // ── Jours pris en compte pour les notes scolaires ────────
+  Set<int> _joursSources = {0, 1, 2, 3, 4}; // Lun=0 … Dim=6
+
   bool   _showBonusAnim = false;
   String _bonusAnimText = '';
 
-  List<_CustomBadgeItem> _customLocalBadges   = [];
+  List<_CustomBadgeItem> _customLocalBadges    = [];
   List<String>           _hiddenDefaultBadgeIds = [];
+
+  static const _joursNoms = [
+    'Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'
+  ];
 
   @override
   void initState() {
@@ -153,7 +158,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     super.dispose();
   }
 
-  // ─── Chargement prefs ────────────────────────────────────
+  // ─── Prefs ───────────────────────────────────────────────
   Future<void> _loadPrefs(String childId) async {
     final prefs  = await SharedPreferences.getInstance();
     final raw    = prefs.getStringList('custom_badges_$childId') ?? [];
@@ -180,11 +185,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   Future<void> _saveHiddenBadges(String childId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-        'hidden_badges_$childId', _hiddenDefaultBadgeIds);
+    await prefs.setStringList('hidden_badges_$childId', _hiddenDefaultBadgeIds);
   }
 
-  // ─── Ajouter un badge perso ───────────────────────────────
+  // ─── Badges perso ────────────────────────────────────────
   Future<void> _addCustomBadge(String childId) async {
     final emojiCtrl = TextEditingController();
     final labelCtrl = TextEditingController();
@@ -194,63 +198,53 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Ajouter un badge',
             style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '💡 Appuie sur le champ émoji et utilise le clavier de ton téléphone pour choisir ton émoji',
-              style: TextStyle(color: Colors.white54, fontSize: 11),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text(
+            '💡 Appuie sur le champ émoji et utilise le clavier de ton téléphone',
+            style: TextStyle(color: Colors.white54, fontSize: 11),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller:   emojiCtrl,
+            style:        const TextStyle(color: Colors.white, fontSize: 30),
+            textAlign:    TextAlign.center,
+            keyboardType: TextInputType.text,
+            decoration: InputDecoration(
+              labelText:  'Émoji',
+              labelStyle: const TextStyle(color: Colors.white54),
+              hintText:   '🏆',
+              hintStyle:  const TextStyle(color: Colors.white24),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.white24)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.deepPurpleAccent)),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller:   emojiCtrl,
-              style:        const TextStyle(color: Colors.white, fontSize: 30),
-              textAlign:    TextAlign.center,
-              keyboardType: TextInputType.text,
-              decoration: InputDecoration(
-                labelText:  'Émoji',
-                labelStyle: const TextStyle(color: Colors.white54),
-                hintText:   '🏆',
-                hintStyle:  const TextStyle(color: Colors.white24),
-                enabledBorder: OutlineInputBorder(
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: labelCtrl,
+            style:      const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText:  'Nom du badge',
+              labelStyle: const TextStyle(color: Colors.white54),
+              hintText:   'ex : Super lecteur',
+              hintStyle:  const TextStyle(color: Colors.white24),
+              enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:   const BorderSide(color: Colors.white24),
-                ),
-                focusedBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: Colors.white24)),
+              focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: Colors.deepPurpleAccent),
-                ),
-              ),
+                  borderSide: const BorderSide(color: Colors.deepPurpleAccent)),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: labelCtrl,
-              style:      const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText:  'Nom du badge',
-                labelStyle: const TextStyle(color: Colors.white54),
-                hintText:   'ex : Super lecteur',
-                hintStyle:  const TextStyle(color: Colors.white24),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:   const BorderSide(color: Colors.white24),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: Colors.deepPurpleAccent),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ]),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler',
-                style: TextStyle(color: Colors.white54)),
-          ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white54))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurpleAccent),
@@ -259,8 +253,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               final l = labelCtrl.text.trim();
               if (l.isNotEmpty) {
                 setState(() => _customLocalBadges.add(
-                    _CustomBadgeItem(
-                        emoji: e.isEmpty ? '⭐' : e, label: l)));
+                    _CustomBadgeItem(emoji: e.isEmpty ? '⭐' : e, label: l)));
                 _saveCustomBadges(childId);
               }
               Navigator.pop(ctx);
@@ -272,39 +265,32 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─── Supprimer un badge perso ─────────────────────────────
   void _removeCustomBadge(int index, String childId) {
     setState(() => _customLocalBadges.removeAt(index));
     _saveCustomBadges(childId);
   }
 
-  // ─── Masquer un badge par défaut ─────────────────────────
   Future<void> _hideDefaultBadge(String badgeId, String childId) async {
     setState(() => _hiddenDefaultBadgeIds.add(badgeId));
     await _saveHiddenBadges(childId);
   }
 
-  // ─── Réafficher tous les badges par défaut ───────────────
   Future<void> _resetHiddenBadges(String childId) async {
     setState(() => _hiddenDefaultBadgeIds = []);
     await _saveHiddenBadges(childId);
   }
 
-  // ─── Couleur enfant ──────────────────────────────────────
+  // ─── Couleurs ────────────────────────────────────────────
   Color _childColor(ChildModel child) {
     if (child.accentColorHex != null) {
       try {
-        return Color(
-            int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
+        return Color(int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
       } catch (_) {}
     }
     const palette = [
-      Colors.deepPurpleAccent,
-      Colors.blueAccent,
-      Color(0xFF00897B),
-      Color(0xFFF57C00),
-      Colors.pinkAccent,
-      Color(0xFF00ACC1),
+      Colors.deepPurpleAccent, Colors.blueAccent,
+      Color(0xFF00897B), Color(0xFFF57C00),
+      Colors.pinkAccent, Color(0xFF00ACC1),
     ];
     return palette[child.name.codeUnitAt(0) % palette.length];
   }
@@ -330,9 +316,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     if (child.photoBase64.isNotEmpty) {
       try {
         core = CircleAvatar(
-          radius: radius,
-          backgroundImage: MemoryImage(base64Decode(child.photoBase64)),
-        );
+            radius: radius,
+            backgroundImage: MemoryImage(base64Decode(child.photoBase64)));
       } catch (_) {
         core = _letterAvatar(child, radius, color);
       }
@@ -379,10 +364,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         backgroundColor: color.withOpacity(0.3),
         child: Text(child.name[0].toUpperCase(),
             style: TextStyle(
-              fontSize:   radius * 0.9,
-              fontWeight: FontWeight.bold,
-              color:      color,
-            )),
+                fontSize:   radius * 0.9,
+                fontWeight: FontWeight.bold,
+                color:      color)),
       );
 
   // ─── Sélecteur enfant ────────────────────────────────────
@@ -409,8 +393,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             subtitle: Text('${c.points} pts',
                 style: const TextStyle(color: Colors.white54)),
             trailing: c.id == _selectedChildId
-                ? const Icon(Icons.check_circle,
-                    color: Colors.greenAccent)
+                ? const Icon(Icons.check_circle, color: Colors.greenAccent)
                 : null,
             onTap: () {
               setState(() => _selectedChildId = c.id);
@@ -423,7 +406,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─── Édition photo ───────────────────────────────────────
+  // ─── Edition photo / bannière / slogan ───────────────────
   Future<void> _editPhoto(ChildModel child, FamilyProvider fp) async {
     final xfile = await ImagePicker().pickImage(
         source: ImageSource.gallery, imageQuality: 80, maxWidth: 600);
@@ -433,7 +416,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     if (mounted) setState(() {});
   }
 
-  // ─── Édition bannière ────────────────────────────────────
   Future<void> _editBanner(ChildModel child, FamilyProvider fp,
       {required bool requirePin}) async {
     if (requirePin) {
@@ -467,8 +449,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     ok = true;
                     Navigator.pop(ctx);
                   } else {
-                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                        content: Text('PIN incorrect ❌')));
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('PIN incorrect ❌')));
                   }
                 },
                 child: const Text('Valider'),
@@ -487,7 +469,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     if (mounted) setState(() {});
   }
 
-  // ─── Édition slogan ──────────────────────────────────────
   Future<void> _editSlogan(ChildModel child, FamilyProvider fp) async {
     final ctrl = TextEditingController(text: child.sloganText ?? '');
     await showDialog(
@@ -554,8 +535,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           backgroundColor: Colors.transparent,
           elevation:       0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new,
-                color: Colors.white70),
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70),
             onPressed: () => Navigator.pop(context),
           ),
           title: Row(children: [
@@ -606,7 +586,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     });
   }
 
-  // ─── TAB PROFIL ──────────────────────────────────────────
+  // ════════════════════════════════════════════════════════
+  //  TAB PROFIL
+  // ════════════════════════════════════════════════════════
   Widget _buildProfileTab(ChildModel child, FamilyProvider fp, Color color) {
     final frame = _frameColor(child.level);
     return SingleChildScrollView(
@@ -618,59 +600,47 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(children: [
-                // Bannière
                 if (child.bannerBase64 != null &&
                     child.bannerBase64!.isNotEmpty) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: SizedBox(
-                      height: 100,
-                      width:  double.infinity,
+                      height: 100, width: double.infinity,
                       child: Image.memory(
-                        base64Decode(child.bannerBase64!),
-                        fit: BoxFit.cover,
-                      ),
+                          base64Decode(child.bannerBase64!),
+                          fit: BoxFit.cover),
                     ),
                   ),
                   const SizedBox(height: 16),
                 ],
-                // Photo + cadre niveau
                 _buildAvatar(child, 52, showFrame: true),
                 const SizedBox(height: 12),
-                // Nom
                 Text(child.name,
                     style: const TextStyle(
-                        color:      Colors.white,
-                        fontSize:   22,
+                        color: Colors.white, fontSize: 22,
                         fontWeight: FontWeight.bold)),
-                // Slogan
-                if (child.sloganText != null &&
-                    child.sloganText!.isNotEmpty)
+                if (child.sloganText != null && child.sloganText!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text('"${child.sloganText}"',
                         style: const TextStyle(
-                            color:     Colors.white60,
-                            fontSize:  12,
+                            color: Colors.white60, fontSize: 12,
                             fontStyle: FontStyle.italic)),
                   ),
                 const SizedBox(height: 16),
-                // Niveau
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(child.levelTitle,
                         style: TextStyle(
-                            color:      frame,
-                            fontWeight: FontWeight.bold,
-                            fontSize:   13)),
+                            color: frame, fontWeight: FontWeight.bold,
+                            fontSize: 13)),
                     Text('${child.points} pts',
                         style: const TextStyle(
                             color: Colors.white54, fontSize: 12)),
                   ],
                 ),
                 const SizedBox(height: 6),
-                // Barre HP rectangulaire
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
@@ -692,8 +662,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   alignment: Alignment.centerRight,
                   child: Text(
                     '${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 10),
+                    style: const TextStyle(color: Colors.white38, fontSize: 10),
                   ),
                 ),
               ]),
@@ -701,7 +670,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
         ),
         const SizedBox(height: 12),
-        // Boutons édition
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: [
@@ -716,8 +684,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editPhoto(child, fp),
                 icon:  const Icon(Icons.camera_alt, size: 16),
-                label: const Text('Photo',
-                    style: TextStyle(fontSize: 12)),
+                label: const Text('Photo', style: TextStyle(fontSize: 12)),
               ),
             ),
             const SizedBox(width: 8),
@@ -730,8 +697,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () =>
-                    _editBanner(child, fp, requirePin: false),
+                onPressed: () => _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
                 label: const Text('Bannière 🖼️',
                     style: TextStyle(fontSize: 11)),
@@ -747,8 +713,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () =>
-                    _editBanner(child, fp, requirePin: true),
+                onPressed: () => _editBanner(child, fp, requirePin: true),
                 icon:  const Icon(Icons.lock, size: 16),
                 label: const Text('Bannière 🔒',
                     style: TextStyle(fontSize: 11)),
@@ -809,48 +774,50 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   Widget _statCard(String emoji, String label, String value, Color color) =>
       GlassCard(
-        child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold,
-                  fontSize: 13)),
+                  color: color, fontWeight: FontWeight.bold, fontSize: 13)),
           Text(label,
-              style: const TextStyle(
-                  color: Colors.white54, fontSize: 10)),
+              style: const TextStyle(color: Colors.white54, fontSize: 10)),
         ]),
       );
 
-  // ─── TAB ÉCRAN ───────────────────────────────────────────
+  // ════════════════════════════════════════════════════════
+  //  TAB ÉCRAN — avec sélecteur de jours pour les notes
+  // ════════════════════════════════════════════════════════
   Widget _buildScreenTab(ChildModel child, FamilyProvider fp, Color color) {
     final immunities    = fp.getUsableImmunitiesForChild(child.id);
     final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);
     final bonusMinutes  = fp.getParentBonusMinutes(child.id);
 
-    final jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi',
-        'Vendredi', 'Samedi', 'Dimanche'];
-    _selectedDay ??= jours[DateTime.now().weekday - 1];
+    _selectedDay ??= _joursNoms[DateTime.now().weekday - 1];
 
     final schoolNotes   = _getSchoolNotes(child, fp);
     final behaviorNotes = _getBehaviorNotes(child, fp);
     final minutes = _calculerTempsEcranPourJour(
-        _selectedDay!, schoolNotes, behaviorNotes,
-        bonusMinutes, child, fp);
+        _selectedDay!, schoolNotes, behaviorNotes, bonusMinutes, child, fp);
+
+    // Scores calculés sur les jours cochés
+    final schoolAvg    = fp.getSchoolAverageForDays(child.id, _joursSources);
+    final behaviorScore= fp.getBehaviorScoreForDays(child.id, _joursSources);
+    final globalScore  = fp.getGlobalScoreForDays(child.id, _joursSources);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(
           top: 120, bottom: 24, left: 16, right: 16),
       child: Column(children: [
+
+        // ── Résumé ──────────────────────────────────────
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text('📊 Résumé de la semaine',
+              Text('📊 Résumé',
                   style: TextStyle(
                       color: color, fontWeight: FontWeight.bold,
                       fontSize: 14)),
@@ -860,21 +827,140 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               _infoRow('⏱️ Bonus parent',
                   '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
                   Colors.greenAccent),
-              _infoRow('📅 Jour', _selectedDay!, color),
-              _infoRow('⏰ Temps calculé',
+              _infoRow('📅 Jour affiché', _selectedDay!, color),
+              _infoRow('⏰ Temps écran calculé',
                   _formatMinutes(minutes), Colors.white),
+              if (_joursSources.isNotEmpty) ...[
+                const Divider(color: Colors.white12, height: 20),
+                _infoRow('📚 Moy. scolaire (jours cochés)',
+                    schoolAvg >= 0
+                        ? '${schoolAvg.toStringAsFixed(1)}/20'
+                        : 'Aucune note',
+                    Colors.purpleAccent),
+                _infoRow('😊 Comportement (jours cochés)',
+                    '${behaviorScore.toStringAsFixed(1)}/20',
+                    Colors.lightBlueAccent),
+                _infoRow('🌟 Score global',
+                    '${globalScore.toStringAsFixed(1)}/20',
+                    Colors.orangeAccent),
+              ],
             ]),
           ),
         ),
         const SizedBox(height: 16),
+
+        // ── Sélecteur jours pour les notes ──────────────
+        GlassCard(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.calendar_today, color: color, size: 15),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text('📚 Jours pour le calcul des notes',
+                        style: TextStyle(
+                            color: color, fontWeight: FontWeight.bold,
+                            fontSize: 13)),
+                  ),
+                ]),
+                const SizedBox(height: 4),
+                const Text(
+                  'Ex : noter le mercredi pour lundi + mardi → cocher Lun & Mar',
+                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: List.generate(7, (i) {
+                    final sel = _joursSources.contains(i);
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() {
+                          if (sel) {
+                            _joursSources.remove(i);
+                          } else {
+                            _joursSources.add(i);
+                          }
+                        }),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: sel
+                                ? color.withOpacity(0.25)
+                                : Colors.white10,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: sel ? color : Colors.white24,
+                              width: sel ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Column(children: [
+                            Text(
+                              _joursNoms[i].substring(0, 3),
+                              style: TextStyle(
+                                color: sel ? color : Colors.white38,
+                                fontSize: 9,
+                                fontWeight: sel
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 2),
+                            Icon(
+                              sel
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              color: sel ? color : Colors.white24,
+                              size: 11,
+                            ),
+                          ]),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 10),
+                // Raccourcis
+                Row(children: [
+                  _joursShortcut('Sem.', {0,1,2,3,4}, color),
+                  const SizedBox(width: 6),
+                  _joursShortcut('Lun-Mar', {0,1}, color),
+                  const SizedBox(width: 6),
+                  _joursShortcut('Lun-Mer', {0,1,2}, color),
+                  const SizedBox(width: 6),
+                  _joursShortcut('Tout', {0,1,2,3,4,5,6}, color),
+                ]),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Sélecteur jour affiché (temps écran) ────────
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text('📅 Jour pour le temps d\'écran',
+                style: TextStyle(
+                    color: color.withOpacity(0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ),
         SizedBox(
           height: 36,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: jours.length,
+            itemCount: _joursNoms.length,
             separatorBuilder: (_, __) => const SizedBox(width: 6),
             itemBuilder: (_, i) {
-              final j        = jours[i];
+              final j        = _joursNoms[i];
               final selected = j == _selectedDay;
               return GestureDetector(
                 onTap: () => setState(() => _selectedDay = j),
@@ -901,33 +987,32 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
         ),
         const SizedBox(height: 20),
+
+        // ── Cercle temps écran ───────────────────────────
         SizedBox(
           height: 200,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              AnimatedBuilder(
-                animation: _contentFade,
-                builder: (_, __) => CustomPaint(
-                  size: const Size(180, 180),
-                  painter: _ScreenTimePainter(
-                    progress:  (minutes / 180).clamp(0, 1),
-                    animValue: _contentFade.value,
-                  ),
+          child: Stack(alignment: Alignment.center, children: [
+            AnimatedBuilder(
+              animation: _contentFade,
+              builder: (_, __) => CustomPaint(
+                size: const Size(180, 180),
+                painter: _ScreenTimePainter(
+                  progress:  (minutes / 180).clamp(0, 1),
+                  animValue: _contentFade.value,
                 ),
               ),
-              Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(_formatMinutes(minutes),
-                    style: const TextStyle(
-                        color:      Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize:   28)),
-                const Text('temps écran',
-                    style: TextStyle(
-                        color: Colors.white54, fontSize: 12)),
-              ]),
-            ],
-          ),
+            ),
+            Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(_formatMinutes(minutes),
+                  style: const TextStyle(
+                      color:      Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize:   28)),
+              const Text('temps écran',
+                  style: TextStyle(
+                      color: Colors.white54, fontSize: 12)),
+            ]),
+          ]),
         ),
         const SizedBox(height: 16),
         _buildQuickBonusRow(child, fp, color),
@@ -937,42 +1022,62 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
+  // ── Raccourci jours ──────────────────────────────────────
+  Widget _joursShortcut(String label, Set<int> jours, Color color) {
+    final isActive = _joursSources.length == jours.length &&
+        _joursSources.containsAll(jours);
+    return GestureDetector(
+      onTap: () => setState(() => _joursSources = Set.from(jours)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isActive ? color.withOpacity(0.2) : Colors.white10,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+              color: isActive ? color : Colors.white24),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                color: isActive ? color : Colors.white38,
+                fontSize: 10,
+                fontWeight:
+                    isActive ? FontWeight.bold : FontWeight.normal)),
+      ),
+    );
+  }
+
   Widget _buildImmunitySection(ChildModel child, FamilyProvider fp) {
     final immunities = fp.getUsableImmunitiesForChild(child.id);
     if (immunities.isEmpty) return const SizedBox.shrink();
     return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('🛡️ Immunités disponibles',
-                style: TextStyle(
-                    color:      Colors.amberAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize:   14)),
-            const SizedBox(height: 8),
-            ...immunities.map((imm) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(children: [
-                const Text('🛡️',
-                    style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(imm.reason,
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 12),
-                      overflow: TextOverflow.ellipsis),
-                ),
-                Text('${imm.availableLines} ligne(s)',
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('🛡️ Immunités disponibles',
+              style: TextStyle(
+                  color:      Colors.amberAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize:   14)),
+          const SizedBox(height: 8),
+          ...immunities.map((imm) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(children: [
+              const Text('🛡️', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(imm.reason,
                     style: const TextStyle(
-                        color:      Colors.amberAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize:   12)),
-              ]),
-            )),
-          ],
-        ),
+                        color: Colors.white70, fontSize: 12),
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Text('${imm.availableLines} ligne(s)',
+                  style: const TextStyle(
+                      color:      Colors.amberAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize:   12)),
+            ]),
+          )),
+        ]),
       ),
     );
   }
@@ -982,18 +1087,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        Flexible(
+          child: Text(label,
+              style: const TextStyle(color: Colors.white60, fontSize: 12))),
         Text(value,
             style: TextStyle(
-                color: vColor, fontWeight: FontWeight.bold,
-                fontSize: 12)),
+                color: vColor, fontWeight: FontWeight.bold, fontSize: 12)),
       ],
     ),
   );
 
-  Widget _buildQuickBonusRow(
-      ChildModel child, FamilyProvider fp, Color color) =>
+  Widget _buildQuickBonusRow(ChildModel child, FamilyProvider fp, Color color) =>
       Row(children: [15, 30, 60].map((min) => Expanded(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1009,8 +1113,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   child.id, min, 'Bonus parent +$min min');
               _triggerBonusAnim('+$min min 🎉');
             },
-            child: Text('+$min min',
-                style: const TextStyle(fontSize: 12)),
+            child: Text('+$min min', style: const TextStyle(fontSize: 12)),
           ),
         ),
       )).toList());
@@ -1022,7 +1125,61 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     });
   }
 
-  // ─── TAB HISTORIQUE ──────────────────────────────────────
+  // ════════════════════════════════════════════════════════
+  //  Calcul temps écran
+  // ════════════════════════════════════════════════════════
+  List<HistoryEntry> _getSchoolNotes(ChildModel child, FamilyProvider fp) =>
+      fp.history
+          .where((h) => h.childId == child.id && h.category == 'school_note')
+          .toList();
+
+  List<HistoryEntry> _getBehaviorNotes(ChildModel child, FamilyProvider fp) =>
+      fp.history
+          .where((h) =>
+              h.childId == child.id &&
+              h.category != 'school_note' &&
+              h.category != 'screen_time_bonus' &&
+              h.category != 'saturday_rating')
+          .toList();
+
+  int _calculerTempsEcranPourJour(
+    String jour,
+    List<HistoryEntry> schoolNotes,
+    List<HistoryEntry> behaviorNotes,
+    int bonusMinutes,
+    ChildModel child,
+    FamilyProvider fp,
+  ) {
+    if (jour == 'Samedi') {
+      return fp.getSaturdayMinutes(child.id);
+    }
+    if (jour == 'Dimanche') {
+      return fp.getSundayMinutes(child.id);
+    }
+    // Lundi–Vendredi : basé sur le score global de la semaine
+    final globalScore = fp.getWeeklyGlobalScore(child.id);
+    int base = 0;
+    if (globalScore >= 18)      base = 180;
+    else if (globalScore >= 16) base = 150;
+    else if (globalScore >= 14) base = 120;
+    else if (globalScore >= 12) base = 90;
+    else if (globalScore >= 10) base = 60;
+    else if (globalScore >= 8)  base = 30;
+    return (base + bonusMinutes).clamp(0, 480);
+  }
+
+  String _formatMinutes(int minutes) {
+    if (minutes <= 0) return '0 min';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h == 0) return '${m}min';
+    if (m == 0) return '${h}h';
+    return '${h}h${m.toString().padLeft(2, '0')}';
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  TAB HISTORIQUE
+  // ════════════════════════════════════════════════════════
   Widget _buildHistoryTab(ChildModel child, FamilyProvider fp, Color color) {
     final history   = fp.history.where((h) => h.childId == child.id).toList();
     final bonuses   = history.where((h) => h.points > 0).length;
@@ -1066,9 +1223,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─── TAB BADGES ──────────────────────────────────────────
+  // ════════════════════════════════════════════════════════
+  //  TAB BADGES
+  // ════════════════════════════════════════════════════════
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
-    final all = fp.customBadges
+    final all    = fp.customBadges
         .where((b) => !_hiddenDefaultBadgeIds.contains(b.id))
         .toList();
     final earned = all.where((b) => child.badgeIds.contains(b.id)).toList();
@@ -1083,110 +1242,100 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('⭐ Mes badges perso',
-                        style: TextStyle(
-                            color:      color,
-                            fontWeight: FontWeight.bold,
-                            fontSize:   14)),
-                    GestureDetector(
-                      onTap: () => _addCustomBadge(child.id),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(color: color.withOpacity(0.5)),
-                        ),
-                        child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                          Icon(Icons.add, color: color, size: 14),
-                          const SizedBox(width: 4),
-                          Text('Ajouter',
-                              style: TextStyle(
-                                  color:      color,
-                                  fontSize:   12,
-                                  fontWeight: FontWeight.bold)),
-                        ]),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('⭐ Mes badges perso',
+                      style: TextStyle(
+                          color: color, fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                  GestureDetector(
+                    onTap: () => _addCustomBadge(child.id),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: color.withOpacity(0.5)),
                       ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.add, color: color, size: 14),
+                        const SizedBox(width: 4),
+                        Text('Ajouter',
+                            style: TextStyle(
+                                color: color, fontSize: 12,
+                                fontWeight: FontWeight.bold)),
+                      ]),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                if (_customLocalBadges.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        'Aucun badge perso. Appuie sur "Ajouter" !',
-                        style: TextStyle(
-                            color: Colors.white38, fontSize: 12),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount:   3,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing:  8,
-                      childAspectRatio: 0.85,
-                    ),
-                    itemCount: _customLocalBadges.length,
-                    itemBuilder: (_, i) {
-                      final b = _customLocalBadges[i];
-                      return Stack(children: [
-                        GlassCard(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(b.emoji,
-                                  style:
-                                      const TextStyle(fontSize: 30)),
-                              const SizedBox(height: 4),
-                              Text(b.label,
-                                  style: const TextStyle(
-                                      color:      Colors.white,
-                                      fontSize:   10,
-                                      fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                  maxLines:  2,
-                                  overflow:  TextOverflow.ellipsis),
-                            ],
-                          ),
-                        ),
-                        Positioned(
-                          top: 4, right: 4,
-                          child: GestureDetector(
-                            onTap: () =>
-                                _removeCustomBadge(i, child.id),
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                  color: Colors.redAccent,
-                                  shape: BoxShape.circle),
-                              child: const Icon(Icons.close,
-                                  color: Colors.white, size: 12),
-                            ),
-                          ),
-                        ),
-                      ]);
-                    },
                   ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (_customLocalBadges.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Aucun badge perso. Appuie sur "Ajouter" !',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              else
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount:   3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing:  8,
+                    childAspectRatio: 0.85,
+                  ),
+                  itemCount: _customLocalBadges.length,
+                  itemBuilder: (_, i) {
+                    final b = _customLocalBadges[i];
+                    return Stack(children: [
+                      GlassCard(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(b.emoji,
+                                style: const TextStyle(fontSize: 30)),
+                            const SizedBox(height: 4),
+                            Text(b.label,
+                                style: const TextStyle(
+                                    color:      Colors.white,
+                                    fontSize:   10,
+                                    fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                                maxLines:  2,
+                                overflow:  TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: 4, right: 4,
+                        child: GestureDetector(
+                          onTap: () => _removeCustomBadge(i, child.id),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                                color: Colors.redAccent,
+                                shape: BoxShape.circle),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 12),
+                          ),
+                        ),
+                      ),
+                    ]);
+                  },
+                ),
+            ]),
           ),
         ),
         const SizedBox(height: 20),
@@ -1194,9 +1343,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         // ── Badges gagnés ────────────────────────────────
         Text('🏅 Badges obtenus (${earned.length})',
             style: TextStyle(
-                color:      color,
-                fontWeight: FontWeight.bold,
-                fontSize:   14)),
+                color: color, fontWeight: FontWeight.bold, fontSize: 14)),
         const SizedBox(height: 10),
         if (earned.isEmpty)
           const Padding(
@@ -1221,7 +1368,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
         const SizedBox(height: 20),
 
-        // ── Badges à débloquer (supprimables) ────────────
+        // ── Badges à débloquer ────────────────────────────
         Text('🔒 Badges à débloquer (${locked.length})',
             style: const TextStyle(
                 color:      Colors.white54,
@@ -1230,7 +1377,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         const SizedBox(height: 10),
         ...locked.map((b) => _badgeLockedTile(b, child)),
 
-        // ── Bouton réinitialiser ──────────────────────────
         if (_hiddenDefaultBadgeIds.isNotEmpty) ...[
           const SizedBox(height: 16),
           SizedBox(
@@ -1269,9 +1415,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   );
 
   Widget _badgeLockedTile(BadgeModel badge, ChildModel child) {
-    final progress =
-        (child.points / badge.requiredPoints).clamp(0.0, 1.0);
-    final frame = _frameColor(child.level);
+    final progress = (child.points / badge.requiredPoints).clamp(0.0, 1.0);
+    final frame    = _frameColor(child.level);
     return Container(
       margin:  const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -1291,20 +1436,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
               children: [
             Text(badge.name,
                 style: const TextStyle(
-                    color:      Colors.white70,
-                    fontWeight: FontWeight.bold,
-                    fontSize:   13)),
+                    color: Colors.white70, fontWeight: FontWeight.bold,
+                    fontSize: 13)),
             Text(badge.description,
-                style: const TextStyle(
-                    color: Colors.white38, fontSize: 11),
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 6),
-            // Barre rectangulaire avec progression
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
@@ -1328,13 +1469,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     color: Colors.white38, fontSize: 10)),
           ]),
         ),
-        // Bouton supprimer
         GestureDetector(
           onTap: () => showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
               backgroundColor: const Color(0xFF1A1A2E),
-              title: const Text('Supprimer ce badge ?',
+              title: const Text('Masquer ce badge ?',
                   style: TextStyle(color: Colors.white)),
               content: Text(
                 'Le badge "${badge.name}" sera masqué. Tu pourras le réafficher en bas de la liste.',
@@ -1343,7 +1483,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Annuler')),
+                    child: const Text('Annuler',
+                        style: TextStyle(color: Colors.white54))),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent),
@@ -1351,65 +1492,21 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     Navigator.pop(ctx);
                     _hideDefaultBadge(badge.id, child.id);
                   },
-                  child: const Text('Supprimer'),
+                  child: const Text('Masquer'),
                 ),
               ],
             ),
           ),
           child: Container(
-            margin: const EdgeInsets.only(left: 8),
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-                color:  Colors.redAccent.withOpacity(0.15),
-                shape:  BoxShape.circle,
-                border: Border.all(
-                    color: Colors.redAccent.withOpacity(0.4))),
-            child: const Icon(Icons.close,
-                color: Colors.redAccent, size: 16),
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.visibility_off,
+                color: Colors.white38, size: 16),
           ),
         ),
       ]),
     );
-  }
-
-  // ─── Helpers calcul temps écran ──────────────────────────
-  List<dynamic> _getSchoolNotes(ChildModel child, FamilyProvider fp) =>
-      fp.history
-          .where((h) =>
-              h.childId == child.id && h.category == 'school_note')
-          .toList();
-
-  List<dynamic> _getBehaviorNotes(ChildModel child, FamilyProvider fp) =>
-      fp.history
-          .where((h) =>
-              h.childId == child.id &&
-              h.category != 'school_note' &&
-              h.category != 'screen_time_bonus')
-          .toList();
-
-  int _calculerTempsEcranPourJour(
-    String jour,
-    List<dynamic> schoolNotes,
-    List<dynamic> behaviorNotes,
-    int bonusMinutes,
-    ChildModel child,
-    FamilyProvider fp,
-  ) {
-    int base = 60;
-    if (jour == 'Samedi' || jour == 'Dimanche') base = 90;
-    if (jour == 'Mercredi') base = 75;
-    final pts = child.points;
-    if (pts >= 50)      base += 30;
-    else if (pts >= 20) base += 15;
-    else if (pts < 0)   base -= 20;
-    base += bonusMinutes;
-    return base.clamp(0, 300);
-  }
-
-  String _formatMinutes(int minutes) {
-    if (minutes < 60) return '${minutes}min';
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    return m == 0 ? '${h}h' : '${h}h${m.toString().padLeft(2, '0')}';
   }
 }
