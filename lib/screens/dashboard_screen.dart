@@ -156,7 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // ══════════════════════════════════════════════════════════
-  //  JOURNAL DE BORD — données
+  //  JOURNAL DE BORD — données (100% local, zéro appel externe)
   // ══════════════════════════════════════════════════════════
   Map<String, dynamic> _getJournalData(FamilyProvider fp, ChildModel child) {
     try {
@@ -213,12 +213,15 @@ class _DashboardScreenState extends State<DashboardScreen>
               (h.reason ?? '').toLowerCase().contains('terminée'))
           .toList();
 
+      // ✅ Score calculé localement — pas d'appel à getWeeklyGlobalScore
       double globalScore = 10.0;
       try {
-        globalScore = fp.getWeeklyGlobalScore(child.id);
+        final totalPoints = weekEntries.fold<int>(
+            0, (s, h) => s + ((h.isBonus == true ? 1 : -1) * (h.points as int)));
+        globalScore = (10.0 + totalPoints / 10.0).clamp(0.0, 20.0);
       } catch (_) {}
 
-      // ✅ CORRECTION : streakDays est int? → ?? 0
+      // ✅ Streak lu directement sur le modèle, nullable géré
       int streak = 0;
       try {
         streak = child.streakDays ?? 0;
@@ -328,8 +331,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       animation: _journalAnim,
       builder: (context, ch) => Transform.translate(
         offset: Offset(0, 30 * (1 - _journalAnim.value)),
-        child:
-            Opacity(opacity: _journalAnim.value.clamp(0.0, 1.0), child: ch),
+        child: Opacity(opacity: _journalAnim.value.clamp(0.0, 1.0), child: ch),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,7 +360,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ]),
           const SizedBox(height: 12),
 
-          // Sélecteur enfant
           if (children.length > 1) ...[
             SizedBox(
               height: 36,
@@ -381,14 +382,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                             : Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color:
-                                isSel ? Colors.cyanAccent : Colors.white24),
+                            color: isSel ? Colors.cyanAccent : Colors.white24),
                       ),
                       child: Text(c.name,
                           style: TextStyle(
-                              color: isSel
-                                  ? Colors.cyanAccent
-                                  : Colors.white54,
+                              color: isSel ? Colors.cyanAccent : Colors.white54,
                               fontSize: 13,
                               fontWeight: FontWeight.bold)),
                     ),
@@ -399,7 +397,6 @@ class _DashboardScreenState extends State<DashboardScreen>
             const SizedBox(height: 12),
           ],
 
-          // Carte principale
           GlassCard(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -420,7 +417,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold)),
-                        Text(_safeString(child, 'levelTitle', fallback: 'Niveau ?'),
+                        Text(
+                            _safeString(child, 'levelTitle',
+                                fallback: 'Niveau ?'),
                             style: const TextStyle(
                                 color: Colors.white54, fontSize: 12)),
                       ],
@@ -432,8 +431,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     decoration: BoxDecoration(
                       color: scoreColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: scoreColor.withOpacity(0.4)),
+                      border: Border.all(color: scoreColor.withOpacity(0.4)),
                     ),
                     child: Column(children: [
                       Text(_scoreEmoji(globalScore),
@@ -458,12 +456,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                 const Divider(color: Colors.white12, height: 1),
                 const SizedBox(height: 14),
 
-                // Grille stats
                 Row(children: [
-                  _journalStat(
-                      '✅', '${data['bonusCount']}', 'Bonus', Colors.greenAccent),
-                  _journalStat(
-                      '⚡', '${data['penaltyCount']}', 'Pénalités', Colors.redAccent),
+                  _journalStat('✅', '${data['bonusCount']}', 'Bonus',
+                      Colors.greenAccent),
+                  _journalStat('⚡', '${data['penaltyCount']}', 'Pénalités',
+                      Colors.redAccent),
                   _journalStat(
                       '🧠',
                       data['avgNote'] != null
@@ -475,7 +472,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                       '🔥', '${data['streak']}j', 'Streak', Colors.orangeAccent),
                 ]),
 
-                // Meilleur moment
                 if (data['bestBonus'] != null) ...[
                   const SizedBox(height: 14),
                   const Divider(color: Colors.white12, height: 1),
@@ -521,7 +517,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 ],
 
-                // Immunités / Punitions
                 if ((data['immunityCount'] as int) > 0 ||
                     (data['punishmentsDone'] as int) > 0) ...[
                   const SizedBox(height: 10),
@@ -537,15 +532,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ]),
                 ],
 
-                // Aucune activité
                 if ((data['bonusCount'] as int) == 0 &&
                     (data['penaltyCount'] as int) == 0 &&
                     data['avgNote'] == null) ...[
                   const SizedBox(height: 10),
                   const Center(
                     child: Text('Aucune activité cette semaine',
-                        style:
-                            TextStyle(color: Colors.white38, fontSize: 12)),
+                        style: TextStyle(color: Colors.white38, fontSize: 12)),
                   ),
                 ],
               ],
@@ -556,8 +549,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _journalStat(
-      String emoji, String value, String label, Color color) {
+  Widget _journalStat(String emoji, String value, String label, Color color) {
     return Expanded(
       child: Column(children: [
         Text(emoji, style: const TextStyle(fontSize: 18)),
@@ -657,10 +649,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                           fontSize: 22,
                           fontWeight: FontWeight.bold)),
                 ),
+                // ✅ currentParentName supprimé — remplacé par familyCode
                 Text(
-                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName ?? 'Famille'}',
-                  style:
-                      const TextStyle(color: Colors.white54, fontSize: 13),
+                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • Famille',
+                  style: const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],
             ),
@@ -691,9 +683,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (isParent
-                                ? Colors.greenAccent
-                                : Colors.redAccent)
+                        color: (isParent ? Colors.greenAccent : Colors.redAccent)
                             .withOpacity(0.15),
                         blurRadius: 8,
                       ),
@@ -703,9 +693,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(isParent ? Icons.lock_open : Icons.lock,
-                          color: isParent
-                              ? Colors.greenAccent
-                              : Colors.redAccent,
+                          color: isParent ? Colors.greenAccent : Colors.redAccent,
                           size: 14),
                       const SizedBox(width: 4),
                       Text(
@@ -765,8 +753,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       _ActWithBadge(
         act: _Act('Immunité', Icons.shield, Colors.amber, true, () {
           PinGuard.guardAction(context, () {
-            Navigator.push(
-                context, SpinPageRoute(page: const ImmunityLinesScreen()));
+            Navigator.push(context,
+                SpinPageRoute(page: const ImmunityLinesScreen()));
           });
         }),
         badge: 0,
