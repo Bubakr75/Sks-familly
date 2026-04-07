@@ -13,7 +13,6 @@ import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
-import '../widgets/celebration_overlay.dart';
 import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
@@ -56,7 +55,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         vsync: this, duration: const Duration(milliseconds: 3000))
       ..repeat(reverse: true);
     _floatingAnim = Tween<double>(begin: -6, end: 6).animate(
-        CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut));
+        CurvedAnimation(
+            parent: _floatingController, curve: Curves.easeInOut));
 
     _journalController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 900));
@@ -112,7 +112,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         child: Text(
           child.avatar.isNotEmpty
               ? child.avatar
-              : (child.name.isNotEmpty ? child.name[0].toUpperCase() : '?'),
+              : (child.name.isNotEmpty
+                  ? child.name[0].toUpperCase()
+                  : '?'),
           style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -127,8 +129,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   void _goToChildDashboard(String childId) {
     context.read<PinProvider>().enterChildMode();
-    Navigator.push(
-        context,
+    Navigator.push(context,
         ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
   }
 
@@ -166,75 +167,111 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // ══════════════════════════════════════════════════════════
-  //  JOURNAL DE BORD — données
+  //  JOURNAL DE BORD — données (entièrement défensif)
   // ══════════════════════════════════════════════════════════
   Map<String, dynamic> _getJournalData(
       FamilyProvider fp, ChildModel child) {
-    final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final start =
-        DateTime(weekStart.year, weekStart.month, weekStart.day);
+    try {
+      final now = DateTime.now();
+      final weekStart =
+          now.subtract(Duration(days: now.weekday - 1));
+      final start =
+          DateTime(weekStart.year, weekStart.month, weekStart.day);
 
-    final weekEntries = fp
-        .getHistoryForChild(child.id)
-        .where((h) => h.date.isAfter(start))
-        .toList();
+      List<dynamic> weekEntries = [];
+      try {
+        weekEntries = fp
+            .getHistoryForChild(child.id)
+            .where((h) => h.date.isAfter(start))
+            .toList();
+      } catch (_) {}
 
-    final bonuses = weekEntries
-        .where((h) => h.isBonus && h.category == 'bonus')
-        .toList();
-    bonuses.sort((a, b) => b.points.compareTo(a.points));
-    final bestBonus = bonuses.isNotEmpty ? bonuses.first : null;
+      final bonuses = weekEntries
+          .where((h) =>
+              h.isBonus == true && h.category == 'bonus')
+          .toList();
+      bonuses.sort((a, b) =>
+          (b.points as int).compareTo(a.points as int));
+      final bestBonus = bonuses.isNotEmpty ? bonuses.first : null;
 
-    final penalties = weekEntries
-        .where((h) =>
-            !h.isBonus &&
-            h.category != 'school_note' &&
-            h.category != 'screen_time_bonus')
-        .toList();
+      final penalties = weekEntries
+          .where((h) =>
+              h.isBonus != true &&
+              h.category != 'school_note' &&
+              h.category != 'screen_time_bonus')
+          .toList();
 
-    final schoolNotes =
-        weekEntries.where((h) => h.category == 'school_note').toList();
-    double? avgNote;
-    if (schoolNotes.isNotEmpty) {
-      avgNote = schoolNotes.fold<double>(0, (s, h) {
-            final match = RegExp(r'(\d+)/(\d+)').firstMatch(h.reason);
-            if (match != null) {
-              final v = int.tryParse(match.group(1)!) ?? h.points;
-              final mx = int.tryParse(match.group(2)!) ?? 20;
-              return s + (v / mx * 20);
-            }
-            return s + h.points.toDouble();
-          }) /
-          schoolNotes.length;
+      final schoolNotes = weekEntries
+          .where((h) => h.category == 'school_note')
+          .toList();
+      double? avgNote;
+      if (schoolNotes.isNotEmpty) {
+        try {
+          avgNote = schoolNotes.fold<double>(0, (s, h) {
+                final match =
+                    RegExp(r'(\d+)/(\d+)').firstMatch(h.reason ?? '');
+                if (match != null) {
+                  final v =
+                      int.tryParse(match.group(1)!) ?? (h.points as int);
+                  final mx =
+                      int.tryParse(match.group(2)!) ?? 20;
+                  return s + (v / mx * 20);
+                }
+                return s + (h.points as int).toDouble();
+              }) /
+              schoolNotes.length;
+        } catch (_) {}
+      }
+
+      final immunities = weekEntries
+          .where((h) => h.category == 'immunité')
+          .toList();
+
+      final punishmentsDone = weekEntries
+          .where((h) =>
+              h.category == 'punition' &&
+              (h.reason ?? '').toLowerCase().contains('terminée'))
+          .toList();
+
+      double globalScore = 10.0;
+      try {
+        globalScore = fp.getWeeklyGlobalScore(child.id);
+      } catch (_) {
+        // méthode non disponible → score neutre
+      }
+
+      int streak = 0;
+      try {
+        streak = child.streakDays;
+      } catch (_) {}
+
+      return {
+        'bestBonus': bestBonus,
+        'bonusCount': bonuses.length,
+        'penaltyCount': penalties.length,
+        'avgNote': avgNote,
+        'noteCount': schoolNotes.length,
+        'immunityCount': immunities.length,
+        'punishmentsDone': punishmentsDone.length,
+        'globalScore': globalScore,
+        'streak': streak,
+        'weekStart': start,
+      };
+    } catch (e) {
+      // Fallback complet en cas d'erreur imprévue
+      return {
+        'bestBonus': null,
+        'bonusCount': 0,
+        'penaltyCount': 0,
+        'avgNote': null,
+        'noteCount': 0,
+        'immunityCount': 0,
+        'punishmentsDone': 0,
+        'globalScore': 10.0,
+        'streak': 0,
+        'weekStart': DateTime.now(),
+      };
     }
-
-    final immunities =
-        weekEntries.where((h) => h.category == 'immunité').toList();
-
-    final punishmentsDone = weekEntries
-        .where((h) =>
-            h.category == 'punition' &&
-            h.reason.toLowerCase().contains('terminée'))
-        .toList();
-
-    final globalScore = fp.getWeeklyGlobalScore(child.id);
-    final streak = child.streakDays;
-    final bonusCount = bonuses.length;
-    final penaltyCount = penalties.length;
-
-    return {
-      'bestBonus': bestBonus,
-      'bonusCount': bonusCount,
-      'penaltyCount': penaltyCount,
-      'avgNote': avgNote,
-      'noteCount': schoolNotes.length,
-      'immunityCount': immunities.length,
-      'punishmentsDone': punishmentsDone.length,
-      'globalScore': globalScore,
-      'streak': streak,
-      'weekStart': start,
-    };
   }
 
   String _scoreEmoji(double score) {
@@ -271,12 +308,29 @@ class _DashboardScreenState extends State<DashboardScreen>
     final children = fp.children;
     if (children.isEmpty) return const SizedBox.shrink();
 
-    // ✅ CORRECTION : jamais de setState dans build
     final pageIndex =
         _journalPage >= children.length ? 0 : _journalPage;
     final child = children[pageIndex];
-    final data = _getJournalData(fp, child);
-    final globalScore = data['globalScore'] as double;
+
+    late Map<String, dynamic> data;
+    try {
+      data = _getJournalData(fp, child);
+    } catch (_) {
+      data = {
+        'bestBonus': null,
+        'bonusCount': 0,
+        'penaltyCount': 0,
+        'avgNote': null,
+        'noteCount': 0,
+        'immunityCount': 0,
+        'punishmentsDone': 0,
+        'globalScore': 10.0,
+        'streak': 0,
+        'weekStart': DateTime.now(),
+      };
+    }
+
+    final globalScore = (data['globalScore'] as num).toDouble();
     final scoreColor = _scoreColor(globalScore);
     final weekStart = data['weekStart'] as DateTime;
 
@@ -284,7 +338,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       animation: _journalAnim,
       builder: (context, ch) => Transform.translate(
         offset: Offset(0, 30 * (1 - _journalAnim.value)),
-        child: Opacity(opacity: _journalAnim.value, child: ch),
+        child: Opacity(opacity: _journalAnim.value.clamp(0.0, 1.0), child: ch),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,7 +366,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             const Spacer(),
             Text(
               'Sem. du ${_fmtDate(weekStart)}',
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
+              style:
+                  const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ]),
           const SizedBox(height: 12),
@@ -381,7 +436,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold)),
-                        Text(child.levelTitle,
+                        Text(
+                            _safeString(child, 'levelTitle',
+                                fallback: 'Niveau ?'),
                             style: const TextStyle(
                                 color: Colors.white54, fontSize: 12)),
                       ],
@@ -445,11 +502,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                   const SizedBox(height: 14),
                   const Divider(color: Colors.white12, height: 1),
                   const SizedBox(height: 10),
-                  Row(children: [
-                    const Text('⭐',
-                        style: TextStyle(fontSize: 14)),
-                    const SizedBox(width: 6),
-                    const Text('Meilleur moment',
+                  const Row(children: [
+                    Text('⭐', style: TextStyle(fontSize: 14)),
+                    SizedBox(width: 6),
+                    Text('Meilleur moment',
                         style: TextStyle(
                             color: Colors.white54,
                             fontSize: 12,
@@ -471,7 +527,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          data['bestBonus'].reason as String,
+                          '${data['bestBonus'].reason ?? ''}',
                           style: const TextStyle(
                               color: Colors.white, fontSize: 13),
                           maxLines: 2,
@@ -528,6 +584,21 @@ class _DashboardScreenState extends State<DashboardScreen>
         ],
       ),
     );
+  }
+
+  // Helper défensif pour les getters du modèle
+  String _safeString(dynamic obj, String field,
+      {String fallback = ''}) {
+    try {
+      switch (field) {
+        case 'levelTitle':
+          return (obj as ChildModel).levelTitle;
+        default:
+          return fallback;
+      }
+    } catch (_) {
+      return fallback;
+    }
   }
 
   Widget _journalStat(
@@ -612,7 +683,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (context, value, child) {
         return Transform.translate(
           offset: Offset(0, -30 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
+          child: Opacity(
+              opacity: value.clamp(0.0, 1.0), child: child),
         );
       },
       child: Row(
@@ -620,8 +692,9 @@ class _DashboardScreenState extends State<DashboardScreen>
           AnimatedBuilder(
             animation: _floatingAnim,
             builder: (context, child) => Transform.translate(
-                offset: Offset(0, _floatingAnim.value), child: child),
-            child: const Text('', style: TextStyle(fontSize: 28)),
+                offset: Offset(0, _floatingAnim.value),
+                child: child),
+            child: const Text('🏠', style: TextStyle(fontSize: 28)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -639,7 +712,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           fontWeight: FontWeight.bold)),
                 ),
                 Text(
-                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName}',
+                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName ?? 'Famille'}',
                   style: const TextStyle(
                       color: Colors.white54, fontSize: 13),
                 ),
@@ -685,7 +758,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                          isParent ? Icons.lock_open : Icons.lock,
+                          isParent
+                              ? Icons.lock_open
+                              : Icons.lock,
                           color: isParent
                               ? Colors.greenAccent
                               : Colors.redAccent,
@@ -763,21 +838,24 @@ class _DashboardScreenState extends State<DashboardScreen>
               Navigator.push(
                   context,
                   ZoomPageRoute(
-                      page: ChildDashboardScreen(childId: childId)));
+                      page:
+                          ChildDashboardScreen(childId: childId)));
             });
           });
         }),
         badge: 0,
       ),
       _ActWithBadge(
-        act: _Act('Tribunal', Icons.gavel, Colors.purple, false, () {
-          Navigator.push(
-              context, SlidePageRoute(page: const TribunalScreen()));
+        act: _Act('Tribunal', Icons.gavel, Colors.purple, false,
+            () {
+          Navigator.push(context,
+              SlidePageRoute(page: const TribunalScreen()));
         }),
         badge: tribunalCount,
       ),
       _ActWithBadge(
-        act: _Act('Vente', Icons.storefront, Colors.green, false, () {
+        act: _Act('Vente', Icons.storefront, Colors.green, false,
+            () {
           _showChildPickerForNav(fp, (childId) {
             Navigator.push(context,
                 DoorPageRoute(page: TradeScreen(childId: childId)));
@@ -806,7 +884,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeOutBack,
           builder: (context, value, child) => Opacity(
-            opacity: value,
+            opacity: value.clamp(0.0, 1.0),
             child: Transform.translate(
                 offset: Offset(-20 * (1 - value), 0),
                 child: child),
@@ -867,8 +945,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                       spreadRadius: 2),
                 ],
               ),
-              child:
-                  Icon(action.icon, color: action.color, size: 24),
+              child: Icon(action.icon,
+                  color: action.color, size: 24),
             ),
             const SizedBox(height: 6),
             Text(action.label,
@@ -881,7 +959,8 @@ class _DashboardScreenState extends State<DashboardScreen>
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Icon(Icons.lock,
-                    color: Colors.white.withOpacity(0.3), size: 12),
+                    color: Colors.white.withOpacity(0.3),
+                    size: 12),
               ),
           ],
         ),
@@ -904,7 +983,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           tween: Tween(begin: 0.0, end: 1.0),
           duration: const Duration(milliseconds: 800),
           builder: (context, value, child) =>
-              Opacity(opacity: value, child: child),
+              Opacity(opacity: value.clamp(0.0, 1.0), child: child),
           child: const Text('🤝 Ventes en cours',
               style: TextStyle(
                   color: Colors.white,
@@ -923,9 +1002,11 @@ class _DashboardScreenState extends State<DashboardScreen>
             duration:
                 Duration(milliseconds: 500 + entry.key * 200),
             curve: Curves.easeOutCubic,
-            builder: (context, value, child) => Transform.translate(
+            builder: (context, value, child) =>
+                Transform.translate(
               offset: Offset(0, 20 * (1 - value)),
-              child: Opacity(opacity: value, child: child),
+              child:
+                  Opacity(opacity: value.clamp(0.0, 1.0), child: child),
             ),
             child: Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -933,8 +1014,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 onTap: () => Navigator.push(
                     context,
                     DoorPageRoute(
-                        page:
-                            TradeScreen(childId: trade.fromChildId))),
+                        page: TradeScreen(
+                            childId: trade.fromChildId))),
                 child: GlassCard(
                   child: Row(children: [
                     Container(
@@ -945,8 +1026,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         color: Colors.greenAccent,
                         boxShadow: [
                           BoxShadow(
-                              color:
-                                  Colors.greenAccent.withOpacity(0.5),
+                              color: Colors.greenAccent
+                                  .withOpacity(0.5),
                               blurRadius: 6)
                         ],
                       ),
@@ -954,7 +1035,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: [
                           Text('$sellerName → $buyerName',
                               style: const TextStyle(
@@ -974,7 +1056,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.greenAccent.withOpacity(0.15),
+                        color:
+                            Colors.greenAccent.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(trade.statusLabel,
@@ -1043,7 +1126,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 itemCount: fp.children.length,
                 itemBuilder: (_, i) {
-                  final child = fp.children[i];
+                  final c = fp.children[i];
                   return TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0.0, end: 1.0),
                     duration:
@@ -1052,34 +1135,36 @@ class _DashboardScreenState extends State<DashboardScreen>
                     builder: (context, value, ch) =>
                         Transform.translate(
                       offset: Offset(30 * (1 - value), 0),
-                      child: Opacity(opacity: value, child: ch),
+                      child: Opacity(
+                          opacity: value.clamp(0.0, 1.0),
+                          child: ch),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: TvFocusWrapper(
                         onTap: () {
                           Navigator.pop(ctx);
-                          onSelected(child.id);
+                          onSelected(c.id);
                         },
                         child: GlassCard(
                           padding: const EdgeInsets.symmetric(
                               vertical: 10, horizontal: 14),
                           borderRadius: 14,
                           child: Row(children: [
-                            _buildChildAvatar(child, 22),
+                            _buildChildAvatar(c, 22),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                 children: [
-                                  Text(child.name,
+                                  Text(c.name,
                                       style: const TextStyle(
                                           color: Colors.white,
                                           fontWeight:
                                               FontWeight.bold)),
                                   Text(
-                                      '${child.points} pts • ${child.levelTitle}',
+                                      '${c.points} pts • ${_safeString(c, 'levelTitle', fallback: 'Niveau ?')}',
                                       style: const TextStyle(
                                           color: Colors.white54,
                                           fontSize: 12)),
