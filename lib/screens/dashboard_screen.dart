@@ -1,3 +1,4 @@
+// lib/screens/dashboard_screen.dart
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -28,32 +29,19 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with TickerProviderStateMixin {
-  late AnimationController _podiumController;
   late AnimationController _actionsController;
-  late AnimationController _pulseController;
   late AnimationController _floatingController;
-
-  late Animation<double> _podium1Anim;
-  late Animation<double> _podium2Anim;
-  late Animation<double> _podium3Anim;
+  late AnimationController _journalController;
   final List<Animation<double>> _actionAnims = [];
-  late Animation<double> _pulseAnim;
   late Animation<double> _floatingAnim;
+  late Animation<double> _journalAnim;
+
+  // Page du journal (un enfant à la fois)
+  int _journalPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _podiumController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1800));
-    _podium2Anim = CurvedAnimation(
-        parent: _podiumController,
-        curve: const Interval(0.0, 0.5, curve: Curves.bounceOut));
-    _podium1Anim = CurvedAnimation(
-        parent: _podiumController,
-        curve: const Interval(0.2, 0.7, curve: Curves.bounceOut));
-    _podium3Anim = CurvedAnimation(
-        parent: _podiumController,
-        curve: const Interval(0.4, 0.9, curve: Curves.bounceOut));
 
     _actionsController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500));
@@ -65,33 +53,34 @@ class _DashboardScreenState extends State<DashboardScreen>
           curve: Interval(start, end, curve: Curves.elasticOut)));
     }
 
-    _pulseController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200))
-      ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
-        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
-
     _floatingController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 3000))
       ..repeat(reverse: true);
-    _floatingAnim = Tween<double>(begin: -8, end: 8).animate(
+    _floatingAnim = Tween<double>(begin: -6, end: 6).animate(
         CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut));
 
-    _podiumController.forward();
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) _actionsController.forward();
+    _journalController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900));
+    _journalAnim = CurvedAnimation(
+        parent: _journalController, curve: Curves.easeOutBack);
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _actionsController.forward();
+        _journalController.forward();
+      }
     });
   }
 
   @override
   void dispose() {
-    _podiumController.dispose();
     _actionsController.dispose();
-    _pulseController.dispose();
     _floatingController.dispose();
+    _journalController.dispose();
     super.dispose();
   }
 
+  // ─── Avatar enfant ─────────────────────────────────────────
   Widget _buildChildAvatar(ChildModel child, double radius) {
     if (child.hasPhoto) {
       try {
@@ -101,17 +90,10 @@ class _DashboardScreenState extends State<DashboardScreen>
           height: radius * 2,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.amber.withOpacity(0.6), width: 3),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.amber.withOpacity(0.3),
-                  blurRadius: 16,
-                  spreadRadius: 2),
-            ],
+            border:
+                Border.all(color: Colors.cyanAccent.withOpacity(0.5), width: 2),
             image: DecorationImage(
-              image: MemoryImage(bytes),
-              fit: BoxFit.cover,
-            ),
+                image: MemoryImage(bytes), fit: BoxFit.cover),
           ),
         );
       } catch (_) {}
@@ -121,19 +103,11 @@ class _DashboardScreenState extends State<DashboardScreen>
       height: radius * 2,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [
-            Colors.cyan.withOpacity(0.4),
-            Colors.purple.withOpacity(0.3),
-          ],
-        ),
+        gradient: LinearGradient(colors: [
+          Colors.cyan.withOpacity(0.4),
+          Colors.purple.withOpacity(0.3),
+        ]),
         border: Border.all(color: Colors.cyan.withOpacity(0.5), width: 2),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.cyan.withOpacity(0.2),
-              blurRadius: 12,
-              spreadRadius: 2),
-        ],
       ),
       child: Center(
         child: Text(
@@ -149,16 +123,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  bool _isParentMode() {
-    return context.read<PinProvider>().canPerformParentAction();
-  }
+  bool _isParentMode() => context.read<PinProvider>().canPerformParentAction();
 
   void _goToChildDashboard(String childId) {
     context.read<PinProvider>().enterChildMode();
     Navigator.push(
-      context,
-      ZoomPageRoute(page: ChildDashboardScreen(childId: childId)),
-    );
+        context, ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
   }
 
   Widget _badgeWrapper({required Widget child, required int count}) {
@@ -174,39 +144,442 @@ class _DashboardScreenState extends State<DashboardScreen>
           child: Container(
             padding: const EdgeInsets.all(4),
             decoration: const BoxDecoration(
-              color: Colors.redAccent,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.red,
-                  blurRadius: 6,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Colors.red, blurRadius: 6, spreadRadius: 1)
+                ]),
             constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-            child: Text(
-              count > 99 ? '99+' : '$count',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            child: Text(count > 99 ? '99+' : '$count',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center),
           ),
         ),
       ],
     );
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  JOURNAL DE BORD — données calculées
+  // ══════════════════════════════════════════════════════════
+  Map<String, dynamic> _getJournalData(
+      FamilyProvider fp, ChildModel child) {
+    final now = DateTime.now();
+    final weekStart =
+        now.subtract(Duration(days: now.weekday - 1));
+    final start =
+        DateTime(weekStart.year, weekStart.month, weekStart.day);
+
+    final weekEntries = fp
+        .getHistoryForChild(child.id)
+        .where((h) => h.date.isAfter(start))
+        .toList();
+
+    // Meilleur bonus de la semaine
+    final bonuses =
+        weekEntries.where((h) => h.isBonus && h.category == 'bonus').toList();
+    bonuses.sort((a, b) => b.points.compareTo(a.points));
+    final bestBonus = bonuses.isNotEmpty ? bonuses.first : null;
+
+    // Pénalités
+    final penalties =
+        weekEntries.where((h) => !h.isBonus && h.category != 'school_note' && h.category != 'screen_time_bonus').toList();
+
+    // Notes scolaires/comportementales
+    final schoolNotes =
+        weekEntries.where((h) => h.category == 'school_note').toList();
+    double? avgNote;
+    if (schoolNotes.isNotEmpty) {
+      avgNote = schoolNotes.fold<double>(0, (s, h) {
+            final match = RegExp(r'(\d+)/(\d+)').firstMatch(h.reason);
+            if (match != null) {
+              final v = int.tryParse(match.group(1)!) ?? h.points;
+              final mx = int.tryParse(match.group(2)!) ?? 20;
+              return s + (v / mx * 20);
+            }
+            return s + h.points.toDouble();
+          }) /
+          schoolNotes.length;
+    }
+
+    // Immunités accordées cette semaine
+    final immunities = weekEntries
+        .where((h) => h.category == 'immunité')
+        .toList();
+
+    // Punitions terminées cette semaine
+    final punishmentsDone = weekEntries
+        .where((h) =>
+            h.category == 'punition' &&
+            h.reason.toLowerCase().contains('terminée'))
+        .toList();
+
+    // Score global semaine
+    final globalScore = fp.getWeeklyGlobalScore(child.id);
+
+    // Streak
+    final streak = child.streakDays;
+
+    // Nombre de bonus / pénalités
+    final bonusCount =
+        weekEntries.where((h) => h.isBonus && h.category == 'bonus').length;
+    final penaltyCount = penalties.length;
+
+    return {
+      'bestBonus': bestBonus,
+      'bonusCount': bonusCount,
+      'penaltyCount': penaltyCount,
+      'avgNote': avgNote,
+      'noteCount': schoolNotes.length,
+      'immunityCount': immunities.length,
+      'punishmentsDone': punishmentsDone.length,
+      'globalScore': globalScore,
+      'streak': streak,
+      'weekStart': start,
+    };
+  }
+
+  String _scoreEmoji(double score) {
+    if (score >= 17) return '🌟';
+    if (score >= 14) return '😊';
+    if (score >= 10) return '😐';
+    if (score >= 6) return '😕';
+    return '😔';
+  }
+
+  String _scoreLabel(double score) {
+    if (score >= 17) return 'Excellente semaine !';
+    if (score >= 14) return 'Bonne semaine';
+    if (score >= 10) return 'Semaine correcte';
+    if (score >= 6) return 'Semaine difficile';
+    return 'Semaine très difficile';
+  }
+
+  Color _scoreColor(double score) {
+    if (score >= 17) return Colors.greenAccent;
+    if (score >= 14) return Colors.lightGreenAccent;
+    if (score >= 10) return Colors.orangeAccent;
+    if (score >= 6) return Colors.deepOrangeAccent;
+    return Colors.redAccent;
+  }
+
+  String _fmtDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+
+  // ══════════════════════════════════════════════════════════
+  //  JOURNAL DE BORD — UI
+  // ══════════════════════════════════════════════════════════
+  Widget _buildJournalDeBord(FamilyProvider fp) {
+    final children = fp.children;
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    // S'assurer que la page est valide
+    if (_journalPage >= children.length) _journalPage = 0;
+    final child = children[_journalPage];
+    final data = _getJournalData(fp, child);
+    final globalScore = data['globalScore'] as double;
+    final scoreColor = _scoreColor(globalScore);
+    final now = DateTime.now();
+    final weekStart = data['weekStart'] as DateTime;
+
+    return AnimatedBuilder(
+      animation: _journalAnim,
+      builder: (context, ch) => Transform.translate(
+        offset: Offset(0, 30 * (1 - _journalAnim.value)),
+        child: Opacity(opacity: _journalAnim.value, child: ch),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Titre section ──
+          Row(children: [
+            AnimatedBuilder(
+              animation: _floatingAnim,
+              builder: (context, ch) => Transform.translate(
+                  offset: Offset(0, _floatingAnim.value * 0.4), child: ch),
+              child: const Text('📖', style: TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(width: 8),
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Colors.white, Colors.cyanAccent],
+              ).createShader(bounds),
+              child: const Text('Journal de Bord',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+            ),
+            const Spacer(),
+            Text(
+              'Semaine du ${_fmtDate(weekStart)}',
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ]),
+          const SizedBox(height: 12),
+
+          // ── Sélecteur d'enfant (si plusieurs) ──
+          if (children.length > 1) ...[
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: children.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final c = children[i];
+                  final isSel = _journalPage == i;
+                  return GestureDetector(
+                    onTap: () => setState(() => _journalPage = i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSel
+                            ? Colors.cyanAccent.withOpacity(0.15)
+                            : Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: isSel
+                                ? Colors.cyanAccent
+                                : Colors.white24),
+                      ),
+                      child: Text(c.name,
+                          style: TextStyle(
+                              color: isSel
+                                  ? Colors.cyanAccent
+                                  : Colors.white54,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // ── Carte principale ──
+          GlassCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // En-tête enfant
+                Row(children: [
+                  TvFocusWrapper(
+                    onTap: () => _goToChildDashboard(child.id),
+                    child: _buildChildAvatar(child, 26),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(child.name,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold)),
+                        Text(child.levelTitle,
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  // Score global
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: scoreColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border:
+                          Border.all(color: scoreColor.withOpacity(0.4)),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(_scoreEmoji(globalScore),
+                            style: const TextStyle(fontSize: 20)),
+                        Text('${globalScore.round()}/20',
+                            style: TextStyle(
+                                color: scoreColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ]),
+
+                const SizedBox(height: 12),
+
+                // Label score
+                Center(
+                  child: Text(
+                    _scoreLabel(globalScore),
+                    style: TextStyle(
+                        color: scoreColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+                const Divider(color: Colors.white12, height: 1),
+                const SizedBox(height: 14),
+
+                // ── Grille des stats ──
+                Row(children: [
+                  _journalStat('✅', '${data['bonusCount']}',
+                      'Bonus', Colors.greenAccent),
+                  _journalStat('⚡', '${data['penaltyCount']}',
+                      'Pénalités', Colors.redAccent),
+                  _journalStat('🧠',
+                      data['avgNote'] != null
+                          ? '${(data['avgNote'] as double).round()}/20'
+                          : '—',
+                      'Moy. notes', Colors.purpleAccent),
+                  _journalStat('🔥', '${data['streak']}j',
+                      'Streak', Colors.orangeAccent),
+                ]),
+
+                // ── Meilleur moment de la semaine ──
+                if (data['bestBonus'] != null) ...[
+                  const SizedBox(height: 14),
+                  const Divider(color: Colors.white12, height: 1),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    const Text('⭐',
+                        style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 6),
+                    const Text('Meilleur moment',
+                        style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                  ]),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: Colors.greenAccent.withOpacity(0.2)),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.star_rounded,
+                          color: Colors.greenAccent, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          data['bestBonus'].reason,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '+${data['bestBonus'].points} pts',
+                        style: const TextStyle(
+                            color: Colors.greenAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13),
+                      ),
+                    ]),
+                  ),
+                ],
+
+                // ── Immunités / Punitions terminées ──
+                if ((data['immunityCount'] as int) > 0 ||
+                    (data['punishmentsDone'] as int) > 0) ...[
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    if ((data['immunityCount'] as int) > 0)
+                      _infoPill(
+                          '🛡️ ${data['immunityCount']} immunité${(data['immunityCount'] as int) > 1 ? 's' : ''} accordée${(data['immunityCount'] as int) > 1 ? 's' : ''}',
+                          Colors.amberAccent),
+                    if ((data['immunityCount'] as int) > 0 &&
+                        (data['punishmentsDone'] as int) > 0)
+                      const SizedBox(width: 8),
+                    if ((data['punishmentsDone'] as int) > 0)
+                      _infoPill(
+                          '📏 ${data['punishmentsDone']} punition${(data['punishmentsDone'] as int) > 1 ? 's' : ''} terminée${(data['punishmentsDone'] as int) > 1 ? 's' : ''}',
+                          Colors.tealAccent),
+                  ]),
+                ],
+
+                // ── Aucune activité ──
+                if ((data['bonusCount'] as int) == 0 &&
+                    (data['penaltyCount'] as int) == 0 &&
+                    data['avgNote'] == null) ...[
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Text(
+                      'Aucune activité cette semaine',
+                      style: const TextStyle(
+                          color: Colors.white38, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _journalStat(
+      String emoji, String value, String label, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 18)),
+          const SizedBox(height: 2),
+          Text(value,
+              style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold)),
+          Text(label,
+              style: const TextStyle(color: Colors.white38, fontSize: 10),
+              textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoPill(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(text,
+          style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600)),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  BUILD PRINCIPAL
+  // ══════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
       builder: (context, fp, _) {
-        final sorted = List<ChildModel>.from(fp.children)
-          ..sort((a, b) => b.points.compareTo(a.points));
-
         return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
@@ -218,7 +591,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                   children: [
                     _buildHeader(fp),
                     const SizedBox(height: 20),
-                    if (sorted.isNotEmpty) _buildPodium(sorted),
+                    // ── Journal de bord remplace le podium ──
+                    if (fp.children.isNotEmpty) _buildJournalDeBord(fp),
                     const SizedBox(height: 20),
                     _buildQuickActions(fp),
                     const SizedBox(height: 20),
@@ -234,6 +608,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  HEADER
+  // ══════════════════════════════════════════════════════════
   Widget _buildHeader(FamilyProvider fp) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -249,13 +626,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         children: [
           AnimatedBuilder(
             animation: _floatingAnim,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, _floatingAnim.value),
-                child: child,
-              );
-            },
-            child: const Text('🏠', style: TextStyle(fontSize: 28)),
+            builder: (context, child) => Transform.translate(
+                offset: Offset(0, _floatingAnim.value), child: child),
+            child: const Text('', style: TextStyle(fontSize: 28)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -273,8 +646,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                           fontWeight: FontWeight.bold)),
                 ),
                 Text(
-                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''}  ${fp.currentParentName}',
+                  style:
+                      const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],
             ),
@@ -290,8 +664,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
                     color: isParent
@@ -317,22 +691,20 @@ class _DashboardScreenState extends State<DashboardScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isParent ? Icons.lock_open : Icons.lock,
-                        color: isParent
-                            ? Colors.greenAccent
-                            : Colors.redAccent,
-                        size: 14,
-                      ),
+                          isParent ? Icons.lock_open : Icons.lock,
+                          color: isParent
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
+                          size: 14),
                       const SizedBox(width: 4),
                       Text(
                         isParent ? 'Parent' : 'Enfant',
                         style: TextStyle(
-                          color: isParent
-                              ? Colors.greenAccent
-                              : Colors.redAccent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            color: isParent
+                                ? Colors.greenAccent
+                                : Colors.redAccent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -348,264 +720,38 @@ class _DashboardScreenState extends State<DashboardScreen>
                 color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.menu, color: Colors.white, size: 24),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPodium(List<ChildModel> sorted) {
-    return GlassCard(
-      child: Column(
-        children: [
-          AnimatedBuilder(
-            animation: _floatingAnim,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, _floatingAnim.value * 0.3),
-                child: child,
-              );
-            },
-            child: ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [Colors.amber, Colors.orange, Colors.amber],
-              ).createShader(bounds),
-              child: const Text('🏆 CLASSEMENT',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white)),
-            ),
-          ),
-          const SizedBox(height: 20),
-          if (sorted.length >= 2)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                AnimatedBuilder(
-                  animation: _podium2Anim,
-                  builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(0, 50 * (1 - _podium2Anim.value)),
-                      child: Opacity(
-                          opacity: _podium2Anim.value,
-                          child: _podiumCard(sorted[1], 2)),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                AnimatedBuilder(
-                  animation: _podium1Anim,
-                  builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(0, 60 * (1 - _podium1Anim.value)),
-                      child: Opacity(
-                        opacity: _podium1Anim.value,
-                        child: _podiumCard(sorted[0], 1),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                if (sorted.length >= 3)
-                  AnimatedBuilder(
-                    animation: _podium3Anim,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(0, 40 * (1 - _podium3Anim.value)),
-                        child: Opacity(
-                            opacity: _podium3Anim.value,
-                            child: _podiumCard(sorted[2], 3)),
-                      );
-                    },
-                  ),
-              ],
-            )
-          else
-            _podiumCard(sorted[0], 1),
-          if (sorted.length > 3) ...[
-            const SizedBox(height: 16),
-            const Divider(color: Colors.white12),
-            ...sorted.skip(3).toList().asMap().entries.map((entry) {
-              final child = entry.value;
-              final rank = entry.key + 4;
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: Duration(milliseconds: 600 + entry.key * 150),
-                curve: Curves.easeOutBack,
-                builder: (context, value, ch) {
-                  return Transform.translate(
-                    offset: Offset(30 * (1 - value), 0),
-                    child: Opacity(opacity: value, child: ch),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: TvFocusWrapper(
-                    onTap: () => _goToChildDashboard(child.id),
-                    child: Row(
-                      children: [
-                        Text('#$rank',
-                            style: const TextStyle(
-                                color: Colors.white38,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14)),
-                        const SizedBox(width: 10),
-                        _buildChildAvatar(child, 18),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(child.name,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 14)),
-                        ),
-                        Text('${child.points} pts',
-                            style: const TextStyle(
-                                color: Colors.white54,
-                                fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _podiumCard(ChildModel child, int rank) {
-    final heights = {1: 110.0, 2: 85.0, 3: 65.0};
-    final colors = {1: Colors.amber, 2: Colors.grey, 3: Colors.orange};
-    final medals = {1: '🥇', 2: '🥈', 3: '🥉'};
-    final avatarRadius = rank == 1 ? 40.0 : 28.0;
-
-    return TvFocusWrapper(
-      onTap: () => _goToChildDashboard(child.id),
-      child: SizedBox(
-        width: rank == 1 ? 115 : 90,
-        child: Column(
-          children: [
-            AnimatedBuilder(
-              animation: _floatingAnim,
-              builder: (context, ch) {
-                return Transform.translate(
-                  offset:
-                      Offset(0, rank == 1 ? _floatingAnim.value * 0.5 : 0),
-                  child: ch,
-                );
-              },
               child:
-                  Text(medals[rank]!, style: const TextStyle(fontSize: 24)),
+                  const Icon(Icons.menu, color: Colors.white, size: 24),
             ),
-            const SizedBox(height: 6),
-            if (rank == 1)
-              NeonPulseRing(
-                color: Colors.amber,
-                radius: avatarRadius + 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: _buildChildAvatar(child, avatarRadius),
-                ),
-              )
-            else
-              _buildChildAvatar(child, avatarRadius),
-            const SizedBox(height: 6),
-            Text(child.name,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            TweenAnimationBuilder<int>(
-              tween: IntTween(begin: 0, end: child.points),
-              duration: const Duration(milliseconds: 1500),
-              builder: (context, val, _) {
-                return Text('$val pts',
-                    style: TextStyle(
-                        color: colors[rank],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14));
-              },
-            ),
-            Text(child.levelTitle,
-                style: TextStyle(
-                    color: colors[rank]!.withOpacity(0.7), fontSize: 10)),
-            const SizedBox(height: 4),
-            AnimatedBuilder(
-              animation: _pulseAnim,
-              builder: (context, ch) {
-                return Transform.scale(
-                  scale: rank == 1 ? _pulseAnim.value : 1.0,
-                  child: ch,
-                );
-              },
-              child: Container(
-                width: 70,
-                height: heights[rank],
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      colors[rank]!.withOpacity(0.8),
-                      colors[rank]!.withOpacity(0.3),
-                    ],
-                  ),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(8)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors[rank]!.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text('#$rank',
-                      style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20)),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  ACTIONS RAPIDES
+  // ══════════════════════════════════════════════════════════
   Widget _buildQuickActions(FamilyProvider fp) {
     final isParent = _isParentMode();
-
-    final tribunalCount = fp.tribunalCases
-        .where((c) => c.status != TribunalStatus.closed)
-        .length;
-    final venteCount = fp.trades
-        .where((t) => t.status == 'pending')
-        .length;
+    final tribunalCount =
+        fp.tribunalCases.where((c) => c.status != TribunalStatus.closed).length;
+    final venteCount =
+        fp.trades.where((t) => t.status == 'pending').length;
 
     final actions = [
       _ActWithBadge(
-        act: _Act('📝 Punition', Icons.menu_book, Colors.red, true, () {
+        act: _Act('Punition', Icons.menu_book, Colors.red, true, () {
           PinGuard.guardAction(context, () {
-            Navigator.push(
-                context,
-                SlidePageRoute(
-                    page: const PunishmentLinesScreen(),
+            Navigator.push(context,
+                SlidePageRoute(page: const PunishmentLinesScreen(),
                     direction: SlideDirection.up));
           });
         }),
         badge: 0,
       ),
       _ActWithBadge(
-        act: _Act('🛡️ Immunité', Icons.shield, Colors.amber, true, () {
+        act: _Act('Immunité', Icons.shield, Colors.amber, true, () {
           PinGuard.guardAction(context, () {
             Navigator.push(
                 context, SpinPageRoute(page: const ImmunityLinesScreen()));
@@ -614,7 +760,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         badge: 0,
       ),
       _ActWithBadge(
-        act: _Act('📺 Écran & Profil', Icons.tv, Colors.blue, true, () {
+        act: _Act('Profil', Icons.tv, Colors.blue, true, () {
           PinGuard.guardAction(context, () {
             _showChildPickerForNav(fp, (childId) {
               Navigator.push(context,
@@ -625,28 +771,26 @@ class _DashboardScreenState extends State<DashboardScreen>
         badge: 0,
       ),
       _ActWithBadge(
-        act: _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, false, () {
+        act: _Act('Tribunal', Icons.gavel, Colors.purple, false, () {
           Navigator.push(
               context, SlidePageRoute(page: const TribunalScreen()));
         }),
         badge: tribunalCount,
       ),
       _ActWithBadge(
-        act: _Act('🏪 Vente', Icons.storefront, Colors.green, false, () {
+        act: _Act('Vente', Icons.storefront, Colors.green, false, () {
           _showChildPickerForNav(fp, (childId) {
-            Navigator.push(
-                context, DoorPageRoute(page: TradeScreen(childId: childId)));
+            Navigator.push(context,
+                DoorPageRoute(page: TradeScreen(childId: childId)));
           });
         }),
         badge: venteCount,
       ),
       _ActWithBadge(
-        act: _Act('📊 Notes', Icons.bar_chart, Colors.teal, false, () {
+        act: _Act('Notes', Icons.bar_chart, Colors.teal, false, () {
           _showChildPickerForNav(fp, (childId) {
-            Navigator.push(
-                context,
-                SlidePageRoute(
-                    page: SchoolNotesScreen(childId: childId)));
+            Navigator.push(context,
+                SlidePageRoute(page: SchoolNotesScreen(childId: childId)));
           });
         }),
         badge: 0,
@@ -660,13 +804,11 @@ class _DashboardScreenState extends State<DashboardScreen>
           tween: Tween(begin: 0.0, end: 1.0),
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeOutBack,
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.translate(
-                  offset: Offset(-20 * (1 - value), 0), child: child),
-            );
-          },
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+                offset: Offset(-20 * (1 - value), 0), child: child),
+          ),
           child: const Text('⚡ Actions Rapides',
               style: TextStyle(
                   color: Colors.white,
@@ -688,13 +830,11 @@ class _DashboardScreenState extends State<DashboardScreen>
             if (anim == null) return tile;
             return AnimatedBuilder(
               animation: anim,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: anim.value.clamp(0.0, 1.0),
-                  child: Opacity(
-                      opacity: anim.value.clamp(0.0, 1.0), child: child),
-                );
-              },
+              builder: (context, child) => Transform.scale(
+                scale: anim.value.clamp(0.0, 1.0),
+                child: Opacity(
+                    opacity: anim.value.clamp(0.0, 1.0), child: child),
+              ),
               child: tile,
             );
           }),
@@ -745,6 +885,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     return _badgeWrapper(child: tile, count: item.badge);
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  VENTES ACTIVES
+  // ══════════════════════════════════════════════════════════
   Widget _buildActiveTrades(FamilyProvider fp) {
     final active = fp.trades.where((t) => t.isActive).toList();
     if (active.isEmpty) return const SizedBox.shrink();
@@ -755,10 +898,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),
           duration: const Duration(milliseconds: 800),
-          builder: (context, value, child) {
-            return Opacity(opacity: value, child: child);
-          },
-          child: const Text('🏪 Ventes en cours',
+          builder: (context, value, child) =>
+              Opacity(opacity: value, child: child),
+          child: const Text('🤝 Ventes en cours',
               style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -773,70 +915,62 @@ class _DashboardScreenState extends State<DashboardScreen>
             tween: Tween(begin: 0.0, end: 1.0),
             duration: Duration(milliseconds: 500 + entry.key * 200),
             curve: Curves.easeOutCubic,
-            builder: (context, value, child) {
-              return Transform.translate(
-                offset: Offset(0, 20 * (1 - value)),
-                child: Opacity(opacity: value, child: child),
-              );
-            },
+            builder: (context, value, child) => Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: Opacity(opacity: value, child: child),
+            ),
             child: Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: TvFocusWrapper(
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      DoorPageRoute(
-                          page: TradeScreen(childId: trade.fromChildId)));
-                },
+                onTap: () => Navigator.push(context,
+                    DoorPageRoute(page: TradeScreen(childId: trade.fromChildId))),
                 child: GlassCard(
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.greenAccent,
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.greenAccent.withOpacity(0.5),
-                                blurRadius: 6),
-                          ],
-                        ),
+                  child: Row(children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.greenAccent,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.greenAccent.withOpacity(0.5),
+                              blurRadius: 6)
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('$sellerName → $buyerName',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold)),
-                            Text(
-                                '${trade.immunityLines} lignes • ${trade.serviceDescription}',
-                                style: const TextStyle(
-                                    color: Colors.white54, fontSize: 12),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
-                          ],
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('$sellerName → $buyerName',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                          Text(
+                              '${trade.immunityLines} lignes • ${trade.serviceDescription}',
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.greenAccent.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(trade.statusLabel,
-                            style: const TextStyle(
-                                color: Colors.greenAccent, fontSize: 11)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.greenAccent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right, color: Colors.white38),
-                    ],
-                  ),
+                      child: Text(trade.statusLabel,
+                          style: const TextStyle(
+                              color: Colors.greenAccent, fontSize: 11)),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, color: Colors.white38),
+                  ]),
                 ),
               ),
             ),
@@ -846,8 +980,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  void _showChildPickerForNav(
-      FamilyProvider fp, Function(String) onSelected) {
+  // ══════════════════════════════════════════════════════════
+  //  SÉLECTEUR ENFANT NAVIGATION
+  // ══════════════════════════════════════════════════════════
+  void _showChildPickerForNav(FamilyProvider fp, Function(String) onSelected) {
     if (fp.children.isEmpty) return;
     if (fp.children.length == 1) {
       onSelected(fp.children.first.id);
@@ -857,104 +993,89 @@ class _DashboardScreenState extends State<DashboardScreen>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.55,
-          minChildSize: 0.35,
-          maxChildSize: 0.92,
-          expand: false,
-          builder: (_, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1A1A2E),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 16),
+            const Text('Choisir un enfant',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                itemCount: fp.children.length,
+                itemBuilder: (_, i) {
+                  final child = fp.children[i];
+                  return TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: Duration(milliseconds: 300 + i * 100),
+                    curve: Curves.easeOutBack,
+                    builder: (context, value, ch) => Transform.translate(
+                      offset: Offset(30 * (1 - value), 0),
+                      child: Opacity(opacity: value, child: ch),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Choisir un enfant',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      itemCount: fp.children.length,
-                      itemBuilder: (_, i) {
-                        final child = fp.children[i];
-                        return TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: Duration(milliseconds: 300 + i * 100),
-                          curve: Curves.easeOutBack,
-                          builder: (context, value, ch) {
-                            return Transform.translate(
-                              offset: Offset(30 * (1 - value), 0),
-                              child: Opacity(opacity: value, child: ch),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: TvFocusWrapper(
-                              onTap: () {
-                                Navigator.pop(ctx);
-                                onSelected(child.id);
-                              },
-                              child: GlassCard(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 14),
-                                borderRadius: 14,
-                                child: Row(
-                                  children: [
-                                    _buildChildAvatar(child, 22),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(child.name,
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight:
-                                                      FontWeight.bold)),
-                                          Text(
-                                              '${child.points} pts • ${child.levelTitle}',
-                                              style: const TextStyle(
-                                                  color: Colors.white54,
-                                                  fontSize: 12)),
-                                        ],
-                                      ),
-                                    ),
-                                    const Icon(Icons.chevron_right,
-                                        color: Colors.white38),
-                                  ],
-                                ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: TvFocusWrapper(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          onSelected(child.id);
+                        },
+                        child: GlassCard(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 14),
+                          borderRadius: 14,
+                          child: Row(children: [
+                            _buildChildAvatar(child, 22),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(child.name,
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold)),
+                                  Text('${child.points} pts • ${child.levelTitle}',
+                                      style: const TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 12)),
+                                ],
                               ),
                             ),
-                          ),
-                        );
-                      },
+                            const Icon(Icons.chevron_right,
+                                color: Colors.white38),
+                          ]),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
-            );
-          },
-        );
-      },
+            ),
+          ]),
+        ),
+      ),
     );
   }
 }
