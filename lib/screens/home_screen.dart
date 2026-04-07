@@ -1,3 +1,4 @@
+// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
+import '../widgets/quick_shortcut_panel.dart';        // ← NOUVEAU
 
 import 'dashboard_screen.dart';
 import 'add_points_screen.dart';
@@ -741,6 +743,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.transparent,
       extendBody: true,
       drawer: _buildDrawer(context, isParent),
+      // ── FAB raccourcis ──────────────────────────────────────
+      floatingActionButton: const QuickShortcutFab(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      // ────────────────────────────────────────────────────────
       body: AnimatedBackground(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 400),
@@ -1037,7 +1043,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       );
                     },
                   ),
-                  // ── Timeline ajoutée ici ──
                   _drawerItem(
                     icon: Icons.timeline_rounded,
                     label: 'Timeline',
@@ -1046,8 +1051,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        SlidePageRoute(
-                            page: const TimelineScreen()),
+                        SlidePageRoute(page: const TimelineScreen()),
                       );
                     },
                   ),
