@@ -1,6 +1,5 @@
 // lib/screens/dashboard_screen.dart
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -236,13 +235,12 @@ class _DashboardScreenState extends State<DashboardScreen>
       double globalScore = 10.0;
       try {
         globalScore = fp.getWeeklyGlobalScore(child.id);
-      } catch (_) {
-        // méthode non disponible → score neutre
-      }
+      } catch (_) {}
 
+      // ✅ CORRECTION : streakDays est int? → on utilise ?? 0
       int streak = 0;
       try {
-        streak = child.streakDays;
+        streak = child.streakDays ?? 0;
       } catch (_) {}
 
       return {
@@ -258,7 +256,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         'weekStart': start,
       };
     } catch (e) {
-      // Fallback complet en cas d'erreur imprévue
       return {
         'bestBonus': null,
         'bonusCount': 0,
@@ -338,7 +335,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       animation: _journalAnim,
       builder: (context, ch) => Transform.translate(
         offset: Offset(0, 30 * (1 - _journalAnim.value)),
-        child: Opacity(opacity: _journalAnim.value.clamp(0.0, 1.0), child: ch),
+        child: Opacity(
+            opacity: _journalAnim.value.clamp(0.0, 1.0), child: ch),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,7 +438,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                             _safeString(child, 'levelTitle',
                                 fallback: 'Niveau ?'),
                             style: const TextStyle(
-                                color: Colors.white54, fontSize: 12)),
+                                color: Colors.white54,
+                                fontSize: 12)),
                       ],
                     ),
                   ),
@@ -519,7 +518,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                       color: Colors.greenAccent.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                          color: Colors.greenAccent.withOpacity(0.2)),
+                          color:
+                              Colors.greenAccent.withOpacity(0.2)),
                     ),
                     child: Row(children: [
                       const Icon(Icons.star_rounded,
@@ -586,7 +586,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // Helper défensif pour les getters du modèle
   String _safeString(dynamic obj, String field,
       {String fallback = ''}) {
     try {
@@ -613,8 +612,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 fontSize: 14,
                 fontWeight: FontWeight.bold)),
         Text(label,
-            style:
-                const TextStyle(color: Colors.white38, fontSize: 10),
+            style: const TextStyle(
+                color: Colors.white38, fontSize: 10),
             textAlign: TextAlign.center),
       ]),
     );
@@ -823,7 +822,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         badge: 0,
       ),
       _ActWithBadge(
-        act: _Act('Immunité', Icons.shield, Colors.amber, true, () {
+        act:
+            _Act('Immunité', Icons.shield, Colors.amber, true, () {
           PinGuard.guardAction(context, () {
             Navigator.push(context,
                 SpinPageRoute(page: const ImmunityLinesScreen()));
@@ -838,8 +838,8 @@ class _DashboardScreenState extends State<DashboardScreen>
               Navigator.push(
                   context,
                   ZoomPageRoute(
-                      page:
-                          ChildDashboardScreen(childId: childId)));
+                      page: ChildDashboardScreen(
+                          childId: childId)));
             });
           });
         }),
@@ -857,19 +857,23 @@ class _DashboardScreenState extends State<DashboardScreen>
         act: _Act('Vente', Icons.storefront, Colors.green, false,
             () {
           _showChildPickerForNav(fp, (childId) {
-            Navigator.push(context,
-                DoorPageRoute(page: TradeScreen(childId: childId)));
+            Navigator.push(
+                context,
+                DoorPageRoute(
+                    page: TradeScreen(childId: childId)));
           });
         }),
         badge: venteCount,
       ),
       _ActWithBadge(
-        act: _Act('Notes', Icons.bar_chart, Colors.teal, false, () {
+        act:
+            _Act('Notes', Icons.bar_chart, Colors.teal, false, () {
           _showChildPickerForNav(fp, (childId) {
             Navigator.push(
                 context,
                 SlidePageRoute(
-                    page: SchoolNotesScreen(childId: childId)));
+                    page:
+                        SchoolNotesScreen(childId: childId)));
           });
         }),
         badge: 0,
@@ -1005,8 +1009,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             builder: (context, value, child) =>
                 Transform.translate(
               offset: Offset(0, 20 * (1 - value)),
-              child:
-                  Opacity(opacity: value.clamp(0.0, 1.0), child: child),
+              child: Opacity(
+                  opacity: value.clamp(0.0, 1.0), child: child),
             ),
             child: Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -1130,78 +1134,4 @@ class _DashboardScreenState extends State<DashboardScreen>
                   return TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0.0, end: 1.0),
                     duration:
-                        Duration(milliseconds: 300 + i * 100),
-                    curve: Curves.easeOutBack,
-                    builder: (context, value, ch) =>
-                        Transform.translate(
-                      offset: Offset(30 * (1 - value), 0),
-                      child: Opacity(
-                          opacity: value.clamp(0.0, 1.0),
-                          child: ch),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: TvFocusWrapper(
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          onSelected(c.id);
-                        },
-                        child: GlassCard(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 14),
-                          borderRadius: 14,
-                          child: Row(children: [
-                            _buildChildAvatar(c, 22),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(c.name,
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight:
-                                              FontWeight.bold)),
-                                  Text(
-                                      '${c.points} pts • ${_safeString(c, 'levelTitle', fallback: 'Niveau ?')}',
-                                      style: const TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 12)),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right,
-                                color: Colors.white38),
-                          ]),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-//  MODÈLES INTERNES
-// ══════════════════════════════════════════════════════════════
-class _Act {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool parentOnly;
-  final VoidCallback onTap;
-  _Act(this.label, this.icon, this.color, this.parentOnly, this.onTap);
-}
-
-class _ActWithBadge {
-  final _Act act;
-  final int badge;
-  _ActWithBadge({required this.act, required this.badge});
-}
+                        Duration(milliseconds: 300 + i *
