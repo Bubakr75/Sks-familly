@@ -14,7 +14,6 @@ import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'tribunal_screen.dart';
 import 'school_notes_screen.dart';
-import 'history_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -409,13 +408,12 @@ class _DashboardScreenState extends State<DashboardScreen>
           Navigator.push(context, DoorPageRoute(page: TradeScreen(childId: childId)));
         });
       }),
-      _Act('📊 Historique', Icons.history, Colors.teal, () {
+            _Act('🧠 Comportement', Icons.psychology, Colors.purple, () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(context,
-              SlidePageRoute(page: HistoryScreen(childId: childId)));
+              SlidePageRoute(page: SchoolNotesScreen(childId: childId)));
         });
       }),
-    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
