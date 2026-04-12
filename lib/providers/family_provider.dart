@@ -44,13 +44,13 @@ class FamilyProvider extends ChangeNotifier {
   final Set<String> _deletedEntryIds = {};
 
   // ══════════════════════════════════════════════════════════
-  // CORRECTIF ANTI-DISPARITION
+  // CORRECTIF ANTI-DISPARITION — délai 30s au lieu de 5s
   // ══════════════════════════════════════════════════════════
   final Set<String> _pendingIds = {};
 
   void _markPending(String id) {
     _pendingIds.add(id);
-    Future.delayed(const Duration(seconds: 5), () => _pendingIds.remove(id));
+    Future.delayed(const Duration(seconds: 30), () => _pendingIds.remove(id));
   }
 
   List<T> _mergeWithPending<T>(
@@ -170,11 +170,36 @@ class FamilyProvider extends ChangeNotifier {
 
   // ───────────────────────────────────────────────────────────
   void _setupFirestoreCallbacks() {
+    // ✅ CORRIGÉ : merge intelligent pour ne pas écraser les points locaux
     _firestore.onChildrenChanged = (list, _) {
-      _children = list;
+      final Map<String, ChildModel> firestoreMap = {
+        for (var c in list) c.id: c
+      };
+      final merged = <ChildModel>[];
+      for (final local in _children) {
+        final remote = firestoreMap[local.id];
+        if (remote == null) {
+          // Enfant pas encore confirmé sur Firestore → garde le local
+          merged.add(local);
+        } else if (local.points >= remote.points) {
+          // Local plus récent ou égal → priorité au local
+          merged.add(local);
+        } else {
+          // Firestore plus récent → on prend Firestore
+          merged.add(remote);
+        }
+      }
+      // Ajouter les enfants présents sur Firestore mais pas encore en local
+      for (final remote in list) {
+        if (!_children.any((c) => c.id == remote.id)) {
+          merged.add(remote);
+        }
+      }
+      _children = merged;
       _saveBoxFromList(_childrenBox, _children, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
+
     _firestore.onHistoryChanged = (list, _) {
       final filtered = list.where((h) => !_deletedEntryIds.contains(h.id)).toList();
       _history = _mergeWithPending(filtered, _history, (h) => h.id);
@@ -453,6 +478,8 @@ class FamilyProvider extends ChangeNotifier {
     if (isBonus) { child.points += points; }
     else         { child.points -= points; }
     child.level = child.currentLevelNumber;
+    // ✅ Marque l'enfant comme pending pour protéger ses points
+    _markPending(child.id);
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) await _firestore.saveChild(child);
 
@@ -1121,7 +1148,6 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  // ✅ CORRIGÉ : utilise TribunalVerdict.innocent (plus notGuilty)
   Future<void> renderTribunalVerdict(
     String caseId,
     TribunalVerdict verdict,
@@ -1142,7 +1168,6 @@ class FamilyProvider extends ChangeNotifier {
             '⚖️ Verdict tribunal : $reason',
             category: 'tribunal_verdict', isBonus: false);
       } else if (verdict == TribunalVerdict.innocent && rewardPoints != null) {
-        // ✅ innocent au lieu de notGuilty
         await addPoints(tc.plaintiffId, rewardPoints,
             '⚖️ Verdict tribunal : $reason',
             category: 'tribunal_verdict', isBonus: true);
@@ -1151,7 +1176,6 @@ class FamilyProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  // ✅ AJOUTÉ : alias attendu par tribunal_screen.dart
   Future<void> renderVerdict({
     required String          caseId,
     required TribunalVerdict verdict,
@@ -1270,7 +1294,6 @@ class FamilyProvider extends ChangeNotifier {
     try {
       final trade = _trades.firstWhere((t) => t.id == tradeId);
 
-      // Débiter les immunités du vendeur
       final sellerImmunities = _immunities
           .where((im) => im.childId == trade.fromChildId && im.isUsable)
           .toList();
@@ -1284,7 +1307,6 @@ class FamilyProvider extends ChangeNotifier {
         if (_firestore.isConnected) await _firestore.saveImmunity(im);
       }
 
-      // Créer une immunité pour l'acheteur
       final newImmunity = ImmunityLines(
         id:      _uuid.v4(),
         childId: trade.toChildId,
@@ -1296,13 +1318,11 @@ class FamilyProvider extends ChangeNotifier {
       await _immunitiesBox.put(newImmunity.id, jsonEncode(newImmunity.toMap()));
       if (_firestore.isConnected) await _firestore.saveImmunity(newImmunity);
 
-      // Marquer le trade complété
       trade.status      = 'completed';
       trade.completedAt = DateTime.now();
       await _tradesBox.put(trade.id, jsonEncode(trade.toMap()));
       if (_firestore.isConnected) await _firestore.saveTrade(trade);
 
-      // Historique vendeur
       final entrySeller = HistoryEntry(
         id:       _uuid.v4(),
         childId:  trade.fromChildId,
@@ -1313,7 +1333,6 @@ class FamilyProvider extends ChangeNotifier {
         actionBy: _currentParentName,
         date:     DateTime.now(),
       );
-      // Historique acheteur
       final entryBuyer = HistoryEntry(
         id:       _uuid.v4(),
         childId:  trade.toChildId,
@@ -1345,7 +1364,6 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ AJOUTÉ : resetAllScores attendu par settings_screen.dart
   Future<void> resetAllScores() async {
     for (final child in _children) {
       child.points   = 0;
