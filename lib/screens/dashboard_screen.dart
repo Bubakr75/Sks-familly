@@ -178,7 +178,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       },
       child: Row(
         children: [
-          const Text('🏠', style: TextStyle(fontSize: 28)),
+          const Text('', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -190,7 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         fontSize: 22,
                         fontWeight: FontWeight.bold)),
                 Text(
-                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''} • ${fp.currentParentName}',
+                  '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''}  ${fp.currentParentName}',
                   style: const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],
@@ -213,7 +213,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             shaderCallback: (bounds) => const LinearGradient(
               colors: [Colors.amber, Colors.orange, Colors.amber],
             ).createShader(bounds),
-            child: const Text('🏆 CLASSEMENT',
+            child: const Text(' CLASSEMENT',
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -238,7 +238,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   },
                 ),
                 const SizedBox(width: 12),
-                // #1 — FIXÉ : scale séparé du Opacity pour ne pas bloquer l'image
+                // #1
                 AnimatedBuilder(
                   animation: _podium1Anim,
                   builder: (context, child) {
@@ -408,12 +408,13 @@ class _DashboardScreenState extends State<DashboardScreen>
           Navigator.push(context, DoorPageRoute(page: TradeScreen(childId: childId)));
         });
       }),
-            _Act('🧠 Comportement', Icons.psychology, Colors.purple, () {
+      _Act('🧠 Comportement', Icons.psychology, Colors.deepPurple, () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(context,
               SlidePageRoute(page: SchoolNotesScreen(childId: childId)));
         });
       }),
+    ]; // ← LE CROCHET FERMANT QUI MANQUAIT
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
