@@ -13,6 +13,8 @@ import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'tribunal_screen.dart';
+import 'school_notes_screen.dart';
+import 'history_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -49,8 +51,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     _actionsController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500));
-    for (int i = 0; i < 5; i++) {
-      final start = i * 0.12;
+    for (int i = 0; i < 6; i++) {
+      final start = i * 0.10;
       final end = (start + 0.4).clamp(0.0, 1.0);
       _actionAnims.add(CurvedAnimation(
           parent: _actionsController,
@@ -101,7 +103,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         );
       } catch (_) {}
     }
-
     return Container(
       width: radius * 2,
       height: radius * 2,
@@ -155,6 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     _buildQuickActions(fp),
                     const SizedBox(height: 20),
                     _buildActiveTrades(fp),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -237,21 +239,26 @@ class _DashboardScreenState extends State<DashboardScreen>
                   },
                 ),
                 const SizedBox(width: 12),
-                // #1
+                // #1 — FIXÉ : scale séparé du Opacity pour ne pas bloquer l'image
                 AnimatedBuilder(
-                  animation: Listenable.merge([_podium1Anim, _pulseAnim]),
+                  animation: _podium1Anim,
                   builder: (context, child) {
                     return Transform.translate(
                       offset: Offset(0, 60 * (1 - _podium1Anim.value)),
                       child: Opacity(
                         opacity: _podium1Anim.value,
-                        child: Transform.scale(
-                          scale: _pulseAnim.value,
-                          child: _podiumCard(sorted[0], 1),
-                        ),
+                        child: child,
                       ),
                     );
                   },
+                  child: AnimatedBuilder(
+                    animation: _pulseAnim,
+                    builder: (context, child) => Transform.scale(
+                      scale: _pulseAnim.value,
+                      child: child,
+                    ),
+                    child: _podiumCard(sorted[0], 1),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 // #3
@@ -380,15 +387,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildQuickActions(FamilyProvider fp) {
     final actions = [
       _Act('📝 Punition', Icons.menu_book, Colors.red, () {
-        Navigator.push(
-            context,
+        Navigator.push(context,
             SlidePageRoute(
                 page: const PunishmentLinesScreen(),
                 direction: SlideDirection.up));
       }),
       _Act('🛡️ Immunité', Icons.shield, Colors.amber, () {
-        Navigator.push(
-            context, SpinPageRoute(page: const ImmunityLinesScreen()));
+        Navigator.push(context, SpinPageRoute(page: const ImmunityLinesScreen()));
       }),
       _Act('📺 Écran', Icons.tv, Colors.blue, () {
         _showChildPickerForNav(fp, (childId) {
@@ -397,13 +402,17 @@ class _DashboardScreenState extends State<DashboardScreen>
         });
       }),
       _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, () {
-        Navigator.push(
-            context, SlidePageRoute(page: const TribunalScreen()));
+        Navigator.push(context, SlidePageRoute(page: const TribunalScreen()));
       }),
       _Act('🏪 Ventes', Icons.storefront, Colors.green, () {
         _showChildPickerForNav(fp, (childId) {
-          Navigator.push(
-              context, DoorPageRoute(page: TradeScreen(childId: childId)));
+          Navigator.push(context, DoorPageRoute(page: TradeScreen(childId: childId)));
+        });
+      }),
+      _Act('📊 Historique', Icons.history, Colors.teal, () {
+        _showChildPickerForNav(fp, (childId) {
+          Navigator.push(context,
+              SlidePageRoute(page: HistoryScreen(childId: childId)));
         });
       }),
     ];
@@ -521,10 +530,8 @@ class _DashboardScreenState extends State<DashboardScreen>
               padding: const EdgeInsets.only(bottom: 8),
               child: TvFocusWrapper(
                 onTap: () {
-                  Navigator.push(
-                      context,
-                      DoorPageRoute(
-                          page: TradeScreen(childId: trade.fromChildId)));
+                  Navigator.push(context,
+                      DoorPageRoute(page: TradeScreen(childId: trade.fromChildId)));
                 },
                 child: GlassCard(
                   child: Row(
@@ -584,8 +591,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  void _showChildPickerForNav(
-      FamilyProvider fp, Function(String) onSelected) {
+  void _showChildPickerForNav(FamilyProvider fp, Function(String) onSelected) {
     if (fp.children.isEmpty) return;
     if (fp.children.length == 1) {
       onSelected(fp.children.first.id);
@@ -620,8 +626,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     leading: _buildChildAvatar(child, 20),
                     title: Text(child.name,
                         style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(
-                        '${child.points} pts • ${child.levelTitle}',
+                    subtitle: Text('${child.points} pts • ${child.levelTitle}',
                         style: const TextStyle(color: Colors.white54)),
                   ),
                 );
