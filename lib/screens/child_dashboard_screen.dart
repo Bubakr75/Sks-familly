@@ -1387,205 +1387,196 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   //  TAB BADGES
   // ════════════════════════════════════════════════════════
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
-    final allBadges = fp.badges;
-    final earned = allBadges
-        .where((b) =>
-            child.badgeIds.contains(b.id) &&
-            !_hiddenDefaultBadgeIds.contains(b.id))
-        .toList();
-    final locked = allBadges
-        .where((b) =>
-            !child.badgeIds.contains(b.id) &&
-            !_hiddenDefaultBadgeIds.contains(b.id))
-        .toList();
+  // ✅ CORRIGÉ : fp.badges → BadgeModel.defaultBadges + fp.customBadges
+  final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  final earned = allBadges
+      .where((b) =>
+          child.badgeIds.contains(b.id) &&
+          !_hiddenDefaultBadgeIds.contains(b.id))
+      .toList();
+  final locked = allBadges
+      .where((b) =>
+          !child.badgeIds.contains(b.id) &&
+          !_hiddenDefaultBadgeIds.contains(b.id))
+      .toList();
 
-        // ── Badges personnalisés ──
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('⭐ Badges personnalisés',
-                style: TextStyle(
-                    color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-            IconButton(
-              icon: const Icon(Icons.add_circle, color: Colors.deepPurpleAccent),
-              onPressed: () => _addCustomBadge(child.id),
-            ),
-          ],
-        ),
-        if (_customLocalBadges.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: Text('Aucun badge personnalisé. Appuie sur + pour en ajouter.',
-                style: TextStyle(color: Colors.white38, fontSize: 12)),
-          )
-        else
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: List.generate(_customLocalBadges.length, (i) {
-              final b = _customLocalBadges[i];
-              return GestureDetector(
-                onLongPress: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      backgroundColor: const Color(0xFF1A1A2E),
-                      title: const Text('Supprimer ce badge ?',
-                          style: TextStyle(color: Colors.white)),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Annuler')),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent),
-                          onPressed: () {
-                            _removeCustomBadge(i, child.id);
-                            Navigator.pop(context);
-                          },
-                          child: const Text('Supprimer'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color:        Colors.deepPurple.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border:       Border.all(
-                        color: Colors.deepPurpleAccent.withOpacity(0.5)),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(b.emoji,
-                        style: const TextStyle(fontSize: 18)),
-                    const SizedBox(width: 6),
-                    Text(b.label,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 12)),
-                  ]),
-                ),
-              );
-            }),
+  return SingleChildScrollView(
+    padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+      // ── Badges personnalisés ──
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('⭐ Badges personnalisés',
+              style: TextStyle(
+                  color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+          IconButton(
+            icon: const Icon(Icons.add_circle, color: Colors.deepPurpleAccent),
+            onPressed: () => _addCustomBadge(child.id),
           ),
-
-        const SizedBox(height: 16),
-        const Divider(color: Colors.white12),
-        const SizedBox(height: 8),
-
-        // ── Badges obtenus ──
-        Text('🏆 Badges obtenus (${earned.length})',
-            style: TextStyle(
-                color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-        const SizedBox(height: 8),
-        if (earned.isEmpty)
-          const Text('Aucun badge obtenu pour l\'instant.',
-              style: TextStyle(color: Colors.white38, fontSize: 12))
-        else
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: earned.map((b) => GestureDetector(
+        ],
+      ),
+      if (_customLocalBadges.isEmpty)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Text('Aucun badge personnalisé. Appuie sur + pour en ajouter.',
+              style: TextStyle(color: Colors.white38, fontSize: 12)),
+        )
+      else
+        Wrap(
+          spacing: 8, runSpacing: 8,
+          children: List.generate(_customLocalBadges.length, (i) {
+            final b = _customLocalBadges[i];
+            return GestureDetector(
               onLongPress: () {
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
                     backgroundColor: const Color(0xFF1A1A2E),
-                    title: const Text('Masquer ce badge ?',
+                    title: const Text('Supprimer ce badge ?',
                         style: TextStyle(color: Colors.white)),
-                    content: Text(
-                        'Masquer « ${b.name} » de la vue ?',
-                        style: const TextStyle(color: Colors.white70)),
                     actions: [
                       TextButton(
                           onPressed: () => Navigator.pop(context),
                           child: const Text('Annuler')),
                       ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent),
                         onPressed: () {
-                          _hideDefaultBadge(b.id, child.id);
+                          _removeCustomBadge(i, child.id);
                           Navigator.pop(context);
                         },
-                        child: const Text('Masquer'),
+                        child: const Text('Supprimer'),
                       ),
                     ],
                   ),
                 );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color:        Colors.amber.withOpacity(0.15),
+                  color:        Colors.deepPurple.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
-                  border:       Border.all(
-                      color: Colors.amber.withOpacity(0.4)),
+                  border: Border.all(
+                      color: Colors.deepPurpleAccent.withOpacity(0.5)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(b.icon, style: const TextStyle(fontSize: 18)),
+                  Text(b.emoji, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 6),
-                  Text(b.name,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 12)),
+                  Text(b.label,
+                      style: const TextStyle(color: Colors.white, fontSize: 12)),
                 ]),
               ),
-            )).toList(),
-          ),
+            );
+          }),
+        ),
 
-        if (_hiddenDefaultBadgeIds.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: () => _resetHiddenBadges(child.id),
-            icon:  const Icon(Icons.visibility, size: 16,
-                color: Colors.white38),
-            label: Text(
-                'Afficher les ${_hiddenDefaultBadgeIds.length} badge(s) masqué(s)',
-                style: const TextStyle(
-                    color: Colors.white38, fontSize: 12)),
-          ),
-        ],
+      const SizedBox(height: 16),
+      const Divider(color: Colors.white12),
+      const SizedBox(height: 8),
 
-        const SizedBox(height: 16),
-        const Divider(color: Colors.white12),
-        const SizedBox(height: 8),
-
-        // ── Badges verrouillés ──
-        Text('🔒 Badges à débloquer (${locked.length})',
-            style: const TextStyle(
-                color: Colors.white54, fontWeight: FontWeight.bold,
-                fontSize: 14)),
-        const SizedBox(height: 8),
-        if (locked.isEmpty)
-          const Text('Tous les badges ont été débloqués ! 🎉',
-              style: TextStyle(color: Colors.white38, fontSize: 12))
-        else
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: locked.map((b) => Opacity(
-              opacity: 0.4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color:        Colors.white10,
-                  borderRadius: BorderRadius.circular(20),
-                  border:       Border.all(color: Colors.white24),
+      // ── Badges obtenus ──
+      Text('🏆 Badges obtenus (${earned.length})',
+          style: TextStyle(
+              color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+      const SizedBox(height: 8),
+      if (earned.isEmpty)
+        const Text("Aucun badge obtenu pour l'instant.",
+            style: TextStyle(color: Colors.white38, fontSize: 12))
+      else
+        Wrap(
+          spacing: 8, runSpacing: 8,
+          children: earned.map((b) => GestureDetector(
+            onLongPress: () {
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  backgroundColor: const Color(0xFF1A1A2E),
+                  title: const Text('Masquer ce badge ?',
+                      style: TextStyle(color: Colors.white)),
+                  content: Text('Masquer « ${b.name} » de la vue ?',
+                      style: const TextStyle(color: Colors.white70)),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Annuler')),
+                    ElevatedButton(
+                      onPressed: () {
+                        _hideDefaultBadge(b.id, child.id);
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Masquer'),
+                    ),
+                  ],
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('🔒',
-                      style: TextStyle(fontSize: 18)),
-                  const SizedBox(width: 6),
-                  Text(b.name,
-                      style: const TextStyle(
-                          color: Colors.white54, fontSize: 12)),
-                ]),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color:        Colors.amber.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.amber.withOpacity(0.4)),
               ),
-            )).toList(),
-          ),
-      ]),
-    );
-  }
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(b.icon, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
+                Text(b.name,
+                    style: const TextStyle(color: Colors.white, fontSize: 12)),
+              ]),
+            ),
+          )).toList(),
+        ),
+
+      if (_hiddenDefaultBadgeIds.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: () => _resetHiddenBadges(child.id),
+          icon:  const Icon(Icons.visibility, size: 16, color: Colors.white38),
+          label: Text(
+              'Afficher les ${_hiddenDefaultBadgeIds.length} badge(s) masqué(s)',
+              style: const TextStyle(color: Colors.white38, fontSize: 12)),
+        ),
+      ],
+
+      const SizedBox(height: 16),
+      const Divider(color: Colors.white12),
+      const SizedBox(height: 8),
+
+      // ── Badges verrouillés ──
+      Text('🔒 Badges à débloquer (${locked.length})',
+          style: const TextStyle(
+              color: Colors.white54, fontWeight: FontWeight.bold,
+              fontSize: 14)),
+      const SizedBox(height: 8),
+      if (locked.isEmpty)
+        const Text('Tous les badges ont été débloqués ! 🎉',
+            style: TextStyle(color: Colors.white38, fontSize: 12))
+      else
+        Wrap(
+          spacing: 8, runSpacing: 8,
+          children: locked.map((b) => Opacity(
+            opacity: 0.4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color:        Colors.white10,
+                borderRadius: BorderRadius.circular(20),
+                border:       Border.all(color: Colors.white24),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Text('🔒', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
+                Text(b.name,
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 12)),
+              ]),
+            ),
+          )).toList(),
+        ),
+    ]),
+  );
 }
+
