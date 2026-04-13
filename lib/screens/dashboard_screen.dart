@@ -1,3 +1,5 @@
+// lib/screens/dashboard_screen.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -87,7 +89,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           height: radius * 2,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.amber.withOpacity(0.6), width: 3),
+            border:
+                Border.all(color: Colors.amber.withOpacity(0.6), width: 3),
             boxShadow: [
               BoxShadow(
                   color: Colors.amber.withOpacity(0.3),
@@ -108,7 +111,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [Colors.cyan.withOpacity(0.4), Colors.purple.withOpacity(0.3)],
+          colors: [
+            Colors.cyan.withOpacity(0.4),
+            Colors.purple.withOpacity(0.3)
+          ],
         ),
         border: Border.all(color: Colors.cyan.withOpacity(0.5), width: 2),
         boxShadow: [
@@ -178,7 +184,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       },
       child: Row(
         children: [
-          const Text('', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -191,7 +196,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         fontWeight: FontWeight.bold)),
                 Text(
                   '${fp.children.length} enfant${fp.children.length > 1 ? 's' : ''}  ${fp.currentParentName}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  style:
+                      const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],
             ),
@@ -225,7 +231,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // #2
                 AnimatedBuilder(
                   animation: _podium2Anim,
                   builder: (context, child) {
@@ -238,16 +243,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                   },
                 ),
                 const SizedBox(width: 12),
-                // #1
                 AnimatedBuilder(
                   animation: _podium1Anim,
                   builder: (context, child) {
                     return Transform.translate(
                       offset: Offset(0, 60 * (1 - _podium1Anim.value)),
-                      child: Opacity(
-                        opacity: _podium1Anim.value,
-                        child: child,
-                      ),
+                      child: Opacity(opacity: _podium1Anim.value, child: child),
                     );
                   },
                   child: AnimatedBuilder(
@@ -260,7 +261,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 ),
                 const SizedBox(width: 12),
-                // #3
                 if (sorted.length >= 3)
                   AnimatedBuilder(
                     animation: _podium3Anim,
@@ -286,8 +286,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: TvFocusWrapper(
-                  onTap: () => Navigator.push(context,
-                      ZoomPageRoute(page: ChildDashboardScreen(childId: child.id))),
+                  onTap: () => Navigator.push(
+                      context,
+                      ZoomPageRoute(
+                          page: ChildDashboardScreen(childId: child.id))),
                   child: Row(
                     children: [
                       Text('#$rank',
@@ -320,7 +322,11 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _podiumCard(ChildModel child, int rank) {
     final heights = {1: 110.0, 2: 85.0, 3: 65.0};
-    final colors = {1: Colors.amber, 2: Colors.grey, 3: Colors.orange};
+    final colors = {
+      1: Colors.amber,
+      2: Colors.grey,
+      3: Colors.orange
+    };
     final medals = {1: '🥇', 2: '🥈', 3: '🥉'};
     final avatarRadius = rank == 1 ? 36.0 : 26.0;
 
@@ -386,13 +392,15 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildQuickActions(FamilyProvider fp) {
     final actions = [
       _Act('📝 Punition', Icons.menu_book, Colors.red, () {
-        Navigator.push(context,
+        Navigator.push(
+            context,
             SlidePageRoute(
                 page: const PunishmentLinesScreen(),
                 direction: SlideDirection.up));
       }),
       _Act('🛡️ Immunité', Icons.shield, Colors.amber, () {
-        Navigator.push(context, SpinPageRoute(page: const ImmunityLinesScreen()));
+        Navigator.push(
+            context, SpinPageRoute(page: const ImmunityLinesScreen()));
       }),
       _Act('📺 Écran', Icons.tv, Colors.blue, () {
         _showChildPickerForNav(fp, (childId) {
@@ -401,20 +409,24 @@ class _DashboardScreenState extends State<DashboardScreen>
         });
       }),
       _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, () {
-        Navigator.push(context, SlidePageRoute(page: const TribunalScreen()));
+        Navigator.push(
+            context, SlidePageRoute(page: const TribunalScreen()));
       }),
       _Act('🏪 Ventes', Icons.storefront, Colors.green, () {
         _showChildPickerForNav(fp, (childId) {
-          Navigator.push(context, DoorPageRoute(page: TradeScreen(childId: childId)));
+          Navigator.push(context,
+              DoorPageRoute(page: TradeScreen(childId: childId)));
         });
       }),
       _Act('🧠 Comportement', Icons.psychology, Colors.deepPurple, () {
         _showChildPickerForNav(fp, (childId) {
-          Navigator.push(context,
-              SlidePageRoute(page: SchoolNotesScreen(childId: childId)));
+          Navigator.push(
+              context,
+              SlidePageRoute(
+                  page: SchoolNotesScreen(childId: childId)));
         });
       }),
-    ]; // ← LE CROCHET FERMANT QUI MANQUAIT
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,7 +457,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           childAspectRatio: 1.1,
           children: List.generate(actions.length, (i) {
             final action = actions[i];
-            final anim = i < _actionAnims.length ? _actionAnims[i] : null;
+            final anim =
+                i < _actionAnims.length ? _actionAnims[i] : null;
             if (anim == null) return _actionTile(action);
             return AnimatedBuilder(
               animation: anim,
@@ -529,8 +542,11 @@ class _DashboardScreenState extends State<DashboardScreen>
               padding: const EdgeInsets.only(bottom: 8),
               child: TvFocusWrapper(
                 onTap: () {
-                  Navigator.push(context,
-                      DoorPageRoute(page: TradeScreen(childId: trade.fromChildId)));
+                  Navigator.push(
+                      context,
+                      DoorPageRoute(
+                          page: TradeScreen(
+                              childId: trade.fromChildId)));
                 },
                 child: GlassCard(
                   child: Row(
@@ -543,7 +559,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           color: Colors.greenAccent,
                           boxShadow: [
                             BoxShadow(
-                                color: Colors.greenAccent.withOpacity(0.5),
+                                color:
+                                    Colors.greenAccent.withOpacity(0.5),
                                 blurRadius: 6),
                           ],
                         ),
@@ -560,7 +577,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                             Text(
                                 '${trade.immunityLines} lignes • ${trade.serviceDescription}',
                                 style: const TextStyle(
-                                    color: Colors.white54, fontSize: 12),
+                                    color: Colors.white54,
+                                    fontSize: 12),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
                           ],
@@ -575,10 +593,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                         child: Text(trade.statusLabel,
                             style: const TextStyle(
-                                color: Colors.greenAccent, fontSize: 11)),
+                                color: Colors.greenAccent,
+                                fontSize: 11)),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right, color: Colors.white38),
+                      const Icon(Icons.chevron_right,
+                          color: Colors.white38),
                     ],
                   ),
                 ),
@@ -590,50 +610,340 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  void _showChildPickerForNav(FamilyProvider fp, Function(String) onSelected) {
+  // ════════════════════════════════════════════════════════
+  //  SÉLECTEUR ENFANT — nouvelle interface moderne
+  // ════════════════════════════════════════════════════════
+  void _showChildPickerForNav(
+      FamilyProvider fp, Function(String) onSelected) {
     if (fp.children.isEmpty) return;
     if (fp.children.length == 1) {
       onSelected(fp.children.first.id);
       return;
     }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Choisir un enfant',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              ...fp.children.map((child) {
-                return TvFocusWrapper(
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onSelected(child.id);
-                  },
-                  child: ListTile(
-                    leading: _buildChildAvatar(child, 20),
-                    title: Text(child.name,
-                        style: const TextStyle(color: Colors.white)),
-                    subtitle: Text('${child.points} pts • ${child.levelTitle}',
-                        style: const TextStyle(color: Colors.white54)),
+      isScrollControlled: true,          // ← permet d'occuper jusqu'à 90% de l'écran
+      builder: (ctx) => _ChildPickerSheet(
+        children: fp.children,
+        onSelected: (id) {
+          Navigator.pop(ctx);
+          onSelected(id);
+        },
+        buildAvatar: _buildChildAvatar,
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  WIDGET SÉLECTEUR — sheet scrollable + recherche
+// ════════════════════════════════════════════════════════
+class _ChildPickerSheet extends StatefulWidget {
+  final List<ChildModel> children;
+  final Function(String) onSelected;
+  final Widget Function(ChildModel, double) buildAvatar;
+
+  const _ChildPickerSheet({
+    required this.children,
+    required this.onSelected,
+    required this.buildAvatar,
+  });
+
+  @override
+  State<_ChildPickerSheet> createState() => _ChildPickerSheetState();
+}
+
+class _ChildPickerSheetState extends State<_ChildPickerSheet>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animCtrl;
+  late Animation<double>   _slideAnim;
+  String _search = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 400));
+    _slideAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic);
+    _animCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  List<ChildModel> get _filtered => widget.children
+      .where((c) =>
+          c.name.toLowerCase().contains(_search.toLowerCase()))
+      .toList();
+
+  // Couleur par initiale
+  Color _accentFor(ChildModel c) {
+    const palette = [
+      Color(0xFF6C63FF), Color(0xFF00BCD4), Color(0xFF4CAF50),
+      Color(0xFFFF9800), Color(0xFFE91E63), Color(0xFF009688),
+    ];
+    return palette[c.name.codeUnitAt(0) % palette.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _filtered;
+    // Hauteur max = 85 % de l'écran
+    final maxH = MediaQuery.of(context).size.height * 0.85;
+
+    return AnimatedBuilder(
+      animation: _slideAnim,
+      builder: (_, child) => Transform.translate(
+        offset: Offset(0, 60 * (1 - _slideAnim.value)),
+        child: Opacity(opacity: _slideAnim.value, child: child),
+      ),
+      child: Container(
+        constraints: BoxConstraints(maxHeight: maxH),
+        decoration: const BoxDecoration(
+          color: Color(0xFF12122A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+
+            // ── Pill ──────────────────────────────────────
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Titre + sous-titre ────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6C63FF), Color(0xFF00BCD4)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                );
-              }),
+                  child: const Icon(Icons.people_alt_rounded,
+                      color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Choisir un enfant',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
+                  Text('${widget.children.length} enfants disponibles',
+                      style: const TextStyle(
+                          color: Colors.white38, fontSize: 12)),
+                ]),
+              ]),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Barre de recherche (si > 4 enfants) ───────
+            if (widget.children.length > 4) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: TextField(
+                    onChanged: (v) => setState(() => _search = v),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: const InputDecoration(
+                      hintText:      'Rechercher…',
+                      hintStyle:     TextStyle(color: Colors.white38),
+                      prefixIcon:    Icon(Icons.search, color: Colors.white38, size: 20),
+                      border:        InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
+
+            // ── Liste scrollable ───────────────────────────
+            Flexible(
+              child: filtered.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Column(children: [
+                        Text('🔍', style: TextStyle(fontSize: 36)),
+                        SizedBox(height: 8),
+                        Text('Aucun résultat',
+                            style: TextStyle(
+                                color: Colors.white54, fontSize: 14)),
+                      ]),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      shrinkWrap: true,
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 8),
+                      itemBuilder: (_, i) {
+                        final child  = filtered[i];
+                        final accent = _accentFor(child);
+                        return _ChildTile(
+                          child:       child,
+                          accent:      accent,
+                          buildAvatar: widget.buildAvatar,
+                          onTap:       () => widget.onSelected(child.id),
+                        );
+                      },
+                    ),
+            ),
+
+            // ── Padding bas (safe area) ───────────────────
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tuile enfant ──────────────────────────────────────────────
+class _ChildTile extends StatefulWidget {
+  final ChildModel child;
+  final Color accent;
+  final Widget Function(ChildModel, double) buildAvatar;
+  final VoidCallback onTap;
+
+  const _ChildTile({
+    required this.child,
+    required this.accent,
+    required this.buildAvatar,
+    required this.onTap,
+  });
+
+  @override
+  State<_ChildTile> createState() => _ChildTileState();
+}
+
+class _ChildTileState extends State<_ChildTile> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.child;
+    return GestureDetector(
+      onTapDown:   (_) => setState(() => _pressed = true),
+      onTapUp:     (_) => setState(() => _pressed = false),
+      onTapCancel: ()  => setState(() => _pressed = false),
+      onTap:       widget.onTap,
+      child: AnimatedScale(
+        scale:    _pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: _pressed
+                ? widget.accent.withOpacity(0.18)
+                : Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: _pressed
+                  ? widget.accent.withOpacity(0.6)
+                  : Colors.white.withOpacity(0.08),
+              width: 1.5,
+            ),
           ),
-        );
-      },
+          child: Row(children: [
+
+            // Avatar
+            widget.buildAvatar(c, 26),
+            const SizedBox(width: 14),
+
+            // Infos
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(c.name,
+                      style: const TextStyle(
+                          color:      Colors.white,
+                          fontSize:   15,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color:        widget.accent.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(c.levelTitle,
+                          style: TextStyle(
+                              color:    widget.accent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(width: 6),
+                    Text('${c.points} pts',
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 11)),
+                  ]),
+                ],
+              ),
+            ),
+
+            // Barre de progression verticale + flèche
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Icon(Icons.arrow_forward_ios_rounded,
+                    color: widget.accent, size: 14),
+                const SizedBox(height: 6),
+                // Mini progress bar
+                Container(
+                  width: 48, height: 4,
+                  decoration: BoxDecoration(
+                    color:        Colors.white12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment:   Alignment.centerLeft,
+                    widthFactor: c.levelProgress.clamp(0.0, 1.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color:        widget.accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${(c.levelProgress * 100).toInt()}%',
+                  style: const TextStyle(
+                      color: Colors.white38, fontSize: 9),
+                ),
+              ],
+            ),
+          ]),
+        ),
+      ),
     );
   }
 }
