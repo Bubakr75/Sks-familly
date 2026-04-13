@@ -96,20 +96,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   String? _selectedChildId;
   String? _selectedDay;
 
-  // ── Filtre historique ────────────────────────────────────
   String _historyFilter = 'Tout';
   static const _historyFilters = [
     'Tout', 'Bonus', 'Punition', 'Immunité', 'Tribunal', 'École', 'Échange',
   ];
 
-  // ── Jours pris en compte pour les notes scolaires ────────
   Set<int> _joursSources = {0, 1, 2, 3, 4};
 
   bool   _showBonusAnim = false;
   String _bonusAnimText = '';
 
-  List<_CustomBadgeItem> _customLocalBadges     = [];
-  List<String>           _hiddenDefaultBadgeIds  = [];
+  List<_CustomBadgeItem> _customLocalBadges    = [];
+  List<String>           _hiddenDefaultBadgeIds = [];
 
   static const _joursNoms = [
     'Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'
@@ -225,8 +223,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   borderSide: const BorderSide(color: Colors.white24)),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: Colors.deepPurpleAccent)),
+                  borderSide: const BorderSide(color: Colors.deepPurpleAccent)),
             ),
           ),
           const SizedBox(height: 10),
@@ -243,8 +240,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   borderSide: const BorderSide(color: Colors.white24)),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: Colors.deepPurpleAccent)),
+                  borderSide: const BorderSide(color: Colors.deepPurpleAccent)),
             ),
           ),
         ]),
@@ -292,14 +288,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Color _childColor(ChildModel child) {
     if (child.accentColorHex != null) {
       try {
-        return Color(
-            int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
+        return Color(int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
       } catch (_) {}
     }
     const palette = [
       Colors.deepPurpleAccent, Colors.blueAccent,
-      Color(0xFF00897B), Color(0xFFF57C00),
-      Colors.pinkAccent, Color(0xFF00ACC1),
+      Color(0xFF00897B),        Color(0xFFF57C00),
+      Colors.pinkAccent,        Color(0xFF00ACC1),
     ];
     return palette[child.name.codeUnitAt(0) % palette.length];
   }
@@ -314,7 +309,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     }
   }
 
-  // ─── Couleur & emoji par catégorie d'historique ──────────
   Color _categoryColor(HistoryEntry e) {
     final cat = e.category.toLowerCase();
     if (cat.contains('punition') || cat.contains('penalty')) return Colors.redAccent;
@@ -583,8 +577,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             if (children.length > 1)
               TextButton.icon(
                 onPressed: () => _showChildSwitcher(fp),
-                icon:  const Icon(Icons.swap_horiz,
-                    color: Colors.white70, size: 18),
+                icon:  const Icon(Icons.swap_horiz, color: Colors.white70, size: 18),
                 label: const Text('Changer',
                     style: TextStyle(color: Colors.white70)),
               ),
@@ -634,19 +627,27 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(children: [
+
+                // ══════════════════════════════════════════
+                // BANNIÈRE — pleine largeur, 200 px, centrée
+                // ══════════════════════════════════════════
                 if (child.bannerBase64 != null &&
                     child.bannerBase64!.isNotEmpty) ...[
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     child: SizedBox(
-                      height: 100, width: double.infinity,
+                      height: 200,               // ← PLUS GRANDE (100 → 200)
+                      width:  double.infinity,
                       child: Image.memory(
-                          base64Decode(child.bannerBase64!),
-                          fit: BoxFit.cover),
+                        base64Decode(child.bannerBase64!),
+                        fit:       BoxFit.cover,
+                        alignment: Alignment.center, // ← CENTRÉ SUR LE VISAGE
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
                 ],
+
                 _buildAvatar(child, 52, showFrame: true),
                 const SizedBox(height: 12),
                 Text(child.name,
@@ -696,14 +697,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   alignment: Alignment.centerRight,
                   child: Text(
                     '${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 10),
+                    style: const TextStyle(color: Colors.white38, fontSize: 10),
                   ),
                 ),
               ]),
             ),
           ),
         ),
+
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -719,8 +720,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editPhoto(child, fp),
                 icon:  const Icon(Icons.camera_alt, size: 16),
-                label: const Text('Photo',
-                    style: TextStyle(fontSize: 12)),
+                label: const Text('Photo', style: TextStyle(fontSize: 12)),
               ),
             ),
             const SizedBox(width: 8),
@@ -735,8 +735,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
-                label: const Text('Bannière 🖼️',
-                    style: TextStyle(fontSize: 11)),
+                label: const Text('Bannière 🖼️', style: TextStyle(fontSize: 11)),
               ),
             ),
             const SizedBox(width: 8),
@@ -751,12 +750,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: true),
                 icon:  const Icon(Icons.lock, size: 16),
-                label: const Text('Bannière 🔒',
-                    style: TextStyle(fontSize: 11)),
+                label: const Text('Bannière 🔒', style: TextStyle(fontSize: 11)),
               ),
             ),
           ]),
         ),
+
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -776,6 +775,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
         ),
+
         const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -790,17 +790,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final bonuses   = history.where((h) => h.isBonus).length;
     final penalties = history.where((h) => !h.isBonus).length;
     return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount:   2,
-      crossAxisSpacing: 10,
-      mainAxisSpacing:  10,
-      childAspectRatio: 1.6,
+      shrinkWrap:        true,
+      physics:           const NeverScrollableScrollPhysics(),
+      crossAxisCount:    2,
+      crossAxisSpacing:  10,
+      mainAxisSpacing:   10,
+      childAspectRatio:  1.6,
       children: [
         _statCard('🎯', 'Bonus',     '$bonuses',   Colors.greenAccent),
         _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
-        _statCard('🏆', 'Niveau',
-            '${child.level} – ${child.levelTitle}', color),
+        _statCard('🏆', 'Niveau',    '${child.level} – ${child.levelTitle}', color),
         _statCard('🛡️', 'Immunités',
             '${fp.getTotalAvailableImmunity(child.id)} lignes',
             Colors.amberAccent),
@@ -816,12 +815,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13)),
+                  color: color, fontWeight: FontWeight.bold, fontSize: 13)),
           Text(label,
-              style:
-                  const TextStyle(color: Colors.white54, fontSize: 10)),
+              style: const TextStyle(color: Colors.white54, fontSize: 10)),
         ]),
       );
 
@@ -845,8 +841,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final globalScore   = fp.getGlobalScoreForDays(child.id, _joursSources);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(
-          top: 120, bottom: 24, left: 16, right: 16),
+      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
       child: Column(children: [
         GlassCard(
           child: Padding(
@@ -856,18 +851,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 children: [
               Text('📊 Résumé',
                   style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14)),
+                      color: color, fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 8),
-              _infoRow('🛡️ Immunités',
-                  '$immunityBonus lignes', Colors.amberAccent),
+              _infoRow('🛡️ Immunités', '$immunityBonus lignes', Colors.amberAccent),
               _infoRow('⏱️ Bonus parent',
                   '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
                   Colors.greenAccent),
               _infoRow('📅 Jour affiché', _selectedDay!, color),
-              _infoRow('⏰ Temps écran calculé',
-                  _formatMinutes(minutes), Colors.white),
+              _infoRow('⏰ Temps écran calculé', _formatMinutes(minutes), Colors.white),
               if (_joursSources.isNotEmpty) ...[
                 const Divider(color: Colors.white12, height: 20),
                 _infoRow(
@@ -899,8 +890,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   Expanded(
                     child: Text('📚 Jours pour le calcul des notes',
                         style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
+                            color: color, fontWeight: FontWeight.bold,
                             fontSize: 13)),
                   ),
                 ]),
@@ -916,22 +906,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     return Expanded(
                       child: GestureDetector(
                         onTap: () => setState(() {
-                          if (sel) {
-                            _joursSources.remove(i);
-                          } else {
-                            _joursSources.add(i);
-                          }
+                          if (sel) _joursSources.remove(i);
+                          else     _joursSources.add(i);
                         }),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 2),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 8),
+                          margin:  const EdgeInsets.symmetric(horizontal: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel
-                                ? color.withOpacity(0.25)
-                                : Colors.white10,
+                            color: sel ? color.withOpacity(0.25) : Colors.white10,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: sel ? color : Colors.white24,
@@ -942,18 +925,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             Text(
                               _joursNoms[i].substring(0, 3),
                               style: TextStyle(
-                                color: sel ? color : Colors.white38,
-                                fontSize: 9,
+                                color:      sel ? color : Colors.white38,
+                                fontSize:   9,
                                 fontWeight: sel
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                                    ? FontWeight.bold : FontWeight.normal,
                               ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 2),
                             Icon(
-                              sel
-                                  ? Icons.check_circle
+                              sel ? Icons.check_circle
                                   : Icons.radio_button_unchecked,
                               color: sel ? color : Colors.white24,
                               size: 11,
@@ -966,13 +947,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 const SizedBox(height: 10),
                 Row(children: [
-                  _joursShortcut('Sem.', {0, 1, 2, 3, 4}, color),
+                  _joursShortcut('Sem.',    {0, 1, 2, 3, 4},       color),
                   const SizedBox(width: 6),
-                  _joursShortcut('Lun-Mar', {0, 1}, color),
+                  _joursShortcut('Lun-Mar', {0, 1},                 color),
                   const SizedBox(width: 6),
-                  _joursShortcut('Lun-Mer', {0, 1, 2}, color),
+                  _joursShortcut('Lun-Mer', {0, 1, 2},              color),
                   const SizedBox(width: 6),
-                  _joursShortcut('Tout', {0, 1, 2, 3, 4, 5, 6}, color),
+                  _joursShortcut('Tout',    {0, 1, 2, 3, 4, 5, 6}, color),
                 ]),
               ],
             ),
@@ -994,7 +975,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           height: 36,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _joursNoms.length,
+            itemCount:       _joursNoms.length,
             separatorBuilder: (_, __) => const SizedBox(width: 6),
             itemBuilder: (_, i) {
               final j        = _joursNoms[i];
@@ -1002,24 +983,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               return GestureDetector(
                 onTap: () => setState(() => _selectedDay = j),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: selected
-                        ? color.withOpacity(0.25)
-                        : Colors.white10,
+                    color: selected ? color.withOpacity(0.25) : Colors.white10,
                     borderRadius: BorderRadius.circular(10),
-                    border:
-                        selected ? Border.all(color: color) : null,
+                    border: selected ? Border.all(color: color) : null,
                   ),
                   child: Text(j.substring(0, 3),
                       style: TextStyle(
-                        color:
-                            selected ? color : Colors.white54,
-                        fontWeight: selected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        fontSize: 12,
+                        color:      selected ? color : Colors.white54,
+                        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                        fontSize:   12,
                       )),
                 ),
               );
@@ -1043,12 +1017,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             Column(mainAxisSize: MainAxisSize.min, children: [
               Text(_formatMinutes(minutes),
                   style: const TextStyle(
-                      color:      Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize:   28)),
+                      color: Colors.white, fontWeight: FontWeight.w900,
+                      fontSize: 28)),
               const Text('temps écran',
-                  style: TextStyle(
-                      color: Colors.white54, fontSize: 12)),
+                  style: TextStyle(color: Colors.white54, fontSize: 12)),
             ]),
           ]),
         ),
@@ -1066,22 +1038,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return GestureDetector(
       onTap: () => setState(() => _joursSources = Set.from(jours)),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color:
-              isActive ? color.withOpacity(0.2) : Colors.white10,
+          color:  isActive ? color.withOpacity(0.2) : Colors.white10,
           borderRadius: BorderRadius.circular(8),
-          border:
-              Border.all(color: isActive ? color : Colors.white24),
+          border: Border.all(color: isActive ? color : Colors.white24),
         ),
         child: Text(label,
             style: TextStyle(
-                color: isActive ? color : Colors.white38,
-                fontSize: 10,
-                fontWeight: isActive
-                    ? FontWeight.bold
-                    : FontWeight.normal)),
+                color:      isActive ? color : Colors.white38,
+                fontSize:   10,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
       ),
     );
   }
@@ -1097,9 +1064,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             children: [
           const Text('🛡️ Immunités disponibles',
               style: TextStyle(
-                  color:      Colors.amberAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize:   14)),
+                  color: Colors.amberAccent, fontWeight: FontWeight.bold,
+                  fontSize: 14)),
           const SizedBox(height: 8),
           ...immunities.map((imm) => Padding(
             padding: const EdgeInsets.only(bottom: 6),
@@ -1108,15 +1074,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(imm.reason,
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                     overflow: TextOverflow.ellipsis),
               ),
               Text('${imm.availableLines} ligne(s)',
                   style: const TextStyle(
-                      color:      Colors.amberAccent,
-                      fontWeight: FontWeight.bold,
-                      fontSize:   12)),
+                      color: Colors.amberAccent, fontWeight: FontWeight.bold,
+                      fontSize: 12)),
             ]),
           )),
         ]),
@@ -1130,26 +1094,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Flexible(
-                child: Text(label,
-                    style: const TextStyle(
-                        color: Colors.white60, fontSize: 12))),
+            Flexible(child: Text(label,
+                style: const TextStyle(color: Colors.white60, fontSize: 12))),
             Text(value,
                 style: TextStyle(
-                    color:      vColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize:   12)),
+                    color: vColor, fontWeight: FontWeight.bold, fontSize: 12)),
           ],
         ),
       );
 
-  Widget _buildQuickBonusRow(
-          ChildModel child, FamilyProvider fp, Color color) =>
+  Widget _buildQuickBonusRow(ChildModel child, FamilyProvider fp, Color color) =>
       Row(
           children: [15, 30, 60].map((min) => Expanded(
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: color.withOpacity(0.2),
@@ -1162,31 +1120,24 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       child.id, min, 'Bonus parent +$min min');
                   _triggerBonusAnim('+$min min 🎉');
                 },
-                child: Text('+$min min',
-                    style: const TextStyle(fontSize: 12)),
+                child: Text('+$min min', style: const TextStyle(fontSize: 12)),
               ),
             ),
           )).toList());
 
   void _triggerBonusAnim(String text) {
-    setState(() {
-      _showBonusAnim  = true;
-      _bonusAnimText  = text;
-    });
+    setState(() { _showBonusAnim = true; _bonusAnimText = text; });
     _bonusFloatController.forward(from: 0).then((_) {
       if (mounted) setState(() => _showBonusAnim = false);
     });
   }
 
-  List<HistoryEntry> _getSchoolNotes(
-          ChildModel child, FamilyProvider fp) =>
+  List<HistoryEntry> _getSchoolNotes(ChildModel child, FamilyProvider fp) =>
       fp.history
-          .where((h) =>
-              h.childId == child.id && h.category == 'school_note')
+          .where((h) => h.childId == child.id && h.category == 'school_note')
           .toList();
 
-  List<HistoryEntry> _getBehaviorNotes(
-          ChildModel child, FamilyProvider fp) =>
+  List<HistoryEntry> _getBehaviorNotes(ChildModel child, FamilyProvider fp) =>
       fp.history
           .where((h) =>
               h.childId == child.id &&
@@ -1203,7 +1154,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     ChildModel child,
     FamilyProvider fp,
   ) {
-    if (jour == 'Samedi') return fp.getSaturdayMinutes(child.id);
+    if (jour == 'Samedi')  return fp.getSaturdayMinutes(child.id);
     if (jour == 'Dimanche') return fp.getSundayMinutes(child.id);
     final globalScore = fp.getWeeklyGlobalScore(child.id);
     int base = 0;
@@ -1226,14 +1177,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   // ════════════════════════════════════════════════════════
-  //  TAB HISTORIQUE — version complète avec filtres
+  //  TAB HISTORIQUE
   // ════════════════════════════════════════════════════════
   Widget _buildHistoryTab(ChildModel child, FamilyProvider fp, Color color) {
-    // Toutes les entrées triées par date décroissante
     final allEntries = fp.getHistoryForChild(child.id)
       ..sort((a, b) => b.date.compareTo(a.date));
 
-    // Filtrage par catégorie
     final filtered = _historyFilter == 'Tout'
         ? allEntries
         : allEntries.where((e) {
@@ -1247,21 +1196,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     !cat.contains('school') &&
                     !cat.contains('note') &&
                     !cat.contains('échange');
-              case 'Punition':
-                return cat.contains('punition');
-              case 'Immunité':
-                return cat.contains('immunité') || cat.contains('immunity');
-              case 'Tribunal':
-                return cat.contains('tribunal') || cat.contains('verdict');
+              case 'Punition':   return cat.contains('punition');
+              case 'Immunité':   return cat.contains('immunité') || cat.contains('immunity');
+              case 'Tribunal':   return cat.contains('tribunal') || cat.contains('verdict');
               case 'École':
-                return cat.contains('school') ||
-                    cat.contains('note') ||
-                    cat.contains('école') ||
-                    cat.contains('saturday');
-              case 'Échange':
-                return cat.contains('échange') || cat.contains('trade');
-              default:
-                return true;
+                return cat.contains('school') || cat.contains('note') ||
+                    cat.contains('école') || cat.contains('saturday');
+              case 'Échange':    return cat.contains('échange') || cat.contains('trade');
+              default:           return true;
             }
           }).toList();
 
@@ -1269,528 +1211,380 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final penalties = allEntries.where((h) => !h.isBonus).length;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(
-          top: 120, bottom: 24, left: 16, right: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Stats résumé ──────────────────────────────
-          Row(children: [
-            Expanded(child: _statCard(
-                '✅', 'Bonus', '$bonuses', Colors.greenAccent)),
-            const SizedBox(width: 10),
-            Expanded(child: _statCard(
-                '❌', 'Pénalités', '$penalties', Colors.redAccent)),
-          ]),
-          const SizedBox(height: 16),
+      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+      child: Column(children: [
+        // ── Résumé ──
+        GlassCard(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _histStat('✅ Bonus',     '$bonuses',   Colors.greenAccent),
+                _histStat('❌ Pénalités', '$penalties', Colors.redAccent),
+                _histStat('📋 Total',
+                    '${allEntries.length}', Colors.white70),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
 
-          // ── Filtres ───────────────────────────────────
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _historyFilters.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
-              itemBuilder: (_, i) {
-                final f        = _historyFilters[i];
-                final selected = f == _historyFilter;
-                return GestureDetector(
-                  onTap: () => setState(() => _historyFilter = f),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? color.withOpacity(0.25)
-                          : Colors.white10,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: selected ? color : Colors.white24),
-                    ),
-                    child: Text(f,
-                        style: TextStyle(
-                            color:      selected ? color : Colors.white54,
-                            fontWeight: selected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            fontSize: 12)),
+        // ── Filtres ──
+        SizedBox(
+          height: 36,
+          child: ListView.separated(
+            scrollDirection:  Axis.horizontal,
+            itemCount:        _historyFilters.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            itemBuilder: (_, i) {
+              final f   = _historyFilters[i];
+              final sel = f == _historyFilter;
+              return GestureDetector(
+                onTap: () => setState(() => _historyFilter = f),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: sel ? color.withOpacity(0.25) : Colors.white10,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: sel ? color : Colors.white24,
+                        width: sel ? 1.5 : 1),
                   ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ── Liste chronologique ───────────────────────
-          if (filtered.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                child: Column(children: [
-                  Icon(Icons.history_toggle_off,
-                      size: 48,
-                      color: Colors.white.withOpacity(0.1)),
-                  const SizedBox(height: 12),
-                  Text('Aucune entrée pour ce filtre',
+                  child: Text(f,
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.3),
-                          fontSize: 14)),
-                ]),
-              ),
-            )
-          else
-            ...filtered.map((e) => _buildHistoryCard(e, color)),
-
-          // ── Bouton voir tout (timeline) ───────────────
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: color,
-                side: BorderSide(color: color.withOpacity(0.5)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) =>
-                          TimelineScreen(initialChildId: child.id))),
-              icon:  const Icon(Icons.open_in_new, size: 16),
-              label: const Text('Voir dans la timeline'),
-            ),
+                          color:      sel ? color : Colors.white54,
+                          fontSize:   12,
+                          fontWeight: sel
+                              ? FontWeight.bold : FontWeight.normal)),
+                ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 12),
+
+        // ── Liste ──
+        if (filtered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(children: [
+              const Text('📭', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 8),
+              Text('Aucune entrée dans « $_historyFilter »',
+                  style: const TextStyle(
+                      color: Colors.white54, fontSize: 13),
+                  textAlign: TextAlign.center),
+            ]),
+          )
+        else
+          ...filtered.map((e) => _buildHistoryCard(e, color)),
+      ]),
     );
   }
 
-  // ── Carte d'une entrée d'historique ─────────────────────
-  Widget _buildHistoryCard(HistoryEntry e, Color accentColor) {
-    final catColor = _categoryColor(e);
-    final emoji    = _categoryEmoji(e);
-    final dateStr  = _formatDate(e.date);
-    final timeStr  = _formatTime(e.date);
-    final pts      = e.isBonus ? '+${e.points}' : '-${e.points}';
+  Widget _histStat(String label, String value, Color c) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(value,
+          style: TextStyle(
+              color: c, fontWeight: FontWeight.bold, fontSize: 18)),
+      Text(label,
+          style: const TextStyle(color: Colors.white54, fontSize: 11)),
+    ],
+  );
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color:        Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(14),
-        border:       Border.all(color: catColor.withOpacity(0.25)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icône catégorie
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color:        catColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                  child: Text(emoji,
-                      style: const TextStyle(fontSize: 20))),
-            ),
-            const SizedBox(width: 12),
-            // Contenu
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Raison
-                  Text(e.reason,
+  Widget _buildHistoryCard(HistoryEntry e, Color accentColor) {
+    final cat   = _categoryColor(e);
+    final emoji = _categoryEmoji(e);
+    final pts   = e.points;
+    final sign  = pts >= 0 ? '+' : '';
+
+    // Formatage date
+    final now   = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final eDay  = DateTime(e.date.year, e.date.month, e.date.day);
+    String dateLabel;
+    if (eDay == today) {
+      dateLabel = "Aujourd'hui";
+    } else if (eDay == today.subtract(const Duration(days: 1))) {
+      dateLabel = 'Hier';
+    } else {
+      dateLabel =
+          '${e.date.day.toString().padLeft(2, '0')}/${e.date.month.toString().padLeft(2, '0')}/${e.date.year}';
+    }
+    final timeLabel =
+        '${e.date.hour.toString().padLeft(2, '0')}:${e.date.minute.toString().padLeft(2, '0')}';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color:        cat.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(12),
+          border:       Border.all(color: cat.withOpacity(0.35), width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Text(emoji, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(e.reason,
                       style: const TextStyle(
-                          color:      Colors.white,
-                          fontSize:   13,
-                          fontWeight: FontWeight.w600),
-                      maxLines: 2,
+                          color: Colors.white, fontWeight: FontWeight.w600,
+                          fontSize: 13),
                       overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  // Catégorie + actionBy
-                  Row(children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color:        catColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(e.category,
-                          style: TextStyle(
-                              color:    catColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold)),
-                    ),
-                    if (e.actionBy != null &&
-                        e.actionBy!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Text('par ${e.actionBy}',
-                          style: const TextStyle(
-                              color:   Colors.white38,
-                              fontSize: 10)),
-                    ],
-                  ]),
-                  const SizedBox(height: 4),
-                  // Date + heure
-                  Row(children: [
-                    const Icon(Icons.access_time,
-                        color: Colors.white24, size: 11),
-                    const SizedBox(width: 3),
-                    Text('$dateStr à $timeStr',
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 10)),
-                  ]),
-                  // Photo preuve si présente
-                  if (e.hasProofPhoto) ...[
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(
-                        base64Decode(e.proofPhotoBase64!),
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ],
+                ),
+                Text('$sign$pts pts',
+                    style: TextStyle(
+                        color:      pts >= 0 ? Colors.greenAccent : Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize:   14)),
+              ]),
+              const SizedBox(height: 4),
+              Row(children: [
+                Icon(Icons.access_time, size: 11, color: Colors.white38),
+                const SizedBox(width: 4),
+                Text('$dateLabel à $timeLabel',
+                    style: const TextStyle(
+                        color: Colors.white38, fontSize: 11)),
+                if (e.actionBy != null && e.actionBy!.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  const Text('·',
+                      style: TextStyle(color: Colors.white24)),
+                  const SizedBox(width: 4),
+                  Text('par ${e.actionBy}',
+                      style: const TextStyle(
+                          color: Colors.white38, fontSize: 11)),
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Points
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: (e.isBonus ? Colors.greenAccent : Colors.redAccent)
-                    .withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(pts,
-                  style: TextStyle(
-                      color: e.isBonus
-                          ? Colors.greenAccent
-                          : Colors.redAccent,
-                      fontWeight: FontWeight.bold,
-                      fontSize:   13)),
-            ),
-          ],
+              ]),
+              if (e.hasProofPhoto) ...[
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    base64Decode(e.proofPhotoBase64!),
+                    height: 120,
+                    width:  double.infinity,
+                    fit:    BoxFit.cover,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
-
-  String _formatDate(DateTime d) {
-    final now   = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final day   = DateTime(d.year, d.month, d.day);
-    if (day == today) return 'Aujourd\'hui';
-    if (day == today.subtract(const Duration(days: 1))) return 'Hier';
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-  }
-
-  String _formatTime(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}h${d.minute.toString().padLeft(2, '0')}';
 
   // ════════════════════════════════════════════════════════
   //  TAB BADGES
   // ════════════════════════════════════════════════════════
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
-    final all = fp.customBadges
-        .where((b) => !_hiddenDefaultBadgeIds.contains(b.id))
+    final allBadges = fp.badges;
+    final earned = allBadges
+        .where((b) =>
+            child.badgeIds.contains(b.id) &&
+            !_hiddenDefaultBadgeIds.contains(b.id))
         .toList();
-    final earned = all.where((b) => child.badgeIds.contains(b.id)).toList();
-    final locked = all.where((b) => !child.badgeIds.contains(b.id)).toList();
+    final locked = allBadges
+        .where((b) =>
+            !child.badgeIds.contains(b.id) &&
+            !_hiddenDefaultBadgeIds.contains(b.id))
+        .toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(
-          top: 120, bottom: 24, left: 16, right: 16),
-      child:
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('⭐ Mes badges perso',
-                      style: TextStyle(
-                          color:      color,
-                          fontWeight: FontWeight.bold,
-                          fontSize:   14)),
-                  GestureDetector(
-                    onTap: () => _addCustomBadge(child.id),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                        border:
-                            Border.all(color: color.withOpacity(0.5)),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min,
-                          children: [
-                        Icon(Icons.add, color: color, size: 14),
-                        const SizedBox(width: 4),
-                        Text('Ajouter',
-                            style: TextStyle(
-                                color:      color,
-                                fontSize:   12,
-                                fontWeight: FontWeight.bold)),
-                      ]),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              if (_customLocalBadges.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'Aucun badge perso. Appuie sur "Ajouter" !',
-                      style: TextStyle(
-                          color: Colors.white38, fontSize: 12),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
-              else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount:   3,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing:  8,
-                    childAspectRatio: 0.85,
-                  ),
-                  itemCount: _customLocalBadges.length,
-                  itemBuilder: (_, i) {
-                    final b = _customLocalBadges[i];
-                    return Stack(children: [
-                      GlassCard(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(b.emoji,
-                                style:
-                                    const TextStyle(fontSize: 30)),
-                            const SizedBox(height: 4),
-                            Text(b.label,
-                                style: const TextStyle(
-                                    color:      Colors.white,
-                                    fontSize:   10,
-                                    fontWeight: FontWeight.bold),
-                                textAlign: TextAlign.center,
-                                maxLines:  2,
-                                overflow:  TextOverflow.ellipsis),
-                          ],
-                        ),
-                      ),
-                      Positioned(
-                        top: 4, right: 4,
-                        child: GestureDetector(
-                          onTap: () =>
-                              _removeCustomBadge(i, child.id),
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(
-                                color: Colors.redAccent,
-                                shape: BoxShape.circle),
-                            child: const Icon(Icons.close,
-                                color: Colors.white, size: 12),
-                          ),
-                        ),
-                      ),
-                    ]);
-                  },
-                ),
-            ]),
-          ),
+      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // ── Badges personnalisés ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('⭐ Badges personnalisés',
+                style: TextStyle(
+                    color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+            IconButton(
+              icon: const Icon(Icons.add_circle, color: Colors.deepPurpleAccent),
+              onPressed: () => _addCustomBadge(child.id),
+            ),
+          ],
         ),
-        const SizedBox(height: 20),
-        Text('🏅 Badges obtenus (${earned.length})',
-            style: TextStyle(
-                color:      color,
-                fontWeight: FontWeight.bold,
-                fontSize:   14)),
-        const SizedBox(height: 10),
-        if (earned.isEmpty)
+        if (_customLocalBadges.isEmpty)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-                child: Text('Aucun badge encore obtenu',
-                    style: TextStyle(color: Colors.white38))),
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text('Aucun badge personnalisé. Appuie sur + pour en ajouter.',
+                style: TextStyle(color: Colors.white38, fontSize: 12)),
           )
         else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount:   3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing:  10,
-              childAspectRatio: 0.9,
-            ),
-            itemCount: earned.length,
-            itemBuilder: (_, i) =>
-                _badgeEarnedCard(earned[i], color),
+          Wrap(
+            spacing: 8, runSpacing: 8,
+            children: List.generate(_customLocalBadges.length, (i) {
+              final b = _customLocalBadges[i];
+              return GestureDetector(
+                onLongPress: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      backgroundColor: const Color(0xFF1A1A2E),
+                      title: const Text('Supprimer ce badge ?',
+                          style: TextStyle(color: Colors.white)),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Annuler')),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent),
+                          onPressed: () {
+                            _removeCustomBadge(i, child.id);
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Supprimer'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color:        Colors.deepPurple.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border:       Border.all(
+                        color: Colors.deepPurpleAccent.withOpacity(0.5)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(b.emoji,
+                        style: const TextStyle(fontSize: 18)),
+                    const SizedBox(width: 6),
+                    Text(b.label,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 12)),
+                  ]),
+                ),
+              );
+            }),
           ),
-        const SizedBox(height: 20),
-        Text('🔒 Badges à débloquer (${locked.length})',
-            style: const TextStyle(
-                color:      Colors.white54,
-                fontWeight: FontWeight.bold,
-                fontSize:   14)),
-        const SizedBox(height: 10),
-        ...locked.map((b) => _badgeLockedTile(b, child)),
-        if (_hiddenDefaultBadgeIds.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white38,
-                side: const BorderSide(color: Colors.white12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+
+        const SizedBox(height: 16),
+        const Divider(color: Colors.white12),
+        const SizedBox(height: 8),
+
+        // ── Badges obtenus ──
+        Text('🏆 Badges obtenus (${earned.length})',
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        if (earned.isEmpty)
+          const Text('Aucun badge obtenu pour l\'instant.',
+              style: TextStyle(color: Colors.white38, fontSize: 12))
+        else
+          Wrap(
+            spacing: 8, runSpacing: 8,
+            children: earned.map((b) => GestureDetector(
+              onLongPress: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    backgroundColor: const Color(0xFF1A1A2E),
+                    title: const Text('Masquer ce badge ?',
+                        style: TextStyle(color: Colors.white)),
+                    content: Text(
+                        'Masquer « ${b.name} » de la vue ?',
+                        style: const TextStyle(color: Colors.white70)),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Annuler')),
+                      ElevatedButton(
+                        onPressed: () {
+                          _hideDefaultBadge(b.id, child.id);
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Masquer'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color:        Colors.amber.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border:       Border.all(
+                      color: Colors.amber.withOpacity(0.4)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(b.icon, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 6),
+                  Text(b.name,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 12)),
+                ]),
               ),
-              onPressed: () => _resetHiddenBadges(child.id),
-              icon:  const Icon(Icons.refresh, size: 16),
-              label: const Text('Réafficher les badges supprimés',
-                  style: TextStyle(fontSize: 12)),
-            ),
+            )).toList(),
+          ),
+
+        if (_hiddenDefaultBadgeIds.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => _resetHiddenBadges(child.id),
+            icon:  const Icon(Icons.visibility, size: 16,
+                color: Colors.white38),
+            label: Text(
+                'Afficher les ${_hiddenDefaultBadgeIds.length} badge(s) masqué(s)',
+                style: const TextStyle(
+                    color: Colors.white38, fontSize: 12)),
           ),
         ],
-      ]),
-    );
-  }
 
-  Widget _badgeEarnedCard(BadgeModel badge, Color color) => GlassCard(
-    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Text(badge.powerEmoji, style: const TextStyle(fontSize: 28)),
-      const SizedBox(height: 4),
-      Text(badge.name,
-          style: const TextStyle(
-              color:      Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize:   11),
-          textAlign: TextAlign.center,
-          maxLines:  2,
-          overflow:  TextOverflow.ellipsis),
-    ]),
-  );
+        const SizedBox(height: 16),
+        const Divider(color: Colors.white12),
+        const SizedBox(height: 8),
 
-  Widget _badgeLockedTile(BadgeModel badge, ChildModel child) {
-    final progress =
-        (child.points / badge.requiredPoints).clamp(0.0, 1.0);
-    final frame = _frameColor(child.level);
-    return Container(
-      margin:  const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color:        Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border:       Border.all(color: Colors.white12),
-      ),
-      child: Row(children: [
-        Container(
-          width: 52, height: 52,
-          decoration: BoxDecoration(
-              color:        Colors.white10,
-              borderRadius: BorderRadius.circular(10)),
-          child: Center(child: Text(badge.powerEmoji,
-              style: const TextStyle(fontSize: 24))),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            Text(badge.name,
-                style: const TextStyle(
-                    color:      Colors.white70,
-                    fontWeight: FontWeight.bold,
-                    fontSize:   13)),
-            Text(badge.description,
-                style: const TextStyle(
-                    color: Colors.white38, fontSize: 11),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 6),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: frame.withOpacity(0.4)),
-                color: Colors.white10,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(5),
-                child: LinearProgressIndicator(
-                  value:           progress,
-                  backgroundColor: Colors.transparent,
-                  valueColor: const AlwaysStoppedAnimation(
-                      Colors.deepPurpleAccent),
-                  minHeight: 12,
+        // ── Badges verrouillés ──
+        Text('🔒 Badges à débloquer (${locked.length})',
+            style: const TextStyle(
+                color: Colors.white54, fontWeight: FontWeight.bold,
+                fontSize: 14)),
+        const SizedBox(height: 8),
+        if (locked.isEmpty)
+          const Text('Tous les badges ont été débloqués ! 🎉',
+              style: TextStyle(color: Colors.white38, fontSize: 12))
+        else
+          Wrap(
+            spacing: 8, runSpacing: 8,
+            children: locked.map((b) => Opacity(
+              opacity: 0.4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color:        Colors.white10,
+                  borderRadius: BorderRadius.circular(20),
+                  border:       Border.all(color: Colors.white24),
                 ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('🔒',
+                      style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 6),
+                  Text(b.name,
+                      style: const TextStyle(
+                          color: Colors.white54, fontSize: 12)),
+                ]),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text('${child.points} / ${badge.requiredPoints} pts',
-                style: const TextStyle(
-                    color: Colors.white38, fontSize: 10)),
-          ]),
-        ),
-        GestureDetector(
-          onTap: () => showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              backgroundColor: const Color(0xFF1A1A2E),
-              title: const Text('Masquer ce badge ?',
-                  style: TextStyle(color: Colors.white)),
-              content: Text(
-                'Le badge "${badge.name}" sera masqué. Tu pourras le réafficher en bas de la liste.',
-                style: const TextStyle(color: Colors.white60),
-              ),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Annuler',
-                        style: TextStyle(color: Colors.white54))),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _hideDefaultBadge(badge.id, child.id);
-                  },
-                  child: const Text('Masquer'),
-                ),
-              ],
-            ),
+            )).toList(),
           ),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-                color:        Colors.white10,
-                borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.visibility_off,
-                color: Colors.white38, size: 16),
-          ),
-        ),
       ]),
     );
   }
