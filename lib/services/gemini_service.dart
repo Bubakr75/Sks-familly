@@ -4,13 +4,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _apiKey = String.fromEnvironment('String.fromEnvironment('GEMINI_API_KEY');
+  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-
-  // ══════════════════════════════════════════════════════════════
-  //  ÉVALUATION DU SOIR — note + appréciation parent
-  // ══════════════════════════════════════════════════════════════
 
   static Future<String> generateAppreciation({
     required String childName,
@@ -78,10 +74,6 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
       return '{"note": -1, "appreciation": "Erreur réseau", "conseil": ""}';
     }
   }
-
-  // ══════════════════════════════════════════════════════════════
-  //  QUIZ IA — génération de questions adaptées à l'âge
-  // ══════════════════════════════════════════════════════════════
 
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
     required String theme,
@@ -162,13 +154,10 @@ Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
         final data = jsonDecode(response.body);
         final text =
             data['candidates'][0]['content']['parts'][0]['text'] as String;
-
-        // Nettoyer le JSON si Gemini ajoute du markdown
         final cleaned = text
             .replaceAll('```json', '')
             .replaceAll('```', '')
             .trim();
-
         final List<dynamic> parsed = jsonDecode(cleaned);
         return parsed.cast<Map<String, dynamic>>();
       }
