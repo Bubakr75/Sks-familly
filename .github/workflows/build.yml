@@ -89,6 +89,11 @@ jobs:
           PYEOF
           python3 /tmp/fix_signing.py
 
+      - name: Inject Gemini API Key
+        run: |
+          sed -i "s|String.fromEnvironment('GEMINI_API_KEY')|'${{ secrets.GEMINI_API_KEY }}'|g" lib/services/gemini_service.dart
+          echo "Clé injectée avec succès"
+
       - name: Get dependencies
         run: flutter pub get
 
@@ -96,9 +101,7 @@ jobs:
         run: dart run flutter_launcher_icons
 
       - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
