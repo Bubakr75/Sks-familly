@@ -89,8 +89,10 @@ jobs:
           PYEOF
           python3 /tmp/fix_signing.py
 
-      - name: Inject Gemini API Key
+            - name: Verify API Key injection
         run: |
+          grep "_apiKey" lib/services/gemini_service.dart
+
           sed -i "s|String.fromEnvironment('GEMINI_API_KEY')|'${{ secrets.GEMINI_API_KEY }}'|g" lib/services/gemini_service.dart
           echo "Clé injectée avec succès"
 
