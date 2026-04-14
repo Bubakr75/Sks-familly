@@ -629,7 +629,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
-                '${child.name} · ${child.age} ans · 3 questions',
+                '${child.name} · 3 questions adaptées',
                 style:
                     const TextStyle(color: Colors.white54, fontSize: 13),
               ),
@@ -744,7 +744,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     try {
       final questions = await GeminiService.generateQuizQuestions(
         theme: theme,
-        age: child.age,
+        age: _estimateAge(child),
       );
       if (mounted) Navigator.pop(context); // fermer loader
 
@@ -1913,5 +1913,17 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   void _completePunishment(PunishmentLines p, FamilyProvider fp) {
     final remaining = p.totalLines - p.completedLines;
     if (remaining > 0) fp.updatePunishmentProgress(p.id, remaining);
+  }
+}
+
+int _estimateAge(ChildModel child) {
+  switch (child.currentLevelNumber) {
+    case 1: return 6;
+    case 2: return 8;
+    case 3: return 10;
+    case 4: return 12;
+    case 5: return 14;
+    case 6: return 16;
+    default: return 10;
   }
 }
