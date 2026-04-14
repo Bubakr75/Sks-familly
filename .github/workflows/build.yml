@@ -89,11 +89,26 @@ jobs:
           PYEOF
           python3 /tmp/fix_signing.py
 
-      - name: Inject and verify Gemini API Key
+      - name: Inject Gemini API Key
+        env:
+          GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          sed -i "s|String.fromEnvironment('GEMINI_API_KEY')|'${{ secrets.GEMINI_API_KEY }}'|g" lib/services/gemini_service.dart
-          echo "Injection terminée"
-          grep "_apiKey" lib/services/gemini_service.dart | head -1
+          python3 << 'PYEOF'
+          import os
+          key = os.environ['GEMINI_KEY']
+          with open('lib/services/gemini_service.dart', 'r') as f:
+              content = f.read()
+          content = content.replace("String.fromEnvironment('GEMINI_API_KEY')", f"'{key}'")
+          with open('lib/services/gemini_service.dart', 'w') as f:
+              f.write(content)
+          print("Clé injectée avec succès ✅")
+          # Vérification sans afficher la clé complète
+          with open('lib/services/gemini_service.dart', 'r') as f:
+              for line in f:
+                  if '_apiKey' in line:
+                      print(f"Ligne apiKey: {line[:50]}...")
+                      break
+          PYEOF
 
       - name: Get dependencies
         run: flutter pub get
