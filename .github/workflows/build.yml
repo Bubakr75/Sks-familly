@@ -96,18 +96,12 @@ jobs:
           python3 << 'PYEOF'
           import os
           key = os.environ['GEMINI_KEY']
-          with open('lib/services/gemini_service.dart', 'r') as f:
+          with open('lib/config/api_config.dart', 'r') as f:
               content = f.read()
-          content = content.replace("String.fromEnvironment('GEMINI_API_KEY')", f"'{key}'")
-          with open('lib/services/gemini_service.dart', 'w') as f:
+          content = content.replace('REMPLACE_PAR_TA_CLE', key)
+          with open('lib/config/api_config.dart', 'w') as f:
               f.write(content)
-          print("Clé injectée avec succès ✅")
-          # Vérification sans afficher la clé complète
-          with open('lib/services/gemini_service.dart', 'r') as f:
-              for line in f:
-                  if '_apiKey' in line:
-                      print(f"Ligne apiKey: {line[:50]}...")
-                      break
+          print("Cle injectee avec succes")
           PYEOF
 
       - name: Get dependencies
