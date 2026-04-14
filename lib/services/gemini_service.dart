@@ -2,9 +2,10 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class GeminiService {
-  import '../config/api_config.dart';
+  static String get _apiKey => ApiConfig.geminiApiKey;
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
@@ -72,8 +73,7 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
             .trim();
         return cleanText;
       } else {
-        // Retourne le code d'erreur pour debug
-        return '{"note": -1, "appreciation": "Erreur API ${response.statusCode}", "conseil": "${response.body.substring(0, response.body.length.clamp(0, 100))}"}';
+        return '{"note": -1, "appreciation": "Erreur API ${response.statusCode}", "conseil": ""}';
       }
     } catch (e) {
       return '{"note": -1, "appreciation": "Erreur réseau : $e", "conseil": ""}';
