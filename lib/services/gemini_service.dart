@@ -13,6 +13,10 @@ class GeminiService {
     required String context,
     required Map<String, String> answers,
   }) async {
+    if (_apiKey.isEmpty) {
+      return '{"note": -1, "appreciation": "Clé API manquante", "conseil": ""}';
+    }
+
     final answersText = answers.entries
         .map((e) => '- ${e.key} : ${e.value}')
         .join('\n');
@@ -53,7 +57,7 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
           ],
           'generationConfig': {
             'temperature': 0.7,
-            'maxOutputTokens': 300,
+            'maxOutputTokens': 512,
           },
         }),
       );
@@ -68,10 +72,11 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
             .trim();
         return cleanText;
       } else {
-        return '{"note": -1, "appreciation": "Erreur API", "conseil": ""}';
+        // Retourne le code d'erreur pour debug
+        return '{"note": -1, "appreciation": "Erreur API ${response.statusCode}", "conseil": "${response.body.substring(0, response.body.length.clamp(0, 100))}"}';
       }
     } catch (e) {
-      return '{"note": -1, "appreciation": "Erreur réseau", "conseil": ""}';
+      return '{"note": -1, "appreciation": "Erreur réseau : $e", "conseil": ""}';
     }
   }
 
@@ -79,6 +84,8 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
     required String theme,
     required int age,
   }) async {
+    if (_apiKey.isEmpty) return [];
+
     String difficulty;
     int nbChoices;
 
