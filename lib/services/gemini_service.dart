@@ -3,33 +3,29 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSyBzyWQB3qLYtVakVzInkd5Z86882kayssU'; // ← remplace par ta vraie clé
-  static const String _baseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  static const String _apiKey = 'AIzaSy...'; // ← ta vraie clé ici
 
-  // ══════════════════════════════════════════════════════════════
-  // APPRÉCIATION JOURNALIÈRE
-  // ══════════════════════════════════════════════════════════════
+  static const String _baseUrl =
+      'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
+
+  // ─── GÉNÉRATION D'APPRÉCIATION ───────────────────────────────
   static Future<String> generateAppreciation({
     required String childName,
-    required String context,
-    required Map<String, String> answers,
+    required String dailyContext,
+    required Map<String, dynamic> answers,
   }) async {
-    final answersText =
-        answers.entries.map((e) => '- ${e.key} : ${e.value}').join('\n');
-
     final prompt = '''
-Tu es un assistant bienveillant qui aide des parents à évaluer le comportement de leurs enfants.
-Contexte de la journée : $context
-Prénom de l'enfant : $childName
-Réponses du parent au questionnaire :
-$answersText
-En fonction de ces réponses :
-1. Donne une note sur 20
-2. Écris une appréciation courte et bienveillante de 2-3 phrases maximum
-3. Donne un conseil rapide au parent
-Réponds UNIQUEMENT au format JSON suivant, sans markdown :
-{ "note": 15, "appreciation": "...", "conseil": "..." }
+Tu es un assistant parental bienveillant. Génère une appréciation personnalisée en français pour $childName.
+
+Contexte du jour : $dailyContext
+Réponses au questionnaire : ${jsonEncode(answers)}
+
+Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
+{
+  "score": <nombre entre 0 et 100>,
+  "appreciation": "<texte court et encourageant>",
+  "tip": "<conseil rapide pour les parents>"
+}
 ''';
 
     try {
@@ -53,79 +49,55 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final text =
-            data['candidates'][0]['content']['parts'][0]['text'] as String;
-        return text.replaceAll('```json', '').replaceAll('```', '').trim();
+        String text = data['candidates'][0]['content']['parts'][0]['text'];
+        // Nettoyage des balises markdown
+        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
+        return text;
+      } else {
+        return jsonEncode({'score': -1, 'appreciation': 'Erreur Gemini', 'tip': ''});
       }
-      return '{"note": -1, "appreciation": "Erreur API ${response.statusCode}", "conseil": ""}';
     } catch (e) {
-      return '{"note": -1, "appreciation": "Erreur réseau", "conseil": "$e"}';
+      return jsonEncode({'score': -1, 'appreciation': 'Erreur : $e', 'tip': ''});
     }
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // QUIZ IA — QUESTIONS ADAPTÉES À L'ÂGE ET À LA DIFFICULTÉ
-  // ══════════════════════════════════════════════════════════════
+  // ─── GÉNÉRATION DE QUIZ ───────────────────────────────────────
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
     required String theme,
     required int age,
-    required String difficulty, // 'facile' | 'moyen' | 'difficile'
+    required String difficulty,
   }) async {
-
-    // Nombre de choix selon l'âge
+    String difficultyDesc;
     int nbChoices;
-    if (age <= 6) {
+
+    if (age <= 7) {
+      difficultyDesc = 'très simple, pour un enfant de $age ans';
       nbChoices = 2;
-    } else if (age <= 9) {
+    } else if (age <= 10) {
+      difficultyDesc = 'simple, pour un enfant de $age ans';
       nbChoices = 3;
+    } else if (age <= 13) {
+      difficultyDesc = 'intermédiaire, pour un enfant de $age ans';
+      nbChoices = 4;
     } else {
+      difficultyDesc = 'difficile, pour un adolescent de $age ans';
       nbChoices = 4;
     }
 
-    // Texte de difficulté pour le prompt
-    String difficultyText;
-    switch (difficulty) {
-      case 'difficile':
-        difficultyText =
-            'très difficile, avec des pièges et des détails précis, pour un enfant de $age ans';
-        break;
-      case 'moyen':
-        difficultyText =
-            'intermédiaire, ni trop simple ni trop difficile, adapté à un enfant de $age ans';
-        break;
-      default: // 'facile'
-        difficultyText =
-            'facile, simple et ludique, adapté à un enfant de $age ans';
-    }
-
     final prompt = '''
-Tu es un générateur de quiz éducatif pour enfants.
-Génère exactement 3 questions QCM sur le thème : $theme.
-Niveau de difficulté : $difficultyText.
-Chaque question doit avoir exactement $nbChoices choix de réponse.
-Les questions doivent être variées et intéressantes.
+Génère exactement 3 questions de quiz en français sur le thème "$theme".
+Niveau : $difficultyDesc. Difficulté : $difficulty.
+Chaque question a exactement $nbChoices choix de réponse.
 
-Réponds UNIQUEMENT avec un tableau JSON valide, sans markdown, sans texte avant ou après.
-Format attendu :
+Réponds UNIQUEMENT avec un tableau JSON valide (sans markdown) :
 [
   {
-    "question": "Ta question ici ?",
-    "choices": ["Réponse A", "Réponse B", "Réponse C", "Réponse D"],
-    "correct": 0
+    "question": "<question>",
+    "choices": ["<choix1>", "<choix2>"${nbChoices >= 3 ? ', "<choix3>"' : ''}${nbChoices >= 4 ? ', "<choix4>"' : ''}],
+    "correct": <index de la bonne réponse (0 à ${nbChoices - 1})>
   },
-  {
-    "question": "Ta question ici ?",
-    "choices": ["Réponse A", "Réponse B", "Réponse C", "Réponse D"],
-    "correct": 2
-  },
-  {
-    "question": "Ta question ici ?",
-    "choices": ["Réponse A", "Réponse B", "Réponse C", "Réponse D"],
-    "correct": 1
-  }
+  ...
 ]
-"correct" est l'index 0-based de la bonne réponse.
-Adapte le nombre de choix à $nbChoices par question.
 ''';
 
     try {
@@ -149,26 +121,21 @@ Adapte le nombre de choix à $nbChoices par question.
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final text =
-            data['candidates'][0]['content']['parts'][0]['text'] as String;
+        String text = data['candidates'][0]['content']['parts'][0]['text'];
 
-        // Nettoyage agressif du texte retourné
-        String cleaned = text
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
+        // Nettoyage des balises markdown
+        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
 
-        // Extraire uniquement le tableau JSON
-        final startIndex = cleaned.indexOf('[');
-        final endIndex = cleaned.lastIndexOf(']');
-        if (startIndex != -1 && endIndex != -1) {
-          cleaned = cleaned.substring(startIndex, endIndex + 1);
-        }
+        // Extraction du tableau JSON
+        final start = text.indexOf('[');
+        final end = text.lastIndexOf(']');
+        if (start == -1 || end == -1) return [];
 
-        final List<dynamic> parsed = jsonDecode(cleaned);
-        return parsed.cast<Map<String, dynamic>>();
+        final jsonStr = text.substring(start, end + 1);
+        final List<dynamic> parsed = jsonDecode(jsonStr);
+        return parsed.map((q) => Map<String, dynamic>.from(q)).toList();
       } else {
-        throw Exception('Status ${response.statusCode} : ${response.body}');
+        throw Exception('Erreur Gemini : ${response.body}');
       }
     } catch (e) {
       throw Exception('Erreur Gemini : $e');
