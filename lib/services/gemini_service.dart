@@ -106,13 +106,31 @@ Si $nbChoices vaut 3, "choices" contient 3 éléments.
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
-        final cleaned = text.replaceAll('```json', '').replaceAll('```', '').trim();
-        final List<dynamic> parsed = jsonDecode(cleaned);
-        return parsed.cast<Map<String, dynamic>>();
+
+        // Nettoyage agressif
+        String cleaned = text
+            .replaceAll('```json', '')
+            .replaceAll('```', '')
+            .trim();
+
+        // Extraire uniquement le tableau JSON
+        final startIndex = cleaned.indexOf('[');
+        final endIndex = cleaned.lastIndexOf(']');
+        if (startIndex != -1 && endIndex != -1) {
+          cleaned = cleaned.substring(startIndex, endIndex + 1);
+        }
+
+        try {
+          final List<dynamic> parsed = jsonDecode(cleaned);
+          return parsed.cast<Map<String, dynamic>>();
+        } catch (e) {
+          throw Exception('JSON invalide : $cleaned');
+        }
+      } else {
+        throw Exception('Status ${response.statusCode} : ${response.body}');
       }
-      return [];
     } catch (e) {
-      return [];
+      rethrow;
     }
   }
 }
