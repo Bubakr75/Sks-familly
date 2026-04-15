@@ -1,3 +1,4 @@
+// lib/screens/notes_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -115,8 +116,8 @@ class _NotesScreenState extends State<NotesScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                                color: primary.withOpacity(0.5)),
+                            borderSide:
+                                BorderSide(color: primary.withOpacity(0.5)),
                           ),
                         ),
                       ),
@@ -147,10 +148,11 @@ class _NotesScreenState extends State<NotesScreen> {
 
               // Liste des notes
               Expanded(
-                child: Consumer<FamilyProvider>(
+                child: Consumer<FamilyProvider>( // ← CORRIGÉ
                   builder: (context, provider, _) {
                     final notes =
                         provider.getNotesForChild(widget.childId);
+
                     if (notes.isEmpty) {
                       return Center(
                         child: Column(
@@ -195,10 +197,10 @@ class _NotesScreenState extends State<NotesScreen> {
 
   void _addNote() {
     if (_noteController.text.trim().isEmpty) return;
-    context.read<FamilyProvider>().addNote(
-          widget.childId,
-          _noteController.text.trim(),
-        );
+    context.read<FamilyProvider>().addNote( // ← CORRIGÉ
+      widget.childId,
+      _noteController.text.trim(),
+    );
     _noteController.clear();
     FocusScope.of(context).unfocus();
   }
@@ -223,7 +225,7 @@ class _NotesScreenState extends State<NotesScreen> {
         child: const Icon(Icons.delete_rounded, color: Color(0xFFFF1744)),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog<bool>(
+        return await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: const Color(0xFF0D1B2A),
@@ -318,8 +320,7 @@ class _NotesScreenState extends State<NotesScreen> {
                               size: 18, color: Colors.white70),
                           SizedBox(width: 8),
                           Text('Modifier',
-                              style:
-                                  TextStyle(color: Colors.white)),
+                              style: TextStyle(color: Colors.white)),
                         ],
                       ),
                     ),
@@ -328,8 +329,7 @@ class _NotesScreenState extends State<NotesScreen> {
                       child: Row(
                         children: [
                           Icon(Icons.delete_rounded,
-                              size: 18,
-                              color: Color(0xFFFF1744)),
+                              size: 18, color: Color(0xFFFF1744)),
                           SizedBox(width: 8),
                           Text('Supprimer',
                               style: TextStyle(
@@ -389,7 +389,7 @@ class _NotesScreenState extends State<NotesScreen> {
             onPressed: () {
               if (editCtrl.text.trim().isNotEmpty) {
                 context
-                    .read<FamilyProvider>()
+                    .read<FamilyProvider>() // ← CORRIGÉ
                     .updateNote(note.id, editCtrl.text.trim());
                 if (ctx.mounted) Navigator.pop(ctx);
               }
