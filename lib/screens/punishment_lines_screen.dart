@@ -591,9 +591,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   //  QUIZ IA GEMINI
   // ══════════════════════════════════════════════════════════════
 
-  void _showQuizThemePicker(
-      PunishmentLines p, ChildModel child, FamilyProvider fp) {
-    final themes = [
+      final themes = [
       {'emoji': '🏛️', 'label': 'Histoire'},
       {'emoji': '🔬', 'label': 'Science'},
       {'emoji': '🌿', 'label': 'Nature'},
@@ -602,6 +600,12 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       {'emoji': '🎬', 'label': 'Cinéma'},
       {'emoji': '🐾', 'label': 'Animaux'},
       {'emoji': '🎯', 'label': 'Culture générale'},
+      {'emoji': '➕', 'label': 'Calcul et Maths'},
+      {'emoji': '📺', 'label': 'Dessins animés'},
+      {'emoji': '🦸', 'label': 'Super-héros Marvel'},
+      {'emoji': '⚡', 'label': 'Pokémon'},
+      {'emoji': '🦁', 'label': 'Disney'},
+      {'emoji': '🎮', 'label': 'Jeux vidéo'},
     ];
 
     showModalBottomSheet(
