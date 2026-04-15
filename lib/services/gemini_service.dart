@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSy...'; // ← ta vraie clé ici
+  static const String _apiKey = 'AIzaSy...'; // ← ta vraie clé ici (garde celle que t'as déjà)
 
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
@@ -11,13 +11,13 @@ class GeminiService {
   // ─── GÉNÉRATION D'APPRÉCIATION ───────────────────────────────
   static Future<String> generateAppreciation({
     required String childName,
-    required String dailyContext,
+    required String context,
     required Map<String, dynamic> answers,
   }) async {
     final prompt = '''
 Tu es un assistant parental bienveillant. Génère une appréciation personnalisée en français pour $childName.
 
-Contexte du jour : $dailyContext
+Contexte du jour : $context
 Réponses au questionnaire : ${jsonEncode(answers)}
 
 Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
@@ -50,7 +50,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String text = data['candidates'][0]['content']['parts'][0]['text'];
-        // Nettoyage des balises markdown
         text = text.replaceAll('```json', '').replaceAll('```', '').trim();
         return text;
       } else {
@@ -95,8 +94,7 @@ Réponds UNIQUEMENT avec un tableau JSON valide (sans markdown) :
     "question": "<question>",
     "choices": ["<choix1>", "<choix2>"${nbChoices >= 3 ? ', "<choix3>"' : ''}${nbChoices >= 4 ? ', "<choix4>"' : ''}],
     "correct": <index de la bonne réponse (0 à ${nbChoices - 1})>
-  },
-  ...
+  }
 ]
 ''';
 
