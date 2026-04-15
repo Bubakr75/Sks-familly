@@ -4,12 +4,17 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
+  static const String _apiKey = 'AIzaSyBzyWQB3qLYtVakVzInkd5Z86882kayssU';
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
+  static String getApiKeyDebug() {
+    if (_apiKey.isEmpty) return 'VIDE';
+    return '${_apiKey.substring(0, 6)}...';
+  }
+
   // ══════════════════════════════════════════════════════════════
-  //  ÉVALUATION DU SOIR — note + appréciation parent
+  //  ÉVALUATION DU SOIR
   // ══════════════════════════════════════════════════════════════
 
   static Future<String> generateAppreciation({
@@ -80,7 +85,7 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
   }
 
   // ══════════════════════════════════════════════════════════════
-  //  QUIZ IA — génération de questions adaptées à l'âge
+  //  QUIZ IA
   // ══════════════════════════════════════════════════════════════
 
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
@@ -91,19 +96,16 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
     int nbChoices;
 
     if (age <= 6) {
-      difficulty =
-          'très simple, adapté à un enfant de $age ans, avec des mots très courts et faciles';
+      difficulty = 'très simple, adapté à un enfant de $age ans, avec des mots très courts et faciles';
       nbChoices = 2;
     } else if (age <= 9) {
       difficulty = 'simple et ludique, adapté à un enfant de $age ans';
       nbChoices = 3;
     } else if (age <= 12) {
-      difficulty =
-          'intermédiaire, adapté à un enfant de $age ans, ni trop facile ni trop difficile';
+      difficulty = 'intermédiaire, adapté à un enfant de $age ans, ni trop facile ni trop difficile';
       nbChoices = 4;
     } else {
-      difficulty =
-          'difficile avec des pièges subtils, adapté à un adolescent de $age ans';
+      difficulty = 'difficile avec des pièges subtils, adapté à un adolescent de $age ans';
       nbChoices = 4;
     }
 
@@ -140,6 +142,10 @@ Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
 ''';
 
     try {
+      if (_apiKey.isEmpty || _apiKey == 'AIzaSyBzyWQB3qLYtVakVzInkd5Z86882kayssU') {
+        throw Exception('Clé API non configurée !');
+      }
+
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {'Content-Type': 'application/json'},
@@ -169,11 +175,9 @@ Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
         final List<dynamic> parsed = jsonDecode(cleaned);
         return parsed.cast<Map<String, dynamic>>();
       } else {
-        // DÉBOGAGE — affiche le vrai code d'erreur
-        throw Exception('Status ${response.statusCode} — ${response.body}');
+        throw Exception('Erreur ${response.statusCode} : ${response.body}');
       }
     } catch (e) {
-      // DÉBOGAGE — remonte l'erreur exacte
       rethrow;
     }
   }
