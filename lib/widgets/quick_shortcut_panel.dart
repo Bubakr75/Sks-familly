@@ -67,7 +67,6 @@ class _QuickShortcutFabState extends State<QuickShortcutFab>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Panneau de raccourcis
         AnimatedBuilder(
           animation: _fadeAnim,
           builder: (context, child) {
@@ -82,7 +81,6 @@ class _QuickShortcutFabState extends State<QuickShortcutFab>
           child: _QuickPanel(onClose: _close),
         ),
         const SizedBox(height: 12),
-        // FAB principal
         GestureDetector(
           onTap: _toggle,
           child: AnimatedBuilder(
@@ -163,7 +161,6 @@ class _QuickPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // En-tête
           Row(children: [
             const Icon(Icons.flash_on_rounded,
                 color: Colors.cyanAccent, size: 16),
@@ -369,7 +366,6 @@ Widget _childSelector(
     ),
   );
 }
-
 // ─── BONUS RAPIDE ────────────────────────────────────────────
 void _showQuickBonus(BuildContext context, FamilyProvider fp,
     {required bool isParent}) {
@@ -450,8 +446,7 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
                 ),
                 const SizedBox(height: 16),
                 if (selectedPreset == null) ...[
-                  const Text('Points personnalisés',
-                      style: _labelStyle),
+                  const Text('Points personnalisés', style: _labelStyle),
                   const SizedBox(height: 8),
                   _PointStepper(
                     value: customPoints,
@@ -570,8 +565,7 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                 ),
                 const SizedBox(height: 16),
                 if (selectedPreset == null) ...[
-                  const Text('Points personnalisés',
-                      style: _labelStyle),
+                  const Text('Points personnalisés', style: _labelStyle),
                   const SizedBox(height: 8),
                   _PointStepper(
                     value: customPoints,
@@ -675,8 +669,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                       color: Colors.white.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color:
-                              Colors.purpleAccent.withOpacity(0.4)),
+                          color: Colors.purpleAccent.withOpacity(0.4)),
                     ),
                     child: Row(children: [
                       const Icon(Icons.calendar_today_rounded,
@@ -705,8 +698,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                   children: criteria.map((c) {
                     final isSel = selectedCriteria == c;
                     return GestureDetector(
-                      onTap: () =>
-                          setS(() => selectedCriteria = c),
+                      onTap: () => setS(() => selectedCriteria = c),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
@@ -740,8 +732,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                   children: [
                     IconButton(
                       onPressed: () {
-                        if (noteValue > 0)
-                          setS(() => noteValue--);
+                        if (noteValue > 0) setS(() => noteValue--);
                       },
                       icon: const Icon(Icons.remove_circle_outline,
                           color: Colors.white54, size: 28),
@@ -761,8 +752,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: () {
-                        if (noteValue < maxValue)
-                          setS(() => noteValue++);
+                        if (noteValue < maxValue) setS(() => noteValue++);
                       },
                       icon: const Icon(Icons.add_circle_outline,
                           color: Colors.white54, size: 28),
@@ -782,8 +772,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [5, 10, 12, 14, 16, 18, 20].map((v) {
                     return Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
                       child: GestureDetector(
                         onTap: () => setS(() => noteValue = v),
                         child: Container(
@@ -893,8 +882,7 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                   children: descPresets.map((d) {
                     final isSel = desc == d;
                     return GestureDetector(
-                      onTap: () =>
-                          setS(() => desc = isSel ? '' : d),
+                      onTap: () => setS(() => desc = isSel ? '' : d),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
@@ -925,8 +913,7 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Ou motif personnalisé...',
-                    hintStyle:
-                        const TextStyle(color: Colors.white38),
+                    hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.06),
                     border: OutlineInputBorder(
@@ -949,22 +936,18 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                   children: [10, 20, 30, 50, 100].map((n) {
                     final isSel = nbLines == n;
                     return Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: GestureDetector(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
-                          duration:
-                              const Duration(milliseconds: 180),
+                          duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? Colors.orangeAccent
-                                    .withOpacity(0.18)
+                                ? Colors.orangeAccent.withOpacity(0.18)
                                 : Colors.white.withOpacity(0.06),
-                            borderRadius:
-                                BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                                 color: isSel
                                     ? Colors.orangeAccent
@@ -990,9 +973,8 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                   color: Colors.orange.shade700,
                   icon: Icons.menu_book,
                   onTap: () {
-                    final finalDesc = desc.isNotEmpty
-                        ? desc
-                        : descCtrl.text.trim();
+                    final finalDesc =
+                        desc.isNotEmpty ? desc : descCtrl.text.trim();
                     if (finalDesc.isEmpty) {
                       ScaffoldMessenger.of(ctx).showSnackBar(
                         const SnackBar(
@@ -1102,22 +1084,18 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                   children: [5, 10, 20, 30, 50].map((n) {
                     final isSel = nbLines == n;
                     return Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: GestureDetector(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
-                          duration:
-                              const Duration(milliseconds: 180),
+                          duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? Colors.amberAccent
-                                    .withOpacity(0.18)
+                                ? Colors.amberAccent.withOpacity(0.18)
                                 : Colors.white.withOpacity(0.06),
-                            borderRadius:
-                                BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                                 color: isSel
                                     ? Colors.amberAccent
@@ -1145,7 +1123,6 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                   onTap: () {
                     final child = fp.children
                         .firstWhere((c) => c.id == selectedId);
-                    // ✅ CORRIGÉ : ordre correct (childId, reason, lines)
                     fp.addImmunity(selectedId, reason, nbLines);
                     Navigator.pop(ctx);
                     _showConfirmSnack(
@@ -1164,7 +1141,6 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
     },
   );
 }
-
 // ─── BONUS TEMPS ÉCRAN RAPIDE ────────────────────────────────
 void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
   if (fp.children.isEmpty) return;
@@ -1184,8 +1160,7 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
               children: [
                 _sheetHandle(),
                 const SizedBox(height: 16),
-                _sheetTitle(
-                    "⏱️ Bonus Temps d'Écran", Colors.lightBlueAccent),
+                _sheetTitle("⏱️ Bonus Temps d'Écran", Colors.lightBlueAccent),
                 const SizedBox(height: 16),
                 const Text('Enfant', style: _labelStyle),
                 const SizedBox(height: 8),
@@ -1193,8 +1168,7 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                     (id) => setS(() => selectedId = id)),
                 const SizedBox(height: 24),
                 const Text('Durée à ajouter',
-                    style: TextStyle(
-                        color: Colors.white70, fontSize: 14)),
+                    style: TextStyle(color: Colors.white70, fontSize: 14)),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1203,7 +1177,8 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                       onTap: () {
                         final child = fp.children
                             .firstWhere((c) => c.id == selectedId);
-                        fp.addScreenTimeBonus(selectedId, min);
+                        // ✅ CORRECTION : 3 arguments requis
+                        fp.addScreenTimeBonus(selectedId, min, 'Bonus rapide');
                         Navigator.pop(ctx);
                         _showConfirmSnack(
                           context,
@@ -1215,16 +1190,14 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.lightBlueAccent
-                              .withOpacity(0.12),
+                          color: Colors.lightBlueAccent.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                              color: Colors.lightBlueAccent
-                                  .withOpacity(0.4)),
+                              color:
+                                  Colors.lightBlueAccent.withOpacity(0.4)),
                         ),
                         child: Column(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               '+$min',
@@ -1235,8 +1208,7 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                             ),
                             const Text('min',
                                 style: TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 10)),
+                                    color: Colors.white38, fontSize: 10)),
                           ],
                         ),
                       ),
@@ -1342,8 +1314,7 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: color.withOpacity(0.15),
-                                borderRadius:
-                                    BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
                                 '${pointsToday >= 0 ? '+' : ''}$pointsToday pts',
@@ -1369,12 +1340,10 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                           ]),
                           if (todayEntries.isNotEmpty) ...[
                             const SizedBox(height: 10),
-                            const Divider(
-                                color: Colors.white12, height: 1),
+                            const Divider(color: Colors.white12, height: 1),
                             const SizedBox(height: 8),
                             ...todayEntries.take(3).map((e) => Padding(
-                                  padding: const EdgeInsets.only(
-                                      bottom: 4),
+                                  padding: const EdgeInsets.only(bottom: 4),
                                   child: Row(children: [
                                     Icon(
                                         e.isBonus
@@ -1391,8 +1360,7 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                                               color: Colors.white60,
                                               fontSize: 12),
                                           maxLines: 1,
-                                          overflow:
-                                              TextOverflow.ellipsis),
+                                          overflow: TextOverflow.ellipsis),
                                     ),
                                     Text(
                                         '${e.isBonus ? '+' : ''}${e.points}',
@@ -1401,23 +1369,20 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                                                 ? Colors.greenAccent
                                                 : Colors.redAccent,
                                             fontSize: 12,
-                                            fontWeight:
-                                                FontWeight.bold)),
+                                            fontWeight: FontWeight.bold)),
                                   ]),
                                 )),
                             if (todayEntries.length > 3)
                               Text(
                                 '... et ${todayEntries.length - 3} autre(s)',
                                 style: const TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 11),
+                                    color: Colors.white38, fontSize: 11),
                               ),
                           ] else ...[
                             const SizedBox(height: 8),
                             const Text("Aucune activité aujourd'hui",
                                 style: TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 12)),
+                                    color: Colors.white38, fontSize: 12)),
                           ],
                         ],
                       ),
@@ -1496,8 +1461,7 @@ Widget _actionButton({
       onPressed: onTap,
       icon: Icon(icon),
       label: Text(label,
-          style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.bold)),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
@@ -1513,10 +1477,11 @@ class _PointStepper extends StatelessWidget {
   final Color color;
   final void Function(int) onChanged;
 
-  const _PointStepper(
-      {required this.value,
-      required this.color,
-      required this.onChanged});
+  const _PointStepper({
+    required this.value,
+    required this.color,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1567,8 +1532,7 @@ class _PointStepper extends StatelessWidget {
                   child: Center(
                     child: Text('+$d',
                         style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold)),
+                            color: color, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ),
