@@ -8,15 +8,6 @@ class GeminiService {
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-  static String getApiKeyDebug() {
-    if (_apiKey.isEmpty) return 'VIDE';
-    return '${_apiKey.substring(0, 6)}...';
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  //  ÉVALUATION DU SOIR
-  // ══════════════════════════════════════════════════════════════
-
   static Future<String> generateAppreciation({
     required String childName,
     required String context,
@@ -28,18 +19,14 @@ class GeminiService {
 
     final prompt = '''
 Tu es un assistant bienveillant qui aide des parents à évaluer le comportement de leurs enfants.
-
 Contexte de la journée : $context
 Prénom de l'enfant : $childName
-
 Réponses du parent au questionnaire :
 $answersText
-
 En fonction de ces réponses :
-1. Donne une note sur 20 (sois précis et juste, pas trop sévère ni trop indulgent)
+1. Donne une note sur 20
 2. Écris une appréciation courte et bienveillante de 2-3 phrases maximum
 3. Donne un conseil rapide au parent
-
 Réponds UNIQUEMENT au format JSON suivant, sans markdown :
 {
   "note": 15,
@@ -53,40 +40,20 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
         Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-          'generationConfig': {
-            'temperature': 0.7,
-            'maxOutputTokens': 300,
-          },
+          'contents': [{'parts': [{'text': prompt}]}],
+          'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 300},
         }),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final text =
-            data['candidates'][0]['content']['parts'][0]['text'] as String;
-        final cleanText = text
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
-        return cleanText;
-      } else {
-        return '{"note": -1, "appreciation": "Erreur API ${response.statusCode}", "conseil": "${response.body}"}';
+        final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        return text.replaceAll('```json', '').replaceAll('```', '').trim();
       }
+      return '{"note": -1, "appreciation": "Erreur API", "conseil": ""}';
     } catch (e) {
-      return '{"note": -1, "appreciation": "Erreur réseau", "conseil": "$e"}';
+      return '{"note": -1, "appreciation": "Erreur réseau", "conseil": ""}';
     }
   }
-
-  // ══════════════════════════════════════════════════════════════
-  //  QUIZ IA
-  // ══════════════════════════════════════════════════════════════
 
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
     required String theme,
@@ -96,89 +63,56 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
     int nbChoices;
 
     if (age <= 6) {
-      difficulty = 'très simple, adapté à un enfant de $age ans, avec des mots très courts et faciles';
+      difficulty = 'très simple, adapté à un enfant de $age ans';
       nbChoices = 2;
     } else if (age <= 9) {
       difficulty = 'simple et ludique, adapté à un enfant de $age ans';
       nbChoices = 3;
     } else if (age <= 12) {
-      difficulty = 'intermédiaire, adapté à un enfant de $age ans, ni trop facile ni trop difficile';
+      difficulty = 'intermédiaire, adapté à un enfant de $age ans';
       nbChoices = 4;
     } else {
-      difficulty = 'difficile avec des pièges subtils, adapté à un adolescent de $age ans';
+      difficulty = 'difficile, adapté à un adolescent de $age ans';
       nbChoices = 4;
     }
 
     final prompt = '''
-Tu es un générateur de quiz éducatif pour enfants et adolescents.
+Tu es un générateur de quiz éducatif pour enfants.
 Génère exactement 3 questions QCM sur le thème : $theme.
-Niveau de difficulté : $difficulty.
-Chaque question doit avoir exactement $nbChoices choix de réponse.
-Les questions doivent être variées, intéressantes et éducatives.
+Niveau : $difficulty.
+Chaque question a exactement $nbChoices choix.
 Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans texte avant ou après.
-
-Format JSON exact à respecter :
+Format :
 [
-  {
-    "question": "Ta question ici ?",
-    "choices": ["Choix A", "Choix B", "Choix C", "Choix D"],
-    "correct": 0
-  },
-  {
-    "question": "Ta question ici ?",
-    "choices": ["Choix A", "Choix B", "Choix C", "Choix D"],
-    "correct": 2
-  },
-  {
-    "question": "Ta question ici ?",
-    "choices": ["Choix A", "Choix B", "Choix C", "Choix D"],
-    "correct": 1
-  }
+  {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 0},
+  {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 1},
+  {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 2}
 ]
-
-"correct" est l'index (0-based) de la bonne réponse dans le tableau "choices".
-Si $nbChoices vaut 2, le tableau "choices" ne contient que 2 éléments.
-Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
+"correct" est l'index 0-based de la bonne réponse.
+Si $nbChoices vaut 2, "choices" contient 2 éléments.
+Si $nbChoices vaut 3, "choices" contient 3 éléments.
 ''';
 
     try {
-      if (_apiKey.isEmpty || _apiKey == 'AIzaSyBzyWQB3qLYtVakVzInkd5Z86882kayssU') {
-        throw Exception('Clé API non configurée !');
-      }
-
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-          'generationConfig': {
-            'temperature': 0.7,
-            'maxOutputTokens': 1024,
-          },
+          'contents': [{'parts': [{'text': prompt}]}],
+          'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final text =
-            data['candidates'][0]['content']['parts'][0]['text'] as String;
-        final cleaned = text
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
+        final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        final cleaned = text.replaceAll('```json', '').replaceAll('```', '').trim();
         final List<dynamic> parsed = jsonDecode(cleaned);
         return parsed.cast<Map<String, dynamic>>();
-      } else {
-        throw Exception('Erreur ${response.statusCode} : ${response.body}');
       }
+      return [];
     } catch (e) {
-      rethrow;
+      return [];
     }
   }
 }
