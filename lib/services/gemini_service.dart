@@ -1,17 +1,15 @@
-// lib/services/gemini_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSy...'; // ← ta vraie clé ici (garde celle que t'as déjà)
-
+  static const String _apiKey = 'REMPLACE_PAR_TA_VRAIE_CLE'; // ← ta vraie clé API Gemini
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
 
-  // ─── GÉNÉRATION D'APPRÉCIATION ───────────────────────────────
+  // ─── Génération d'appréciation ───────────────────────────────────────────
   static Future<String> generateAppreciation({
     required String childName,
-    required String context,
+    required String context,       // ← NOM EXACT attendu par school_notes_screen.dart
     required Map<String, dynamic> answers,
   }) async {
     final prompt = '''
@@ -22,12 +20,11 @@ Réponses au questionnaire : ${jsonEncode(answers)}
 
 Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 {
-  "score": <nombre entre 0 et 100>,
+  "note": <nombre entier entre 0 et 20>,
   "appreciation": "<texte court et encourageant>",
-  "tip": "<conseil rapide pour les parents>"
+  "conseil": "<conseil rapide pour les parents>"
 }
 ''';
-
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_apiKey'),
@@ -42,25 +39,31 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
           ],
           'generationConfig': {
             'temperature': 0.7,
-            'maxOutputTokens': 300,
+            'maxOutputTokens': 400,
           },
         }),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String text = data['candidates'][0]['content']['parts'][0]['text'];
-        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
-        return text;
+        return text.replaceAll('```json', '').replaceAll('```', '').trim();
       } else {
-        return jsonEncode({'score': -1, 'appreciation': 'Erreur Gemini', 'tip': ''});
+        return jsonEncode({
+          'note': -1,
+          'appreciation': 'Erreur Gemini (${response.statusCode})',
+          'conseil': ''
+        });
       }
     } catch (e) {
-      return jsonEncode({'score': -1, 'appreciation': 'Erreur : $e', 'tip': ''});
+      return jsonEncode({
+        'note': -1,
+        'appreciation': 'Erreur : $e',
+        'conseil': ''
+      });
     }
   }
 
-  // ─── GÉNÉRATION DE QUIZ ───────────────────────────────────────
+  // ─── Génération de questions de quiz ─────────────────────────────────────
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
     required String theme,
     required int age,
@@ -83,6 +86,9 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
       nbChoices = 4;
     }
 
+    final choicesTemplate =
+        List.filled(nbChoices, '"<réponse>"').join(', ');
+
     final prompt = '''
 Génère exactement 3 questions de quiz en français sur le thème "$theme".
 Niveau : $difficultyDesc. Difficulté : $difficulty.
@@ -92,12 +98,11 @@ Réponds UNIQUEMENT avec un tableau JSON valide (sans markdown) :
 [
   {
     "question": "<question>",
-    "choices": ["<choix1>", "<choix2>"${nbChoices >= 3 ? ', "<choix3>"' : ''}${nbChoices >= 4 ? ', "<choix4>"' : ''}],
+    "choices": [$choicesTemplate],
     "correct": <index de la bonne réponse (0 à ${nbChoices - 1})>
   }
 ]
 ''';
-
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_apiKey'),
@@ -116,19 +121,13 @@ Réponds UNIQUEMENT avec un tableau JSON valide (sans markdown) :
           },
         }),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String text = data['candidates'][0]['content']['parts'][0]['text'];
-
-        // Nettoyage des balises markdown
         text = text.replaceAll('```json', '').replaceAll('```', '').trim();
-
-        // Extraction du tableau JSON
         final start = text.indexOf('[');
         final end = text.lastIndexOf(']');
         if (start == -1 || end == -1) return [];
-
         final jsonStr = text.substring(start, end + 1);
         final List<dynamic> parsed = jsonDecode(jsonStr);
         return parsed.map((q) => Map<String, dynamic>.from(q)).toList();
