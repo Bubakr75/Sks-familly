@@ -2,22 +2,21 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
 
 class GeminiService {
-  static String get _apiKey => ApiConfig.geminiApiKey;
+  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+  // ══════════════════════════════════════════════════════════════
+  //  ÉVALUATION DU SOIR — note + appréciation parent
+  // ══════════════════════════════════════════════════════════════
 
   static Future<String> generateAppreciation({
     required String childName,
     required String context,
     required Map<String, String> answers,
   }) async {
-    if (_apiKey.isEmpty) {
-      return '{"note": -1, "appreciation": "Clé API manquante", "conseil": ""}';
-    }
-
     final answersText = answers.entries
         .map((e) => '- ${e.key} : ${e.value}')
         .join('\n');
@@ -58,7 +57,7 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
           ],
           'generationConfig': {
             'temperature': 0.7,
-            'maxOutputTokens': 512,
+            'maxOutputTokens': 300,
           },
         }),
       );
@@ -73,19 +72,21 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
             .trim();
         return cleanText;
       } else {
-        return '{"note": -1, "appreciation": "Erreur API ${response.statusCode}", "conseil": ""}';
+        return '{"note": -1, "appreciation": "Erreur API ${response.statusCode}", "conseil": "${response.body}"}';
       }
     } catch (e) {
-      return '{"note": -1, "appreciation": "Erreur réseau : $e", "conseil": ""}';
+      return '{"note": -1, "appreciation": "Erreur réseau", "conseil": "$e"}';
     }
   }
+
+  // ══════════════════════════════════════════════════════════════
+  //  QUIZ IA — génération de questions adaptées à l'âge
+  // ══════════════════════════════════════════════════════════════
 
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
     required String theme,
     required int age,
   }) async {
-    if (_apiKey.isEmpty) return [];
-
     String difficulty;
     int nbChoices;
 
@@ -167,10 +168,13 @@ Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
             .trim();
         final List<dynamic> parsed = jsonDecode(cleaned);
         return parsed.cast<Map<String, dynamic>>();
+      } else {
+        // DÉBOGAGE — affiche le vrai code d'erreur
+        throw Exception('Status ${response.statusCode} — ${response.body}');
       }
-      return [];
     } catch (e) {
-      return [];
+      // DÉBOGAGE — remonte l'erreur exacte
+      rethrow;
     }
   }
 }
