@@ -90,10 +90,19 @@ jobs:
           python3 /tmp/fix_signing.py
 
       - name: Inject and verify Gemini API Key
+        env:
+          GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          sed -i "s|REMPLACE_PAR_TA_CLE|${{ secrets.GEMINI_API_KEY }}|g" lib/services/gemini_service.dart
-          echo "=== CONTENU APRÈS INJECTION ==="
-          cat lib/services/gemini_service.dart | head -10
+          python3 << 'PYEOF'
+          import os
+          key = os.environ['GEMINI_KEY']
+          with open('lib/services/gemini_service.dart', 'r') as f:
+              content = f.read()
+          content = content.replace('REMPLACE_PAR_TA_CLE', key)
+          with open('lib/services/gemini_service.dart', 'w') as f:
+              f.write(content)
+          print("Cle injectee avec succes")
+          PYEOF
 
       - name: Get dependencies
         run: flutter pub get
