@@ -75,6 +75,7 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
     required String theme,
     required int age,
+    required String difficulty,
   }) async {
     String difficulty;
     int nbChoices;
@@ -161,3 +162,4 @@ Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
     }
   }
 }
+
