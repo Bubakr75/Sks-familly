@@ -18,10 +18,8 @@ class GeminiService {
 
     final prompt = '''
 Tu es un assistant bienveillant qui aide des parents à évaluer le comportement de leurs enfants.
-
 Contexte de la journée : $context
 Prénom de l'enfant : $childName
-
 Réponses du parent au questionnaire :
 $answersText
 
@@ -82,19 +80,16 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
     int nbChoices;
 
     if (age <= 6) {
-      difficulty =
-          'très simple, adapté à un enfant de $age ans, avec des mots très courts et faciles';
+      difficulty = 'très simple, adapté à un enfant de $age ans, avec des mots très courts et faciles';
       nbChoices = 2;
     } else if (age <= 9) {
       difficulty = 'simple et ludique, adapté à un enfant de $age ans';
       nbChoices = 3;
     } else if (age <= 12) {
-      difficulty =
-          'intermédiaire, adapté à un enfant de $age ans, ni trop facile ni trop difficile';
+      difficulty = 'intermédiaire, adapté à un enfant de $age ans, ni trop facile ni trop difficile';
       nbChoices = 4;
     } else {
-      difficulty =
-          'difficile avec des pièges subtils, adapté à un adolescent de $age ans';
+      difficulty = 'difficile avec des pièges subtils, adapté à un adolescent de $age ans';
       nbChoices = 4;
     }
 
