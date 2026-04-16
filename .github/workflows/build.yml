@@ -91,7 +91,7 @@ jobs:
 
       - name: Inject and verify Gemini API Key
         run: |
-          sed -i "s|REMPLACE_PAR_TA_VRAIE_CLE|${{ secrets.GEMINI_API_KEY }}|g" lib/services/gemini_service.dart
+          sed -i "s|REMPLACE_PAR_TA_CLE|${{ secrets.GEMINI_API_KEY }}|g" lib/services/gemini_service.dart
           echo "=== CONTENU APRÈS INJECTION ==="
           cat lib/services/gemini_service.dart | head -10
 
