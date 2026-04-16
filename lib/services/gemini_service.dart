@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSyBzyWQB3qLYtVakVzInkd5Z86882kayssU'; // ← ta vraie clé API Gemini
+  static const String _apiKey = ApiConfig.geminiApiKey;
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
 
-  // ─── Génération d'appréciation ───────────────────────────────────────────
   static Future<String> generateAppreciation({
     required String childName,
-    required String context,       // ← NOM EXACT attendu par school_notes_screen.dart
+    required String context,
     required Map<String, dynamic> answers,
   }) async {
     final prompt = '''
@@ -63,7 +63,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
     }
   }
 
-  // ─── Génération de questions de quiz ─────────────────────────────────────
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
     required String theme,
     required int age,
@@ -86,8 +85,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
       nbChoices = 4;
     }
 
-    final choicesTemplate =
-        List.filled(nbChoices, '"<réponse>"').join(', ');
+    final choicesTemplate = List.filled(nbChoices, '"<réponse>"').join(', ');
 
     final prompt = '''
 Génère exactement 3 questions de quiz en français sur le thème "$theme".
