@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class GeminiService {
   static const String _apiKey = 'REMPLACE_PAR_TA_VRAIE_CLE'; // ← ta vraie clé API Gemini
   static const String _baseUrl =
-      'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
   // ─── Génération d'appréciation ───────────────────────────────────────────
   static Future<String> generateAppreciation({
