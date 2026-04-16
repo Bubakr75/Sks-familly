@@ -4,7 +4,7 @@ import '../config/api_config.dart';
 
 class GeminiService {
   static const String _apiKey = ApiConfig.geminiApiKey;
-  static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash:generateContent';
+  static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
   static Future<String> generateAppreciation({
     required String childName,
