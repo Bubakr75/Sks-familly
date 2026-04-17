@@ -1,4 +1,4 @@
-// lib/screens/home_screen.dart
+﻿// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +9,7 @@ import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import '../widgets/quick_shortcut_panel.dart';        // â† NOUVEAU
+import '../widgets/quick_shortcut_panel.dart';        // Ã¢â Â NOUVEAU
 
 import 'dashboard_screen.dart';
 import 'add_points_screen.dart';
@@ -94,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Aucun enfant enregistrÃ©'),
+          content: const Text('Aucun enfant enregistré'),
           backgroundColor: Colors.orange.shade700,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -264,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'ðŸ“œ Historique Complet',
+                    '📜 Historique Complet',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -273,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${history.length} entrÃ©e(s)',
+                    '${history.length} entrÃÂ©e(s)',
                     style: const TextStyle(
                         color: Colors.white54, fontSize: 13),
                   ),
@@ -411,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 padding: const EdgeInsets.all(32),
                 child: const Center(
-                  child: Text('Aucun enfant enregistrÃ©',
+                  child: Text('Aucun enfant enregistré',
                       style: TextStyle(color: Colors.white54)),
                 ),
               );
@@ -455,7 +455,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'ðŸ’° Bonus & PÃ©nalitÃ©s',
+                            '💰 Bonus & Pénalités',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 20,
@@ -516,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           const SizedBox(height: 8),
                           Text(
-                            '${entries.length} entrÃ©e(s)',
+                            '${entries.length} entrÃÂ©e(s)',
                             style: const TextStyle(
                                 color: Colors.white54, fontSize: 12),
                           ),
@@ -525,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: entries.isEmpty
                                 ? const Center(
                                     child: Text(
-                                      'Aucun bonus ou pÃ©nalitÃ©',
+                                      'Aucun bonus ou pÃÂ©nalitÃÂ©',
                                       style: TextStyle(
                                           color: Colors.white38),
                                     ),
@@ -587,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                           .ellipsis,
                                                     ),
                                                     Text(
-                                                      '${entry.date.day}/${entry.date.month}/${entry.date.year} â€¢ ${entry.actionBy}',
+                                                      '${entry.date.day}/${entry.date.month}/${entry.date.year} Ã¢â¬Â¢ ${entry.actionBy}',
                                                       style:
                                                           const TextStyle(
                                                               color: Colors
@@ -679,7 +679,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                           .showSnackBar(
                                                         const SnackBar(
                                                           content: Text(
-                                                              'ðŸ—‘ï¸ EntrÃ©e supprimÃ©e'),
+                  '🗑️ Entrée supprimée'),
                                                           backgroundColor:
                                                               Colors.red,
                                                           behavior:
@@ -729,7 +729,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _formatDateTime(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return "Ã€ l'instant";
+    if (diff.inMinutes < 1) return "Ãâ¬ l'instant";
     if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
     if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
     if (diff.inDays < 7) return 'Il y a ${diff.inDays}j';
@@ -744,10 +744,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.transparent,
       extendBody: true,
       drawer: _buildDrawer(context, isParent),
-      // â”€â”€ FAB raccourcis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Ã¢ââ¬Ã¢ââ¬ FAB raccourcis Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬
       floatingActionButton: const QuickShortcutFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬
       body: AnimatedBackground(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 400),
@@ -810,7 +810,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     'Points',
                     'Calendrier',
                     'Stats',
-                    'RÃ©glages',
+                    'Réglages',
                   ];
                   return TvFocusWrapper(
                     onTap: () => _onTabTapped(i),
@@ -929,7 +929,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isParent ? widget.parentName : 'ðŸ‘¦ Mode Enfant',
+                    isParent ? widget.parentName : '👦 Mode Enfant',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
                       fontSize: 14,
@@ -979,7 +979,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     _drawerItem(
                       icon: Icons.cleaning_services_rounded,
-                      label: 'T`â`ches m`é`nag`è`res',
+                      label: 'Tâches ménagères',
                       color: Colors.purpleAccent,
                       onTap: () {
                         Navigator.pop(context);
@@ -991,7 +991,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     _drawerItem(
                       icon: Icons.shield_rounded,
-                      label: "Lignes d'ImmunitÃ©",
+                      label: "Lignes d'Immunité",
                       color: Colors.amberAccent,
                       onTap: () {
                         Navigator.pop(context);
@@ -1006,7 +1006,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     _drawerItem(
                       icon: Icons.swap_vert_circle_rounded,
-                      label: 'Bonus & PÃ©nalitÃ©s',
+                      label: 'Bonus & Pénalités',
                       color: Colors.greenAccent,
                       onTap: () {
                         Navigator.pop(context);
@@ -1030,7 +1030,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   _drawerItem(
                     icon: Icons.sell_rounded,
-                    label: "Vente d'immunitÃ©s",
+                    label: "Vente d'immunités",
                     color: Colors.tealAccent,
                     onTap: () {
                       Navigator.pop(context);

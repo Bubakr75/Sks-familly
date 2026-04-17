@@ -416,7 +416,7 @@ class _WheelDialogState extends State<_WheelDialog> with SingleTickerProviderSta
     final rng = Random();
     final winner = rng.nextInt(widget.children.length);
     final extraTurns = 5 + rng.nextInt(3);
-    final targetAngle = (extraTurns * 2 * pi) + (winner / widget.children.length) * 2 * pi;
+    final targetAngle = (extraTurns * 2 * pi) + (2 * pi) - (winner / widget.children.length) * 2 * pi;
     setState(() { _spinning = true; _winnerIndex = null; });
     _spinAnim = Tween<double>(begin: 0, end: targetAngle).animate(CurvedAnimation(parent: _spinCtrl, curve: Curves.decelerate));
     _spinCtrl.reset();

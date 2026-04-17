@@ -920,8 +920,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   }
 
   Widget _buildStepHeroes(List<Map<String, dynamic>> heroes, String? selected,
-      ValueChanged<String> onSelect) {
-    final customCtrl = TextEditingController(text: selected);
+    final customCtrl = TextEditingController();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1390,7 +1390,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (ctx, setResultState) {
-          int parentAdjustment = score.clamp(0, remaining);
+          int parentAdjustment = score;
           return AlertDialog(
             backgroundColor: const Color(0xFF0D1B2A),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -1474,20 +1474,20 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 icon: const Icon(Icons.check, size: 16),
-                label: Text(parentAdjustment > 0
-                    ? 'Valider -$parentAdjustment ligne(s)'
-                    : 'Fermer sans réduction'),
+
+                label: Text(parentAdjustment > 0 ? 'Accorder +$parentAdjustment ligne(s) d immunite' : 'Fermer sans recompense'),
+
                 onPressed: () async {
                   Navigator.pop(dialogContext);
-                  if (parentAdjustment > 0) {
-                    await fp.updatePunishmentProgress(p.id, parentAdjustment);
-                  }
+
+                  if (parentAdjustment > 0) { await fp.addImmunity(child.id, 'Quiz Gemini - $score/$total bonnes reponses', parentAdjustment); }
+
                   await _incrementQuizCount(child.id);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(parentAdjustment > 0
-                          ? '🧠 Quiz validé ! $parentAdjustment ligne(s) retirée(s) !'
-                          : '🧠 Quiz terminé – aucune réduction accordée'),
+                      content: Text(parentAdjustment > 0 ? '🧠 Quiz valide ! +$parentAdjustment ligne(s) immunite accordee(s) !' : '🧠 Quiz termine - aucune recompense'),
+
+
                       backgroundColor: Colors.purpleAccent.withOpacity(0.8),
                     ));
                   }
