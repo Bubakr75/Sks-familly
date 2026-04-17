@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/punishment_lines.dart';
@@ -622,8 +622,15 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   }
 
   void _showQuizThemePicker(PunishmentLines p, ChildModel child, FamilyProvider fp) {
+    int selectedAge = _estimateAge(child);
+    String selectedDifficulty = selectedAge <= 7 ? 'facile' : selectedAge <= 12 ? 'moyen' : 'difficile';
+    String? selectedTheme;
+    String? selectedHero;
+    int currentStep = 0;
+    final List<Map<String, dynamic>> customQuestions = [];
+
     final themes = [
-      {'emoji': '🏛️', 'label': 'Histoire'},
+      {'emoji': '🛕', 'label': 'Histoire'},
       {'emoji': '🔬', 'label': 'Science'},
       {'emoji': '🌿', 'label': 'Nature'},
       {'emoji': '⚽', 'label': 'Sport'},
@@ -631,100 +638,223 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       {'emoji': '🎬', 'label': 'Cinéma'},
       {'emoji': '🐾', 'label': 'Animaux'},
       {'emoji': '🎯', 'label': 'Culture générale'},
+      {'emoji': '🦸', 'label': 'Mes Héros'},
+    ];
+
+    final heroes = [
+      {'emoji': '🐾', 'label': 'Pat Patrouille'},
+      {'emoji': '🕷️', 'label': 'Spider-Man'},
+      {'emoji': '🦸', 'label': 'Avengers'},
+      {'emoji': '🦁', 'label': 'Le Roi Lion'},
+      {'emoji': '🧊', 'label': 'La Reine des Neiges'},
+      {'emoji': '🐠', 'label': 'Nemo'},
+      {'emoji': '🚂', 'label': 'Thomas le Train'},
+      {'emoji': '⚡', 'label': 'Pokémon'},
+      {'emoji': '🧙', 'label': 'Harry Potter'},
+      {'emoji': '🚀', 'label': 'Toy Story'},
+      {'emoji': '🐞', 'label': 'Miraculous'},
+      {'emoji': '🐷', 'label': 'Peppa Pig'},
     ];
 
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.65,
-        minChildSize: 0.5,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (_, scrollCtrl) => Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF0D1B2A),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, scrollCtrl) => Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF0D1B2A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(width: 40, height: 4,
+                    decoration: BoxDecoration(color: Colors.white38, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 12),
+                // Indicateur étapes
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(4, (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: i == currentStep ? 24 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: i <= currentStep ? Colors.purpleAccent : Colors.white24,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  )),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollCtrl,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: currentStep == 0
+                        ? _buildStepAgeAndDifficulty(selectedAge, selectedDifficulty, child,
+                            (age) => setModalState(() => selectedAge = age),
+                            (diff) => setModalState(() => selectedDifficulty = diff))
+                        : currentStep == 1
+                            ? _buildStepTheme(themes, selectedTheme,
+                                (t) => setModalState(() => selectedTheme = t))
+                            : currentStep == 2 && selectedTheme == 'Mes Héros'
+                                ? _buildStepHeroes(heroes, selectedHero,
+                                    (h) => setModalState(() => selectedHero = h))
+                                : _buildStepCustomQuestions(customQuestions,
+                                    () => setModalState(() {})),
+                  ),
+                ),
+                // Boutons navigation
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  child: Row(
+                    children: [
+                      if (currentStep > 0)
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.white24),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onPressed: () => setModalState(() => currentStep--),
+                            child: const Text('← Retour', style: TextStyle(color: Colors.white70)),
+                          ),
+                        ),
+                      if (currentStep > 0) const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purpleAccent,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: () {
+                            final maxStep = selectedTheme == 'Mes Héros' ? 3 : 2;
+                            if (currentStep < maxStep) {
+                              if (currentStep == 1 && selectedTheme == null) return;
+                              setModalState(() => currentStep++);
+                            } else {
+                              Navigator.pop(context);
+                              final finalTheme = selectedTheme == 'Mes Héros'
+                                  ? (selectedHero ?? 'Pat Patrouille')
+                                  : (selectedTheme ?? 'Culture générale');
+                              _startQuiz(p, child, fp, finalTheme,
+                                  selectedAge, selectedDifficulty, customQuestions);
+                            }
+                          },
+                          child: Text(
+                            currentStep == (selectedTheme == 'Mes Héros' ? 3 : 2)
+                                ? '🚀 Lancer le quiz !'
+                                : 'Suivant →',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepAgeAndDifficulty(int age, String difficulty, ChildModel child,
+      ValueChanged<int> onAge, ValueChanged<String> onDiff) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('🧒 Âge de l\'enfant',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text('Glisse pour ajuster l\'âge de ${child.name}',
+            style: const TextStyle(color: Colors.white54, fontSize: 13)),
+        const SizedBox(height: 20),
+        Center(
+          child: Text(
+            age <= 6 ? '👶' : age <= 9 ? '🧒' : age <= 12 ? '👦' : age <= 15 ? '🧑' : '👨',
+            style: const TextStyle(fontSize: 52),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: Text('$age ans',
+              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+        ),
+        Slider(
+          value: age.toDouble(),
+          min: 4,
+          max: 18,
+          divisions: 14,
+          activeColor: Colors.purpleAccent,
+          inactiveColor: Colors.white24,
+          onChanged: (v) {
+            onAge(v.round());
+            final newDiff = v <= 7 ? 'facile' : v <= 12 ? 'moyen' : 'difficile';
+            onDiff(newDiff);
+          },
+        ),
+        const SizedBox(height: 24),
+        const Text('🎯 Niveau de difficulté',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        const Text('Sélectionné automatiquement selon l\'âge, modifiable',
+            style: TextStyle(color: Colors.white54, fontSize: 13)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            _buildDiffCard('facile', '🟢', 'Facile', 'Questions simples\npour les petits', difficulty, onDiff),
+            const SizedBox(width: 8),
+            _buildDiffCard('moyen', '🟡', 'Moyen', 'Questions\nintermédiaires', difficulty, onDiff),
+            const SizedBox(width: 8),
+            _buildDiffCard('difficile', '🔴', 'Difficile', 'Questions\ncomplexes', difficulty, onDiff),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildDiffCard(String value, String emoji, String label, String desc,
+      String selected, ValueChanged<String> onTap) {
+    final isSelected = selected == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.purpleAccent.withOpacity(0.25) : Colors.white10,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? Colors.purpleAccent : Colors.white12,
+              width: isSelected ? 2 : 1,
+            ),
           ),
           child: Column(
             children: [
-              const SizedBox(height: 12),
-              Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.white38, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 16),
-              const Text('🧠 Quiz IA Gemini',
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(emoji, style: const TextStyle(fontSize: 20)),
               const SizedBox(height: 4),
-              Text('${child.name} · 3 questions adaptées',
-                  style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              Text(label,
+                  style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white60,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12)),
               const SizedBox(height: 4),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.purpleAccent.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.purpleAccent.withOpacity(0.3)),
-                ),
-                child: Text(
-                  '🏆 Bonne réponse = 1 ligne retirée (max 3)',
-                  style: TextStyle(color: Colors.purpleAccent.shade100, fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.only(left: 20, bottom: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Choisis ton thème :',
-                      style: TextStyle(color: Colors.white60, fontWeight: FontWeight.w600)),
-                ),
-              ),
-              Expanded(
-                child: GridView.builder(
-                  controller: scrollCtrl,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 2.2,
-                  ),
-                  itemCount: themes.length,
-                  itemBuilder: (_, i) {
-                    final theme = themes[i];
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                        _startQuiz(p, child, fp, theme['label']!);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            Colors.purpleAccent.withOpacity(0.2),
-                            Colors.blueAccent.withOpacity(0.15),
-                          ]),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.purpleAccent.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(theme['emoji']!, style: const TextStyle(fontSize: 24)),
-                            const SizedBox(width: 8),
-                            Text(theme['label']!,
-                                style: const TextStyle(
-                                    color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
+              Text(desc,
+                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                  textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -732,8 +862,299 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  Future<void> _startQuiz(PunishmentLines p, ChildModel child,
-      FamilyProvider fp, String theme) async {
+  Widget _buildStepTheme(List<Map<String, dynamic>> themes, String? selected,
+      ValueChanged<String> onSelect) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('📚 Choisis un thème',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        const Text('Gemini génèrera des questions sur ce sujet',
+            style: TextStyle(color: Colors.white54, fontSize: 13)),
+        const SizedBox(height: 20),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 2.2,
+          ),
+          itemCount: themes.length,
+          itemBuilder: (_, i) {
+            final t = themes[i];
+            final isSelected = selected == t['label'];
+            return GestureDetector(
+              onTap: () => onSelect(t['label'] as String),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.purpleAccent.withOpacity(0.25) : Colors.white10,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? Colors.purpleAccent : Colors.white12,
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(t['emoji'] as String, style: const TextStyle(fontSize: 22)),
+                    const SizedBox(width: 8),
+                    Text(t['label'] as String,
+                        style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.white70,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13)),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildStepHeroes(List<Map<String, dynamic>> heroes, String? selected,
+      ValueChanged<String> onSelect) {
+    final customCtrl = TextEditingController(text: selected);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('🦸 Choisis un héros',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        const Text('Ou tape le nom de ton héros préféré !',
+            style: TextStyle(color: Colors.white54, fontSize: 13)),
+        const SizedBox(height: 16),
+        TextField(
+          controller: customCtrl,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Ex: Bluey, Dragon Ball...',
+            hintStyle: const TextStyle(color: Colors.white38),
+            prefixIcon: const Icon(Icons.edit, color: Colors.purpleAccent, size: 18),
+            filled: true,
+            fillColor: Colors.white10,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          ),
+          onChanged: onSelect,
+        ),
+        const SizedBox(height: 16),
+        const Text('Ou choisis parmi les populaires :',
+            style: TextStyle(color: Colors.white54, fontSize: 12)),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 2.5,
+          ),
+          itemCount: heroes.length,
+          itemBuilder: (_, i) {
+            final h = heroes[i];
+            final isSelected = selected == h['label'];
+            return GestureDetector(
+              onTap: () {
+                onSelect(h['label'] as String);
+                customCtrl.text = h['label'] as String;
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.purpleAccent.withOpacity(0.25) : Colors.white10,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? Colors.purpleAccent : Colors.white12,
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(h['emoji'] as String, style: const TextStyle(fontSize: 18)),
+                    const SizedBox(width: 6),
+                    Text(h['label'] as String,
+                        style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildStepCustomQuestions(List<Map<String, dynamic>> questions, VoidCallback refresh) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('✏️ Questions personnalisées',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        const Text('Optionnel — Gemini complète le reste automatiquement',
+            style: TextStyle(color: Colors.white54, fontSize: 13)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.purpleAccent.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.purpleAccent.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              const Text('🤖', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  questions.isEmpty
+                      ? 'Gemini génère 5 questions automatiquement'
+                      : 'Gemini génère ${5 - questions.length} question(s), vous en avez ajouté ${questions.length}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...questions.asMap().entries.map((e) => Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white10,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Q${e.key + 1}: ${e.value['question']}',
+                        style: const TextStyle(color: Colors.white, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text('✅ ${e.value['answer']}',
+                        style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                onPressed: () {
+                  questions.removeAt(e.key);
+                  refresh();
+                },
+              ),
+            ],
+          ),
+        )),
+        if (questions.length < 5)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.purpleAccent),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.add, color: Colors.purpleAccent),
+              label: const Text('Ajouter une question',
+                  style: TextStyle(color: Colors.purpleAccent)),
+              onPressed: () => _showAddCustomQuestion(questions, refresh),
+            ),
+          ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Future<void> _showAddCustomQuestion(
+      List<Map<String, dynamic>> questions, VoidCallback refresh) async {
+    final qCtrl = TextEditingController();
+    final aCtrl = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Nouvelle question',
+            style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: qCtrl,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Ex: Quelle est la règle n°1 ?',
+                hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+                filled: true,
+                fillColor: Colors.white10,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: aCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Réponse correcte',
+                hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+                prefixIcon: const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                filled: true,
+                fillColor: Colors.white10,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white38))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purpleAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () {
+              if (qCtrl.text.trim().isNotEmpty && aCtrl.text.trim().isNotEmpty) {
+                questions.add({
+                  'question': qCtrl.text.trim(),
+                  'answer': aCtrl.text.trim(),
+                  'isCustom': true,
+                });
+                refresh();
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Ajouter', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _startQuiz(PunishmentLines p, ChildModel child, FamilyProvider fp,
+      String theme, int age, String difficulty,
+      List<Map<String, dynamic>> customQuestions) async {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -746,7 +1167,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             SizedBox(height: 16),
             Text('🧠 Gemini prépare le quiz...', style: TextStyle(color: Colors.white)),
             SizedBox(height: 4),
-            Text('Adapté à l\'âge de l\'enfant',
+            Text('Questions adaptées à l\'âge et au niveau',
                 style: TextStyle(color: Colors.white54, fontSize: 12)),
           ],
         ),
@@ -754,22 +1175,41 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
 
     try {
-      final questions = await GeminiService.generateQuizQuestions(
-        theme: theme,
-        age: _estimateAge(child),
-        difficulty: 'moyen',
-      );
+      final geminiCount = (5 - customQuestions.length).clamp(0, 5);
+      List<Map<String, dynamic>> allQuestions = [];
+
+      // Questions custom du parent
+      for (final cq in customQuestions) {
+        allQuestions.add({
+          'question': cq['question'],
+          'choices': [cq['answer'], 'Mauvaise réponse 1', 'Mauvaise réponse 2', 'Mauvaise réponse 3'],
+          'correct': 0,
+          'isCustom': true,
+        });
+      }
+
+      // Questions Gemini
+      if (geminiCount > 0) {
+        final geminiQuestions = await GeminiService.generateQuizQuestions(
+          theme: theme,
+          age: age,
+          difficulty: difficulty,
+        );
+        allQuestions.addAll(geminiQuestions.take(geminiCount));
+      }
+
       if (mounted) Navigator.pop(context);
-      if (questions.isEmpty) {
+
+      if (allQuestions.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('❌ Erreur Gemini — réessaie dans un instant'),
+            content: Text('❌ Erreur Gemini – réessaie dans un instant'),
             backgroundColor: Colors.redAccent,
           ));
         }
         return;
       }
-      if (mounted) _showQuizDialog(p, child, fp, questions, theme);
+      if (mounted) _showQuizDialog(p, child, fp, allQuestions, theme);
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
@@ -780,6 +1220,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       }
     }
   }
+
   void _showQuizDialog(PunishmentLines p, ChildModel child, FamilyProvider fp,
       List<Map<String, dynamic>> questions, String theme) {
     int currentIndex = 0;
@@ -795,6 +1236,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           final q = questions[currentIndex];
           final List<String> choices = List<String>.from(q['choices'] as List);
           final int correct = q['correct'] as int;
+          final bool isCustom = q['isCustom'] == true;
 
           return Dialog(
             backgroundColor: const Color(0xFF0D1B2A),
@@ -813,39 +1255,53 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                           color: Colors.purpleAccent.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(
-                          'Question ${currentIndex + 1} / ${questions.length}',
-                          style: const TextStyle(
-                              color: Colors.purpleAccent, fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
+                        child: Text('Question ${currentIndex + 1} / ${questions.length}',
+                            style: const TextStyle(
+                                color: Colors.purpleAccent, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
-                      Row(
-                        children: List.generate(
-                          questions.length,
-                          (i) => Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            width: 8, height: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: i < currentIndex
-                                  ? Colors.purpleAccent
-                                  : i == currentIndex
-                                      ? Colors.white
-                                      : Colors.white24,
-                            ),
+                      if (isCustom)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                          child: const Text('✏️ Perso',
+                              style: TextStyle(color: Colors.orange, fontSize: 10)),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text('🤖 Gemini',
+                              style: TextStyle(color: Colors.blueAccent, fontSize: 10)),
                         ),
-                      ),
                     ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(questions.length, (i) => Container(
+                      margin: const EdgeInsets.only(left: 4),
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: i < currentIndex
+                            ? Colors.purpleAccent
+                            : i == currentIndex ? Colors.white : Colors.white24,
+                      ),
+                    )),
                   ),
                   const SizedBox(height: 16),
                   Text(theme, style: const TextStyle(color: Colors.white54, fontSize: 12)),
                   const SizedBox(height: 8),
-                  Text(
-                    q['question'] as String,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
+                  Text(q['question'] as String,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center),
                   const SizedBox(height: 20),
                   ...choices.asMap().entries.map((entry) {
                     final idx = entry.key;
@@ -853,24 +1309,14 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                     Color btnColor = Colors.white10;
                     Color txtColor = Colors.white70;
                     if (answered) {
-                      if (idx == correct) {
-                        btnColor = Colors.greenAccent.withOpacity(0.25);
-                        txtColor = Colors.greenAccent;
-                      } else if (idx == selectedAnswer) {
-                        btnColor = Colors.redAccent.withOpacity(0.25);
-                        txtColor = Colors.redAccent;
-                      }
+                      if (idx == correct) { btnColor = Colors.greenAccent.withOpacity(0.25); txtColor = Colors.greenAccent; }
+                      else if (idx == selectedAnswer) { btnColor = Colors.redAccent.withOpacity(0.25); txtColor = Colors.redAccent; }
                     } else if (idx == selectedAnswer) {
-                      btnColor = Colors.purpleAccent.withOpacity(0.25);
-                      txtColor = Colors.purpleAccent;
+                      btnColor = Colors.purpleAccent.withOpacity(0.25); txtColor = Colors.purpleAccent;
                     }
                     return GestureDetector(
                       onTap: answered ? null : () {
-                        setDialogState(() {
-                          selectedAnswer = idx;
-                          answered = true;
-                          if (idx == correct) score++;
-                        });
+                        setDialogState(() { selectedAnswer = idx; answered = true; if (idx == correct) score++; });
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -881,21 +1327,16 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                               color: answered && idx == correct
-                                  ? Colors.greenAccent.withOpacity(0.5)
-                                  : Colors.white12),
+                                  ? Colors.greenAccent.withOpacity(0.5) : Colors.white12),
                         ),
                         child: Row(
                           children: [
-                            Text(['A', 'B', 'C', 'D'][idx],
+                            Text(['A','B','C','D'][idx],
                                 style: TextStyle(color: txtColor, fontWeight: FontWeight.bold, fontSize: 13)),
                             const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(choice, style: TextStyle(color: txtColor, fontSize: 13)),
-                            ),
-                            if (answered && idx == correct)
-                              const Icon(Icons.check_circle, color: Colors.greenAccent, size: 16),
-                            if (answered && idx == selectedAnswer && idx != correct)
-                              const Icon(Icons.cancel, color: Colors.redAccent, size: 16),
+                            Expanded(child: Text(choice, style: TextStyle(color: txtColor, fontSize: 13))),
+                            if (answered && idx == correct) const Icon(Icons.check_circle, color: Colors.greenAccent, size: 16),
+                            if (answered && idx == selectedAnswer && idx != correct) const Icon(Icons.cancel, color: Colors.redAccent, size: 16),
                           ],
                         ),
                       ),
@@ -914,20 +1355,14 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         ),
                         onPressed: () {
                           if (currentIndex < questions.length - 1) {
-                            setDialogState(() {
-                              currentIndex++;
-                              selectedAnswer = null;
-                              answered = false;
-                            });
+                            setDialogState(() { currentIndex++; selectedAnswer = null; answered = false; });
                           } else {
                             Navigator.pop(dialogContext);
                             _showQuizResult(p, child, fp, score, questions.length);
                           }
                         },
                         child: Text(
-                          currentIndex < questions.length - 1
-                              ? 'Question suivante →'
-                              : 'Voir les résultats 🏆',
+                          currentIndex < questions.length - 1 ? 'Question suivante →' : 'Voir les résultats 🏆',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -944,28 +1379,18 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   void _showQuizResult(PunishmentLines p, ChildModel child,
       FamilyProvider fp, int score, int total) {
     final remaining = p.totalLines - p.completedLines;
-    final linesEarned = score.clamp(0, remaining);
     String emoji;
     String message;
-    if (score == total) {
-      emoji = '🏆';
-      message = 'Parfait ! ${child.name} a tout bon !';
-    } else if (score >= total - 1) {
-      emoji = '😊';
-      message = 'Très bien ! Presque parfait !';
-    } else if (score > 0) {
-      emoji = '👍';
-      message = 'Pas mal ! Continue comme ça !';
-    } else {
-      emoji = '😅';
-      message = 'Dommage ! On réessaie la semaine prochaine !';
-    }
+    if (score == total) { emoji = '🏆'; message = 'Parfait ! ${child.name} a tout bon !'; }
+    else if (score >= total - 1) { emoji = '😊'; message = 'Très bien ! Presque parfait !'; }
+    else if (score > 0) { emoji = '👍'; message = 'Pas mal ! Continue comme ça !'; }
+    else { emoji = '😅'; message = 'Dommage ! On réessaie la semaine prochaine !'; }
 
     showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (ctx, setResultState) {
-          int parentAdjustment = linesEarned;
+          int parentAdjustment = score.clamp(0, remaining);
           return AlertDialog(
             backgroundColor: const Color(0xFF0D1B2A),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -981,9 +1406,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(message,
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                    textAlign: TextAlign.center),
+                Text(message, style: const TextStyle(color: Colors.white70, fontSize: 14), textAlign: TextAlign.center),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -997,10 +1420,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Score IA :', style: TextStyle(color: Colors.white60)),
+                          const Text('Score :', style: TextStyle(color: Colors.white60)),
                           Text('$score / $total',
-                              style: const TextStyle(
-                                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                         ],
                       ),
                       const Divider(color: Colors.white12, height: 20),
@@ -1022,20 +1444,19 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                               color: Colors.white10,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Text(
-                              '$parentAdjustment ligne${parentAdjustment > 1 ? 's' : ''}',
-                              style: const TextStyle(
-                                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                            ),
+                            child: Text('$parentAdjustment ligne${parentAdjustment > 1 ? "s" : ""}',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                           ),
                           IconButton(
-                            onPressed: parentAdjustment < remaining
-                                ? () => setResultState(() => parentAdjustment++)
-                                : null,
+                            onPressed: () => setResultState(() => parentAdjustment++),
                             icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 28),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 4),
+                      const Text('Le parent décide librement du nombre de lignes',
+                          style: TextStyle(color: Colors.white38, fontSize: 11),
+                          textAlign: TextAlign.center),
                     ],
                   ),
                 ),
@@ -1066,7 +1487,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(parentAdjustment > 0
                           ? '🧠 Quiz validé ! $parentAdjustment ligne(s) retirée(s) !'
-                          : '🧠 Quiz terminé — aucune réduction accordée'),
+                          : '🧠 Quiz terminé – aucune réduction accordée'),
                       backgroundColor: Colors.purpleAccent.withOpacity(0.8),
                     ));
                   }
