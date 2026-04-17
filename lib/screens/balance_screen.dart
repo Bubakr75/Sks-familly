@@ -39,9 +39,9 @@ class BalanceScreen extends StatelessWidget {
 
     // Immunités disponibles
     final immunities = fp.immunities
-        .where((im) => im.childId == child.id && !im.isUsed)
+        .where((im) => im.childId == child.id && !im.isFullyUsed && !im.isExpired)
         .toList();
-    final totalImmunityLines = immunities.fold<int>(0, (sum, im) => sum + im.lines);
+    final totalImmunityLines = immunities.fold<int>(0, (sum, im) => sum + im.availableLines);
 
     // Balance
     final balance = totalImmunityLines - totalPunishLines;
