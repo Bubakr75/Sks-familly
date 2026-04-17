@@ -1,11 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 import '../providers/family_provider.dart';
 import '../models/punishment_lines.dart';
 import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../services/gemini_service.dart';
 
 class PunishmentLinesScreen extends StatefulWidget {
   const PunishmentLinesScreen({super.key});
@@ -340,7 +340,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+                  Container(width: 40, height: 4,
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -350,8 +351,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                       return Row(children: [
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
-                          width: act ? 32 : 24,
-                          height: act ? 32 : 24,
+                          width: act ? 32 : 24, height: act ? 32 : 24,
                           decoration: BoxDecoration(
                             color: done ? Colors.amberAccent : (act ? Colors.amberAccent : Colors.white24),
                             shape: BoxShape.circle,
@@ -365,10 +365,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                     }).toList(),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    ['Age & Difficulte', 'Theme', 'Heros', 'Questions'][currentStep],
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
+                  Text(['Age & Difficulte', 'Theme', 'Heros', 'Questions'][currentStep],
+                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 16),
                   Expanded(
                     child: SingleChildScrollView(
@@ -409,7 +407,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                               } else {
                                 Navigator.pop(sheetCtx);
                                 await _startQuiz(p, child, fp, selectedAge, selectedDifficulty,
-                                  selectedTheme ?? themes[0]['label'] as String, selectedHero, customQuestions);
+                                  selectedTheme ?? themes[0]['label'] as String,
+                                  selectedHero, customQuestions);
                               }
                             },
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.amberAccent,
@@ -682,34 +681,41 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
   Future<void> _startQuiz(PunishmentLines p, ChildModel child, FamilyProvider fp,
       int age, String difficulty, String theme, String? hero,
       List<Map<String, dynamic>> customQuestions) async {
-    const apiKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
     List<Map<String, dynamic>> questions = [];
+
     if (customQuestions.isNotEmpty) {
-      questions = List.from(customQuestions);
+      // Convertir format custom vers format standard
+      questions = customQuestions.asMap().entries.map((e) => {
+        'question': e.value['question'],
+        'choices': [e.value['answer'], 'Faux'],
+        'correct': 0,
+      }).toList();
     } else {
-      if (apiKey.isEmpty) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cle Gemini manquante')));
-        return;
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.amberAccent)),
+        );
       }
       try {
-        final heroStr = (hero != null && hero != 'Personnalise') ? ' avec des references a $hero' : '';
-        final prompt = 'Genere 5 questions de quiz en francais pour un enfant de $age ans, niveau $difficulty, theme $theme$heroStr. Reponds uniquement avec un tableau JSON: [{"question":"...","options":["A","B","C","D"],"answer":"A"}]';
-        final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey');
-        final body = '{"contents":[{"parts":[{"text":"$prompt"}]}]}';
-        final resp = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: body);
-        final text = resp.body;
-        final jsonStart = text.indexOf('[');
-        final jsonEnd = text.lastIndexOf(']') + 1;
-        if (jsonStart >= 0 && jsonEnd > jsonStart) {
-          questions = _parseQuestions(text.substring(jsonStart, jsonEnd));
-        }
+        final themeWithHero = hero != null && hero != 'Personnalise'
+          ? '$theme avec des references a $hero'
+          : theme;
+        questions = await GeminiService.generateQuizQuestions(
+          theme: themeWithHero,
+          age: age,
+          difficulty: difficulty,
+        );
       } catch (e) {
+        if (mounted) Navigator.pop(context);
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur Gemini: $e')));
         return;
       }
+      if (mounted) Navigator.pop(context);
     }
+
     if (questions.isEmpty) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aucune question generee')));
@@ -718,44 +724,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
     if (mounted) _showQuizDialog(p, child, fp, questions);
   }
 
-  List<Map<String, dynamic>> _parseQuestions(String json) {
-    try {
-      final items = <Map<String, dynamic>>[];
-      int depth = 0; int start = 0;
-      for (int i = 0; i < json.length; i++) {
-        if (json[i] == '{') { if (depth == 0) start = i; depth++; }
-        else if (json[i] == '}') {
-          depth--;
-          if (depth == 0) {
-            try {
-              final obj = _parseObj(json.substring(start, i + 1));
-              if (obj.isNotEmpty) items.add(obj);
-            } catch (_) {}
-          }
-        }
-      }
-      return items;
-    } catch (_) { return []; }
-  }
-
-  Map<String, dynamic> _parseObj(String s) {
-    final m = <String, dynamic>{};
-    final qMatch = RegExp(r'"question"\s*:\s*"([^"]*)"').firstMatch(s);
-    final aMatch = RegExp(r'"answer"\s*:\s*"([^"]*)"').firstMatch(s);
-    final opMatch = RegExp(r'"options"\s*:\s*\[([^\]]*)\]').firstMatch(s);
-    if (qMatch != null) m['question'] = qMatch.group(1);
-    if (aMatch != null) m['answer'] = aMatch.group(1);
-    if (opMatch != null) {
-      m['options'] = RegExp(r'"([^"]*)"').allMatches(opMatch.group(1)!).map((e) => e.group(1)!).toList();
-    }
-    return m;
-  }
-
   void _showQuizDialog(PunishmentLines p, ChildModel child, FamilyProvider fp,
       List<Map<String, dynamic>> questions) {
     int currentQ = 0;
     int score = 0;
-    String? selectedAnswer;
+    int? selectedIndex;
     bool answered = false;
     showDialog(
       context: context,
@@ -763,40 +736,46 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
           final q = questions[currentQ];
-          final options = (q['options'] as List?)?.cast<String>() ?? ['Vrai', 'Faux'];
+          final choices = (q['choices'] as List?)?.cast<String>() ?? ['Vrai', 'Faux'];
+          final correctIndex = q['correct'] as int? ?? 0;
           return AlertDialog(
             backgroundColor: const Color(0xFF1E1E2E),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Q ${currentQ + 1}/${questions.length}', style: const TextStyle(color: Colors.amberAccent, fontSize: 14)),
-                Text('Score: $score', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                Text('Q ${currentQ + 1}/${questions.length}',
+                  style: const TextStyle(color: Colors.amberAccent, fontSize: 14)),
+                Text('Score: $score',
+                  style: const TextStyle(color: Colors.white70, fontSize: 14)),
               ],
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(q['question'] as String? ?? '', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                Text(q['question'] as String? ?? '',
+                  style: const TextStyle(color: Colors.white, fontSize: 16)),
                 const SizedBox(height: 16),
-                ...options.map((opt) {
+                ...choices.asMap().entries.map((e) {
+                  final idx = e.key;
+                  final opt = e.value;
                   Color color = Colors.white10;
                   if (answered) {
-                    if (opt == q['answer']) color = Colors.green.withOpacity(0.4);
-                    else if (opt == selectedAnswer) color = Colors.red.withOpacity(0.4);
-                  } else if (opt == selectedAnswer) color = Colors.amberAccent.withOpacity(0.3);
+                    if (idx == correctIndex) color = Colors.green.withOpacity(0.4);
+                    else if (idx == selectedIndex) color = Colors.red.withOpacity(0.4);
+                  } else if (idx == selectedIndex) color = Colors.amberAccent.withOpacity(0.3);
                   return GestureDetector(
-                    onTap: answered ? null : () => setDialogState(() => selectedAnswer = opt),
+                    onTap: answered ? null : () => setDialogState(() => selectedIndex = idx),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: selectedAnswer == opt && !answered ? Colors.amberAccent : Colors.transparent)),
+                        border: Border.all(color: selectedIndex == idx && !answered ? Colors.amberAccent : Colors.transparent)),
                       child: Row(children: [
                         Expanded(child: Text(opt, style: const TextStyle(color: Colors.white))),
-                        if (answered && opt == q['answer']) const Icon(Icons.check_circle, color: Colors.green, size: 18),
-                        if (answered && opt == selectedAnswer && opt != q['answer']) const Icon(Icons.cancel, color: Colors.red, size: 18),
+                        if (answered && idx == correctIndex) const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                        if (answered && idx == selectedIndex && idx != correctIndex) const Icon(Icons.cancel, color: Colors.red, size: 18),
                       ]),
                     ),
                   );
@@ -804,11 +783,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
               ],
             ),
             actions: [
-              if (!answered && selectedAnswer != null)
+              if (!answered && selectedIndex != null)
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.amberAccent, foregroundColor: Colors.black),
                   onPressed: () {
-                    final correct = selectedAnswer == q['answer'];
+                    final correct = selectedIndex == correctIndex;
                     setDialogState(() { answered = true; if (correct) score++; });
                   },
                   child: const Text('Valider'),
@@ -818,7 +797,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.amberAccent, foregroundColor: Colors.black),
                   onPressed: () {
                     if (currentQ + 1 < questions.length) {
-                      setDialogState(() { currentQ++; selectedAnswer = null; answered = false; });
+                      setDialogState(() { currentQ++; selectedIndex = null; answered = false; });
                     } else {
                       Navigator.pop(dialogCtx);
                       _showQuizResult(p, child, fp, score, questions.length);
