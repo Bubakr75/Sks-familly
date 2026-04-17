@@ -20,13 +20,13 @@ import 'badges_screen.dart';
 import 'school_notes_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'chores_screen.dart';
-import 'immunity_lines_screen.dart';
-import 'tribunal_screen.dart';
+import 'balance_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'timeline_screen.dart';
 import '../widgets/animated_page_transition.dart';
+
 
 class HomeScreen extends StatefulWidget {
   final String parentName;
@@ -987,6 +987,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           context,
                           SlidePageRoute(page: const ChoresScreen()),
                         );
+                      },
+                    ),
+                    _drawerItem(
+                      icon: Icons.balance_rounded,
+                      label: 'Punitions vs Immunités',
+                      color: Colors.tealAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, SlidePageRoute(page: const BalanceScreen()));
                       },
                     ),
                     _drawerItem(
