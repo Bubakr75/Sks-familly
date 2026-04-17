@@ -918,8 +918,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       ],
     );
   }
-
   Widget _buildStepHeroes(List<Map<String, dynamic>> heroes, String? selected,
+      ValueChanged<String> onSelect) {
     final customCtrl = TextEditingController();
 
     return Column(
