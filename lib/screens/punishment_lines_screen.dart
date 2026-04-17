@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
 import '../providers/family_provider.dart';
 import '../models/punishment_lines.dart';
 import '../models/child_model.dart';
@@ -158,7 +158,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
   }
 
   Widget _buildStats(List<PunishmentLines> active, ChildModel child) {
-    final totalLines = active.fold(0, (sum, p) => sum + p.remainingLines);
+    final totalLines = active.fold<int>(0, (sum, p) => sum + (p.totalLines - p.completedLines));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: GlassCard(
@@ -187,6 +187,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
 
   Widget _buildPunishmentCard(PunishmentLines p, ChildModel child, FamilyProvider fp) {
     final isCompleted = p.isCompleted;
+    final remaining = p.totalLines - p.completedLines;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GlassCard(
@@ -199,7 +200,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                     color: isCompleted ? Colors.green : Colors.redAccent, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(p.description,
+                  child: Text(p.text,
                     style: TextStyle(color: isCompleted ? Colors.white54 : Colors.white,
                       decoration: isCompleted ? TextDecoration.lineThrough : null)),
                 ),
@@ -221,7 +222,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                 children: [
                   Expanded(
                     child: LinearProgressIndicator(
-                      value: p.totalLines > 0 ? (p.totalLines - p.remainingLines) / p.totalLines : 0,
+                      value: p.totalLines > 0 ? p.completedLines / p.totalLines : 0,
                       backgroundColor: Colors.white12,
                       valueColor: const AlwaysStoppedAnimation<Color>(Colors.redAccent),
                       minHeight: 6,
@@ -229,7 +230,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text('${p.remainingLines}/${p.totalLines}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text('$remaining/${p.totalLines}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                 ],
               ),
             ],
@@ -295,7 +296,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
 
   void _showQuizThemePicker(PunishmentLines p, ChildModel child, FamilyProvider fp) {
     int currentStep = 0;
-    int selectedAge = child.age ?? 8;
+    int selectedAge = 8;
     String selectedDifficulty = 'moyen';
     String? selectedTheme;
     String? selectedHero;
@@ -345,19 +346,19 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [0, 1, 2, 3].map((i) {
                       final done = i < currentStep;
-                      final active = i == currentStep;
+                      final act = i == currentStep;
                       return Row(children: [
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
-                          width: active ? 32 : 24,
-                          height: active ? 32 : 24,
+                          width: act ? 32 : 24,
+                          height: act ? 32 : 24,
                           decoration: BoxDecoration(
-                            color: done ? Colors.amberAccent : (active ? Colors.amberAccent : Colors.white24),
+                            color: done ? Colors.amberAccent : (act ? Colors.amberAccent : Colors.white24),
                             shape: BoxShape.circle,
                           ),
                           child: Center(child: done
                             ? const Icon(Icons.check, size: 14, color: Colors.black)
-                            : Text('${i+1}', style: TextStyle(color: active ? Colors.black : Colors.white54, fontSize: 12, fontWeight: FontWeight.bold))),
+                            : Text('${i+1}', style: TextStyle(color: act ? Colors.black : Colors.white54, fontSize: 12, fontWeight: FontWeight.bold))),
                         ),
                         if (i < 3) Container(width: 24, height: 2, color: done ? Colors.amberAccent : Colors.white24),
                       ]);
@@ -374,7 +375,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                       controller: scrollCtrl,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: currentStep == 0
-                        ? _buildStepAgeAndDifficulty(selectedAge, selectedDifficulty, child,
+                        ? _buildStepAgeAndDifficulty(selectedAge, selectedDifficulty,
                             (v) => setSheetState(() => selectedAge = v),
                             (v) => setSheetState(() => selectedDifficulty = v))
                         : currentStep == 1
@@ -407,13 +408,15 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                                 setSheetState(() => currentStep++);
                               } else {
                                 Navigator.pop(sheetCtx);
-                                await _startQuiz(p, child, fp, selectedAge, selectedDifficulty, selectedTheme ?? themes[0]['label'] as String, selectedHero, customQuestions);
+                                await _startQuiz(p, child, fp, selectedAge, selectedDifficulty,
+                                  selectedTheme ?? themes[0]['label'] as String, selectedHero, customQuestions);
                               }
                             },
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.amberAccent,
                               foregroundColor: Colors.black,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                            child: Text(currentStep < 3 ? 'Suivant' : 'Lancer le Quiz !', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(currentStep < 3 ? 'Suivant' : 'Lancer le Quiz !',
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -428,7 +431,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
     );
   }
 
-  Widget _buildStepAgeAndDifficulty(int age, String diff, ChildModel child, ValueChanged<int> onAge, ValueChanged<String> onDiff) {
+  Widget _buildStepAgeAndDifficulty(int age, String diff, ValueChanged<int> onAge, ValueChanged<String> onDiff) {
     final diffs = [
       {'value': 'facile', 'emoji': '🟢', 'label': 'Facile', 'desc': 'Questions simples'},
       {'value': 'moyen', 'emoji': '🟡', 'label': 'Moyen', 'desc': 'Questions moderees'},
@@ -501,26 +504,29 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.8, crossAxisSpacing: 10, mainAxisSpacing: 10),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, childAspectRatio: 1.8, crossAxisSpacing: 10, mainAxisSpacing: 10),
           itemCount: themes.length,
           itemBuilder: (_, i) {
             final t = themes[i];
-            final isSelected = t['label'] == selected;
+            final isSel = t['label'] == selected;
             return GestureDetector(
               onTap: () => onSelect(t['label'] as String),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: isSelected ? Color(t['color'] as int).withOpacity(0.3) : Colors.white10,
+                  color: isSel ? Color(t['color'] as int).withOpacity(0.3) : Colors.white10,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isSelected ? Color(t['color'] as int) : Colors.transparent, width: 1.5),
+                  border: Border.all(color: isSel ? Color(t['color'] as int) : Colors.transparent, width: 1.5),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(t['emoji'] as String, style: const TextStyle(fontSize: 24)),
                     const SizedBox(height: 4),
-                    Text(t['label'] as String, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontSize: 12), textAlign: TextAlign.center),
+                    Text(t['label'] as String,
+                      style: TextStyle(color: isSel ? Colors.white : Colors.white70, fontSize: 12),
+                      textAlign: TextAlign.center),
                   ],
                 ),
               ),
@@ -541,26 +547,29 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.8, crossAxisSpacing: 10, mainAxisSpacing: 10),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, childAspectRatio: 1.8, crossAxisSpacing: 10, mainAxisSpacing: 10),
           itemCount: heroes.length,
           itemBuilder: (_, i) {
             final h = heroes[i];
-            final isSelected = h['label'] == selected;
+            final isSel = h['label'] == selected;
             return GestureDetector(
               onTap: () => onSelect(h['label'] as String),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.purpleAccent.withOpacity(0.3) : Colors.white10,
+                  color: isSel ? Colors.purpleAccent.withOpacity(0.3) : Colors.white10,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isSelected ? Colors.purpleAccent : Colors.transparent, width: 1.5),
+                  border: Border.all(color: isSel ? Colors.purpleAccent : Colors.transparent, width: 1.5),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(h['emoji'] as String, style: const TextStyle(fontSize: 24)),
                     const SizedBox(height: 4),
-                    Text(h['label'] as String, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontSize: 12), textAlign: TextAlign.center),
+                    Text(h['label'] as String,
+                      style: TextStyle(color: isSel ? Colors.white : Colors.white70, fontSize: 12),
+                      textAlign: TextAlign.center),
                   ],
                 ),
               ),
@@ -594,10 +603,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
           children: [
             const Text('Questions personnalisees', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             TextButton.icon(
-              onPressed: () async {
-                await _showAddCustomQuestion(questions);
-                refresh();
-              },
+              onPressed: () async { await _showAddCustomQuestion(questions); refresh(); },
               icon: const Icon(Icons.add, color: Colors.amberAccent, size: 18),
               label: const Text('Ajouter', style: TextStyle(color: Colors.amberAccent)),
             ),
@@ -607,7 +613,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
         if (questions.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: Text('Aucune question ajoutee\n(le quiz utilisera Gemini AI)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54))),
+            child: Center(child: Text('Aucune question\n(le quiz utilisera Gemini AI)',
+              textAlign: TextAlign.center, style: TextStyle(color: Colors.white54))),
           )
         else
           ...questions.asMap().entries.map((e) => Padding(
@@ -672,36 +679,40 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
     aCtrl.dispose();
   }
 
-  Future<void> _startQuiz(PunishmentLines p, ChildModel child, FamilyProvider fp, int age, String difficulty, String theme, String? hero, List<Map<String, dynamic>> customQuestions) async {
+  Future<void> _startQuiz(PunishmentLines p, ChildModel child, FamilyProvider fp,
+      int age, String difficulty, String theme, String? hero,
+      List<Map<String, dynamic>> customQuestions) async {
     const apiKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
     List<Map<String, dynamic>> questions = [];
     if (customQuestions.isNotEmpty) {
       questions = List.from(customQuestions);
     } else {
       if (apiKey.isEmpty) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cle Gemini manquante')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cle Gemini manquante')));
         return;
       }
       try {
-        final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
         final heroStr = (hero != null && hero != 'Personnalise') ? ' avec des references a $hero' : '';
-        final prompt = 'Genere 5 questions de quiz en francais pour un enfant de $age ans, niveau $difficulty, theme $theme$heroStr. Format JSON: [{"question":"...","options":["A","B","C","D"],"answer":"A"}]';
-        final response = await model.generateContent([Content.text(prompt)]);
-        final text = response.text ?? '';
+        final prompt = 'Genere 5 questions de quiz en francais pour un enfant de $age ans, niveau $difficulty, theme $theme$heroStr. Reponds uniquement avec un tableau JSON: [{"question":"...","options":["A","B","C","D"],"answer":"A"}]';
+        final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey');
+        final body = '{"contents":[{"parts":[{"text":"$prompt"}]}]}';
+        final resp = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: body);
+        final text = resp.body;
         final jsonStart = text.indexOf('[');
         final jsonEnd = text.lastIndexOf(']') + 1;
         if (jsonStart >= 0 && jsonEnd > jsonStart) {
-          final jsonStr = text.substring(jsonStart, jsonEnd);
-          final decoded = (jsonStr.isNotEmpty ? jsonStr : '[]');
-          questions = (decoded != '[]') ? _parseQuestions(decoded) : [];
+          questions = _parseQuestions(text.substring(jsonStart, jsonEnd));
         }
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur Gemini: $e')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur Gemini: $e')));
         return;
       }
     }
     if (questions.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aucune question generee')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucune question generee')));
       return;
     }
     if (mounted) _showQuizDialog(p, child, fp, questions);
@@ -709,22 +720,22 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
 
   List<Map<String, dynamic>> _parseQuestions(String json) {
     try {
-      final List<dynamic> list = (json.startsWith('[')) ? _jsonDecode(json) : [];
-      return list.cast<Map<String, dynamic>>();
+      final items = <Map<String, dynamic>>[];
+      int depth = 0; int start = 0;
+      for (int i = 0; i < json.length; i++) {
+        if (json[i] == '{') { if (depth == 0) start = i; depth++; }
+        else if (json[i] == '}') {
+          depth--;
+          if (depth == 0) {
+            try {
+              final obj = _parseObj(json.substring(start, i + 1));
+              if (obj.isNotEmpty) items.add(obj);
+            } catch (_) {}
+          }
+        }
+      }
+      return items;
     } catch (_) { return []; }
-  }
-
-  List<dynamic> _jsonDecode(String s) {
-    s = s.trim();
-    if (!s.startsWith('[')) return [];
-    s = s.substring(1, s.length - 1).trim();
-    final items = <Map<String, dynamic>>[];
-    int depth = 0; int start = 0;
-    for (int i = 0; i < s.length; i++) {
-      if (s[i] == '{') { if (depth == 0) start = i; depth++; }
-      else if (s[i] == '}') { depth--; if (depth == 0) { try { items.add(_parseObj(s.substring(start, i + 1))); } catch (_) {} } }
-    }
-    return items;
   }
 
   Map<String, dynamic> _parseObj(String s) {
@@ -735,13 +746,13 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
     if (qMatch != null) m['question'] = qMatch.group(1);
     if (aMatch != null) m['answer'] = aMatch.group(1);
     if (opMatch != null) {
-      final opts = RegExp(r'"([^"]*)"').allMatches(opMatch.group(1)!).map((e) => e.group(1)!).toList();
-      m['options'] = opts;
+      m['options'] = RegExp(r'"([^"]*)"').allMatches(opMatch.group(1)!).map((e) => e.group(1)!).toList();
     }
     return m;
   }
 
-  void _showQuizDialog(PunishmentLines p, ChildModel child, FamilyProvider fp, List<Map<String, dynamic>> questions) {
+  void _showQuizDialog(PunishmentLines p, ChildModel child, FamilyProvider fp,
+      List<Map<String, dynamic>> questions) {
     int currentQ = 0;
     int score = 0;
     String? selectedAnswer;
@@ -832,9 +843,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Column(
             children: [
-              Text(score >= total * 0.8 ? '🏆' : score >= total * 0.5 ? '⭐' : '💪', style: const TextStyle(fontSize: 40)),
+              Text(score >= total * 0.8 ? '🏆' : score >= total * 0.5 ? '⭐' : '💪',
+                style: const TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
-              Text('$score / $total bonnes reponses', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+              Text('$score / $total bonnes reponses',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
           content: Column(
@@ -851,8 +864,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    decoration: BoxDecoration(color: Colors.amberAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-                    child: Text('$parentAdjustment', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28)),
+                    decoration: BoxDecoration(
+                      color: Colors.amberAccent.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12)),
+                    child: Text('$parentAdjustment',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28)),
                   ),
                   IconButton(
                     onPressed: () => setResultState(() => parentAdjustment++),
@@ -861,7 +877,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(parentAdjustment > 0 ? '+$parentAdjustment ligne(s) d immunite' : 'Aucune recompense',
+              Text(
+                parentAdjustment > 0 ? '+$parentAdjustment ligne(s) d immunite' : 'Aucune recompense',
                 style: TextStyle(color: parentAdjustment > 0 ? Colors.amberAccent : Colors.white38, fontSize: 13)),
             ],
           ),
@@ -873,7 +890,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.amberAccent, foregroundColor: Colors.black),
               icon: const Icon(Icons.shield, size: 16),
-              label: Text(parentAdjustment > 0 ? 'Accorder +$parentAdjustment immunite(s)' : 'Fermer sans recompense'),
+              label: Text(parentAdjustment > 0
+                ? 'Accorder +$parentAdjustment immunite(s)'
+                : 'Fermer sans recompense'),
               onPressed: () async {
                 Navigator.pop(dialogContext);
                 if (parentAdjustment > 0) {

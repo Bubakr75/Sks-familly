@@ -1008,7 +1008,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Navigator.push(
                             context,
                             SlidePageRoute(
-                                page: const ImmunityLinesScreen()),
+                                page: ImmunityLinesScreen()),
                           );
                         });
                       },
@@ -1033,7 +1033,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        DoorPageRoute(page: const TribunalScreen()),
+                        DoorPageRoute(page: TribunalScreen()),
                       );
                     },
                   ),
