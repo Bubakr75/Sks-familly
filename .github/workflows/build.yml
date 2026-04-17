@@ -95,10 +95,10 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import os
-          key = os.environ['GEMINI_KEY']
+          key = os.environ['GEMINI_KEY'].strip()
           with open('lib/services/gemini_service.dart', 'r') as f:
               content = f.read()
-          content = content.replace("REMPLACE_PAR_TA_CLE", key)
+          content = content.replace('REMPLACE_PAR_TA_CLE', key)
           with open('lib/services/gemini_service.dart', 'w') as f:
               f.write(content)
           print("Cle injectee avec succes")
@@ -128,3 +128,5 @@ jobs:
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
