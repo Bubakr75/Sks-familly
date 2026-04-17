@@ -77,7 +77,6 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
     required int age,
     required String difficulty,
   }) async {
-    String difficulty;
     int nbChoices;
 
     if (age <= 6) {
