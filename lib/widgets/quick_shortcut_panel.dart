@@ -1,4 +1,5 @@
 // lib/widgets/quick_shortcut_panel.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -9,12 +10,8 @@ import '../utils/pin_guard.dart';
 import 'glass_card.dart';
 import 'tv_focus_wrapper.dart';
 
-// ══════════════════════════════════════════════════════════════
-// BOUTON FLOTTANT FAB MULTI-ACTIONS
-// ══════════════════════════════════════════════════════════════
 class QuickShortcutFab extends StatefulWidget {
   const QuickShortcutFab({super.key});
-
   @override
   State<QuickShortcutFab> createState() => _QuickShortcutFabState();
 }
@@ -72,10 +69,7 @@ class _QuickShortcutFabState extends State<QuickShortcutFab>
           builder: (context, child) {
             return Opacity(
               opacity: _fadeAnim.value,
-              child: IgnorePointer(
-                ignoring: !_isOpen,
-                child: child,
-              ),
+              child: IgnorePointer(ignoring: !_isOpen, child: child),
             );
           },
           child: _QuickPanel(onClose: _close),
@@ -129,9 +123,6 @@ class _QuickShortcutFabState extends State<QuickShortcutFab>
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// PANNEAU DE RACCOURCIS
-// ══════════════════════════════════════════════════════════════
 class _QuickPanel extends StatelessWidget {
   final VoidCallback onClose;
   const _QuickPanel({required this.onClose});
@@ -141,7 +132,6 @@ class _QuickPanel extends StatelessWidget {
     final fp = context.watch<FamilyProvider>();
     final pin = context.watch<PinProvider>();
     final isParent = pin.canPerformParentAction();
-
     return Container(
       width: 260,
       padding: const EdgeInsets.all(12),
@@ -151,10 +141,9 @@ class _QuickPanel extends StatelessWidget {
         border: Border.all(color: Colors.cyanAccent.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 8)),
         ],
       ),
       child: Column(
@@ -213,9 +202,8 @@ class _QuickPanel extends StatelessWidget {
             onTap: () {
               onClose();
               if (!isParent) {
-                PinGuard.guardAction(context, () {
-                  _showQuickPunishment(context, fp);
-                });
+                PinGuard.guardAction(
+                    context, () => _showQuickPunishment(context, fp));
               } else {
                 _showQuickPunishment(context, fp);
               }
@@ -229,9 +217,8 @@ class _QuickPanel extends StatelessWidget {
             onTap: () {
               onClose();
               if (!isParent) {
-                PinGuard.guardAction(context, () {
-                  _showQuickImmunity(context, fp);
-                });
+                PinGuard.guardAction(
+                    context, () => _showQuickImmunity(context, fp));
               } else {
                 _showQuickImmunity(context, fp);
               }
@@ -264,9 +251,6 @@ class _QuickPanel extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// TUILE DE RACCOURCI
-// ══════════════════════════════════════════════════════════════
 class _ShortcutTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -293,9 +277,8 @@ class _ShortcutTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10)),
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 10),
@@ -314,17 +297,12 @@ class _ShortcutTile extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded,
-              color: Colors.white24, size: 16),
+          Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 16),
         ]),
       ),
     );
   }
 }
-
-// ══════════════════════════════════════════════════════════════
-// FONCTIONS RACCOURCIS
-// ══════════════════════════════════════════════════════════════
 
 Widget _childSelector(
   List<ChildModel> children,
@@ -366,7 +344,7 @@ Widget _childSelector(
     ),
   );
 }
-// ─── BONUS RAPIDE ────────────────────────────────────────────
+
 void _showQuickBonus(BuildContext context, FamilyProvider fp,
     {required bool isParent}) {
   if (fp.children.isEmpty) return;
@@ -383,7 +361,6 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
   String selectedId = fp.children.first.id;
   (String, int)? selectedPreset;
   int customPoints = 5;
-
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -431,15 +408,13 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
                                   ? Colors.greenAccent
                                   : Colors.white24),
                         ),
-                        child: Text(
-                          '${p.$1} +${p.$2}pts',
-                          style: TextStyle(
-                              color: isSel
-                                  ? Colors.greenAccent
-                                  : Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600),
-                        ),
+                        child: Text('${p.$1} +${p.$2}pts',
+                            style: TextStyle(
+                                color: isSel
+                                    ? Colors.greenAccent
+                                    : Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
                       ),
                     );
                   }).toList(),
@@ -485,7 +460,6 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
   );
 }
 
-// ─── PÉNALITÉ RAPIDE ─────────────────────────────────────────
 void _showQuickPenalty(BuildContext context, FamilyProvider fp,
     {required bool isParent}) {
   if (fp.children.isEmpty) return;
@@ -502,7 +476,6 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
   String selectedId = fp.children.first.id;
   (String, int)? selectedPreset;
   int customPoints = 3;
-
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -550,15 +523,13 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                                   ? Colors.redAccent
                                   : Colors.white24),
                         ),
-                        child: Text(
-                          '${p.$1} -${p.$2}pts',
-                          style: TextStyle(
-                              color: isSel
-                                  ? Colors.redAccent
-                                  : Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600),
-                        ),
+                        child: Text('${p.$1} -${p.$2}pts',
+                            style: TextStyle(
+                                color: isSel
+                                    ? Colors.redAccent
+                                    : Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
                       ),
                     );
                   }).toList(),
@@ -604,7 +575,6 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
   );
 }
 
-// ─── NOTE DU JOUR ────────────────────────────────────────────
 void _showQuickDayNote(BuildContext context, FamilyProvider fp,
     {required bool isParent}) {
   if (fp.children.isEmpty) return;
@@ -621,7 +591,6 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
   int noteValue = 14;
   const maxValue = 20;
   DateTime noteDate = DateTime.now();
-
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -669,7 +638,8 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                       color: Colors.white.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: Colors.purpleAccent.withOpacity(0.4)),
+                          color:
+                              Colors.purpleAccent.withOpacity(0.4)),
                     ),
                     child: Row(children: [
                       const Icon(Icons.calendar_today_rounded,
@@ -698,7 +668,8 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                   children: criteria.map((c) {
                     final isSel = selectedCriteria == c;
                     return GestureDetector(
-                      onTap: () => setS(() => selectedCriteria = c),
+                      onTap: () =>
+                          setS(() => selectedCriteria = c),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
@@ -738,21 +709,16 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                           color: Colors.white54, size: 28),
                     ),
                     const SizedBox(width: 8),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      child: Text(
-                        '$noteValue / $maxValue',
+                    Text('$noteValue / $maxValue',
                         style: TextStyle(
-                          color: color,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                            color: color,
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: () {
-                        if (noteValue < maxValue) setS(() => noteValue++);
+                        if (noteValue < maxValue)
+                          setS(() => noteValue++);
                       },
                       icon: const Icon(Icons.add_circle_outline,
                           color: Colors.white54, size: 28),
@@ -772,7 +738,8 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [5, 10, 12, 14, 16, 18, 20].map((v) {
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 3),
                       child: GestureDetector(
                         onTap: () => setS(() => noteValue = v),
                         child: Container(
@@ -788,15 +755,13 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                                     ? color
                                     : Colors.white12),
                           ),
-                          child: Text(
-                            '$v',
-                            style: TextStyle(
-                                color: noteValue == v
-                                    ? color
-                                    : Colors.white38,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold),
-                          ),
+                          child: Text('$v',
+                              style: TextStyle(
+                                  color: noteValue == v
+                                      ? color
+                                      : Colors.white38,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ),
                     );
@@ -836,7 +801,6 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
   );
 }
 
-// ─── PUNITION RAPIDE ─────────────────────────────────────────
 void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
   if (fp.children.isEmpty) return;
   String selectedId = fp.children.first.id;
@@ -850,7 +814,6 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
     'Mensonge',
     'Manque de respect',
   ];
-
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -882,7 +845,8 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                   children: descPresets.map((d) {
                     final isSel = desc == d;
                     return GestureDetector(
-                      onTap: () => setS(() => desc = isSel ? '' : d),
+                      onTap: () =>
+                          setS(() => desc = isSel ? '' : d),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
@@ -936,7 +900,8 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                   children: [10, 20, 30, 50, 100].map((n) {
                     final isSel = nbLines == n;
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 4),
                       child: GestureDetector(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
@@ -953,15 +918,13 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                                     ? Colors.orangeAccent
                                     : Colors.white24),
                           ),
-                          child: Text(
-                            '$n',
-                            style: TextStyle(
-                                color: isSel
-                                    ? Colors.orangeAccent
-                                    : Colors.white54,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14),
-                          ),
+                          child: Text('$n',
+                              style: TextStyle(
+                                  color: isSel
+                                      ? Colors.orangeAccent
+                                      : Colors.white54,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
                         ),
                       ),
                     );
@@ -976,12 +939,10 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                     final finalDesc =
                         desc.isNotEmpty ? desc : descCtrl.text.trim();
                     if (finalDesc.isEmpty) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(
-                          content: Text('Indiquez un motif'),
-                          backgroundColor: Colors.orangeAccent,
-                        ),
-                      );
+                      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                        content: Text('Indiquez un motif'),
+                        backgroundColor: Colors.orangeAccent,
+                      ));
                       return;
                     }
                     final child = fp.children
@@ -989,10 +950,9 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                     fp.addPunishment(selectedId, finalDesc, nbLines);
                     Navigator.pop(ctx);
                     _showConfirmSnack(
-                      context,
-                      '📏 $nbLines lignes ajoutées à ${child.name}',
-                      Colors.orange,
-                    );
+                        context,
+                        '📏 $nbLines lignes ajoutées à ${child.name}',
+                        Colors.orange);
                   },
                 ),
                 const SizedBox(height: 24),
@@ -1005,7 +965,6 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
   );
 }
 
-// ─── IMMUNITÉ RAPIDE ─────────────────────────────────────────
 void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
   if (fp.children.isEmpty) return;
   String selectedId = fp.children.first.id;
@@ -1018,7 +977,6 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
     'Semaine parfaite 🌟',
     'Surprise parent 🎁',
   ];
-
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -1076,7 +1034,7 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                   }).toList(),
                 ),
                 const SizedBox(height: 16),
-                const Text("Nombre de lignes d'immunité",
+                const Text('Nombre de lignes d\'immunité',
                     style: _labelStyle),
                 const SizedBox(height: 8),
                 Row(
@@ -1084,7 +1042,8 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                   children: [5, 10, 20, 30, 50].map((n) {
                     final isSel = nbLines == n;
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 4),
                       child: GestureDetector(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
@@ -1101,15 +1060,13 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                                     ? Colors.amberAccent
                                     : Colors.white24),
                           ),
-                          child: Text(
-                            '$n',
-                            style: TextStyle(
-                                color: isSel
-                                    ? Colors.amberAccent
-                                    : Colors.white54,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14),
-                          ),
+                          child: Text('$n',
+                              style: TextStyle(
+                                  color: isSel
+                                      ? Colors.amberAccent
+                                      : Colors.white54,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
                         ),
                       ),
                     );
@@ -1117,19 +1074,19 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                 ),
                 const SizedBox(height: 24),
                 _actionButton(
-                  label: "Ajouter l'immunité",
+                  label: 'Ajouter l\'immunité',
                   color: Colors.amber.shade700,
                   icon: Icons.shield,
                   onTap: () {
                     final child = fp.children
                         .firstWhere((c) => c.id == selectedId);
+                    // ✅ CORRIGÉ : reason avant nbLines
                     fp.addImmunity(selectedId, reason, nbLines);
                     Navigator.pop(ctx);
                     _showConfirmSnack(
-                      context,
-                      "🛡️ $nbLines lignes d'immunité à ${child.name}",
-                      Colors.amber,
-                    );
+                        context,
+                        '🛡️ $nbLines lignes d\'immunité à ${child.name}',
+                        Colors.amber);
                   },
                 ),
                 const SizedBox(height: 24),
@@ -1141,11 +1098,10 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
     },
   );
 }
-// ─── BONUS TEMPS ÉCRAN RAPIDE ────────────────────────────────
+
 void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
   if (fp.children.isEmpty) return;
   String selectedId = fp.children.first.id;
-
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -1160,7 +1116,8 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
               children: [
                 _sheetHandle(),
                 const SizedBox(height: 16),
-                _sheetTitle("⏱️ Bonus Temps d'Écran", Colors.lightBlueAccent),
+                _sheetTitle(
+                    '⏱️ Bonus Temps d\'Écran', Colors.lightBlueAccent),
                 const SizedBox(height: 16),
                 const Text('Enfant', style: _labelStyle),
                 const SizedBox(height: 8),
@@ -1168,7 +1125,8 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                     (id) => setS(() => selectedId = id)),
                 const SizedBox(height: 24),
                 const Text('Durée à ajouter',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    style:
+                        TextStyle(color: Colors.white70, fontSize: 14)),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1177,38 +1135,36 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                       onTap: () {
                         final child = fp.children
                             .firstWhere((c) => c.id == selectedId);
-                        // ✅ CORRECTION : 3 arguments requis
-                        fp.addScreenTimeBonus(selectedId, min, 'Bonus rapide');
+                        fp.addScreenTimeBonus(selectedId, min);
                         Navigator.pop(ctx);
                         _showConfirmSnack(
-                          context,
-                          '⏱️ +$min min écran pour ${child.name}',
-                          Colors.lightBlue,
-                        );
+                            context,
+                            '⏱️ +$min min écran pour ${child.name}',
+                            Colors.lightBlue);
                       },
                       child: Container(
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.lightBlueAccent.withOpacity(0.12),
+                          color:
+                              Colors.lightBlueAccent.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                              color:
-                                  Colors.lightBlueAccent.withOpacity(0.4)),
+                              color: Colors.lightBlueAccent
+                                  .withOpacity(0.4)),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              '+$min',
-                              style: const TextStyle(
-                                  color: Colors.lightBlueAccent,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14),
-                            ),
+                            Text('+$min',
+                                style: const TextStyle(
+                                    color: Colors.lightBlueAccent,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14)),
                             const Text('min',
                                 style: TextStyle(
-                                    color: Colors.white38, fontSize: 10)),
+                                    color: Colors.white38,
+                                    fontSize: 10)),
                           ],
                         ),
                       ),
@@ -1225,10 +1181,8 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
   );
 }
 
-// ─── BILAN DU JOUR ───────────────────────────────────────────
 void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
   final today = DateTime.now();
-
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -1249,9 +1203,8 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
               const SizedBox(height: 16),
               if (fp.children.isEmpty)
                 const Center(
-                  child: Text('Aucun enfant enregistré',
-                      style: TextStyle(color: Colors.white38)),
-                )
+                    child: Text('Aucun enfant enregistré',
+                        style: TextStyle(color: Colors.white38)))
               else
                 ...fp.children.map((child) {
                   final todayEntries =
@@ -1276,7 +1229,7 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                         h.category == 'school_note';
                   }).toList();
                   final avgNote = notesToday.isNotEmpty
-                      ? notesToday.fold<double>(0.0, (s, h) {
+                      ? notesToday.fold<double>(0, (s, h) {
                           final match =
                               RegExp(r'(\d+)/(\d+)').firstMatch(h.reason);
                           if (match != null) {
@@ -1293,7 +1246,6 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                   final color = pointsToday >= 0
                       ? Colors.greenAccent
                       : Colors.redAccent;
-
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: GlassCard(
@@ -1317,12 +1269,11 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                '${pointsToday >= 0 ? '+' : ''}$pointsToday pts',
-                                style: TextStyle(
-                                    color: color,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13),
-                              ),
+                                  '${pointsToday >= 0 ? '+' : ''}$pointsToday pts',
+                                  style: TextStyle(
+                                      color: color,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13)),
                             ),
                           ]),
                           const SizedBox(height: 8),
@@ -1355,13 +1306,13 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                                             : Colors.redAccent),
                                     const SizedBox(width: 6),
                                     Expanded(
-                                      child: Text(e.reason,
-                                          style: const TextStyle(
-                                              color: Colors.white60,
-                                              fontSize: 12),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
-                                    ),
+                                        child: Text(e.reason,
+                                            style: const TextStyle(
+                                                color: Colors.white60,
+                                                fontSize: 12),
+                                            maxLines: 1,
+                                            overflow:
+                                                TextOverflow.ellipsis)),
                                     Text(
                                         '${e.isBonus ? '+' : ''}${e.points}',
                                         style: TextStyle(
@@ -1374,13 +1325,13 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                                 )),
                             if (todayEntries.length > 3)
                               Text(
-                                '... et ${todayEntries.length - 3} autre(s)',
-                                style: const TextStyle(
-                                    color: Colors.white38, fontSize: 11),
-                              ),
+                                  '... et ${todayEntries.length - 3} autre(s)',
+                                  style: const TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 11)),
                           ] else ...[
                             const SizedBox(height: 8),
-                            const Text("Aucune activité aujourd'hui",
+                            const Text('Aucune activité aujourd\'hui',
                                 style: TextStyle(
                                     color: Colors.white38, fontSize: 12)),
                           ],
@@ -1397,10 +1348,6 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
     },
   );
 }
-
-// ══════════════════════════════════════════════════════════════
-// WIDGETS HELPERS INTERNES
-// ══════════════════════════════════════════════════════════════
 
 Widget _statChip(String label, Color color) {
   return Container(
@@ -1461,12 +1408,13 @@ Widget _actionButton({
       onPressed: onTap,
       icon: Icon(icon),
       label: Text(label,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          style:
+              const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
   );
@@ -1476,12 +1424,8 @@ class _PointStepper extends StatelessWidget {
   final int value;
   final Color color;
   final void Function(int) onChanged;
-
-  const _PointStepper({
-    required this.value,
-    required this.color,
-    required this.onChanged,
-  });
+  const _PointStepper(
+      {required this.value, required this.color, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -1501,21 +1445,20 @@ class _PointStepper extends StatelessWidget {
                     border: Border.all(color: Colors.white24),
                   ),
                   child: Center(
-                    child: Text('-$d',
-                        style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontWeight: FontWeight.bold)),
-                  ),
+                      child: Text('-$d',
+                          style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold))),
                 ),
               ),
             )),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            '$value',
-            style: TextStyle(
-                color: color, fontSize: 30, fontWeight: FontWeight.bold),
-          ),
+          child: Text('$value',
+              style: TextStyle(
+                  color: color,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold)),
         ),
         ...[1, 2, 5].map((d) => Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1530,10 +1473,10 @@ class _PointStepper extends StatelessWidget {
                     border: Border.all(color: Colors.white24),
                   ),
                   child: Center(
-                    child: Text('+$d',
-                        style: TextStyle(
-                            color: color, fontWeight: FontWeight.bold)),
-                  ),
+                      child: Text('+$d',
+                          style: TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.bold))),
                 ),
               ),
             )),
@@ -1543,17 +1486,14 @@ class _PointStepper extends StatelessWidget {
 }
 
 void _showConfirmSnack(BuildContext context, String msg, Color color) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content:
-          Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      duration: const Duration(seconds: 3),
-    ),
-  );
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content:
+        Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
+    backgroundColor: color,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    duration: const Duration(seconds: 3),
+  ));
 }
 
 String _formatDate(DateTime d) =>
