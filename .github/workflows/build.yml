@@ -1,4 +1,4 @@
-﻿name: Build Flutter APK
+name: Build Flutter APK
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -16,6 +17,18 @@ jobs:
         with:
           flutter-version: '3.41.4'
           channel: 'stable'
+          cache: true  # ✅ Cache Flutter lui-même
+
+      # ✅ Cache Gradle — évite le téléchargement à chaque build
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
       - name: Backup custom files
         run: |
@@ -31,6 +44,13 @@ jobs:
           flutter create --platforms android --org com.familyscore --project-name family_score .
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
+
+      # ✅ Forcer Gradle wrapper sur une version stable et déjà cachée
+      - name: Pin Gradle version to 8.11.1 (stable)
+        run: |
+          sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.11.1-all.zip|g' android/gradle/wrapper/gradle-wrapper.properties
+          sed -i 's|gradle-[0-9.]*-bin.zip|gradle-8.11.1-bin.zip|g' android/gradle/wrapper/gradle-wrapper.properties
+          cat android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Decode keystore from secret
         run: |
@@ -58,12 +78,15 @@ jobs:
           echo "keyPassword=SKS2026" >> android/key.properties
           echo "keyAlias=release" >> android/key.properties
           echo "storeFile=../release-key.jks" >> android/key.properties
+
           cat > /tmp/fix_signing.py << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
               content = f.read()
+
           key_properties_code = """
           import java.util.Properties
           import java.io.FileInputStream
+
           val keystoreProperties = Properties()
           val keystorePropertiesFile = rootProject.file("key.properties")
           if (keystorePropertiesFile.exists()) {
@@ -71,6 +94,7 @@ jobs:
           }
           """
           content = content.replace('android {', key_properties_code + '\nandroid {')
+
           signing_config = """
               signingConfigs {
                   create("release") {
@@ -82,7 +106,11 @@ jobs:
               }
           """
           content = content.replace('    buildTypes {', signing_config + '\n    buildTypes {')
-          content = content.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("release")')
+          content = content.replace(
+              'signingConfig = signingConfigs.getByName("debug")',
+              'signingConfig = signingConfigs.getByName("release")'
+          )
+
           with open('android/app/build.gradle.kts', 'w') as f:
               f.write(content)
           print("Signing config applied successfully")
@@ -90,19 +118,10 @@ jobs:
           python3 /tmp/fix_signing.py
 
       - name: Inject and verify Gemini API Key
-        env:
-          GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python3 << 'PYEOF'
-          import os
-          key = os.environ['GEMINI_KEY'].strip()
-          with open('lib/services/gemini_service.dart', 'r') as f:
-              content = f.read()
-          content = content.replace('REMPLACE_PAR_TA_CLE', key)
-          with open('lib/services/gemini_service.dart', 'w') as f:
-              f.write(content)
-          print("Cle injectee avec succes")
-          PYEOF
+          sed -i "s|String.fromEnvironment('GEMINI_API_KEY')|'${{ secrets.GEMINI_API_KEY }}'|g" lib/services/gemini_service.dart
+          echo "Injection terminée"
+          grep "_apiKey" lib/services/gemini_service.dart | head -1
 
       - name: Get dependencies
         run: flutter pub get
@@ -110,8 +129,20 @@ jobs:
       - name: Generate app icons
         run: dart run flutter_launcher_icons
 
+      # ✅ Retry automatique si le build échoue (timeout réseau)
       - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: flutter build apk --release --no-tree-shake-icons
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: family-score-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -122,5 +153,4 @@ jobs:
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
+          
