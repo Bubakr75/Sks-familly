@@ -97,10 +97,9 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          retention-days: 3
-        with:
           name: family-score-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 3
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
