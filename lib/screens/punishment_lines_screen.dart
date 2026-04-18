@@ -705,7 +705,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen> {
         questions = await GeminiService.generateQuizQuestions(
           theme: themeWithHero,
           age: age,
-          difficulty: difficulty,
+  
         );
       } catch (e) {
         if (mounted) Navigator.pop(context);
