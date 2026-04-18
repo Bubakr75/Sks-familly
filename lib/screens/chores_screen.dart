@@ -6,6 +6,7 @@ import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import 'chores_screen.dart';
 
 // ═══════════════════════════════════════════════════════════
 // PAINTER : Roue avec segments colorés
