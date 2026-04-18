@@ -665,4 +665,602 @@ class _BalanceScreenState extends State<BalanceScreen>
                 children: [
                   _sheetHandle(),
                   const SizedBox(height: 16),
-                  const
+                  const Center(
+                    child: Text('⚔️ Utiliser une immunité',
+                        style: TextStyle(
+                            color: Colors.tealAccent,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('Punition cible',
+                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  ...punishments.map((p) {
+                    final isSel = selPunishment?.id == p.id;
+                    final remaining = p.totalLines - p.completedLines;
+                    return GestureDetector(
+                      onTap: () => setS(() => selPunishment = p),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isSel
+                              ? Colors.redAccent.withOpacity(0.15)
+                              : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color:
+                                  isSel ? Colors.redAccent : Colors.white24),
+                        ),
+                        child: Row(children: [
+                          const Icon(Icons.menu_book_rounded,
+                              color: Colors.redAccent, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(p.text,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
+                                Text(
+                                    '$remaining lignes restantes / ${p.totalLines}',
+                                    style: const TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          if (isSel)
+                            const Icon(Icons.check_circle,
+                                color: Colors.redAccent, size: 18),
+                        ]),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                  const Text('Immunité à utiliser',
+                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  ...immunities.map((im) {
+                    final isSel = selImmunity?.id == im.id;
+                    return GestureDetector(
+                      onTap: () => setS(() => selImmunity = im),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isSel
+                              ? Colors.amberAccent.withOpacity(0.15)
+                              : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: isSel
+                                  ? Colors.amberAccent
+                                  : Colors.white24),
+                        ),
+                        child: Row(children: [
+                          const Icon(Icons.shield_rounded,
+                              color: Colors.amberAccent, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(im.reason,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
+                                Text('${im.availableLines} lignes disponibles',
+                                    style: const TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          if (isSel)
+                            const Icon(Icons.check_circle,
+                                color: Colors.amberAccent, size: 18),
+                        ]),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                  const Text('Lignes à effacer',
+                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          if (linesToUse > 1) setS(() => linesToUse--);
+                        },
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: Colors.white54),
+                      ),
+                      Text('$linesToUse',
+                          style: const TextStyle(
+                              color: Colors.tealAccent,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold)),
+                      IconButton(
+                        onPressed: () {
+                          if (linesToUse < maxLines) setS(() => linesToUse++);
+                        },
+                        icon: const Icon(Icons.add_circle_outline,
+                            color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                  if (maxLines > 0)
+                    Slider(
+                      value: linesToUse.clamp(1, maxLines).toDouble(),
+                      min: 1,
+                      max: maxLines.toDouble(),
+                      divisions: maxLines > 1 ? maxLines - 1 : 1,
+                      activeColor: Colors.tealAccent,
+                      inactiveColor: Colors.white12,
+                      onChanged: (v) => setS(() => linesToUse = v.round()),
+                    ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: (selPunishment != null &&
+                              selImmunity != null &&
+                              maxLines > 0)
+                          ? () {
+                              fp.useImmunityOnPunishment(selImmunity!.id,
+                                  selPunishment!.id, linesToUse);
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(
+                                content: Text(
+                                    '⚔️ $linesToUse lignes effacées avec l\'immunité'),
+                                backgroundColor: Colors.teal.shade700,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ));
+                            }
+                          : null,
+                      icon: const Icon(Icons.shield_rounded),
+                      label: const Text('Appliquer l\'immunité',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal.shade700,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // BUILD PRINCIPAL
+  // ─────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<FamilyProvider>(
+      builder: (context, fp, _) {
+        final children = fp.children;
+        final allSelected =
+            children.isNotEmpty && _selectedIds.length == children.length;
+
+        return AnimatedBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: const Text('⚖️ Punitions & Immunités',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+              actions: [
+                if (children.isNotEmpty)
+                  TextButton(
+                    onPressed: () => _selectAll(children),
+                    child: Text(
+                      allSelected ? 'Désélect.' : 'Tout',
+                      style: const TextStyle(color: Colors.cyanAccent),
+                    ),
+                  ),
+              ],
+            ),
+            body: children.isEmpty
+                ? const Center(
+                    child: Text('Aucun enfant enregistré',
+                        style: TextStyle(color: Colors.white38)))
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                    itemCount: children.length,
+                    itemBuilder: (_, i) =>
+                        _buildChildCard(context, fp, children[i]),
+                  ),
+            bottomNavigationBar:
+                _selectedIds.isEmpty ? null : _buildActionBar(context, fp),
+          ),
+        );
+      },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // BARRE D'ACTION MULTI-SÉLECTION
+  // ─────────────────────────────────────────────────────────
+  Widget _buildActionBar(BuildContext context, FamilyProvider fp) {
+    final count = _selectedIds.length;
+    return ScaleTransition(
+      scale: _fabScale,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D1B2E).withOpacity(0.97),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border(
+              top: BorderSide(color: Colors.cyanAccent.withOpacity(0.2))),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 16,
+                offset: const Offset(0, -4)),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$count enfant${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _showAddPunishmentDialog(context, fp),
+                      icon: const Icon(Icons.menu_book_rounded, size: 18),
+                      label: const Text('Punir',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _showAddImmunityDialog(context, fp),
+                      icon: const Icon(Icons.shield_rounded, size: 18),
+                      label: const Text('Immunité',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedIds.clear();
+                        _fabCtrl.reverse();
+                      });
+                    },
+                    icon: const Icon(Icons.close, color: Colors.white38),
+                    tooltip: 'Annuler la sélection',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // CARD ENFANT
+  // ─────────────────────────────────────────────────────────
+  Widget _buildChildCard(
+      BuildContext context, FamilyProvider fp, ChildModel child) {
+    final isSelected = _selectedIds.contains(child.id);
+    final punishments = fp.punishments
+        .where((p) => p.childId == child.id && !p.isCompleted)
+        .toList();
+    final allPunishments =
+        fp.punishments.where((p) => p.childId == child.id).toList();
+    final immunities = fp.getImmunitiesForChild(child.id);
+    final usableImmunity = fp.getTotalAvailableImmunity(child.id);
+    final completedCount =
+        allPunishments.where((p) => p.isCompleted).length;
+
+    return GestureDetector(
+      onTap: () => _toggleSelect(child.id),
+      onLongPress: () => _toggleSelect(child.id),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected
+                ? Colors.cyanAccent
+                : Colors.white.withOpacity(0.08),
+            width: isSelected ? 2 : 1,
+          ),
+          color: isSelected
+              ? Colors.cyanAccent.withOpacity(0.07)
+              : Colors.white.withOpacity(0.04),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                      color: Colors.cyanAccent.withOpacity(0.15),
+                      blurRadius: 12,
+                      spreadRadius: 1)
+                ]
+              : [],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // En-tête
+              Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 24,
+                    height: 24,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected
+                          ? Colors.cyanAccent
+                          : Colors.transparent,
+                      border: Border.all(
+                          color: isSelected
+                              ? Colors.cyanAccent
+                              : Colors.white38,
+                          width: 2),
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check,
+                            color: Colors.black, size: 14)
+                        : null,
+                  ),
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: Colors.cyanAccent.withOpacity(0.2),
+                    backgroundImage: child.hasPhoto
+                        ? MemoryImage(base64Decode(child.photoBase64!))
+                        : null,
+                    child: !child.hasPhoto
+                        ? Text(
+                            child.avatar.isNotEmpty
+                                ? child.avatar
+                                : child.name[0].toUpperCase(),
+                            style: const TextStyle(fontSize: 18))
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(child.name,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold)),
+                        Text(
+                            '${child.points} pts · Niv. ${child.currentLevelNumber}',
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  if (usableImmunity > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.amberAccent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: Colors.amberAccent.withOpacity(0.4)),
+                      ),
+                      child: Text('🛡️ $usableImmunity',
+                          style: const TextStyle(
+                              color: Colors.amberAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Stats
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _statBadge(
+                      '📏 ${punishments.length} en cours',
+                      punishments.isEmpty
+                          ? Colors.white24
+                          : Colors.redAccent),
+                  _statBadge('✅ $completedCount terminées',
+                      Colors.greenAccent.withOpacity(0.5)),
+                  _statBadge(
+                      '🛡️ ${immunities.length} immunités',
+                      immunities.isEmpty
+                          ? Colors.white24
+                          : Colors.amberAccent),
+                ],
+              ),
+              // Punitions actives
+              if (punishments.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                ...punishments.take(3).map((p) {
+                  final progress = p.completedLines / p.totalLines;
+                  final remaining = p.totalLines - p.completedLines;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text(p.text,
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          Text('$remaining/${p.totalLines}',
+                              style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                        ]),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 5,
+                            backgroundColor: Colors.white.withOpacity(0.08),
+                            valueColor: AlwaysStoppedAnimation(
+                              progress >= 0.75
+                                  ? Colors.greenAccent
+                                  : progress >= 0.4
+                                      ? Colors.orangeAccent
+                                      : Colors.redAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                if (punishments.length > 3)
+                  Text(
+                      '… et ${punishments.length - 3} autre(s) punition(s)',
+                      style: const TextStyle(
+                          color: Colors.white38, fontSize: 11)),
+              ],
+              // Bouton utiliser immunité
+              if (punishments.isNotEmpty &&
+                  fp.getUsableImmunitiesForChild(child.id).isNotEmpty) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        _showUseImmunityDialog(context, fp, child.id),
+                    icon: const Icon(Icons.shield_rounded,
+                        color: Colors.tealAccent, size: 16),
+                    label: const Text('Utiliser une immunité',
+                        style: TextStyle(color: Colors.tealAccent, fontSize: 13)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                          color: Colors.tealAccent, width: 1),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────────────────
+  Widget _sheetHandle() {
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        decoration: BoxDecoration(
+            color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+      ),
+    );
+  }
+
+  Widget _miniAvatar(ChildModel child) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: Colors.cyanAccent.withOpacity(0.2),
+          backgroundImage: child.hasPhoto
+              ? MemoryImage(base64Decode(child.photoBase64!))
+              : null,
+          child: !child.hasPhoto
+              ? Text(
+                  child.avatar.isNotEmpty
+                      ? child.avatar
+                      : child.name[0].toUpperCase(),
+                  style: const TextStyle(fontSize: 12))
+              : null,
+        ),
+        const SizedBox(height: 2),
+        Text(child.name,
+            style: const TextStyle(color: Colors.white60, fontSize: 10)),
+      ],
+    );
+  }
+
+  Widget _statBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  String _fmtDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+}
