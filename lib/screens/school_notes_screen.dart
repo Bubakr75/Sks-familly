@@ -33,11 +33,11 @@ class _SchoolNotebookOpenState extends State<_SchoolNotebookOpen>
       ..forward().then((_) {
         if (mounted) widget.onComplete();
       });
-    _coverRotation = Tween<double>(begin: 0.0, end: -pi * 0.45).animate(
+    _coverRotation = Tween(begin: 0.0, end: -pi * 0.45).animate(
         CurvedAnimation(
             parent: _ctrl,
             curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack)));
-    _pagesFade = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+    _pagesFade = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(
         parent: _ctrl,
         curve: const Interval(0.3, 0.7, curve: Curves.easeIn)));
   }
@@ -96,19 +96,18 @@ class _SchoolNotebookOpenState extends State<_SchoolNotebookOpen>
                             offset: const Offset(3, 3))
                       ]),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.psychology_rounded,
-                          color: Colors.white70, size: 48),
-                      const SizedBox(height: 8),
-                      Text('COMPORTEMENT',
-                          style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2)),
-                    ],
-                  ),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.psychology_rounded,
+                            color: Colors.white70, size: 48),
+                        const SizedBox(height: 8),
+                        Text('COMPORTEMENT',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2)),
+                      ]),
                 ),
               ),
             ),
@@ -292,9 +291,11 @@ class _AiEvalResult {
 // ═══════════════════════════════════════════════════════════
 class _AiQuestionnaireSheet extends StatefulWidget {
   final String childName;
+  final String childId;
   final Function(_AiEvalResult) onComplete;
   const _AiQuestionnaireSheet({
     required this.childName,
+    required this.childId,
     required this.onComplete,
   });
   @override
@@ -308,7 +309,6 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
   int _parentNote = 10;
   bool _loading = false;
 
-  // ── Contextes disponibles ──────────────────────────────
   static const _contexts = [
     {'emoji': '🏫', 'label': 'Jour d\'école', 'value': 'jour_ecole'},
     {'emoji': '🏠', 'label': 'Mercredi / Samedi', 'value': 'demi_journee'},
@@ -317,16 +317,10 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     {'emoji': '🎉', 'label': 'Jour spécial / Fête', 'value': 'special'},
   ];
 
-  // ══════════════════════════════════════════════════════════════════════
-  // QUESTIONS PAR CONTEXTE — version enrichie comportement familial
-  // ══════════════════════════════════════════════════════════════════════
   List<Map<String, dynamic>> get _questions {
     switch (_context) {
-
-      // ──────────────────────────────────────────────────
       case 'jour_ecole':
         return [
-          // 1. Devoirs
           {
             'question': '📚 Avait-il des devoirs ce soir ?',
             'key': 'devoirs_existence',
@@ -345,18 +339,17 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
                 {'label': '❌ Non', 'value': 'non'},
               ],
             },
-            {
-              'question': '🔁 A-t-on dû répéter plusieurs fois pour qu\'il commence ?',
-              'key': 'devoirs_repetition',
-              'options': [
-                {'label': '😇 Non, de lui-même', 'value': 'seul'},
-                {'label': '🙂 Un seul rappel', 'value': 'un_rappel'},
-                {'label': '😤 2 à 3 rappels', 'value': 'plusieurs_rappels'},
-                {'label': '😡 Refus / crise', 'value': 'crise'},
-              ],
-            },
           ],
-          // 2. Comportement école
+          {
+            'question': '😤 Combien de remarques dans la journée ?',
+            'key': 'remarques',
+            'options': [
+              {'label': '0️⃣ Aucune', 'value': 'aucune'},
+              {'label': '1️⃣ Une', 'value': 'une'},
+              {'label': '2️⃣ Deux', 'value': 'deux'},
+              {'label': '3️⃣ Trois+', 'value': 'plusieurs'},
+            ],
+          },
           {
             'question': '🏫 Comportement à l\'école ?',
             'key': 'comportement_ecole',
@@ -367,64 +360,48 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
               {'label': '😤 Difficile', 'value': 'difficile'},
             ],
           },
-          // 3. Remarques dans la journée
           {
-            'question': '😤 Combien de fois a-t-on dû le reprendre dans la journée ?',
-            'key': 'remarques',
+            'question': '🔁 A-t-on dû répéter plusieurs fois ?',
+            'key': 'repetitions',
             'options': [
-              {'label': '0️⃣ Aucune fois', 'value': 'aucune'},
-              {'label': '1️⃣ Une fois', 'value': 'une'},
-              {'label': '2️⃣ Deux fois', 'value': 'deux'},
-              {'label': '3️⃣ Trois fois ou plus', 'value': 'plusieurs'},
+              {'label': '✅ Non, jamais', 'value': 'jamais'},
+              {'label': '🔁 1 ou 2 fois', 'value': 'une_deux'},
+              {'label': '😤 3 fois ou plus', 'value': 'trois_plus'},
+              {'label': '😡 Sans cesse', 'value': 'sans_cesse'},
             ],
           },
-          // 4. Obéissance au premier appel
           {
-            'question': '📢 Obéissait-il au premier appel ?',
+            'question': '🙏 Obéissance générale ?',
             'key': 'obeissance',
             'options': [
               {'label': '😇 Toujours', 'value': 'toujours'},
-              {'label': '🙂 La plupart du temps', 'value': 'souvent'},
+              {'label': '🙂 Souvent', 'value': 'souvent'},
               {'label': '😐 Parfois', 'value': 'parfois'},
-              {'label': '😡 Rarement / jamais', 'value': 'rarement'},
+              {'label': '😤 Rarement', 'value': 'rarement'},
+              {'label': '😡 Jamais', 'value': 'jamais'},
             ],
           },
-          // 5. Tâches ménagères
           {
             'question': '🏠 Tâches ménagères effectuées ?',
             'key': 'taches',
             'options': [
-              {'label': '✅ Faites sans rappel', 'value': 'faites'},
-              {'label': '⚠️ Après rappel', 'value': 'rappel'},
-              {'label': '😤 Après plusieurs rappels', 'value': 'plusieurs_rappels'},
+              {'label': '✅ Faites', 'value': 'faites'},
+              {'label': '⚠️ Rappel nécessaire', 'value': 'rappel'},
               {'label': '❌ Refus', 'value': 'refus'},
               {'label': '➖ Non demandé', 'value': 'non_demande'},
             ],
           },
-          // 6. Initiative positive
           {
-            'question': '💡 A-t-il pris une initiative positive sans qu\'on lui demande ?',
-            'key': 'initiative',
-            'options': [
-              {'label': '😇 Oui, plusieurs fois', 'value': 'oui_plusieurs'},
-              {'label': '🙂 Oui, une fois', 'value': 'oui_une'},
-              {'label': '😐 Non', 'value': 'non'},
-            ],
-          },
-          // 7. Fraternité
-          {
-            'question': '🤝 Relations avec frères / sœurs ?',
+            'question': '🤝 Actes fraternels envers les frères/sœurs ?',
             'key': 'fraternite',
             'options': [
-              {'label': '😇 Très bien, aide spontanée', 'value': 'tres_bien'},
+              {'label': '😇 Très bien', 'value': 'tres_bien'},
               {'label': '🙂 Bien', 'value': 'bien'},
               {'label': '😐 Conflits mineurs', 'value': 'conflits'},
               {'label': '😡 Conflits importants', 'value': 'conflits_graves'},
-              {'label': '🤬 Violence verbale / physique', 'value': 'violence'},
               {'label': '➖ Enfant unique', 'value': 'na'},
             ],
           },
-          // 8. Table
           {
             'question': '🍽️ Comportement à table ?',
             'key': 'table',
@@ -432,141 +409,124 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
               {'label': '😇 Excellent', 'value': 'excellent'},
               {'label': '🙂 Correct', 'value': 'correct'},
               {'label': '😐 Agité', 'value': 'agite'},
-              {'label': '😤 Difficile / mange mal', 'value': 'difficile'},
+              {'label': '😤 Difficile', 'value': 'difficile'},
             ],
           },
-          // 9. Politesse
           {
             'question': '💬 Politesse et respect des adultes ?',
             'key': 'politesse',
             'options': [
-              {'label': '😇 Très poli, dit merci/s\'il te plaît', 'value': 'tres_poli'},
+              {'label': '😇 Très poli', 'value': 'tres_poli'},
               {'label': '🙂 Correct', 'value': 'correct'},
               {'label': '😐 Quelques oublis', 'value': 'oublis'},
               {'label': '😤 Irrespectueux', 'value': 'irrespectueux'},
-              {'label': '😡 Insolent / grossier', 'value': 'insolent'},
             ],
           },
-          // 10. Réponse aux corrections
           {
-            'question': '🪞 Comment réagit-il quand on le corrige ?',
+            'question': '🔄 Réaction face aux corrections ?',
             'key': 'reaction_correction',
             'options': [
-              {'label': '😇 Accepte, reconnaît son erreur', 'value': 'accepte'},
-              {'label': '🙂 Écoute mais ronchonne', 'value': 'ronchonne'},
-              {'label': '😐 Se braque, se tait', 'value': 'braque'},
-              {'label': '😡 S\'énerve, pleure, crise', 'value': 'crise'},
+              {'label': '😇 Accepte bien', 'value': 'accepte_bien'},
+              {'label': '😐 Accepte difficilement', 'value': 'accepte_difficilement'},
+              {'label': '😡 Refuse / s\'énerve', 'value': 'refuse'},
             ],
           },
-          // 11. Mensonge
           {
-            'question': '🤥 A-t-il menti ou caché quelque chose ?',
-            'key': 'mensonge',
+            'question': '🤥 Honnêteté dans la journée ?',
+            'key': 'honnetete',
             'options': [
-              {'label': '😇 Non, honnête', 'value': 'non'},
-              {'label': '🙂 Petite omission', 'value': 'omission'},
-              {'label': '😤 Mensonge évident', 'value': 'mensonge'},
+              {'label': '😇 Toujours honnête', 'value': 'toujours'},
+              {'label': '🙂 Globalement', 'value': 'souvent'},
+              {'label': '😐 Quelques mensonges', 'value': 'parfois'},
+              {'label': '😡 A menti', 'value': 'jamais'},
             ],
           },
-          // 12. Humeur générale
           {
             'question': '😊 Humeur générale de la journée ?',
-            'key': 'humeur',
+            'key': 'humeur_generale',
             'options': [
-              {'label': '😄 Joyeux, positif', 'value': 'joyeux'},
-              {'label': '🙂 Calme, stable', 'value': 'stable'},
-              {'label': '😐 Fatigué, capricieux', 'value': 'fatigue'},
-              {'label': '😠 Irritable, colères', 'value': 'irritable'},
+              {'label': '😄 Positive', 'value': 'positive'},
+              {'label': '😐 Neutre', 'value': 'neutre'},
+              {'label': '😞 Négative', 'value': 'negative'},
             ],
           },
-          // 13. Coucher
           {
             'question': '🛏️ Coucher sans problème ?',
             'key': 'coucher',
             'options': [
-              {'label': '✅ Oui, de lui-même', 'value': 'oui'},
-              {'label': '⚠️ Un rappel', 'value': 'rappel'},
-              {'label': '😤 Plusieurs rappels', 'value': 'plusieurs_rappels'},
-              {'label': '❌ Crise au coucher', 'value': 'difficile'},
+              {'label': '✅ Oui, sans souci', 'value': 'oui'},
+              {'label': '⚠️ Petit rappel', 'value': 'rappel'},
+              {'label': '❌ Difficile', 'value': 'difficile'},
             ],
           },
-          // 14. Écran
           {
             'question': '📱 Respect du temps d\'écran ?',
             'key': 'ecran',
             'options': [
-              {'label': '✅ Respecté, pose seul', 'value': 'respecte'},
-              {'label': '⚠️ Léger dépassement', 'value': 'leger'},
-              {'label': '😤 Dépasse souvent, à rappeler', 'value': 'non_respecte'},
-              {'label': '😡 Refus de poser les écrans', 'value': 'refus'},
+              {'label': '✅ Respecté', 'value': 'respecte'},
+              {'label': '⚠️ Petit dépassement', 'value': 'leger'},
+              {'label': '❌ Non respecté', 'value': 'non_respecte'},
             ],
           },
-          // 15. Hygiène
           {
-            'question': '🚿 Hygiène (douche, dents, mains) ?',
+            'question': '🚿 Hygiène personnelle effectuée ?',
             'key': 'hygiene',
             'options': [
-              {'label': '😇 Fait seul, propre', 'value': 'seul'},
-              {'label': '🙂 Après un rappel', 'value': 'rappel'},
-              {'label': '😤 Plusieurs rappels', 'value': 'plusieurs_rappels'},
-              {'label': '❌ Refus', 'value': 'refus'},
+              {'label': '✅ Oui, sans rappel', 'value': 'oui'},
+              {'label': '⚠️ Après rappel', 'value': 'partiellement'},
+              {'label': '❌ Refus', 'value': 'non'},
             ],
           },
-          // 16. Moment positif
           {
-            'question': '⭐ Y a-t-il eu un moment particulièrement positif ?',
+            'question': '⭐ Y a-t-il eu un moment positif notable ?',
             'key': 'moment_positif',
             'options': [
-              {'label': '😇 Oui, geste notable', 'value': 'oui_notable'},
-              {'label': '🙂 Oui, petit moment sympa', 'value': 'oui_petit'},
-              {'label': '😐 Pas vraiment', 'value': 'non'},
+              {'label': '✅ Oui', 'value': 'oui'},
+              {'label': '❌ Non', 'value': 'non'},
             ],
           },
         ];
-
-      // ──────────────────────────────────────────────────
       case 'demi_journee':
         return [
+          {
+            'question': '🔁 A-t-on dû répéter plusieurs fois ?',
+            'key': 'repetitions',
+            'options': [
+              {'label': '✅ Non, jamais', 'value': 'jamais'},
+              {'label': '🔁 1 ou 2 fois', 'value': 'une_deux'},
+              {'label': '😤 3 fois ou plus', 'value': 'trois_plus'},
+              {'label': '😡 Sans cesse', 'value': 'sans_cesse'},
+            ],
+          },
+          {
+            'question': '🙏 Obéissance générale ?',
+            'key': 'obeissance',
+            'options': [
+              {'label': '😇 Toujours', 'value': 'toujours'},
+              {'label': '🙂 Souvent', 'value': 'souvent'},
+              {'label': '😐 Parfois', 'value': 'parfois'},
+              {'label': '😤 Rarement', 'value': 'rarement'},
+              {'label': '😡 Jamais', 'value': 'jamais'},
+            ],
+          },
           {
             'question': '🏠 Tâches ménagères effectuées ?',
             'key': 'taches',
             'options': [
-              {'label': '✅ Faites sans rappel', 'value': 'faites'},
-              {'label': '⚠️ Après rappel', 'value': 'rappel'},
-              {'label': '😤 Après plusieurs rappels', 'value': 'plusieurs_rappels'},
+              {'label': '✅ Faites', 'value': 'faites'},
+              {'label': '⚠️ Rappel nécessaire', 'value': 'rappel'},
               {'label': '❌ Refus', 'value': 'refus'},
               {'label': '➖ Non demandé', 'value': 'non_demande'},
             ],
           },
           {
-            'question': '📢 Obéissait-il au premier appel ?',
-            'key': 'obeissance',
-            'options': [
-              {'label': '😇 Toujours', 'value': 'toujours'},
-              {'label': '🙂 La plupart du temps', 'value': 'souvent'},
-              {'label': '😐 Parfois', 'value': 'parfois'},
-              {'label': '😡 Rarement / jamais', 'value': 'rarement'},
-            ],
-          },
-          {
-            'question': '🔁 A-t-on dû répéter les mêmes consignes plusieurs fois ?',
-            'key': 'repetition_consignes',
-            'options': [
-              {'label': '😇 Non, il comprend vite', 'value': 'non'},
-              {'label': '🙂 Une fois ou deux', 'value': 'peu'},
-              {'label': '😤 Souvent', 'value': 'souvent'},
-              {'label': '😡 Tout le temps', 'value': 'tout_le_temps'},
-            ],
-          },
-          {
-            'question': '🤝 Relations avec frères / sœurs ?',
+            'question': '🤝 Actes fraternels ?',
             'key': 'fraternite',
             'options': [
-              {'label': '😇 Très bien, aide spontanée', 'value': 'tres_bien'},
+              {'label': '😇 Très bien', 'value': 'tres_bien'},
               {'label': '🙂 Bien', 'value': 'bien'},
               {'label': '😐 Conflits mineurs', 'value': 'conflits'},
               {'label': '😡 Conflits importants', 'value': 'conflits_graves'},
-              {'label': '🤬 Violence verbale / physique', 'value': 'violence'},
               {'label': '➖ Enfant unique', 'value': 'na'},
             ],
           },
@@ -574,10 +534,9 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             'question': '📱 Respect du temps d\'écran ?',
             'key': 'ecran',
             'options': [
-              {'label': '✅ Respecté, pose seul', 'value': 'respecte'},
-              {'label': '⚠️ Léger dépassement', 'value': 'leger'},
-              {'label': '😤 Dépasse souvent', 'value': 'non_respecte'},
-              {'label': '😡 Refus de poser', 'value': 'refus'},
+              {'label': '✅ Respecté', 'value': 'respecte'},
+              {'label': '⚠️ Petit dépassement', 'value': 'leger'},
+              {'label': '❌ Non respecté', 'value': 'non_respecte'},
             ],
           },
           {
@@ -588,120 +547,56 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
               {'label': '🙂 Correct', 'value': 'correct'},
               {'label': '😐 Quelques oublis', 'value': 'oublis'},
               {'label': '😤 Irrespectueux', 'value': 'irrespectueux'},
-              {'label': '😡 Insolent', 'value': 'insolent'},
-            ],
-          },
-          {
-            'question': '🪞 Comment réagit-il quand on le corrige ?',
-            'key': 'reaction_correction',
-            'options': [
-              {'label': '😇 Accepte, s\'excuse', 'value': 'accepte'},
-              {'label': '🙂 Écoute mais ronchonne', 'value': 'ronchonne'},
-              {'label': '😐 Se braque, se tait', 'value': 'braque'},
-              {'label': '😡 Crise', 'value': 'crise'},
             ],
           },
           {
             'question': '🎯 Autonomie dans la journée ?',
             'key': 'autonomie',
             'options': [
-              {'label': '😇 Très autonome, se gère seul', 'value': 'tres_autonome'},
+              {'label': '😇 Très autonome', 'value': 'tres_autonome'},
               {'label': '🙂 Correct', 'value': 'correct'},
-              {'label': '😐 Besoin d\'aide régulier', 'value': 'aide'},
-              {'label': '😤 Dépendant, sollicite tout le temps', 'value': 'dependant'},
-            ],
-          },
-          {
-            'question': '💡 A pris une initiative positive ?',
-            'key': 'initiative',
-            'options': [
-              {'label': '😇 Oui, de lui-même', 'value': 'oui_plusieurs'},
-              {'label': '🙂 Une petite chose', 'value': 'oui_une'},
-              {'label': '😐 Non', 'value': 'non'},
-            ],
-          },
-          {
-            'question': '😊 Humeur générale ?',
-            'key': 'humeur',
-            'options': [
-              {'label': '😄 Joyeux, positif', 'value': 'joyeux'},
-              {'label': '🙂 Calme, stable', 'value': 'stable'},
-              {'label': '😐 Capricieux, fatigué', 'value': 'fatigue'},
-              {'label': '😠 Irritable, colères', 'value': 'irritable'},
-            ],
-          },
-          {
-            'question': '🤥 A-t-il menti ou caché quelque chose ?',
-            'key': 'mensonge',
-            'options': [
-              {'label': '😇 Non, honnête', 'value': 'non'},
-              {'label': '🙂 Petite omission', 'value': 'omission'},
-              {'label': '😤 Mensonge évident', 'value': 'mensonge'},
-            ],
-          },
-          {
-            'question': '🚿 Hygiène (douche, dents, mains) ?',
-            'key': 'hygiene',
-            'options': [
-              {'label': '😇 Fait seul', 'value': 'seul'},
-              {'label': '🙂 Après rappel', 'value': 'rappel'},
-              {'label': '❌ Refus', 'value': 'refus'},
+              {'label': '😐 Besoin d\'aide', 'value': 'aide'},
             ],
           },
           {
             'question': '🛏️ Coucher sans problème ?',
             'key': 'coucher',
             'options': [
-              {'label': '✅ Oui, de lui-même', 'value': 'oui'},
-              {'label': '⚠️ Un rappel', 'value': 'rappel'},
-              {'label': '😤 Plusieurs rappels', 'value': 'plusieurs_rappels'},
-              {'label': '❌ Crise', 'value': 'difficile'},
+              {'label': '✅ Oui', 'value': 'oui'},
+              {'label': '⚠️ Rappel', 'value': 'rappel'},
+              {'label': '❌ Difficile', 'value': 'difficile'},
             ],
           },
         ];
-
-      // ──────────────────────────────────────────────────
       case 'vacances':
         return [
+          {
+            'question': '🔁 A-t-on dû répéter plusieurs fois ?',
+            'key': 'repetitions',
+            'options': [
+              {'label': '✅ Non, jamais', 'value': 'jamais'},
+              {'label': '🔁 1 ou 2 fois', 'value': 'une_deux'},
+              {'label': '😤 3 fois ou plus', 'value': 'trois_plus'},
+              {'label': '😡 Sans cesse', 'value': 'sans_cesse'},
+            ],
+          },
           {
             'question': '🏠 A aidé à la maison ?',
             'key': 'aide_maison',
             'options': [
-              {'label': '😇 Beaucoup, de lui-même', 'value': 'beaucoup'},
+              {'label': '😇 Beaucoup', 'value': 'beaucoup'},
               {'label': '🙂 Un peu', 'value': 'un_peu'},
-              {'label': '😤 Après insistance', 'value': 'insistance'},
               {'label': '❌ Pas du tout', 'value': 'non'},
             ],
           },
           {
-            'question': '📢 Obéissait-il au premier appel ?',
-            'key': 'obeissance',
-            'options': [
-              {'label': '😇 Toujours', 'value': 'toujours'},
-              {'label': '🙂 Souvent', 'value': 'souvent'},
-              {'label': '😐 Parfois', 'value': 'parfois'},
-              {'label': '😡 Rarement', 'value': 'rarement'},
-            ],
-          },
-          {
-            'question': '🔁 A-t-on dû répéter les mêmes choses plusieurs fois ?',
-            'key': 'repetition_consignes',
-            'options': [
-              {'label': '😇 Non', 'value': 'non'},
-              {'label': '🙂 Une ou deux fois', 'value': 'peu'},
-              {'label': '😤 Souvent', 'value': 'souvent'},
-              {'label': '😡 Constamment', 'value': 'tout_le_temps'},
-            ],
-          },
-          {
-            'question': '🤝 Relations avec frères / sœurs ?',
+            'question': '🤝 Actes fraternels ?',
             'key': 'fraternite',
             'options': [
-              {'label': '😇 Très bien, aide spontanée', 'value': 'tres_bien'},
+              {'label': '😇 Très bien', 'value': 'tres_bien'},
               {'label': '🙂 Bien', 'value': 'bien'},
               {'label': '😐 Conflits mineurs', 'value': 'conflits'},
               {'label': '😡 Conflits importants', 'value': 'conflits_graves'},
-              {'label': '🤬 Violence', 'value': 'violence'},
               {'label': '➖ Enfant unique', 'value': 'na'},
             ],
           },
@@ -709,10 +604,9 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             'question': '📱 Respect du temps d\'écran ?',
             'key': 'ecran',
             'options': [
-              {'label': '✅ Respecté, pose seul', 'value': 'respecte'},
+              {'label': '✅ Respecté', 'value': 'respecte'},
               {'label': '⚠️ Léger dépassement', 'value': 'leger'},
-              {'label': '😤 Dépasse régulièrement', 'value': 'non_respecte'},
-              {'label': '😡 Refus de poser', 'value': 'refus'},
+              {'label': '❌ Non respecté', 'value': 'non_respecte'},
             ],
           },
           {
@@ -733,45 +627,6 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
               {'label': '🙂 Correct', 'value': 'correct'},
               {'label': '😐 Quelques oublis', 'value': 'oublis'},
               {'label': '😤 Irrespectueux', 'value': 'irrespectueux'},
-              {'label': '😡 Insolent', 'value': 'insolent'},
-            ],
-          },
-          {
-            'question': '🪞 Comment réagit-il quand on le corrige ?',
-            'key': 'reaction_correction',
-            'options': [
-              {'label': '😇 Accepte, s\'excuse', 'value': 'accepte'},
-              {'label': '🙂 Ronchonne un peu', 'value': 'ronchonne'},
-              {'label': '😐 Se braque', 'value': 'braque'},
-              {'label': '😡 Crise', 'value': 'crise'},
-            ],
-          },
-          {
-            'question': '💡 A pris une initiative positive ?',
-            'key': 'initiative',
-            'options': [
-              {'label': '😇 Oui, plusieurs', 'value': 'oui_plusieurs'},
-              {'label': '🙂 Une fois', 'value': 'oui_une'},
-              {'label': '😐 Non', 'value': 'non'},
-            ],
-          },
-          {
-            'question': '🤥 A-t-il menti ou caché quelque chose ?',
-            'key': 'mensonge',
-            'options': [
-              {'label': '😇 Non', 'value': 'non'},
-              {'label': '🙂 Petite omission', 'value': 'omission'},
-              {'label': '😤 Mensonge évident', 'value': 'mensonge'},
-            ],
-          },
-          {
-            'question': '😊 Humeur générale ?',
-            'key': 'humeur',
-            'options': [
-              {'label': '😄 Joyeux', 'value': 'joyeux'},
-              {'label': '🙂 Stable', 'value': 'stable'},
-              {'label': '😐 Capricieux', 'value': 'fatigue'},
-              {'label': '😠 Irritable, colères', 'value': 'irritable'},
             ],
           },
           {
@@ -779,14 +634,11 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             'key': 'coucher',
             'options': [
               {'label': '✅ Oui', 'value': 'oui'},
-              {'label': '⚠️ Un rappel', 'value': 'rappel'},
-              {'label': '😤 Plusieurs rappels', 'value': 'plusieurs_rappels'},
-              {'label': '❌ Crise', 'value': 'difficile'},
+              {'label': '⚠️ Rappel', 'value': 'rappel'},
+              {'label': '❌ Difficile', 'value': 'difficile'},
             ],
           },
         ];
-
-      // ──────────────────────────────────────────────────
       case 'malade':
         return [
           {
@@ -802,8 +654,8 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             'question': '💊 A pris ses médicaments sans problème ?',
             'key': 'medicaments',
             'options': [
-              {'label': '✅ Oui, sans souci', 'value': 'oui'},
-              {'label': '⚠️ Avec un peu de difficulté', 'value': 'difficulte'},
+              {'label': '✅ Oui', 'value': 'oui'},
+              {'label': '⚠️ Avec difficulté', 'value': 'difficulte'},
               {'label': '❌ Refus', 'value': 'refus'},
               {'label': '➖ Pas de médicaments', 'value': 'na'},
             ],
@@ -814,42 +666,10 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             'options': [
               {'label': '😇 Très respectueux', 'value': 'respectueux'},
               {'label': '🙂 Correct', 'value': 'correct'},
-              {'label': '😐 Irritable, mais compréhensible', 'value': 'irritable'},
-              {'label': '😡 Très difficile', 'value': 'difficile'},
-            ],
-          },
-          {
-            'question': '📢 Obéissait-il malgré la maladie ?',
-            'key': 'obeissance',
-            'options': [
-              {'label': '😇 Oui, sans problème', 'value': 'toujours'},
-              {'label': '🙂 La plupart du temps', 'value': 'souvent'},
-              {'label': '😐 Parfois difficile', 'value': 'parfois'},
-              {'label': '😡 Non, compliqué', 'value': 'rarement'},
-            ],
-          },
-          {
-            'question': '😊 Humeur générale malgré la maladie ?',
-            'key': 'humeur',
-            'options': [
-              {'label': '😄 Positif, courageux', 'value': 'joyeux'},
-              {'label': '🙂 Stable', 'value': 'stable'},
-              {'label': '😐 Capricieux', 'value': 'fatigue'},
-              {'label': '😠 Très difficile à gérer', 'value': 'irritable'},
-            ],
-          },
-          {
-            'question': '🤥 A-t-il exagéré ses symptômes pour éviter des obligations ?',
-            'key': 'exageration',
-            'options': [
-              {'label': '😇 Non, honnête', 'value': 'non'},
-              {'label': '🙂 Un peu peut-être', 'value': 'un_peu'},
-              {'label': '😤 Oui clairement', 'value': 'oui'},
+              {'label': '😤 Difficile', 'value': 'difficile'},
             ],
           },
         ];
-
-      // ──────────────────────────────────────────────────
       case 'special':
         return [
           {
@@ -863,83 +683,23 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             ],
           },
           {
-            'question': '📢 Obéissait-il au premier appel ?',
-            'key': 'obeissance',
-            'options': [
-              {'label': '😇 Toujours', 'value': 'toujours'},
-              {'label': '🙂 Souvent', 'value': 'souvent'},
-              {'label': '😐 Parfois', 'value': 'parfois'},
-              {'label': '😡 Rarement', 'value': 'rarement'},
-            ],
-          },
-          {
-            'question': '🔁 A-t-on dû répéter les consignes plusieurs fois ?',
-            'key': 'repetition_consignes',
-            'options': [
-              {'label': '😇 Non', 'value': 'non'},
-              {'label': '🙂 Une ou deux fois', 'value': 'peu'},
-              {'label': '😤 Souvent', 'value': 'souvent'},
-              {'label': '😡 Constamment', 'value': 'tout_le_temps'},
-            ],
-          },
-          {
-            'question': '🤝 Relations avec frères / sœurs ?',
+            'question': '🤝 Actes fraternels ?',
             'key': 'fraternite',
             'options': [
               {'label': '😇 Très bien', 'value': 'tres_bien'},
               {'label': '🙂 Bien', 'value': 'bien'},
               {'label': '😐 Conflits', 'value': 'conflits'},
-              {'label': '😡 Conflits graves', 'value': 'conflits_graves'},
               {'label': '➖ Enfant unique', 'value': 'na'},
             ],
           },
           {
-            'question': '💬 Politesse avec les invités / famille ?',
+            'question': '💬 Politesse avec les invités/famille ?',
             'key': 'politesse',
             'options': [
-              {'label': '😇 Très poli, digne', 'value': 'tres_poli'},
+              {'label': '😇 Très poli', 'value': 'tres_poli'},
               {'label': '🙂 Correct', 'value': 'correct'},
               {'label': '😐 Quelques oublis', 'value': 'oublis'},
               {'label': '😤 Irrespectueux', 'value': 'irrespectueux'},
-              {'label': '😡 Honteux / insolent', 'value': 'insolent'},
-            ],
-          },
-          {
-            'question': '🪞 Comment réagit-il quand on le reprend ?',
-            'key': 'reaction_correction',
-            'options': [
-              {'label': '😇 Accepte calmement', 'value': 'accepte'},
-              {'label': '🙂 Ronchonne un peu', 'value': 'ronchonne'},
-              {'label': '😐 Se braque', 'value': 'braque'},
-              {'label': '😡 Crise devant les invités', 'value': 'crise'},
-            ],
-          },
-          {
-            'question': '💡 A-t-il fait quelque chose de bien de lui-même ?',
-            'key': 'initiative',
-            'options': [
-              {'label': '😇 Oui, geste notable', 'value': 'oui_plusieurs'},
-              {'label': '🙂 Oui, une petite chose', 'value': 'oui_une'},
-              {'label': '😐 Non', 'value': 'non'},
-            ],
-          },
-          {
-            'question': '🤥 A-t-il menti ou caché quelque chose ?',
-            'key': 'mensonge',
-            'options': [
-              {'label': '😇 Non, honnête', 'value': 'non'},
-              {'label': '🙂 Petite omission', 'value': 'omission'},
-              {'label': '😤 Mensonge évident', 'value': 'mensonge'},
-            ],
-          },
-          {
-            'question': '😊 Humeur générale ?',
-            'key': 'humeur',
-            'options': [
-              {'label': '😄 Joyeux, festif', 'value': 'joyeux'},
-              {'label': '🙂 Stable', 'value': 'stable'},
-              {'label': '😐 Capricieux', 'value': 'fatigue'},
-              {'label': '😠 Irritable', 'value': 'irritable'},
             ],
           },
           {
@@ -947,13 +707,11 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             'key': 'coucher',
             'options': [
               {'label': '✅ Oui', 'value': 'oui'},
-              {'label': '⚠️ Un rappel', 'value': 'rappel'},
-              {'label': '😤 Plusieurs rappels', 'value': 'plusieurs_rappels'},
-              {'label': '❌ Crise', 'value': 'difficile'},
+              {'label': '⚠️ Rappel', 'value': 'rappel'},
+              {'label': '❌ Difficile', 'value': 'difficile'},
             ],
           },
         ];
-
       default:
         return [];
     }
@@ -966,77 +724,58 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     return c['label'] as String;
   }
 
-  // ══════════════════════════════════════════════════════
-  // SUBMIT → GEMINI (avec données historiques)
-  // ══════════════════════════════════════════════════════
+  // ── SUBMIT CORRIGÉ : utilise FamilyProvider, pas child.punishments ──
   Future<void> _submitToGemini() async {
     setState(() => _loading = true);
 
-    final fp = context.read<FamilyProvider>();
-    final child = fp.children.isNotEmpty
-        ? fp.children.firstWhere(
-            (c) => c.name == widget.childName,
-            orElse: () => fp.children.first,
-          )
-        : null;
+    try {
+      final fp = Provider.of<FamilyProvider>(context, listen: false);
+      final child = fp.children.firstWhere((c) => c.id == widget.childId);
 
-    int bonusCount = 0;
-    int penaltyCount = 0;
-    int activePunishments = 0;
-    int availableImmunities = 0;
-    int streakDays = 0;
-    int totalPoints = 0;
-    List<String> recentReasons = [];
-
-    if (child != null) {
       final today = DateTime.now();
-      final todayHistory = fp.history
-          .where((h) =>
-              h.childId == child.id &&
-              h.date.year == today.year &&
-              h.date.month == today.month &&
-              h.date.day == today.day)
-          .toList();
+      final todayStart = DateTime(today.year, today.month, today.day);
 
-      bonusCount = todayHistory
-          .where((h) => h.isBonus && h.category != 'school_note')
+      final todayHistory = fp.history.where((h) {
+        return h.childId == child.id &&
+            h.date.isAfter(todayStart.subtract(const Duration(seconds: 1)));
+      }).toList();
+
+      final bonusCount = todayHistory.where((h) => h.isBonus).length;
+      final penaltyCount = todayHistory.where((h) => !h.isBonus).length;
+
+      final activePunishments = fp.punishments
+          .where((p) => p.childId == child.id && !p.isCompleted)
           .length;
-      penaltyCount = todayHistory.where((h) => !h.isBonus).length;
-      activePunishments = (child.punishments ?? [])
-          .where((p) => !(p.completed ?? false))
-          .length;
-      availableImmunities =
-          (child.immunities ?? []).where((i) => !i.used).length;
-      streakDays = child.streak ?? 0;
-      totalPoints = child.points ?? 0;
-      recentReasons = fp.history
-          .where((h) => h.childId == child.id)
-          .toList()
-          .reversed
+
+      final availableImmunities =
+          fp.getUsableImmunitiesForChild(child.id).length;
+
+      final streakDays = child.streakDays ?? 0;
+      final totalPoints = child.points;
+
+      final recentReasons = todayHistory
           .take(5)
           .map((h) => h.reason)
-          .where((r) => r.isNotEmpty)
           .toList();
-    }
 
-    final result = await GeminiService.generateAppreciation(
-      childName: widget.childName,
-      context: _contextLabel,
-      answers: _answers,
-      bonusCount: bonusCount,
-      penaltyCount: penaltyCount,
-      activePunishments: activePunishments,
-      availableImmunities: availableImmunities,
-      streakDays: streakDays,
-      totalPoints: totalPoints,
-      recentReasons: recentReasons,
-    );
+      final result = await GeminiService.generateAppreciation(
+        childName: child.name,
+        context: _contextLabel,
+        answers: _answers,
+        bonusCount: bonusCount,
+        penaltyCount: penaltyCount,
+        activePunishments: activePunishments,
+        availableImmunities: availableImmunities,
+        streakDays: streakDays,
+        totalPoints: totalPoints,
+        recentReasons: recentReasons,
+      );
 
-    try {
       final json = jsonDecode(result);
       final aiNote = (json['note'] as num).toInt();
       final appreciation = json['appreciation'] as String;
       final conseil = json['conseil'] as String;
+
       if (mounted) {
         widget.onComplete(_AiEvalResult(
           aiNote: aiNote,
@@ -1046,10 +785,10 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
           context: _contextLabel,
         ));
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Erreur lors de l\'analyse IA 😕'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur lors de l\'analyse IA 😕 : $e'),
           backgroundColor: Colors.redAccent,
         ));
         setState(() => _loading = false);
@@ -1066,7 +805,6 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     return _buildQuestionStep(q);
   }
 
-  // ── Étape contexte ──────────────────────────────────────
   Widget _buildContextStep() {
     return _buildSheetContainer(
       child: Column(
@@ -1095,7 +833,6 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     );
   }
 
-  // ── Étape question ──────────────────────────────────────
   Widget _buildQuestionStep(Map<String, dynamic> q) {
     final questions = _questions;
     final total = questions.length;
@@ -1170,7 +907,6 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     );
   }
 
-  // ── Étape note parent ───────────────────────────────────
   Widget _buildParentNoteStep() {
     return _buildSheetContainer(
       child: Column(
@@ -1198,15 +934,14 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             const SizedBox(width: 20),
             TweenAnimationBuilder<double>(
               key: ValueKey(_parentNote),
-              tween: Tween<double>(
+              tween: Tween(
                   begin: (_parentNote - 1).toDouble(),
                   end: _parentNote.toDouble()),
               duration: const Duration(milliseconds: 200),
               builder: (_, val, __) => Text(
                 '${val.round()} / 20',
                 style: TextStyle(
-                  color:
-                      val >= 10 ? Colors.greenAccent : Colors.redAccent,
+                  color: val >= 10 ? Colors.greenAccent : Colors.redAccent,
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1260,8 +995,7 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
                   : const Icon(Icons.auto_awesome),
               label: Text(
                 _loading ? 'Analyse en cours...' : '✨ Obtenir l\'avis de l\'IA',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -1277,7 +1011,6 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     );
   }
 
-  // ── Helpers UI ──────────────────────────────────────────
   Widget _buildSheetContainer({required Widget child}) {
     return Container(
       constraints:
@@ -1309,9 +1042,7 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     return Column(children: [
       Text(title,
           style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold),
+              color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center),
       if (subtitle.isNotEmpty) ...[
         const SizedBox(height: 6),
@@ -1486,8 +1217,7 @@ class _AiResultSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.teal.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: Colors.tealAccent.withOpacity(0.3)),
+              border: Border.all(color: Colors.tealAccent.withOpacity(0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1541,12 +1271,14 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
   void _startAiQuestionnaire(FamilyProvider provider) {
     final child = provider.getChild(widget.childId);
     if (child == null) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _AiQuestionnaireSheet(
         childName: child.name,
+        childId: widget.childId,
         onComplete: (result) {
           Navigator.pop(ctx);
           _showAiResult(result, provider);
@@ -1575,6 +1307,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
       _AiEvalResult result, FamilyProvider provider) async {
     final avgNote = ((result.aiNote + result.parentNote) / 2).round();
     final percent = avgNote / 20 * 100;
+
     await provider.addPoints(
       widget.childId,
       avgNote,
@@ -1583,6 +1316,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
       isBonus: true,
       date: DateTime.now(),
     );
+
     if (!mounted) return;
     await showStarsAnimation(context, percent);
     if (mounted) {
@@ -1596,15 +1330,22 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
   void _showAddNote(FamilyProvider provider) async {
     await showSchoolNotebookAnimation(context);
     if (!mounted) return;
+
     String subject = '';
     int value = 10;
-    int maxValue = 20;
     DateTime selectedDate = DateTime.now();
     final subjectController = TextEditingController();
     const quickSubjects = [
-      'Comportement', 'Respect', 'Travail en classe',
-      'Effort', 'Politesse', 'Coopération', 'Autonomie', 'Ponctualité'
+      'Comportement',
+      'Respect',
+      'Travail en classe',
+      'Effort',
+      'Politesse',
+      'Coopération',
+      'Autonomie',
+      'Ponctualité'
     ];
+
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
@@ -1638,7 +1379,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           TweenAnimationBuilder<double>(
-                            tween: Tween<double>(begin: 0, end: 1),
+                            tween: Tween(begin: 0, end: 1),
                             duration: const Duration(milliseconds: 600),
                             curve: Curves.elasticOut,
                             builder: (context, val, child) =>
@@ -1655,8 +1396,8 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                         ]),
                     const SizedBox(height: 24),
                     const Text('Date',
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 14)),
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 14)),
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: () async {
@@ -1706,42 +1447,42 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                     ),
                     const SizedBox(height: 20),
                     const Text('Critère',
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 14)),
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 14)),
                     const SizedBox(height: 8),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: quickSubjects.map((s) {
-                        final isSelected = subject == s;
-                        return GestureDetector(
-                          onTap: () => setModalState(() {
-                            subject = isSelected ? '' : s;
-                            if (subject.isNotEmpty) subjectController.clear();
-                          }),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.purpleAccent.withOpacity(0.2)
-                                    : Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                    color: isSelected
-                                        ? Colors.purpleAccent
-                                        : Colors.white24)),
-                            child: Text(s,
-                                style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.purpleAccent
-                                        : Colors.white70,
-                                    fontSize: 13)),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: quickSubjects.map((s) {
+                          final isSelected = subject == s;
+                          return GestureDetector(
+                            onTap: () => setModalState(() {
+                              subject = isSelected ? '' : s;
+                              if (subject.isNotEmpty)
+                                subjectController.clear();
+                            }),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.purpleAccent.withOpacity(0.2)
+                                      : Colors.white.withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                      color: isSelected
+                                          ? Colors.purpleAccent
+                                          : Colors.white24)),
+                              child: Text(s,
+                                  style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.purpleAccent
+                                          : Colors.white70,
+                                      fontSize: 13)),
+                            ),
+                          );
+                        }).toList()),
                     const SizedBox(height: 12),
                     TextField(
                       controller: subjectController,
@@ -1760,91 +1501,82 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
                               borderSide: const BorderSide(
                                   color: Colors.purpleAccent))),
                       onChanged: (val) {
-                        if (val.isNotEmpty) setModalState(() => subject = '');
+                        if (val.isNotEmpty) {
+                          setModalState(() => subject = '');
+                        }
                       },
                     ),
                     const SizedBox(height: 20),
                     const Text('Note',
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 14)),
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 14)),
                     const SizedBox(height: 8),
-                    Row(children: [
-                      IconButton(
-                        onPressed: () {
-                          if (value > 0)
-                            setModalState(() => value--);
-                        },
-                        icon: const Icon(Icons.remove_circle_outline,
-                            color: Colors.purpleAccent),
-                      ),
-                      Expanded(
-                        child: Text(
-                          '$value / $maxValue',
-                          style: TextStyle(
-                              color: value >= maxValue / 2
-                                  ? Colors.greenAccent
-                                  : Colors.redAccent,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          if (value < maxValue)
-                            setModalState(() => value++);
-                        },
-                        icon: const Icon(Icons.add_circle_outline,
-                            color: Colors.purpleAccent),
-                      ),
-                    ]),
-                    Slider(
-                      value: value.toDouble(),
-                      min: 0,
-                      max: maxValue.toDouble(),
-                      divisions: maxValue,
-                      activeColor: Colors.purpleAccent,
-                      inactiveColor: Colors.white12,
-                      onChanged: (v) =>
-                          setModalState(() => value = v.round()),
-                    ),
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            onPressed: value > 0
+                                ? () => setModalState(() => value--)
+                                : null,
+                            icon: const Icon(Icons.remove_circle_outline,
+                                color: Colors.purpleAccent),
+                          ),
+                          Text('$value / 20',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold)),
+                          IconButton(
+                            onPressed: value < 20
+                                ? () => setModalState(() => value++)
+                                : null,
+                            icon: const Icon(Icons.add_circle_outline,
+                                color: Colors.purpleAccent),
+                          ),
+                        ]),
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed: () async {
-                        final finalSubject = subjectController.text.trim().isNotEmpty
+                        final label = subjectController.text.trim().isNotEmpty
                             ? subjectController.text.trim()
                             : subject;
-                        if (finalSubject.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Choisissez un critère')));
-                          return;
-                        }
+                        if (label.isEmpty) return;
+                        Navigator.pop(ctx);
                         await provider.addPoints(
                           widget.childId,
                           value,
-                          'Note comportementale : $finalSubject',
+                          'Note comportement ($label) : $value/20',
                           category: 'school_note',
-                          isBonus: value >= maxValue / 2,
+                          isBonus: true,
                           date: selectedDate,
                         );
-                        if (ctx.mounted) Navigator.pop(ctx);
                         if (mounted) {
                           await showStarsAnimation(
-                              context, value / maxValue * 100);
+                              context, value / 20 * 100);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(
+                              content: Text(
+                                  '📝 Note enregistrée : $value/20 — $label'),
+                              backgroundColor: Colors.deepPurple,
+                            ));
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purpleAccent,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14)),
+                        backgroundColor: Colors.purpleAccent,
+                        foregroundColor: Colors.white,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
                       icon: const Icon(Icons.save_rounded),
-                      label: const Text('Enregistrer',
+                      label: const Text('Enregistrer la note',
                           style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold)),
+                              fontSize: 15, fontWeight: FontWeight.bold)),
                     ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               );
@@ -1857,185 +1589,153 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<FamilyProvider>();
-    final child = provider.getChild(widget.childId);
-    if (child == null) {
-      return const Scaffold(
-          body: Center(child: Text('Enfant introuvable')));
-    }
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A1A),
-      body: Stack(children: [
-        const AnimatedBackground(),
-        SafeArea(
-          child: Column(children: [
-            // AppBar custom
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white70),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Notes comportementales',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)),
-                        Text(child.name,
-                            style: const TextStyle(
-                                color: Colors.deepPurpleAccent,
-                                fontSize: 13)),
-                      ]),
-                ),
-              ]),
-            ),
-            const SizedBox(height: 20),
-            // Boutons d'action
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _startAiQuestionnaire(provider),
-                    child: GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(children: [
-                          const Icon(Icons.auto_awesome,
-                              color: Colors.deepPurpleAccent, size: 36),
-                          const SizedBox(height: 8),
-                          const Text('Évaluation IA',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text('Questionnaire intelligent',
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
-                                  fontSize: 11)),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showAddNote(provider),
-                    child: GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(children: [
-                          const Icon(Icons.edit_note_rounded,
-                              color: Colors.purpleAccent, size: 36),
-                          const SizedBox(height: 8),
-                          const Text('Note manuelle',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text('Saisie libre',
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
-                                  fontSize: 11)),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ),
-              ]),
-            ),
-            const SizedBox(height: 20),
-            // Historique des notes
-            Expanded(
-              child: Builder(builder: (_) {
-                final notes = provider.history
-                    .where((h) =>
-                        h.childId == widget.childId &&
-                        h.category == 'school_note')
-                    .toList()
-                  ..sort((a, b) => b.date.compareTo(a.date));
+    return Consumer<FamilyProvider>(
+      builder: (context, fp, _) {
+        final child = fp.getChild(widget.childId);
+        final notes = fp.history
+            .where((h) =>
+                h.childId == widget.childId && h.category == 'school_note')
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
-                if (notes.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('📋', style: TextStyle(fontSize: 48)),
-                        const SizedBox(height: 16),
-                        const Text('Aucune note pour l\'instant',
-                            style: TextStyle(
-                                color: Colors.white54, fontSize: 16)),
-                        const SizedBox(height: 8),
-                        Text(
-                            'Lancez une évaluation IA ou\nsaisissez une note manuellement',
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(0.35),
-                                fontSize: 13),
-                            textAlign: TextAlign.center),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: notes.length,
-                  itemBuilder: (context, index) {
-                    final note = notes[index];
-                    final color = note.points >= 14
-                        ? Colors.greenAccent
-                        : note.points >= 10
-                            ? Colors.orangeAccent
-                            : Colors.redAccent;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: GlassCard(
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: color.withOpacity(0.15),
-                            child: Text(
-                              '${note.points}',
-                              style: TextStyle(
-                                  color: color,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13),
-                            ),
-                          ),
-                          title: Text(note.reason,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 13),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis),
-                          subtitle: Text(
-                            '${note.date.day.toString().padLeft(2, '0')}/${note.date.month.toString().padLeft(2, '0')}/${note.date.year}',
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 11),
-                          ),
-                          trailing: Text(
-                            '${note.points}/20',
-                            style: TextStyle(
-                                color: color,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16),
-                          ),
+        return AnimatedBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: Text(
+                '📒 Notes — ${child?.name ?? ''}',
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+            body: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  child: Row(children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _startAiQuestionnaire(fp),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Colors.deepPurpleAccent.withOpacity(0.8),
+                          foregroundColor: Colors.white,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                         ),
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('Évaluation IA',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
-                    );
-                  },
-                );
-              }),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showAddNote(fp),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                              color: Colors.purpleAccent),
+                          foregroundColor: Colors.purpleAccent,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.edit_note),
+                        label: const Text('Note manuelle',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ]),
+                ),
+                Expanded(
+                  child: notes.isEmpty
+                      ? const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('📒',
+                                  style: TextStyle(fontSize: 48)),
+                              SizedBox(height: 12),
+                              Text('Aucune note enregistrée',
+                                  style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 16)),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: notes.length,
+                          itemBuilder: (ctx, i) {
+                            final n = notes[i];
+                            final color = n.points >= 14
+                                ? Colors.greenAccent
+                                : n.points >= 10
+                                    ? Colors.orangeAccent
+                                    : Colors.redAccent;
+                            return GlassCard(
+                              margin:
+                                  const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(14),
+                              child: Row(children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: color.withOpacity(0.15),
+                                    border: Border.all(
+                                        color: color.withOpacity(0.4)),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${n.points}',
+                                      style: TextStyle(
+                                          color: color,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(n.reason,
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 13),
+                                          maxLines: 2,
+                                          overflow:
+                                              TextOverflow.ellipsis),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${n.date.day.toString().padLeft(2, '0')}/${n.date.month.toString().padLeft(2, '0')}/${n.date.year}',
+                                        style: const TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 11),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ]),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-          ]),
-        ),
-      ]),
+          ),
+        );
+      },
     );
   }
 }
