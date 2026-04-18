@@ -725,57 +725,18 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
   }
 
   // ── SUBMIT CORRIGÉ : utilise FamilyProvider, pas child.punishments ──
-  Future<void> _submitToGemini() async {
+    Future<void> _submitToGemini() async {
     setState(() => _loading = true);
-
     try {
-      final fp = Provider.of<FamilyProvider>(context, listen: false);
-      final child = fp.children.firstWhere((c) => c.id == widget.childId);
-
-      final today = DateTime.now();
-      final todayStart = DateTime(today.year, today.month, today.day);
-
-      final todayHistory = fp.history.where((h) {
-        return h.childId == child.id &&
-            h.date.isAfter(todayStart.subtract(const Duration(seconds: 1)));
-      }).toList();
-
-      final bonusCount = todayHistory.where((h) => h.isBonus).length;
-      final penaltyCount = todayHistory.where((h) => !h.isBonus).length;
-
-      final activePunishments = fp.punishments
-          .where((p) => p.childId == child.id && !p.isCompleted)
-          .length;
-
-      final availableImmunities =
-          fp.getUsableImmunitiesForChild(child.id).length;
-
-      final streakDays = child.streakDays ?? 0;
-      final totalPoints = child.points;
-
-      final recentReasons = todayHistory
-          .take(5)
-          .map((h) => h.reason)
-          .toList();
-
       final result = await GeminiService.generateAppreciation(
-        childName: child.name,
+        childName: widget.childName,
         context: _contextLabel,
         answers: _answers,
-        bonusCount: bonusCount,
-        penaltyCount: penaltyCount,
-        activePunishments: activePunishments,
-        availableImmunities: availableImmunities,
-        streakDays: streakDays,
-        totalPoints: totalPoints,
-        recentReasons: recentReasons,
       );
-
       final json = jsonDecode(result);
       final aiNote = (json['note'] as num).toInt();
       final appreciation = json['appreciation'] as String;
       final conseil = json['conseil'] as String;
-
       if (mounted) {
         widget.onComplete(_AiEvalResult(
           aiNote: aiNote,
@@ -788,7 +749,7 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur lors de l\'analyse IA 😕 : $e'),
+          content: Text('Erreur IA : $e'),
           backgroundColor: Colors.redAccent,
         ));
         setState(() => _loading = false);
