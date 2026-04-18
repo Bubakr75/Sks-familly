@@ -392,8 +392,8 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
                   children: presets.map((p) {
                     final isSel = selectedPreset == p;
                     return GestureDetector(
-                      onTap: () => setS(
-                          () => selectedPreset = isSel ? null : p),
+                      onTap: () =>
+                          setS(() => selectedPreset = isSel ? null : p),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
@@ -435,19 +435,17 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
                   color: Colors.green.shade700,
                   icon: Icons.add_circle,
                   onTap: () {
-                    final child = fp.children
-                        .firstWhere((c) => c.id == selectedId);
-                    final pts = selectedPreset != null
-                        ? selectedPreset!.$2
-                        : customPoints;
-                    final reason = selectedPreset != null
-                        ? selectedPreset!.$1
-                        : 'Bonus rapide';
+                    final child =
+                        fp.children.firstWhere((c) => c.id == selectedId);
+                    final pts =
+                        selectedPreset != null ? selectedPreset!.$2 : customPoints;
+                    final reason =
+                        selectedPreset != null ? selectedPreset!.$1 : 'Bonus rapide';
                     fp.addPoints(selectedId, pts, reason,
                         isBonus: true, category: 'bonus');
                     Navigator.pop(ctx);
-                    _showConfirmSnack(context,
-                        '✅ +$pts pts à ${child.name}', Colors.green);
+                    _showConfirmSnack(
+                        context, '✅ +$pts pts à ${child.name}', Colors.green);
                   },
                 ),
                 const SizedBox(height: 24),
@@ -507,8 +505,8 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                   children: presets.map((p) {
                     final isSel = selectedPreset == p;
                     return GestureDetector(
-                      onTap: () => setS(
-                          () => selectedPreset = isSel ? null : p),
+                      onTap: () =>
+                          setS(() => selectedPreset = isSel ? null : p),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
@@ -519,9 +517,8 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                               : Colors.white.withOpacity(0.06),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: isSel
-                                  ? Colors.redAccent
-                                  : Colors.white24),
+                              color:
+                                  isSel ? Colors.redAccent : Colors.white24),
                         ),
                         child: Text('${p.$1} -${p.$2}pts',
                             style: TextStyle(
@@ -550,19 +547,18 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                   color: Colors.red.shade700,
                   icon: Icons.remove_circle,
                   onTap: () {
-                    final child = fp.children
-                        .firstWhere((c) => c.id == selectedId);
-                    final pts = selectedPreset != null
-                        ? selectedPreset!.$2
-                        : customPoints;
+                    final child =
+                        fp.children.firstWhere((c) => c.id == selectedId);
+                    final pts =
+                        selectedPreset != null ? selectedPreset!.$2 : customPoints;
                     final reason = selectedPreset != null
                         ? selectedPreset!.$1
                         : 'Pénalité rapide';
                     fp.addPoints(selectedId, -pts, reason,
                         isBonus: false, category: 'penalty');
                     Navigator.pop(ctx);
-                    _showConfirmSnack(context,
-                        '⚡ -$pts pts à ${child.name}', Colors.red);
+                    _showConfirmSnack(
+                        context, '⚡ -$pts pts à ${child.name}', Colors.red);
                   },
                 ),
                 const SizedBox(height: 24),
@@ -638,8 +634,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                       color: Colors.white.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color:
-                              Colors.purpleAccent.withOpacity(0.4)),
+                          color: Colors.purpleAccent.withOpacity(0.4)),
                     ),
                     child: Row(children: [
                       const Icon(Icons.calendar_today_rounded,
@@ -668,8 +663,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                   children: criteria.map((c) {
                     final isSel = selectedCriteria == c;
                     return GestureDetector(
-                      onTap: () =>
-                          setS(() => selectedCriteria = c),
+                      onTap: () => setS(() => selectedCriteria = c),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
@@ -717,8 +711,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: () {
-                        if (noteValue < maxValue)
-                          setS(() => noteValue++);
+                        if (noteValue < maxValue) setS(() => noteValue++);
                       },
                       icon: const Icon(Icons.add_circle_outline,
                           color: Colors.white54, size: 28),
@@ -738,8 +731,7 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [5, 10, 12, 14, 16, 18, 20].map((v) {
                     return Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
                       child: GestureDetector(
                         onTap: () => setS(() => noteValue = v),
                         child: Container(
@@ -773,8 +765,8 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                   color: Colors.purple.shade700,
                   icon: Icons.psychology,
                   onTap: () {
-                    final child = fp.children
-                        .firstWhere((c) => c.id == selectedId);
+                    final child =
+                        fp.children.firstWhere((c) => c.id == selectedId);
                     fp.addPoints(
                       selectedId,
                       noteValue,
@@ -845,8 +837,7 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                   children: descPresets.map((d) {
                     final isSel = desc == d;
                     return GestureDetector(
-                      onTap: () =>
-                          setS(() => desc = isSel ? '' : d),
+                      onTap: () => setS(() => desc = isSel ? '' : d),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(
@@ -885,8 +876,8 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                         borderSide: BorderSide.none),
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(
-                            color: Colors.orangeAccent)),
+                        borderSide:
+                            const BorderSide(color: Colors.orangeAccent)),
                   ),
                   onChanged: (v) {
                     if (v.isNotEmpty) setS(() => desc = '');
@@ -900,8 +891,7 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                   children: [10, 20, 30, 50, 100].map((n) {
                     final isSel = nbLines == n;
                     return Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: GestureDetector(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
@@ -945,8 +935,8 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                       ));
                       return;
                     }
-                    final child = fp.children
-                        .firstWhere((c) => c.id == selectedId);
+                    final child =
+                        fp.children.firstWhere((c) => c.id == selectedId);
                     fp.addPunishment(selectedId, finalDesc, nbLines);
                     Navigator.pop(ctx);
                     _showConfirmSnack(
@@ -1042,8 +1032,7 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                   children: [5, 10, 20, 30, 50].map((n) {
                     final isSel = nbLines == n;
                     return Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: GestureDetector(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
@@ -1078,8 +1067,8 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                   color: Colors.amber.shade700,
                   icon: Icons.shield,
                   onTap: () {
-                    final child = fp.children
-                        .firstWhere((c) => c.id == selectedId);
+                    final child =
+                        fp.children.firstWhere((c) => c.id == selectedId);
                     // ✅ CORRIGÉ : reason avant nbLines
                     fp.addImmunity(selectedId, reason, nbLines);
                     Navigator.pop(ctx);
@@ -1116,8 +1105,7 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
               children: [
                 _sheetHandle(),
                 const SizedBox(height: 16),
-                _sheetTitle(
-                    '⏱️ Bonus Temps d\'Écran', Colors.lightBlueAccent),
+                _sheetTitle('⏱️ Bonus Temps d\'Écran', Colors.lightBlueAccent),
                 const SizedBox(height: 16),
                 const Text('Enfant', style: _labelStyle),
                 const SizedBox(height: 8),
@@ -1125,8 +1113,7 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                     (id) => setS(() => selectedId = id)),
                 const SizedBox(height: 24),
                 const Text('Durée à ajouter',
-                    style:
-                        TextStyle(color: Colors.white70, fontSize: 14)),
+                    style: TextStyle(color: Colors.white70, fontSize: 14)),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1135,7 +1122,9 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                       onTap: () {
                         final child = fp.children
                             .firstWhere((c) => c.id == selectedId);
-                        fp.addScreenTimeBonus(selectedId, min);
+                        // ✅ CORRIGÉ : 3 arguments requis
+                        fp.addScreenTimeBonus(
+                            selectedId, min, 'Bonus temps écran');
                         Navigator.pop(ctx);
                         _showConfirmSnack(
                             context,
@@ -1146,12 +1135,11 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color:
-                              Colors.lightBlueAccent.withOpacity(0.12),
+                          color: Colors.lightBlueAccent.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                              color: Colors.lightBlueAccent
-                                  .withOpacity(0.4)),
+                              color:
+                                  Colors.lightBlueAccent.withOpacity(0.4)),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1163,8 +1151,7 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                                     fontSize: 14)),
                             const Text('min',
                                 style: TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 10)),
+                                    color: Colors.white38, fontSize: 10)),
                           ],
                         ),
                       ),
@@ -1278,11 +1265,10 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                           ]),
                           const SizedBox(height: 8),
                           Row(children: [
-                            _statChip(
-                                '✅ $bonuses bonus', Colors.greenAccent),
+                            _statChip('✅ $bonuses bonus', Colors.greenAccent),
                             const SizedBox(width: 8),
-                            _statChip('⚡ $penalties pénalités',
-                                Colors.redAccent),
+                            _statChip(
+                                '⚡ $penalties pénalités', Colors.redAccent),
                             if (avgNote != null) ...[
                               const SizedBox(width: 8),
                               _statChip('🧠 ${avgNote.round()}/20',
@@ -1311,8 +1297,7 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                                                 color: Colors.white60,
                                                 fontSize: 12),
                                             maxLines: 1,
-                                            overflow:
-                                                TextOverflow.ellipsis)),
+                                            overflow: TextOverflow.ellipsis)),
                                     Text(
                                         '${e.isBonus ? '+' : ''}${e.points}',
                                         style: TextStyle(
@@ -1327,8 +1312,7 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                               Text(
                                   '... et ${todayEntries.length - 3} autre(s)',
                                   style: const TextStyle(
-                                      color: Colors.white38,
-                                      fontSize: 11)),
+                                      color: Colors.white38, fontSize: 11)),
                           ] else ...[
                             const SizedBox(height: 8),
                             const Text('Aucune activité aujourd\'hui',
@@ -1408,8 +1392,7 @@ Widget _actionButton({
       onPressed: onTap,
       icon: Icon(icon),
       label: Text(label,
-          style:
-              const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
@@ -1475,8 +1458,7 @@ class _PointStepper extends StatelessWidget {
                   child: Center(
                       child: Text('+$d',
                           style: TextStyle(
-                              color: color,
-                              fontWeight: FontWeight.bold))),
+                              color: color, fontWeight: FontWeight.bold))),
                 ),
               ),
             )),
@@ -1487,8 +1469,7 @@ class _PointStepper extends StatelessWidget {
 
 void _showConfirmSnack(BuildContext context, String msg, Color color) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content:
-        Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
+    content: Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
     backgroundColor: color,
     behavior: SnackBarBehavior.floating,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
