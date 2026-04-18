@@ -64,16 +64,11 @@ jobs:
           if 'keystoreProperties' not in content:
               content = header + content
           sc = "\n    signingConfigs {\n        create(\"release\") {\n            keyAlias = keystoreProperties[\"keyAlias\"] as String?\n            keyPassword = keystoreProperties[\"keyPassword\"] as String?\n            storeFile = keystoreProperties[\"storeFile\"]?.let { file(it as String) }\n            storePassword = keystoreProperties[\"storePassword\"] as String?\n        }\n    }\n"
-          if 'signingConfigs' not in content:
-              content = content.replace('    buildTypes {', sc + '\n    buildTypes {')
-          content = content.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("release")')
+          content = content.replace('    buildTypes {', sc + '    buildTypes {')
           with open('android/app/build.gradle.kts', 'w') as f:
               f.write(content)
           print("Signing OK")
           PYEOF
-
-      - name: Debug gradle file
-        run: cat android/app/build.gradle.kts
 
       - name: Inject Gemini API Key
         run: |
