@@ -48,7 +48,7 @@ jobs:
               content += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
           with open('android/app/build.gradle.kts', 'w') as f:
               f.write(content)
-          print("OK")
+          print("Desugaring OK")
           PYEOF
 
       - name: Configure signing
@@ -60,17 +60,20 @@ jobs:
           python3 - << 'PYEOF'
           with open('android/app/build.gradle.kts', 'r') as f:
               content = f.read()
+          header = "import java.util.Properties\nimport java.io.FileInputStream\nval keystoreProperties = Properties()\nval keystorePropertiesFile = rootProject.file(\"key.properties\")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\n\n"
           if 'keystoreProperties' not in content:
-              header = "import java.util.Properties\nimport java.io.FileInputStream\nval keystoreProperties = Properties()\nval keystorePropertiesFile = rootProject.file(\"key.properties\")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\n"
               content = header + content
+          sc = "\n    signingConfigs {\n        create(\"release\") {\n            keyAlias = keystoreProperties[\"keyAlias\"] as String?\n            keyPassword = keystoreProperties[\"keyPassword\"] as String?\n            storeFile = keystoreProperties[\"storeFile\"]?.let { file(it as String) }\n            storePassword = keystoreProperties[\"storePassword\"] as String?\n        }\n    }\n"
           if 'signingConfigs' not in content:
-              sc = "\n    signingConfigs {\n        create(\"release\") {\n            keyAlias = keystoreProperties[\"keyAlias\"] as String?\n            keyPassword = keystoreProperties[\"keyPassword\"] as String?\n            storeFile = keystoreProperties[\"storeFile\"]?.let { file(it as String) }\n            storePassword = keystoreProperties[\"storePassword\"] as String?\n        }\n    }\n"
-              content = content.replace('    buildTypes {', sc + '    buildTypes {')
+              content = content.replace('    buildTypes {', sc + '\n    buildTypes {')
           content = content.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("release")')
           with open('android/app/build.gradle.kts', 'w') as f:
               f.write(content)
-          print("OK")
+          print("Signing OK")
           PYEOF
+
+      - name: Debug gradle file
+        run: cat android/app/build.gradle.kts
 
       - name: Inject Gemini API Key
         run: |
@@ -111,3 +114,4 @@ jobs:
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
