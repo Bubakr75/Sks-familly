@@ -1,17 +1,173 @@
+name: Build Flutter APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-8.14
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Pre-download Gradle 8.14
+        run: |
+          GRADLE_URL="https://services.gradle.org/distributions/gradle-8.14-all.zip"
+          GRADLE_DIR="$HOME/.gradle/wrapper/dists/gradle-8.14-all"
+          if [ ! -d "$GRADLE_DIR" ]; then
+            echo "Téléchargement de Gradle 8.14..."
+            for i in 1 2 3 4 5; do
+              curl -L --retry 3 --retry-delay 10 --connect-timeout 30 \
+                -o /tmp/gradle-8.14-all.zip "$GRADLE_URL" && break
+              echo "Tentative $i échouée, nouvelle tentative..."
+              sleep 15
+            done
+            echo "Gradle 8.14 téléchargé."
+          else
+            echo "Gradle 8.14 déjà en cache."
+          fi
+
+      - name: Backup custom files
+        run: |
+          cp android/app/google-service.json /tmp/google-services.json 2>/dev/null || true
+          cp android/app/build.gradle.kts /tmp/build.gradle.kts
+          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
+          cp android/app/proguard-rules.pro /tmp/proguard-rules.pro 2>/dev/null || true
+          cp android/gradle.properties /tmp/gradle.properties 2>/dev/null || true
+
+      - name: Regenerate Android folder
+        run: |
+          rm -rf android
+          flutter create --platforms android --org com.familyscore --project-name family_score .
+          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
+
+      - name: Decode keystore from secret
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/release-key.jks
+
+      - name: Enable core library desugaring
+        run: |
+          python3 - << 'PYEOF'
+          with open('android/app/build.gradle.kts', 'r') as f:
+              content = f.read()
+          if 'isCoreLibraryDesugaringEnabled' not in content:
+              content = content.replace(
+                  'compileOptions {',
+                  'compileOptions {\n        isCoreLibraryDesugaringEnabled = true'
+              )
+          if 'desugar_jdk_libs' not in content:
+              content += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+          with open('android/app/build.gradle.kts', 'w') as f:
+              f.write(content)
+          print("Desugaring OK")
+          PYEOF
+
+      - name: Configure signing
+        run: |
+          echo "storePassword=SKS2026" > android/key.properties
+          echo "keyPassword=SKS2026" >> android/key.properties
+          echo "keyAlias=release" >> android/key.properties
+          echo "storeFile=../release-key.jks" >> android/key.properties
+
+          python3 - << 'PYEOF'
+          with open('android/app/build.gradle.kts', 'r') as f:
+              content = f.read()
+          if 'keystoreProperties' not in content:
+              key_properties_code = """import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+"""
+              content = key_properties_code + '\n' + content
+          if 'signingConfigs' not in content:
+              signing_config = """
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+            storePassword = keystoreProperties["storePassword"] as String?
+        }
+    }
+"""
+              content = content.replace('    buildTypes {', signing_config + '\n    buildTypes {')
+          content = content.replace(
+              'signingConfig = signingConfigs.getByName("debug")',
+              'signingConfig = signingConfigs.getByName("release")'
+          )
+          with open('android/app/build.gradle.kts', 'w') as f:
+              f.write(content)
+          print("Signing OK")
+          PYEOF
+
       - name: Inject Gemini API Key
         run: |
           python3 - << 'PYEOF'
-          import os, re
-          api_key = os.environ.get('GEMINI_API_KEY', '').replace('\n', '').replace('\r', '').strip()
+          import os
+          raw_key = os.environ.get('GEMINI_API_KEY', '')
+          api_key = raw_key.replace('\n', '').replace('\r', '').strip()
           with open('lib/services/gemini_service.dart', 'r') as f:
               content = f.read()
           content = content.replace(
               "String.fromEnvironment('GEMINI_API_KEY')",
-              f"'{api_key}'"
+              "'" + api_key + "'"
           )
           with open('lib/services/gemini_service.dart', 'w') as f:
               f.write(content)
-          print(f"Injection terminée. Clé longueur: {len(api_key)}")
+          print("Injection OK, longueur cle: " + str(len(api_key)))
           PYEOF
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate app icons
+        run: dart run flutter_launcher_icons
+
+      - name: Build Release APK
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: flutter build apk --release --no-tree-shake-icons
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: family-score-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v4.8.0+${{ github.run_number }}
+          name: "Family Score v4.8.0+${{ github.run_number }}"
+          body: "Mise a jour automatique - Build #${{ github.run_number }}"
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
