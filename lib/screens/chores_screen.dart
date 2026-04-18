@@ -1,50 +1,127 @@
-﻿import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/family_provider.dart';
+import '../models/child_model.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 
-class ChoreTask {
-  final String id;
-  final String title;
-  final List<String> childIds;
-  final List<ChoreAssignment> assignments;
+// ═══════════════════════════════════════════════════════════
+// PAINTER : Roue avec segments colorés
+// ═══════════════════════════════════════════════════════════
+class _WheelPainter extends CustomPainter {
+  final List<ChildModel> children;
+  final List<Color> colors;
+  final double rotation;
+  final List<bool> grayed; // enfants déjà tirés
 
-  ChoreTask({required this.id, required this.title, required this.childIds, required this.assignments});
+  _WheelPainter({
+    required this.children,
+    required this.colors,
+    required this.rotation,
+    required this.grayed,
+  });
 
-  ChoreTask copyWith({String? id, String? title, List<String>? childIds, List<ChoreAssignment>? assignments}) =>
-      ChoreTask(id: id ?? this.id, title: title ?? this.title, childIds: childIds ?? this.childIds, assignments: assignments ?? this.assignments);
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (children.isEmpty) return;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = min(size.width, size.height) / 2 - 4;
+    final n = children.length;
+    final sliceAngle = 2 * pi / n;
 
-  Map<String, dynamic> toJson() => {'id': id, 'title': title, 'childIds': childIds, 'assignments': assignments.map((a) => a.toJson()).toList()};
+    for (int i = 0; i < n; i++) {
+      final startAngle = rotation + i * sliceAngle - pi / 2;
+      final color = grayed[i]
+          ? Colors.grey.shade700
+          : colors[i % colors.length];
 
-  factory ChoreTask.fromJson(Map<String, dynamic> j) => ChoreTask(
-        id: j['id'] as String, title: j['title'] as String,
-        childIds: List<String>.from(j['childIds'] as List),
-        assignments: (j['assignments'] as List).map((a) => ChoreAssignment.fromJson(a as Map<String, dynamic>)).toList(),
+      // Segment rempli
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.fill;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sliceAngle,
+        true,
+        paint,
       );
+
+      // Bordure segment
+      final borderPaint = Paint()
+        ..color = Colors.black.withOpacity(0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sliceAngle,
+        true,
+        borderPaint,
+      );
+
+      // Texte au centre du segment
+      final midAngle = startAngle + sliceAngle / 2;
+      final textRadius = radius * 0.62;
+      final tx = center.dx + textRadius * cos(midAngle);
+      final ty = center.dy + textRadius * sin(midAngle);
+
+      canvas.save();
+      canvas.translate(tx, ty);
+      canvas.rotate(midAngle + pi / 2);
+
+      final name = children[i].name;
+      final shortName = name.length > 7 ? '${name.substring(0, 6)}.' : name;
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: shortName,
+          style: TextStyle(
+            color: grayed[i] ? Colors.white38 : Colors.white,
+            fontSize: n <= 4 ? 14 : (n <= 6 ? 12 : 10),
+            fontWeight: FontWeight.bold,
+            shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      )..layout();
+      textPainter.paint(
+          canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
+
+      canvas.restore();
+    }
+
+    // Cercle central
+    canvas.drawCircle(
+      center,
+      radius * 0.12,
+      Paint()
+        ..color = const Color(0xFF0D1B2E)
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawCircle(
+      center,
+      radius * 0.12,
+      Paint()
+        ..color = Colors.white24
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_WheelPainter old) =>
+      old.rotation != rotation ||
+      old.children != children ||
+      old.grayed != grayed;
 }
 
-class ChoreAssignment {
-  final String childId;
-  final DateTime scheduledFor;
-  final String slot;
-  final bool isDone;
-
-  ChoreAssignment({required this.childId, required this.scheduledFor, required this.slot, required this.isDone});
-
-  ChoreAssignment copyWith({String? childId, DateTime? scheduledFor, String? slot, bool? isDone}) =>
-      ChoreAssignment(childId: childId ?? this.childId, scheduledFor: scheduledFor ?? this.scheduledFor, slot: slot ?? this.slot, isDone: isDone ?? this.isDone);
-
-  Map<String, dynamic> toJson() => {'childId': childId, 'scheduledFor': scheduledFor.toIso8601String(), 'slot': slot, 'isDone': isDone};
-
-  factory ChoreAssignment.fromJson(Map<String, dynamic> j) => ChoreAssignment(
-        childId: j['childId'] as String, scheduledFor: DateTime.parse(j['scheduledFor'] as String),
-        slot: j['slot'] as String, isDone: j['isDone'] as bool,
-      );
-}
-
+// ═══════════════════════════════════════════════════════════
+// CHORES SCREEN
+// ═══════════════════════════════════════════════════════════
 class ChoresScreen extends StatefulWidget {
   const ChoresScreen({super.key});
 
@@ -52,541 +129,588 @@ class ChoresScreen extends StatefulWidget {
   State<ChoresScreen> createState() => _ChoresScreenState();
 }
 
-class _ChoresScreenState extends State<ChoresScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _animCtrl;
-  late Animation<double> _fadeAnim;
-  List<ChoreTask> _tasks = [];
-  bool _loading = true;
+class _ChoresScreenState extends State<ChoresScreen>
+    with TickerProviderStateMixin {
+  // ── Animation de la roue ──────────────────────────────
+  late AnimationController _spinController;
+  late Animation<double> _spinAnim;
+
+  // ── État ──────────────────────────────────────────────
+  double _currentRotation = 0;
+  int? _winnerIndex;
+  bool _isSpinning = false;
+
+  // ── Tâches du jour (childId → tâche effectuée) ────────
+  // On mémorise par session (pas persisté, reset à chaque ouverture)
+  final Map<String, String> _doneTodayMap = {}; // childId → choreName
+
+  // ── Tâche sélectionnée ────────────────────────────────
+  String _selectedChore = 'Vaisselle';
+  final List<String> _chores = [
+    'Vaisselle',
+    'Balayer',
+    'Passer l\'aspirateur',
+    'Sortir les poubelles',
+    'Mettre la table',
+    'Débarrasser la table',
+    'Faire la lessive',
+    'Ranger le salon',
+    'Nettoyer les WC',
+    'Faire son lit',
+    'Tâche personnalisée',
+  ];
+  final TextEditingController _customChoreCtrl = TextEditingController();
+
+  // ── Couleurs des segments ─────────────────────────────
+  static const _segmentColors = [
+    Color(0xFF6C63FF),
+    Color(0xFFFF6584),
+    Color(0xFF43E97B),
+    Color(0xFFFA8231),
+    Color(0xFF00D2FF),
+    Color(0xFFFFD93D),
+    Color(0xFFFF5E57),
+    Color(0xFF26de81),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn);
-    _loadTasks();
+    _spinController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3500),
+    );
   }
 
   @override
   void dispose() {
-    _animCtrl.dispose();
+    _spinController.dispose();
+    _customChoreCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loadTasks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('chore_tasks_v2');
-    if (raw != null) {
-      final list = jsonDecode(raw) as List;
-      _tasks = list.map((e) => ChoreTask.fromJson(e as Map<String, dynamic>)).toList();
+  // ── Enfants disponibles (non grisés) ─────────────────
+  List<ChildModel> _availableChildren(List<ChildModel> all) =>
+      all.where((c) => !_doneTodayMap.containsKey(c.id)).toList();
+
+  // ── Lancer la roue ───────────────────────────────────
+  void _spin(List<ChildModel> children) {
+    final available = _availableChildren(children);
+    if (available.isEmpty) {
+      _showAllDoneDialog();
+      return;
     }
-    setState(() => _loading = false);
-    _animCtrl.forward();
+    if (_isSpinning) return;
+
+    HapticFeedback.mediumImpact();
+
+    final rng = Random();
+    final n = available.length;
+    final sliceAngle = 2 * pi / n;
+
+    // Choisir un gagnant parmi les enfants disponibles
+    final winnerIdx = rng.nextInt(n); // index dans `available`
+
+    // La flèche pointe vers le HAUT (angle = 0 = -pi/2 en coordonnées canvas).
+    // Le centre du segment gagnant doit arriver à 0 (haut).
+    // Centre du segment i : rotation + i*sliceAngle + sliceAngle/2 - pi/2 = -pi/2 + 2k*pi
+    // → rotation = -pi/2 - winnerIdx*sliceAngle - sliceAngle/2 + pi/2 + 2k*pi
+    //            = -winnerIdx*sliceAngle - sliceAngle/2 + 2k*pi
+
+    // On ajoute plusieurs tours complets (5 tours min) pour l'effet
+    final extraSpins = 5 + rng.nextInt(3); // 5 à 7 tours
+    final targetRotation = -winnerIdx * sliceAngle -
+        sliceAngle / 2 +
+        extraSpins * 2 * pi;
+
+    // Normaliser depuis la rotation actuelle
+    final from = _currentRotation % (2 * pi);
+    final to = targetRotation;
+
+    _spinAnim = Tween<double>(begin: from, end: to).animate(
+      CurvedAnimation(
+        parent: _spinController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    setState(() {
+      _isSpinning = true;
+      _winnerIndex = null;
+    });
+
+    _spinController.reset();
+    _spinController.forward().then((_) {
+      final winner = available[winnerIdx];
+      setState(() {
+        _currentRotation = to;
+        _isSpinning = false;
+        _winnerIndex = children.indexOf(winner);
+      });
+      HapticFeedback.heavyImpact();
+      _showWinnerDialog(winner, children);
+    });
   }
 
-  Future<void> _saveTasks() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('chore_tasks_v2', jsonEncode(_tasks.map((t) => t.toJson()).toList()));
-  }
+  // ── Dialog gagnant ───────────────────────────────────
+  void _showWinnerDialog(ChildModel winner, List<ChildModel> allChildren) {
+    final choreName = _selectedChore == 'Tâche personnalisée'
+        ? (_customChoreCtrl.text.trim().isNotEmpty
+            ? _customChoreCtrl.text.trim()
+            : 'Tâche du jour')
+        : _selectedChore;
 
-  bool _doneToday(ChoreTask task, String childId) {
-    final today = DateTime.now();
-    return task.assignments.any((a) =>
-        a.childId == childId && a.isDone &&
-        a.scheduledFor.year == today.year && a.scheduledFor.month == today.month && a.scheduledFor.day == today.day);
-  }
-
-  List<String> _eligibleChildren(ChoreTask task) => task.childIds.where((id) => !_doneToday(task, id)).toList();
-
-  void _addTask(String title, List<String> childIds) {
-    setState(() => _tasks.add(ChoreTask(id: DateTime.now().millisecondsSinceEpoch.toString(), title: title, childIds: childIds, assignments: [])));
-    _saveTasks();
-  }
-
-  void _deleteTask(String taskId) {
-    setState(() => _tasks.removeWhere((t) => t.id == taskId));
-    _saveTasks();
-  }
-
-  void _markDone(ChoreTask task, String childId, String slot, DateTime date) {
-    final idx = _tasks.indexWhere((t) => t.id == task.id);
-    if (idx == -1) return;
-    setState(() => _tasks[idx] = task.copyWith(assignments: [...task.assignments, ChoreAssignment(childId: childId, scheduledFor: date, slot: slot, isDone: true)]));
-    _saveTasks();
-  }
-
-  Future<void> _showAddTaskDialog() async {
-    final fp = context.read<FamilyProvider>();
-    final children = fp.children;
-    final titleCtrl = TextEditingController();
-    final selected = <String>{};
-
-    await showDialog(
+    showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx2, setSt) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Nouvelle tâche', style: TextStyle(color: Colors.white)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: titleCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Ex : Nettoyer la table',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    filled: true, fillColor: Colors.white10,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Enfants participants :', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: children.map((child) {
-                    final on = selected.contains(child.id);
-                    return FilterChip(
-                      label: Text(child.name, style: TextStyle(color: on ? Colors.white : Colors.white70)),
-                      selected: on,
-                      onSelected: (v) => setSt(() => v ? selected.add(child.id) : selected.remove(child.id)),
-                      selectedColor: Colors.purpleAccent,
-                      backgroundColor: Colors.white10,
-                    );
-                  }).toList(),
-                ),
-              ],
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🎉', style: TextStyle(fontSize: 52)),
+            const SizedBox(height: 12),
+            Text(
+              winner.name,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold),
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white38))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              onPressed: () {
-                if (titleCtrl.text.trim().isNotEmpty && selected.isNotEmpty) {
-                  _addTask(titleCtrl.text.trim(), selected.toList());
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Créer', style: TextStyle(color: Colors.white)),
+            const SizedBox(height: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.cyanAccent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border:
+                    Border.all(color: Colors.cyanAccent.withOpacity(0.4)),
+              ),
+              child: Text(
+                choreName,
+                style: const TextStyle(
+                    color: Colors.cyanAccent,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'C\'est son tour !',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: Colors.white38)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.greenAccent,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.check_circle, size: 18),
+            label: const Text('Confirmer',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _confirmWinner(winner, choreName, allChildren);
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _showDeleteConfirm(ChoreTask task) async {
-    final ok = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1E1E2E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('Supprimer ?', style: TextStyle(color: Colors.white)),
-            content: Text('Supprimer la tâche « ${task.title} » ?', style: const TextStyle(color: Colors.white70)),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler', style: TextStyle(color: Colors.white38))),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        ) ?? false;
-    if (ok) _deleteTask(task.id);
+  // ── Confirmer le tirage ──────────────────────────────
+  void _confirmWinner(
+      ChildModel winner, String choreName, List<ChildModel> allChildren) {
+    final fp = context.read<FamilyProvider>();
+    setState(() {
+      _doneTodayMap[winner.id] = choreName;
+      _winnerIndex = null;
+    });
+    // Ajouter un bonus de points
+    fp.addPoints(
+      winner.id,
+      3,
+      '🧹 Tâche ménagère : $choreName',
+      category: 'ménage',
+      isBonus: true,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('✅ ${winner.name} → $choreName (+3 pts)'),
+        backgroundColor: Colors.green.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
+  // ── Dialog "tous ont fait une tâche" ─────────────────
+  void _showAllDoneDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Tout le monde a participé !',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Tous les enfants ont déjà reçu une tâche aujourd\'hui.\nAppuie sur "Réinitialiser" pour recommencer.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.cyanAccent,
+                foregroundColor: Colors.black),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Réinitialiser'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() => _doneTodayMap.clear());
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── BUILD ─────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D1B2A),
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : FadeTransition(
-                opacity: _fadeAnim,
+    final fp = context.watch<FamilyProvider>();
+    final children = fp.children;
+
+    return AnimatedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          title: const Text('Tâches ménagères',
+              style: TextStyle(color: Colors.white)),
+          actions: [
+            if (_doneTodayMap.isNotEmpty)
+              TextButton.icon(
+                onPressed: () => setState(() => _doneTodayMap.clear()),
+                icon: const Icon(Icons.refresh,
+                    color: Colors.cyanAccent, size: 18),
+                label: const Text('Reset',
+                    style: TextStyle(color: Colors.cyanAccent)),
+              ),
+          ],
+        ),
+        body: children.isEmpty
+            ? const Center(
+                child: Text('Aucun enfant enregistré',
+                    style: TextStyle(color: Colors.white54)),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                 child: Column(
                   children: [
-                    _buildHeader(),
-                    Expanded(
-                      child: _tasks.isEmpty
-                          ? _buildEmpty()
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                              itemCount: _tasks.length,
-                              itemBuilder: (_, i) => _buildTaskCard(_tasks[i]),
-                            ),
-                    ),
+                    // ── Sélecteur de tâche ────────────────
+                    _buildChoreSelector(),
+                    const SizedBox(height: 20),
+                    // ── Roue ──────────────────────────────
+                    _buildWheel(children),
+                    const SizedBox(height: 20),
+                    // ── Bouton lancer ─────────────────────
+                    _buildSpinButton(children),
+                    const SizedBox(height: 24),
+                    // ── Liste des enfants ─────────────────
+                    _buildChildrenStatus(children),
                   ],
                 ),
               ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddTaskDialog,
-        backgroundColor: Colors.purpleAccent,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Ajouter une tâche', style: TextStyle(color: Colors.white)),
-      ),
     );
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          const Text('🎡', style: TextStyle(fontSize: 28)),
-          const SizedBox(width: 12),
-          const Text('Tâches ménagères', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          Text('${_tasks.length} tâche(s)', style: const TextStyle(color: Colors.white54, fontSize: 13)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmpty() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('🏠', style: TextStyle(fontSize: 64)),
-          SizedBox(height: 16),
-          Text('Aucune tâche pour l\'instant', style: TextStyle(color: Colors.white70, fontSize: 16)),
-          SizedBox(height: 8),
-          Text('Appuyez sur + pour créer votre première tâche', style: TextStyle(color: Colors.white38, fontSize: 13)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTaskCard(ChoreTask task) {
-    final fp = context.watch<FamilyProvider>();
-    final eligible = _eligibleChildren(task);
-    final allDone = eligible.isEmpty && task.childIds.isNotEmpty;
-
+  // ── Sélecteur de tâche ───────────────────────────────
+  Widget _buildChoreSelector() {
     return GlassCard(
-      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Tâche à attribuer',
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _chores.map((chore) {
+              final isSelected = _selectedChore == chore;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedChore = chore),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.cyanAccent.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: isSelected
+                            ? Colors.cyanAccent
+                            : Colors.white24),
+                  ),
+                  child: Text(
+                    chore,
+                    style: TextStyle(
+                      color:
+                          isSelected ? Colors.cyanAccent : Colors.white60,
+                      fontSize: 12,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          if (_selectedChore == 'Tâche personnalisée') ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _customChoreCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Décris la tâche...',
+                hintStyle: const TextStyle(color: Colors.white30),
+                prefixIcon:
+                    const Icon(Icons.edit, color: Colors.cyanAccent),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.cyanAccent),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Roue ─────────────────────────────────────────────
+  Widget _buildWheel(List<ChildModel> children) {
+    final grayed = children.map((c) => _doneTodayMap.containsKey(c.id)).toList();
+
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [
+        // Flèche indicatrice (fixe en haut)
+        Positioned(
+          top: 0,
+          child: Icon(
+            Icons.arrow_drop_down,
+            color: Colors.redAccent,
+            size: 48,
+            shadows: const [
+              Shadow(color: Colors.black54, blurRadius: 8)
+            ],
+          ),
+        ),
+        // Roue
+        Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: AnimatedBuilder(
+            animation: _isSpinning ? _spinAnim : const AlwaysStoppedAnimation(0.0),
+            builder: (context, _) {
+              final rot = _isSpinning ? _spinAnim.value : _currentRotation;
+              return CustomPaint(
+                size: const Size(300, 300),
+                painter: _WheelPainter(
+                  children: children,
+                  colors: _segmentColors,
+                  rotation: rot,
+                  grayed: grayed,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Bouton lancer ────────────────────────────────────
+  Widget _buildSpinButton(List<ChildModel> children) {
+    final available = _availableChildren(children);
+    final allDone = available.isEmpty;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              allDone ? Colors.grey.shade800 : const Color(0xFF6C63FF),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          elevation: _isSpinning ? 0 : 6,
+        ),
+        icon: _isSpinning
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+            : Icon(allDone ? Icons.check_circle : Icons.casino_rounded,
+                size: 24),
+        label: Text(
+          _isSpinning
+              ? 'La roue tourne...'
+              : allDone
+                  ? 'Tout le monde a participé !'
+                  : 'Lancer la roue  (${available.length} dispo)',
+          style: const TextStyle(
+              fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        onPressed:
+            _isSpinning || allDone ? null : () => _spin(children),
+      ),
+    );
+  }
+
+  // ── Liste statut enfants ──────────────────────────────
+  Widget _buildChildrenStatus(List<ChildModel> children) {
+    return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('🧹', style: TextStyle(fontSize: 22)),
-              const SizedBox(width: 10),
-              Expanded(child: Text(task.title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
-              if (allDone)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                  child: const Text('✅ Tous faits', style: TextStyle(color: Colors.green, fontSize: 11)),
-                ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                onPressed: () => _showDeleteConfirm(task),
+              const Icon(Icons.people, color: Colors.white54, size: 16),
+              const SizedBox(width: 8),
+              const Text('Statut du jour',
+                  style: TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13)),
+              const Spacer(),
+              Text(
+                '${_doneTodayMap.length}/${children.length} fait(s)',
+                style: const TextStyle(
+                    color: Colors.cyanAccent, fontSize: 12),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            children: task.childIds.map((id) {
-              final child = fp.children.firstWhere((c) => c.id == id, orElse: () => fp.children.first);
-              final done = _doneToday(task, id);
-              return Chip(
-                label: Text(child.name,
-                    style: TextStyle(color: done ? Colors.white38 : Colors.white, fontSize: 12, decoration: done ? TextDecoration.lineThrough : null)),
-                backgroundColor: done ? Colors.white10 : Colors.purpleAccent.withOpacity(0.3),
-                padding: EdgeInsets.zero,
-              );
-            }).toList(),
-          ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: allDone ? Colors.white12 : Colors.purpleAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+          ...children.map((child) {
+            final done = _doneTodayMap.containsKey(child.id);
+            final choreDone = _doneTodayMap[child.id];
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: done
+                    ? Colors.green.withOpacity(0.12)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: done
+                      ? Colors.greenAccent.withOpacity(0.4)
+                      : Colors.white12,
+                ),
               ),
-              icon: Text(allDone ? '🔄' : '🎡', style: const TextStyle(fontSize: 18)),
-              label: Text(allDone ? 'Tous faits aujourd\'hui 🎉' : 'Tourner la roue', style: const TextStyle(color: Colors.white, fontSize: 14)),
-              onPressed: () {
-                if (allDone) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tous les enfants ont fait cette tâche aujourd\'hui 🎉')));
-                } else {
-                  _spinWheel(task, eligible, fp);
-                }
-              },
-            ),
-          ),
-          ..._buildTodayHistory(task, fp),
+              child: Row(
+                children: [
+                  // Avatar
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: done
+                        ? Colors.green.withOpacity(0.2)
+                        : Colors.white10,
+                    child: Text(
+                      child.avatar.isNotEmpty
+                          ? child.avatar
+                          : child.name[0].toUpperCase(),
+                      style: TextStyle(
+                        fontSize: child.avatar.isNotEmpty ? 16 : 13,
+                        color: done ? Colors.greenAccent : Colors.white54,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Nom + tâche
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          child.name,
+                          style: TextStyle(
+                            color: done ? Colors.white : Colors.white70,
+                            fontWeight: done
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (done && choreDone != null)
+                          Text(
+                            choreDone,
+                            style: const TextStyle(
+                                color: Colors.greenAccent,
+                                fontSize: 11),
+                          )
+                        else
+                          const Text(
+                            'En attente',
+                            style: TextStyle(
+                                color: Colors.white38, fontSize: 11),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Icône statut
+                  Icon(
+                    done
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked,
+                    color:
+                        done ? Colors.greenAccent : Colors.white24,
+                    size: 22,
+                  ),
+                  // Bouton annuler si fait
+                  if (done)
+                    IconButton(
+                      icon: const Icon(Icons.undo,
+                          color: Colors.white38, size: 18),
+                      tooltip: 'Annuler',
+                      onPressed: () =>
+                          setState(() => _doneTodayMap.remove(child.id)),
+                    ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
   }
-
-  List<Widget> _buildTodayHistory(ChoreTask task, FamilyProvider fp) {
-    final today = DateTime.now();
-    final todayAssignments = task.assignments.where((a) =>
-        a.isDone && a.scheduledFor.year == today.year && a.scheduledFor.month == today.month && a.scheduledFor.day == today.day).toList();
-    if (todayAssignments.isEmpty) return [];
-    return [
-      const SizedBox(height: 8),
-      const Divider(color: Colors.white12),
-      const Text('Aujourd\'hui :', style: TextStyle(color: Colors.white38, fontSize: 12)),
-      const SizedBox(height: 4),
-      ...todayAssignments.map((a) {
-        final child = fp.children.firstWhere((c) => c.id == a.childId, orElse: () => fp.children.first);
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 14),
-              const SizedBox(width: 6),
-              Text('${child.name} – ${a.slot}', style: const TextStyle(color: Colors.white60, fontSize: 12)),
-            ],
-          ),
-        );
-      }),
-    ];
-  }
-
-  Future<void> _spinWheel(ChoreTask task, List<String> eligible, FamilyProvider fp) async {
-    final children = eligible.map((id) => fp.children.firstWhere((c) => c.id == id)).toList();
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => _WheelDialog(children: children),
-    );
-    if (result == null) return;
-    final winnerId = result['childId'] as String;
-    final slot = result['slot'] as String;
-    final date = result['date'] as DateTime;
-    _markDone(task, winnerId, slot, date);
-    final winnerName = fp.children.firstWhere((c) => c.id == winnerId).name;
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('🎡 $winnerName s\'occupe de « ${task.title} » ce $slot !'),
-        backgroundColor: Colors.purpleAccent,
-        duration: const Duration(seconds: 3),
-      ));
-    }
-  }
-}
-
-class _WheelDialog extends StatefulWidget {
-  final List<dynamic> children;
-  const _WheelDialog({required this.children});
-
-  @override
-  State<_WheelDialog> createState() => _WheelDialogState();
-}
-
-class _WheelDialogState extends State<_WheelDialog> with SingleTickerProviderStateMixin {
-  late AnimationController _spinCtrl;
-  late Animation<double> _spinAnim;
-  bool _spinning = false;
-  int? _winnerIndex;
-  String _slot = 'matin';
-  bool _tomorrow = false;
-
-  static const _colors = [Color(0xFF7C3AED), Color(0xFF2563EB), Color(0xFF059669), Color(0xFFD97706), Color(0xFFDC2626), Color(0xFF7C3AED)];
-
-  @override
-  void initState() {
-    super.initState();
-    _spinCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 3));
-    _spinAnim = CurvedAnimation(parent: _spinCtrl, curve: Curves.decelerate);
-  }
-
-  @override
-  void dispose() {
-    _spinCtrl.dispose();
-    super.dispose();
-  }
-
-  void _spin() {
-    if (_spinning) return;
-    final rng = Random();
-    final winner = rng.nextInt(widget.children.length);
-    final extraTurns = 5 + rng.nextInt(3);
-    final targetAngle = (extraTurns * 2 * pi) + (2 * pi) - (winner / widget.children.length) * 2 * pi;
-    setState(() { _spinning = true; _winnerIndex = null; });
-    _spinAnim = Tween<double>(begin: 0, end: targetAngle).animate(CurvedAnimation(parent: _spinCtrl, curve: Curves.decelerate));
-    _spinCtrl.reset();
-    _spinCtrl.forward().then((_) => setState(() { _spinning = false; _winnerIndex = winner; }));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: const Color(0xFF1E1E2E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('🎡 Qui fait la tâche ?', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: 220, height: 220,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _spinAnim,
-                    builder: (_, __) => Transform.rotate(
-                      angle: _spinAnim.value,
-                      child: CustomPaint(size: const Size(220, 220), painter: _WheelPainter(children: widget.children, colors: _colors)),
-                    ),
-                  ),
-                  const Positioned(top: 4, child: Icon(Icons.arrow_drop_down, color: Colors.white, size: 36)),
-                  Container(
-                    width: 40, height: 40,
-                    decoration: const BoxDecoration(color: Color(0xFF1E1E2E), shape: BoxShape.circle),
-                    child: const Icon(Icons.star, color: Colors.amber, size: 20),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_winnerIndex != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.purpleAccent.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.purpleAccent.withOpacity(0.4)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('🎉 ', style: TextStyle(fontSize: 20)),
-                    Text(widget.children[_winnerIndex!].name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text('Créneau :', style: TextStyle(color: Colors.white60, fontSize: 13)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: ['matin', 'après-midi', 'soir'].map((s) {
-                  final sel = _slot == s;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: ChoiceChip(
-                      label: Text(s, style: TextStyle(color: sel ? Colors.white : Colors.white60, fontSize: 12)),
-                      selected: sel,
-                      onSelected: (_) => setState(() => _slot = s),
-                      selectedColor: Colors.purpleAccent,
-                      backgroundColor: Colors.white10,
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Pour demain ?', style: TextStyle(color: Colors.white60, fontSize: 13)),
-                  const SizedBox(width: 8),
-                  Switch(value: _tomorrow, onChanged: (v) => setState(() => _tomorrow = v), activeColor: Colors.purpleAccent),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      onPressed: _spin,
-                      child: const Text('🔄 Retirer', style: TextStyle(color: Colors.white70)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      onPressed: () {
-                        final date = _tomorrow ? DateTime.now().add(const Duration(days: 1)) : DateTime.now();
-                        Navigator.pop(context, {'childId': widget.children[_winnerIndex!].id, 'slot': _slot, 'date': date});
-                      },
-                      child: const Text('✅ Valider', style: TextStyle(color: Colors.white)),
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purpleAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                ),
-                icon: const Text('🎡', style: TextStyle(fontSize: 20)),
-                label: Text(_spinning ? 'En cours...' : 'Lancer la roue !', style: const TextStyle(color: Colors.white, fontSize: 16)),
-                onPressed: _spinning ? null : _spin,
-              ),
-            ],
-            const SizedBox(height: 8),
-            TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Annuler', style: TextStyle(color: Colors.white38))),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _WheelPainter extends CustomPainter {
-  final List<dynamic> children;
-  final List<Color> colors;
-
-  _WheelPainter({required this.children, required this.colors});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final n = children.length;
-    final sweep = 2 * pi / n;
-    final radius = size.width / 2;
-    final center = Offset(radius, radius);
-    final paint = Paint()..style = PaintingStyle.fill;
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-
-    for (int i = 0; i < n; i++) {
-      paint.color = colors[i % colors.length];
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), i * sweep - pi / 2, sweep, true, paint);
-      final angle = i * sweep - pi / 2 + sweep / 2;
-      final textRadius = radius * 0.65;
-      final textOffset = Offset(center.dx + textRadius * cos(angle), center.dy + textRadius * sin(angle));
-      textPainter.text = TextSpan(
-        text: children[i].name.length > 6 ? children[i].name.substring(0, 6) : children[i].name,
-        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-      );
-      textPainter.layout();
-      canvas.save();
-      canvas.translate(textOffset.dx, textOffset.dy);
-      canvas.rotate(angle + pi / 2);
-      canvas.translate(-textPainter.width / 2, -textPainter.height / 2);
-      textPainter.paint(canvas, Offset.zero);
-      canvas.restore();
-    }
-
-    paint..color = Colors.white.withOpacity(0.15)..style = PaintingStyle.stroke..strokeWidth = 2;
-    canvas.drawCircle(center, radius, paint);
-    for (int i = 0; i < n; i++) {
-      final angle = i * sweep - pi / 2;
-      canvas.drawLine(center, Offset(center.dx + radius * cos(angle), center.dy + radius * sin(angle)), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_WheelPainter old) => true;
 }
