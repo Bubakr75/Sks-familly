@@ -20,20 +20,20 @@ class GeminiService {
 Tu es un assistant bienveillant qui aide des parents à évaluer le comportement de leurs enfants.
 
 Contexte de la journée : $context
-Prénom de l'enfant : $childName
+Prénom de l enfant : $childName
 
 Réponses du parent au questionnaire :
 $answersText
 
 En fonction de ces réponses :
-1. Donne une note sur 20 (sois précis et juste, pas trop sévère ni trop indulgent)
+1. Donne une note sur 20
 2. Écris une appréciation courte et bienveillante de 2-3 phrases maximum
 3. Donne un conseil rapide au parent
 
 Réponds UNIQUEMENT au format JSON suivant, sans markdown :
 {
   "note": 15,
-  "appreciation": "Bonne journée dans l'ensemble...",
+  "appreciation": "Bonne journée dans l ensemble...",
   "conseil": "Encouragez..."
 }
 ''';
@@ -82,19 +82,16 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
     int nbChoices;
 
     if (age <= 6) {
-      difficulty =
-          'très simple, adapté à un enfant de $age ans, avec des mots très courts et faciles';
+      difficulty = 'très simple, adapté à un enfant de $age ans';
       nbChoices = 2;
     } else if (age <= 9) {
       difficulty = 'simple et ludique, adapté à un enfant de $age ans';
       nbChoices = 3;
     } else if (age <= 12) {
-      difficulty =
-          'intermédiaire, adapté à un enfant de $age ans, ni trop facile ni trop difficile';
+      difficulty = 'intermédiaire, adapté à un enfant de $age ans';
       nbChoices = 4;
     } else {
-      difficulty =
-          'difficile avec des pièges subtils, adapté à un adolescent de $age ans';
+      difficulty = 'difficile, adapté à un adolescent de $age ans';
       nbChoices = 4;
     }
 
@@ -103,30 +100,16 @@ Tu es un générateur de quiz éducatif pour enfants et adolescents.
 Génère exactement 3 questions QCM sur le thème : $theme.
 Niveau de difficulté : $difficulty.
 Chaque question doit avoir exactement $nbChoices choix de réponse.
-Les questions doivent être variées, intéressantes et éducatives.
 
 Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans texte avant ou après.
-Format JSON exact à respecter :
 [
   {
     "question": "Ta question ici ?",
     "choices": ["Choix A", "Choix B", "Choix C", "Choix D"],
     "correct": 0
-  },
-  {
-    "question": "Ta question ici ?",
-    "choices": ["Choix A", "Choix B", "Choix C", "Choix D"],
-    "correct": 2
-  },
-  {
-    "question": "Ta question ici ?",
-    "choices": ["Choix A", "Choix B", "Choix C", "Choix D"],
-    "correct": 1
   }
 ]
-"correct" est l'index (0-based) de la bonne réponse dans le tableau "choices".
-Si $nbChoices vaut 2, le tableau "choices" ne contient que 2 éléments.
-Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
+"correct" est l index (0-based) de la bonne réponse.
 ''';
 
     try {
