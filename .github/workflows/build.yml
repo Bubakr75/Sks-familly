@@ -19,15 +19,37 @@ jobs:
           channel: 'stable'
           cache: true
 
+      # ✅ Cache Gradle (wrapper + caches)
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: gradle-${{ runner.os }}-8.14
           restore-keys: |
             gradle-${{ runner.os }}-
+
+      # ✅ Pré-télécharge Gradle 8.14 manuellement avant que le build le demande
+      - name: Pre-download Gradle 8.14
+        run: |
+          mkdir -p ~/.gradle/wrapper/dists
+          GRADLE_URL="https://services.gradle.org/distributions/gradle-8.14-all.zip"
+          GRADLE_DIR="$HOME/.gradle/wrapper/dists/gradle-8.14-all"
+          if [ ! -d "$GRADLE_DIR" ]; then
+            echo "Téléchargement de Gradle 8.14..."
+            for i in 1 2 3 4 5; do
+              curl -L --retry 3 --retry-delay 10 --connect-timeout 30 \
+                -o /tmp/gradle-8.14-all.zip "$GRADLE_URL" && break
+              echo "Tentative $i échouée, nouvelle tentative..."
+              sleep 15
+            done
+            mkdir -p "$GRADLE_DIR/$(echo $GRADLE_URL | md5sum | cut -d' ' -f1)"
+            cp /tmp/gradle-8.14-all.zip "$GRADLE_DIR/$(echo $GRADLE_URL | md5sum | cut -d' ' -f1)/gradle-8.14-all.zip"
+            echo "Gradle 8.14 téléchargé."
+          else
+            echo "Gradle 8.14 déjà en cache."
+          fi
 
       - name: Backup custom files
         run: |
@@ -43,12 +65,6 @@ jobs:
           flutter create --platforms android --org com.familyscore --project-name family_score .
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
-
-      - name: Pin Gradle version to 8.11.1
-        run: |
-          sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.11.1-all.zip|g' android/gradle/wrapper/gradle-wrapper.properties
-          sed -i 's|gradle-[0-9.]*-bin.zip|gradle-8.11.1-bin.zip|g' android/gradle/wrapper/gradle-wrapper.properties
-          cat android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Decode keystore from secret
         run: |
@@ -143,6 +159,7 @@ jobs:
       - name: Generate app icons
         run: dart run flutter_launcher_icons
 
+      # ✅ Retry 3 fois avec 30s d'attente si timeout réseau résiduel
       - name: Build Release APK
         uses: nick-fields/retry@v3
         with:
@@ -161,4 +178,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v4.8.0+${{ github.run_number }}
-          name:
+          name: "Family Score v4.8.0+${{ github.run_number }}"
+          body: "Mise a jour automatique - Build #${{ github.run_number }}"
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
