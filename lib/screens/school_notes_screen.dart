@@ -1,4 +1,4 @@
-// lib/screens/school_notes_screen.dart
+﻿// lib/screens/school_notes_screen.dart
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
