@@ -7,133 +7,103 @@ class GeminiService {
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-  // ── Traduction clés → phrases lisibles ────────────────────────────────
   static const Map<String, String> _keyLabels = {
-    'devoirs_existence':       'Devoirs ce soir',
-    'devoirs_faits':           'Devoirs réalisés',
-    'devoirs_repetition':      'Nombre de rappels pour commencer les devoirs',
-    'remarques':               'Nombre de fois repris dans la journée',
-    'obeissance':              'Obéissance au premier appel',
-    'repetition_consignes':    'Répétition des mêmes consignes',
-    'comportement_ecole':      'Comportement à l\'école',
-    'taches':                  'Tâches ménagères',
-    'initiative':              'Initiative positive spontanée',
-    'fraternite':              'Relations avec frères / sœurs',
-    'table':                   'Comportement à table',
-    'politesse':               'Politesse et respect des adultes',
-    'reaction_correction':     'Réaction quand on le corrige',
-    'mensonge':                'Honnêteté / mensonge',
-    'humeur':                  'Humeur générale de la journée',
-    'coucher':                 'Coucher le soir',
-    'ecran':                   'Respect du temps d\'écran',
-    'hygiene':                 'Hygiène (douche, dents, mains)',
-    'moment_positif':          'Moment particulièrement positif',
-    'autonomie':               'Autonomie dans la journée',
-    'aide_maison':             'Aide à la maison',
-    'attitude':                'Attitude générale',
-    'journee':                 'Déroulement de la journée',
-    'medicaments':             'Prise des médicaments',
-    'attitude_parents':        'Attitude envers les parents',
-    'exageration':             'Exagération des symptômes',
-    'comportement':            'Comportement général',
+    'devoirs_existence':    'Devoirs ce soir',
+    'devoirs_faits':        'Devoirs réalisés',
+    'devoirs_repetition':   'Nombre de rappels pour commencer les devoirs',
+    'remarques':            'Nombre de fois repris dans la journée',
+    'obeissance':           'Obéissance au premier appel',
+    'repetition_consignes': 'Répétition des mêmes consignes',
+    'comportement_ecole':   'Comportement à l\'école',
+    'taches':               'Tâches ménagères',
+    'initiative':           'Initiative positive spontanée',
+    'fraternite':           'Relations avec frères / sœurs',
+    'table':                'Comportement à table',
+    'politesse':            'Politesse et respect des adultes',
+    'reaction_correction':  'Réaction quand on le corrige',
+    'mensonge':             'Honnêteté / mensonge',
+    'humeur':               'Humeur générale de la journée',
+    'coucher':              'Coucher le soir',
+    'ecran':                'Respect du temps d\'écran',
+    'hygiene':              'Hygiène (douche, dents, mains)',
+    'moment_positif':       'Moment particulièrement positif',
+    'autonomie':            'Autonomie dans la journée',
+    'aide_maison':          'Aide à la maison',
+    'attitude':             'Attitude générale',
+    'journee':              'Déroulement de la journée',
+    'medicaments':          'Prise des médicaments',
+    'attitude_parents':     'Attitude envers les parents',
+    'exageration':          'Exagération des symptômes',
+    'comportement':         'Comportement général',
   };
 
   static const Map<String, String> _valueLabels = {
-    // Binaires
-    'oui':                     'Oui',
-    'non':                     'Non',
-    'na':                      'Sans objet',
-    // Devoirs
-    'oui_tout':                'Oui, entièrement fait',
-    'partiel':                 'Partiellement fait',
-    // Rappels / répétitions
-    'seul':                    'De lui-même, sans rappel',
-    'un_rappel':               'Un seul rappel suffi',
-    'plusieurs_rappels':       'Il a fallu répéter 2 à 3 fois',
-    'crise':                   'Refus ou crise',
-    'peu':                     'Une ou deux fois',
-    'souvent':                 'Souvent',
-    'tout_le_temps':           'Constamment, tout le temps',
-    // Obéissance
-    'toujours':                'Obéit toujours au premier appel',
-    'parfois':                 'Obéit parfois',
-    'rarement':                'Obéit rarement ou jamais',
-    // Comportement / attitude
-    'excellent':               'Excellent',
-    'exemplaire':              'Exemplement',
-    'bien':                    'Bien',
-    'moyen':                   'Moyen',
-    'difficile':               'Difficile',
-    'excellente':              'Excellente',
-    'bonne':                   'Bonne',
-    'moyenne':                 'Moyenne',
-    // Tâches
-    'faites':                  'Faites sans rappel',
-    'rappel':                  'Faites après un rappel',
-    'refus':                   'Refus de les faire',
-    'non_demande':             'Non demandé',
-    'insistance':              'Fait seulement après insistance',
-    // Initiative
-    'oui_plusieurs':           'Oui, plusieurs fois',
-    'oui_une':                 'Oui, une fois',
-    // Fraternité
-    'tres_bien':               'Très bien, aide spontanée envers les frères/sœurs',
-    'conflits':                'Quelques conflits mineurs',
-    'conflits_graves':         'Conflits importants',
-    'violence':                'Violence verbale ou physique',
-    // Table
-    'correct':                 'Correct',
-    'agite':                   'Agité',
-    // Politesse
-    'tres_poli':               'Très poli, dit merci et s\'il te plaît',
-    'oublis':                  'Quelques oublis de politesse',
-    'irrespectueux':           'Irrespectueux',
-    'insolent':                'Insolent ou grossier',
-    // Réaction correction
-    'accepte':                 'Accepte calmement et reconnaît son erreur',
-    'ronchonne':               'Écoute mais ronchonne',
-    'braque':                  'Se braque ou se tait',
-    // Mensonge
-    'omission':                'Petite omission, ne dit pas tout',
-    'mensonge':                'Mensonge évident',
-    // Humeur
-    'joyeux':                  'Joyeux et positif',
-    'stable':                  'Calme et stable',
-    'fatigue':                 'Fatigué ou capricieux',
-    'irritable':               'Irritable, sujets à des colères',
-    // Coucher
-    // (oui, rappel, plusieurs_rappels, difficile déjà définis)
-    // Écran
-    'respecte':                'Temps d\'écran respecté, pose seul les appareils',
-    'leger':                   'Léger dépassement',
-    'non_respecte':            'Dépasse régulièrement, doit être rappelé',
-    // Hygiène
-    // (seul, rappel, plusieurs_rappels, refus déjà définis)
-    // Moment positif
-    'oui_notable':             'Oui, geste particulièrement notable',
-    'oui_petit':               'Oui, un petit moment sympa',
-    // Autonomie
-    'tres_autonome':           'Très autonome, se gère seul',
-    'aide':                    'A besoin d\'aide régulièrement',
-    'dependant':               'Très dépendant, sollicite constamment',
-    // Aide maison
-    'beaucoup':                'A beaucoup aidé de lui-même',
-    'un_peu':                  'A un peu aidé',
-    // Malade
-    'tres_bien_malgre':        'Très bien malgré la maladie',
-    'difficulte':              'Avec difficulté',
-    'respectueux':             'Très respectueux malgré la maladie',
-    'un_peu_ex':               'Un peu peut-être',
-    'oui_ex':                  'Oui, exagération claire',
-    // Exagération
-    'un_peu':                  'Un peu peut-être',
+    'oui':              'Oui',
+    'non':              'Non',
+    'na':               'Sans objet',
+    'oui_tout':         'Oui, entièrement fait',
+    'partiel':          'Partiellement fait',
+    'seul':             'De lui-même, sans rappel',
+    'un_rappel':        'Un seul rappel a suffi',
+    'plusieurs_rappels':'Il a fallu répéter 2 à 3 fois',
+    'crise':            'Refus ou crise',
+    'peu':              'Une ou deux fois',
+    'souvent':          'Souvent',
+    'tout_le_temps':    'Constamment, tout le temps',
+    'toujours':         'Obéit toujours au premier appel',
+    'parfois':          'Obéit parfois',
+    'rarement':         'Obéit rarement ou jamais',
+    'excellent':        'Excellent',
+    'exemplaire':       'Exemplaire',
+    'bien':             'Bien',
+    'moyen':            'Moyen',
+    'difficile':        'Difficile',
+    'excellente':       'Excellente',
+    'bonne':            'Bonne',
+    'moyenne':          'Moyenne',
+    'faites':           'Faites sans rappel',
+    'rappel':           'Faites après un rappel',
+    'refus':            'Refus de les faire',
+    'non_demande':      'Non demandé',
+    'insistance':       'Fait seulement après insistance',
+    'oui_plusieurs':    'Oui, plusieurs fois',
+    'oui_une':          'Oui, une fois',
+    'tres_bien':        'Très bien, aide spontanée',
+    'conflits':         'Quelques conflits mineurs',
+    'conflits_graves':  'Conflits importants',
+    'violence':         'Violence verbale ou physique',
+    'correct':          'Correct',
+    'agite':            'Agité',
+    'tres_poli':        'Très poli, dit merci et s\'il te plaît',
+    'oublis':           'Quelques oublis de politesse',
+    'irrespectueux':    'Irrespectueux',
+    'insolent':         'Insolent ou grossier',
+    'accepte':          'Accepte calmement et reconnaît son erreur',
+    'ronchonne':        'Écoute mais ronchonne',
+    'braque':           'Se braque ou se tait',
+    'omission':         'Petite omission',
+    'mensonge':         'Mensonge évident',
+    'joyeux':           'Joyeux et positif',
+    'stable':           'Calme et stable',
+    'fatigue':          'Fatigué ou capricieux',
+    'irritable':        'Irritable, sujet à des colères',
+    'respecte':         'Temps d\'écran respecté, pose seul',
+    'leger':            'Léger dépassement',
+    'non_respecte':     'Dépasse régulièrement',
+    'oui_notable':      'Oui, geste particulièrement notable',
+    'oui_petit':        'Oui, un petit moment sympa',
+    'tres_autonome':    'Très autonome, se gère seul',
+    'aide':             'Besoin d\'aide régulièrement',
+    'dependant':        'Très dépendant, sollicite constamment',
+    'beaucoup':         'A beaucoup aidé de lui-même',
+    'un_peu':           'A un peu aidé',
+    'difficulte':       'Avec difficulté',
+    'respectueux':      'Très respectueux',
   };
 
-  // ── Score client-side 0–100 ───────────────────────────────────────────
   static int _computeClientScore(Map<String, dynamic> answers) {
     int score = 70;
 
-    // Devoirs
     if (answers['devoirs_existence'] == 'oui') {
       switch (answers['devoirs_faits']) {
         case 'oui_tout': score += 8; break;
@@ -141,35 +111,30 @@ class GeminiService {
         case 'non':      score -= 12; break;
       }
     }
-    // Répétition pour les devoirs
     switch (answers['devoirs_repetition']) {
       case 'seul':             score += 6; break;
       case 'un_rappel':        score += 0; break;
       case 'plusieurs_rappels':score -= 6; break;
       case 'crise':            score -= 14; break;
     }
-    // Nombre de fois repris
     switch (answers['remarques']) {
       case 'aucune':   score += 10; break;
       case 'une':      score += 0;  break;
       case 'deux':     score -= 8;  break;
       case 'plusieurs':score -= 16; break;
     }
-    // Obéissance au premier appel
     switch (answers['obeissance']) {
       case 'toujours': score += 10; break;
       case 'souvent':  score += 3;  break;
       case 'parfois':  score -= 5;  break;
       case 'rarement': score -= 14; break;
     }
-    // Répétition des consignes
     switch (answers['repetition_consignes']) {
       case 'non':           score += 8;  break;
       case 'peu':           score += 0;  break;
       case 'souvent':       score -= 8;  break;
       case 'tout_le_temps': score -= 16; break;
     }
-    // Comportement école / général
     switch (answers['comportement_ecole'] ?? answers['comportement']) {
       case 'excellent':
       case 'exemplaire': score += 10; break;
@@ -177,7 +142,6 @@ class GeminiService {
       case 'moyen':      score -= 5;  break;
       case 'difficile':  score -= 12; break;
     }
-    // Tâches ménagères
     switch (answers['taches'] ?? answers['aide_maison']) {
       case 'faites':
       case 'beaucoup':          score += 8;  break;
@@ -188,20 +152,17 @@ class GeminiService {
       case 'refus':
       case 'non':               score -= 12; break;
     }
-    // Initiative positive
     switch (answers['initiative']) {
       case 'oui_plusieurs': score += 8; break;
       case 'oui_une':       score += 4; break;
     }
-    // Fraternité
     switch (answers['fraternite']) {
-      case 'tres_bien':        score += 6;  break;
-      case 'bien':             score += 2;  break;
-      case 'conflits':         score -= 5;  break;
-      case 'conflits_graves':  score -= 12; break;
-      case 'violence':         score -= 20; break;
+      case 'tres_bien':       score += 6;  break;
+      case 'bien':            score += 2;  break;
+      case 'conflits':        score -= 5;  break;
+      case 'conflits_graves': score -= 12; break;
+      case 'violence':        score -= 20; break;
     }
-    // Politesse
     switch (answers['politesse']) {
       case 'tres_poli':    score += 8;  break;
       case 'correct':      score += 0;  break;
@@ -209,70 +170,60 @@ class GeminiService {
       case 'irrespectueux':score -= 10; break;
       case 'insolent':     score -= 18; break;
     }
-    // Réaction à la correction
     switch (answers['reaction_correction']) {
       case 'accepte':   score += 6;  break;
       case 'ronchonne': score -= 2;  break;
       case 'braque':    score -= 6;  break;
       case 'crise':     score -= 14; break;
     }
-    // Mensonge
     switch (answers['mensonge']) {
       case 'non':      score += 4;  break;
       case 'omission': score -= 4;  break;
       case 'mensonge': score -= 12; break;
     }
-    // Humeur
     switch (answers['humeur']) {
       case 'joyeux':   score += 6;  break;
       case 'stable':   score += 2;  break;
       case 'fatigue':  score -= 4;  break;
       case 'irritable':score -= 10; break;
     }
-    // Table
     switch (answers['table']) {
       case 'excellent': score += 4; break;
       case 'correct':   score += 0; break;
       case 'agite':     score -= 4; break;
       case 'difficile': score -= 8; break;
     }
-    // Coucher
     switch (answers['coucher']) {
       case 'oui':              score += 4;  break;
       case 'rappel':           score -= 2;  break;
       case 'plusieurs_rappels':score -= 6;  break;
       case 'difficile':        score -= 10; break;
     }
-    // Écran
     switch (answers['ecran']) {
       case 'respecte':     score += 6;  break;
       case 'leger':        score -= 2;  break;
       case 'non_respecte': score -= 8;  break;
       case 'refus':        score -= 14; break;
     }
-    // Hygiène
     switch (answers['hygiene']) {
       case 'seul':             score += 4;  break;
       case 'rappel':           score -= 2;  break;
       case 'plusieurs_rappels':score -= 6;  break;
       case 'refus':            score -= 10; break;
     }
-    // Attitude (vacances / malade)
     switch (answers['attitude'] ?? answers['journee']) {
       case 'excellente':
-      case 'tres_bien':  score += 8; break;
+      case 'tres_bien':  score += 8;  break;
       case 'bonne':
-      case 'correct':    score += 2; break;
-      case 'moyenne':    score -= 6; break;
+      case 'correct':    score += 2;  break;
+      case 'moyenne':    score -= 6;  break;
       case 'difficile':  score -= 12; break;
     }
-    // Exagération maladie
     switch (answers['exageration']) {
-      case 'non':     score += 4;  break;
-      case 'un_peu':  score -= 4;  break;
-      case 'oui':     score -= 10; break;
+      case 'non':    score += 4;  break;
+      case 'un_peu': score -= 4;  break;
+      case 'oui':    score -= 10; break;
     }
-    // Moment positif
     switch (answers['moment_positif']) {
       case 'oui_notable': score += 6; break;
       case 'oui_petit':   score += 2; break;
@@ -281,7 +232,6 @@ class GeminiService {
     return score.clamp(0, 100);
   }
 
-  // ── Génération de l'appréciation IA ─────────────────────────────────
   static Future<String> generateAppreciation({
     required String childName,
     required String context,
@@ -294,7 +244,6 @@ class GeminiService {
     int totalPoints = 0,
     List<String> recentReasons = const [],
   }) async {
-    // Traduction des réponses
     final answersText = answers.entries.map((e) {
       final key = _keyLabels[e.key] ?? e.key;
       final val = _valueLabels[e.value?.toString()] ?? e.value?.toString() ?? '';
@@ -329,13 +278,13 @@ INSTRUCTIONS IMPORTANTES :
 - Le score calculé depuis les réponses est $clientScore/100, soit environ $clientNote/20.
 - Ta note DOIT être entre ${(clientNote - 2).clamp(0, 20)} et ${(clientNote + 2).clamp(0, 20)}.
 - Ne donne JAMAIS 10/20 par défaut. Analyse chaque réponse.
-- L'appréciation doit mentionner des éléments spécifiques des réponses (ex: "Les devoirs faits sans rappel", "Quelques conflits avec les frères").
+- L'appréciation doit mentionner des éléments spécifiques des réponses.
 - Le conseil doit être concret, actionnable, personnalisé à cette journée.
 
 Réponds UNIQUEMENT en JSON valide sans markdown :
 {
   "note": $clientNote,
-  "appreciation": "Appréciation personnalisée de 2-3 phrases mentionnant des points précis...",
+  "appreciation": "Appréciation personnalisée de 2-3 phrases...",
   "conseil": "Conseil concret et actionnable..."
 }
 ''';
@@ -367,15 +316,9 @@ Réponds UNIQUEMENT en JSON valide sans markdown :
         try {
           final parsed = jsonDecode(cleanText) as Map<String, dynamic>;
           final note = (parsed['note'] as num).toInt();
-          // Filet de sécurité : si Gemini retourne 10 par défaut
-          if (note == 10 && clientNote != 10) {
-            parsed['note'] = clientNote;
-            return jsonEncode(parsed);
-          }
-          // Filet de sécurité : note hors fourchette autorisée
-          final min = (clientNote - 2).clamp(0, 20);
-          final max = (clientNote + 2).clamp(0, 20);
-          if (note < min || note > max) {
+          final minNote = (clientNote - 2).clamp(0, 20);
+          final maxNote = (clientNote + 2).clamp(0, 20);
+          if (note == 10 && clientNote != 10 || note < minNote || note > maxNote) {
             parsed['note'] = clientNote;
             return jsonEncode(parsed);
           }
@@ -391,7 +334,6 @@ Réponds UNIQUEMENT en JSON valide sans markdown :
     }
   }
 
-  // ── Quiz (inchangé) ──────────────────────────────────────────────────
   static Future<List<Map<String, dynamic>>> generateQuizQuestions({
     required String theme,
     required int age,
@@ -417,7 +359,6 @@ Tu es un générateur de quiz éducatif pour enfants et adolescents.
 Génère exactement 3 questions QCM sur le thème : $theme.
 Niveau de difficulté : $difficulty.
 Chaque question doit avoir exactement $nbChoices choix de réponse.
-Les questions doivent être variées, intéressantes et éducatives.
 Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans texte avant ou après.
 Format JSON exact :
 [
@@ -426,8 +367,8 @@ Format JSON exact :
   {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 1}
 ]
 "correct" est l'index 0-based de la bonne réponse.
-Si $nbChoices vaut 2, le tableau "choices" ne contient que 2 éléments.
-Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
+Si $nbChoices vaut 2, "choices" ne contient que 2 éléments.
+Si $nbChoices vaut 3, "choices" ne contient que 3 éléments.
 ''';
 
     try {
