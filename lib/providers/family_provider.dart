@@ -1374,4 +1374,46 @@ class FamilyProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  int getBonusCountToday(String childId) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    return _history.where((h) {
+      if (h.childId != childId) return false;
+      if (!h.isBonus) return false;
+      if (h.category == 'screen_time_bonus') return false;
+      final d = DateTime(h.date.year, h.date.month, h.date.day);
+      return d == todayDate;
+    }).length;
+  }
+
+  int getPenaltyCountToday(String childId) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    return _history.where((h) {
+      if (h.childId != childId) return false;
+      if (h.isBonus) return false;
+      if (h.category == 'screen_time_bonus') return false;
+      final d = DateTime(h.date.year, h.date.month, h.date.day);
+      return d == todayDate;
+    }).length;
+  }
+
+  int getActivePunishmentsCount(String childId) {
+    return _punishments.where((p) =>
+        p.childId == childId && p.completedLines < p.totalLines).length;
+  }
+
+  int getUsableImmunitiesCount(String childId) {
+    return _immunities.where((im) =>
+        im.childId == childId && im.isUsable && im.availableLines > 0).length;
+  }
+
+  List<String> getRecentReasons(String childId, {int limit = 5}) {
+    return _history
+        .where((h) => h.childId == childId)
+        .take(limit)
+        .map((h) => h.reason)
+        .toList();
+  }
 }
