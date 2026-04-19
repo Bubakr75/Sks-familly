@@ -1,4 +1,3 @@
-// lib/services/gemini_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -11,30 +10,73 @@ class GeminiService {
     required String childName,
     required String context,
     required Map<String, dynamic> answers,
+    List<Map<String, dynamic>>? history,
+    int? bonusCount,
+    int? penaltyCount,
+    int? activePunishments,
+    int? usableImmunities,
+    int? streakDays,
+    int? totalPoints,
+    List<String>? recentReasons,
   }) async {
-    final answersText = answers.entries
-        .map((e) => '- ${e.key} : ${e.value}')
-        .join('\n');
+    final answersText = answers.entries.map((e) {
+      return '- ${e.key} : ${e.value}';
+    }).join('\n');
+
+    String historyText = '';
+    if (history != null && history.isNotEmpty) {
+      final recent = history.take(5).map((h) {
+        final date = h['date'] ?? '';
+        final note = h['aiNote'] ?? h['note'] ?? '?';
+        return '  • $date : $note/20';
+      }).join('\n');
+      historyText = '\nHistorique des 5 derniers jours :\n$recent';
+    }
+
+    String contextExtra = '';
+    if (bonusCount != null && bonusCount > 0)
+      contextExtra += '\n- Bonus obtenus aujourd\'hui : $bonusCount';
+    if (penaltyCount != null && penaltyCount > 0)
+      contextExtra += '\n- Pénalités reçues aujourd\'hui : $penaltyCount';
+    if (activePunishments != null && activePunishments > 0)
+      contextExtra += '\n- Punitions actives en cours : $activePunishments';
+    if (usableImmunities != null && usableImmunities > 0)
+      contextExtra += '\n- Immunités disponibles (bonnes actions accumulées) : $usableImmunities';
+    if (streakDays != null && streakDays > 1)
+      contextExtra += '\n- Série de bonnes journées consécutives : $streakDays jours 🔥';
+    if (totalPoints != null)
+      contextExtra += '\n- Points totaux accumulés : $totalPoints';
+    if (recentReasons != null && recentReasons.isNotEmpty)
+      contextExtra += '\n- Raisons récentes notées par les parents : ${recentReasons.take(5).join(', ')}';
 
     final prompt = '''
-Tu es un assistant bienveillant qui aide des parents à évaluer le comportement de leurs enfants.
+Tu es un assistant bienveillant qui aide une famille à organiser un conseil de classe familial chaque soir.
+Tu analyses le comportement, l'attitude et les efforts de l'enfant sur la journée.
 
+Enfant évalué : $childName
 Contexte de la journée : $context
-Prénom de l enfant : $childName
+$historyText
 
-Réponses du parent au questionnaire :
+Données de la journée :$contextExtra
+
+Réponses du questionnaire familial :
 $answersText
 
-En fonction de ces réponses :
-1. Donne une note sur 20
-2. Écris une appréciation courte et bienveillante de 2-3 phrases maximum
-3. Donne un conseil rapide au parent
+En tenant compte de TOUS ces éléments (questionnaire, bonus, pénalités, punitions actives, immunités, streak, points et historique), tu dois :
 
-Réponds UNIQUEMENT au format JSON suivant, sans markdown :
+1. Donner une note globale sur 20 qui reflète fidèlement l'ensemble des données
+2. Rédiger une appréciation bienveillante mais honnête de 3-4 phrases, comme un bulletin scolaire familial
+3. Donner un conseil concret et positif pour le lendemain
+4. Identifier le point fort de la journée
+5. Identifier le point à améliorer
+
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après :
 {
   "note": 15,
-  "appreciation": "Bonne journée dans l ensemble...",
-  "conseil": "Encouragez..."
+  "appreciation": "...",
+  "conseil": "...",
+  "point_fort": "...",
+  "point_ameliorer": "..."
 }
 ''';
 
@@ -51,8 +93,8 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
             }
           ],
           'generationConfig': {
-            'temperature': 0.7,
-            'maxOutputTokens': 300,
+            'temperature': 0.5,
+            'maxOutputTokens': 600,
           },
         }),
       );
@@ -61,16 +103,14 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
         final data = jsonDecode(response.body);
         final text =
             data['candidates'][0]['content']['parts'][0]['text'] as String;
-        final cleanText = text
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
+        final cleanText =
+            text.replaceAll('```json', '').replaceAll('```', '').trim();
         return cleanText;
       } else {
-        return '{"note": -1, "appreciation": "Erreur API", "conseil": ""}';
+        return '{"note": -1, "appreciation": "Erreur API (${response.statusCode})", "conseil": "", "point_fort": "", "point_ameliorer": ""}';
       }
     } catch (e) {
-      return '{"note": -1, "appreciation": "Erreur réseau", "conseil": ""}';
+      return '{"note": -1, "appreciation": "Erreur réseau", "conseil": "", "point_fort": "", "point_ameliorer": ""}';
     }
   }
 
@@ -82,7 +122,7 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
     int nbChoices;
 
     if (age <= 6) {
-      difficulty = 'très simple, adapté à un enfant de $age ans';
+      difficulty = 'très simple, adapté à un enfant de $age ans, avec des mots très courts et faciles';
       nbChoices = 2;
     } else if (age <= 9) {
       difficulty = 'simple et ludique, adapté à un enfant de $age ans';
@@ -91,7 +131,7 @@ Réponds UNIQUEMENT au format JSON suivant, sans markdown :
       difficulty = 'intermédiaire, adapté à un enfant de $age ans';
       nbChoices = 4;
     } else {
-      difficulty = 'difficile, adapté à un adolescent de $age ans';
+      difficulty = 'difficile avec des pièges subtils, adapté à un adolescent de $age ans';
       nbChoices = 4;
     }
 
@@ -100,16 +140,18 @@ Tu es un générateur de quiz éducatif pour enfants et adolescents.
 Génère exactement 3 questions QCM sur le thème : $theme.
 Niveau de difficulté : $difficulty.
 Chaque question doit avoir exactement $nbChoices choix de réponse.
+Les questions doivent être variées, intéressantes et éducatives.
 
 Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans texte avant ou après.
+Format JSON exact :
 [
-  {
-    "question": "Ta question ici ?",
-    "choices": ["Choix A", "Choix B", "Choix C", "Choix D"],
-    "correct": 0
-  }
+  {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 0},
+  {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 2},
+  {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 1}
 ]
-"correct" est l index (0-based) de la bonne réponse.
+"correct" est l'index (0-based) de la bonne réponse.
+Si $nbChoices vaut 2, le tableau "choices" ne contient que 2 éléments.
+Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
 ''';
 
     try {
@@ -135,10 +177,8 @@ Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans texte avant ou apr�
         final data = jsonDecode(response.body);
         final text =
             data['candidates'][0]['content']['parts'][0]['text'] as String;
-        final cleaned = text
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
+        final cleaned =
+            text.replaceAll('```json', '').replaceAll('```', '').trim();
         final List<dynamic> parsed = jsonDecode(cleaned);
         return parsed.cast<Map<String, dynamic>>();
       }
