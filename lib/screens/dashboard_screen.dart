@@ -423,7 +423,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           Navigator.push(
               context,
               SlidePageRoute(
-                  page: SchoolNotesScreen(childId: childId)));
+                  page: SchoolNotesScreen(childId: childId, childName: fp.getChild(childId)?.name ?? "", childAge: fp.getChild(childId)?.streakDays ?? 10)));
         });
       }),
     ];
