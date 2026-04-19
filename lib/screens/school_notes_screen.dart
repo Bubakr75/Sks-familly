@@ -101,13 +101,13 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
     final fp = Provider.of<FamilyProvider>(context, listen: false);
     final child = fp.children.firstWhere((c) => c.id == widget.childId);
 
-    final bonusCount = child.bonusCount ?? 0;
-    final penaltyCount = child.penaltyCount ?? 0;
-    final activePunishments = child.activePunishments ?? 0;
-    final usableImmunities = child.usableImmunities ?? 0;
+    final bonusCount = fp.getBonusCountToday(widget.childId);
+    final penaltyCount = fp.getPenaltyCountToday(widget.childId);
+    final activePunishments = fp.getActivePunishmentsCount(widget.childId);
+    final usableImmunities = fp.getUsableImmunitiesCount(widget.childId);
     final streakDays = child.streakDays ?? 0;
     final totalPoints = child.points;
-    final recentReasons = child.recentReasons ?? <String>[];
+    final recentReasons = fp.getRecentReasons(widget.childId);
 
     showModalBottomSheet(
       context: context,
