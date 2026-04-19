@@ -814,7 +814,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Navigator.push(
                             context,
                             SlidePageRoute(
-                                page: SchoolNotesScreen(childId: child.id)),
+                                page: SchoolNotesScreen(childId: child.id, childName: child.name, childAge: child.streakDays ?? 10)),
                           );
                         });
                       });
