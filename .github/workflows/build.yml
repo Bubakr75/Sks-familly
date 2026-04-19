@@ -1,8 +1,6 @@
 ﻿name: Build Flutter APK v2
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
