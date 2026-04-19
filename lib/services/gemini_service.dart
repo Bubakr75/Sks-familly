@@ -1,10 +1,10 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
   static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
   static const String _baseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
   static Future<String> generateAppreciation({
     required String childName,
@@ -28,7 +28,7 @@ class GeminiService {
       final recent = history.take(5).map((h) {
         final date = h['date'] ?? '';
         final note = h['aiNote'] ?? h['note'] ?? '?';
-        return '  • $date : $note/20';
+        return '  â€¢ $date : $note/20';
       }).join('\n');
       historyText = '\nHistorique des 5 derniers jours :\n$recent';
     }
@@ -37,40 +37,40 @@ class GeminiService {
     if (bonusCount != null && bonusCount > 0)
       contextExtra += '\n- Bonus obtenus aujourd\'hui : $bonusCount';
     if (penaltyCount != null && penaltyCount > 0)
-      contextExtra += '\n- Pénalités reçues aujourd\'hui : $penaltyCount';
+      contextExtra += '\n- PÃ©nalitÃ©s reÃ§ues aujourd\'hui : $penaltyCount';
     if (activePunishments != null && activePunishments > 0)
       contextExtra += '\n- Punitions actives en cours : $activePunishments';
     if (usableImmunities != null && usableImmunities > 0)
-      contextExtra += '\n- Immunités disponibles (bonnes actions accumulées) : $usableImmunities';
+      contextExtra += '\n- ImmunitÃ©s disponibles (bonnes actions accumulÃ©es) : $usableImmunities';
     if (streakDays != null && streakDays > 1)
-      contextExtra += '\n- Série de bonnes journées consécutives : $streakDays jours 🔥';
+      contextExtra += '\n- SÃ©rie de bonnes journÃ©es consÃ©cutives : $streakDays jours ðŸ”¥';
     if (totalPoints != null)
-      contextExtra += '\n- Points totaux accumulés : $totalPoints';
+      contextExtra += '\n- Points totaux accumulÃ©s : $totalPoints';
     if (recentReasons != null && recentReasons.isNotEmpty)
-      contextExtra += '\n- Raisons récentes notées par les parents : ${recentReasons.take(5).join(', ')}';
+      contextExtra += '\n- Raisons rÃ©centes notÃ©es par les parents : ${recentReasons.take(5).join(', ')}';
 
     final prompt = '''
-Tu es un assistant bienveillant qui aide une famille à organiser un conseil de classe familial chaque soir.
-Tu analyses le comportement, l'attitude et les efforts de l'enfant sur la journée.
+Tu es un assistant bienveillant qui aide une famille Ã  organiser un conseil de classe familial chaque soir.
+Tu analyses le comportement, l'attitude et les efforts de l'enfant sur la journÃ©e.
 
-Enfant évalué : $childName
-Contexte de la journée : $context
+Enfant Ã©valuÃ© : $childName
+Contexte de la journÃ©e : $context
 $historyText
 
-Données de la journée :$contextExtra
+DonnÃ©es de la journÃ©e :$contextExtra
 
-Réponses du questionnaire familial :
+RÃ©ponses du questionnaire familial :
 $answersText
 
-En tenant compte de TOUS ces éléments (questionnaire, bonus, pénalités, punitions actives, immunités, streak, points et historique), tu dois :
+En tenant compte de TOUS ces Ã©lÃ©ments (questionnaire, bonus, pÃ©nalitÃ©s, punitions actives, immunitÃ©s, streak, points et historique), tu dois :
 
-1. Donner une note globale sur 20 qui reflète fidèlement l'ensemble des données
-2. Rédiger une appréciation bienveillante mais honnête de 3-4 phrases, comme un bulletin scolaire familial
+1. Donner une note globale sur 20 qui reflÃ¨te fidÃ¨lement l'ensemble des donnÃ©es
+2. RÃ©diger une apprÃ©ciation bienveillante mais honnÃªte de 3-4 phrases, comme un bulletin scolaire familial
 3. Donner un conseil concret et positif pour le lendemain
-4. Identifier le point fort de la journée
-5. Identifier le point à améliorer
+4. Identifier le point fort de la journÃ©e
+5. Identifier le point Ã  amÃ©liorer
 
-Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après :
+RÃ©ponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou aprÃ¨s :
 {
   "note": 15,
   "appreciation": "...",
@@ -110,7 +110,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après :
         return '{"note": -1, "appreciation": "Erreur API (${response.statusCode})", "conseil": "", "point_fort": "", "point_ameliorer": ""}';
       }
     } catch (e) {
-      return '{"note": -1, "appreciation": "Erreur réseau", "conseil": "", "point_fort": "", "point_ameliorer": ""}';
+      return '{"note": -1, "appreciation": "Erreur rÃ©seau", "conseil": "", "point_fort": "", "point_ameliorer": ""}';
     }
   }
 
@@ -122,36 +122,36 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après :
     int nbChoices;
 
     if (age <= 6) {
-      difficulty = 'très simple, adapté à un enfant de $age ans, avec des mots très courts et faciles';
+      difficulty = 'trÃ¨s simple, adaptÃ© Ã  un enfant de $age ans, avec des mots trÃ¨s courts et faciles';
       nbChoices = 2;
     } else if (age <= 9) {
-      difficulty = 'simple et ludique, adapté à un enfant de $age ans';
+      difficulty = 'simple et ludique, adaptÃ© Ã  un enfant de $age ans';
       nbChoices = 3;
     } else if (age <= 12) {
-      difficulty = 'intermédiaire, adapté à un enfant de $age ans';
+      difficulty = 'intermÃ©diaire, adaptÃ© Ã  un enfant de $age ans';
       nbChoices = 4;
     } else {
-      difficulty = 'difficile avec des pièges subtils, adapté à un adolescent de $age ans';
+      difficulty = 'difficile avec des piÃ¨ges subtils, adaptÃ© Ã  un adolescent de $age ans';
       nbChoices = 4;
     }
 
     final prompt = '''
-Tu es un générateur de quiz éducatif pour enfants et adolescents.
-Génère exactement 3 questions QCM sur le thème : $theme.
-Niveau de difficulté : $difficulty.
-Chaque question doit avoir exactement $nbChoices choix de réponse.
-Les questions doivent être variées, intéressantes et éducatives.
+Tu es un gÃ©nÃ©rateur de quiz Ã©ducatif pour enfants et adolescents.
+GÃ©nÃ¨re exactement 3 questions QCM sur le thÃ¨me : $theme.
+Niveau de difficultÃ© : $difficulty.
+Chaque question doit avoir exactement $nbChoices choix de rÃ©ponse.
+Les questions doivent Ãªtre variÃ©es, intÃ©ressantes et Ã©ducatives.
 
-Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans texte avant ou après.
+RÃ©ponds UNIQUEMENT avec un JSON valide, sans markdown, sans texte avant ou aprÃ¨s.
 Format JSON exact :
 [
   {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 0},
   {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 2},
   {"question": "...", "choices": ["A", "B", "C", "D"], "correct": 1}
 ]
-"correct" est l'index (0-based) de la bonne réponse.
-Si $nbChoices vaut 2, le tableau "choices" ne contient que 2 éléments.
-Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
+"correct" est l'index (0-based) de la bonne rÃ©ponse.
+Si $nbChoices vaut 2, le tableau "choices" ne contient que 2 Ã©lÃ©ments.
+Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 Ã©lÃ©ments.
 ''';
 
     try {
@@ -188,3 +188,5 @@ Si $nbChoices vaut 3, le tableau "choices" ne contient que 3 éléments.
     }
   }
 }
+
+
