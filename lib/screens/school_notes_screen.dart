@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/family_provider.dart';
 import '../services/gemini_service.dart';
-import '../models/child.dart';
+import '../models/child_model.dart';
 
 // ─────────────────────────────────────────────
 // MODÈLES INTERNES
@@ -170,7 +170,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
     await _saveNotes();
 
     final pointsGagnes = (moyenne / 2).round();
-    fp.addPoints(widget.childId, pointsGagnes);
+    fp.addPoints(widget.childId, pointsGagnes, "Conseil de classe familial");
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
