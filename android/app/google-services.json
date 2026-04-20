@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1033903328737",
+    "project_id": "sks-familly-3f205",
+    "storage_bucket": "sks-familly-3f205.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033903328737:android:8d9779470e1ca066b2d6a0",
+        "android_client_info": {
+          "package_name": "com.bubakr.sks_family"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCexnX9sfdMXTxQiRAlsQT98Qizs40bKfE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033903328737:android:0265992569b69916b2d6a0",
+        "android_client_info": {
+          "package_name": "com.familyscore.score"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCexnX9sfdMXTxQiRAlsQT98Qizs40bKfE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

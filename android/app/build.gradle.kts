@@ -1,4 +1,4 @@
-import java.util.Properties
+﻿import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -23,12 +23,12 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.familyscore.score"
+    namespace = "com.bubakr.sks_family"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     defaultConfig {
-        applicationId = "com.familyscore.score"
+        applicationId = "com.bubakr.sks_family"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInt()
@@ -55,6 +55,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -66,4 +67,11 @@ android {
 
 flutter {
     source = "../.."
+}
+
+
+
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

@@ -1,4 +1,4 @@
-// lib/screens/home_screen.dart
+﻿// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -18,12 +18,13 @@ import 'badges_screen.dart';
 import 'school_notes_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
-import 'balance_screen.dart'; // ← NOUVEAU
+import 'balance_screen.dart'; // â† NOUVEAU
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'timeline_screen.dart';
+import 'chores_screen.dart';
 import '../widgets/animated_page_transition.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -89,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final children = provider.children;
     if (children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Aucun enfant enregistré'),
+        content: const Text('Aucun enfant enregistrÃ©'),
         backgroundColor: Colors.orange.shade700,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -235,13 +236,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(height: 16),
-                  const Text('📜 Historique Complet',
+                  const Text('ðŸ“œ Historique Complet',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('${history.length} entrée(s)',
+                  Text('${history.length} entrÃ©e(s)',
                       style: const TextStyle(
                           color: Colors.white54, fontSize: 13)),
                   const SizedBox(height: 12),
@@ -359,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               padding: const EdgeInsets.all(32),
               child: const Center(
-                  child: Text('Aucun enfant enregistré',
+                  child: Text('Aucun enfant enregistrÃ©',
                       style: TextStyle(color: Colors.white54))),
             );
           }
@@ -395,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           borderRadius: BorderRadius.circular(2)),
                     ),
                     const SizedBox(height: 16),
-                    const Text('💰 Bonus & Pénalités',
+                    const Text('ðŸ’° Bonus & PÃ©nalitÃ©s',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -443,14 +444,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     const SizedBox(height: 8),
-                    Text('${entries.length} entrée(s)',
+                    Text('${entries.length} entrÃ©e(s)',
                         style: const TextStyle(
                             color: Colors.white54, fontSize: 12)),
                     const SizedBox(height: 8),
                     Expanded(
                       child: entries.isEmpty
                           ? const Center(
-                              child: Text('Aucun bonus ou pénalité',
+                              child: Text('Aucun bonus ou pÃ©nalitÃ©',
                                   style: TextStyle(color: Colors.white38)))
                           : ListView.builder(
                               controller: scrollController,
@@ -497,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 overflow:
                                                     TextOverflow.ellipsis),
                                             Text(
-                                                '${entry.date.day}/${entry.date.month}/${entry.date.year} • ${entry.actionBy}',
+                                                '${entry.date.day}/${entry.date.month}/${entry.date.year} â€¢ ${entry.actionBy}',
                                                 style: const TextStyle(
                                                     color: Colors.white38,
                                                     fontSize: 11)),
@@ -571,7 +572,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   .showSnackBar(
                                                 const SnackBar(
                                                   content: Text(
-                                                      '🗑️ Entrée supprimée'),
+                                                      'ðŸ—‘ï¸ EntrÃ©e supprimÃ©e'),
                                                   backgroundColor:
                                                       Colors.red,
                                                   behavior: SnackBarBehavior
@@ -613,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _formatDateTime(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return "À l'instant";
+    if (diff.inMinutes < 1) return "Ã€ l'instant";
     if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
     if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
     if (diff.inDays < 7) return 'Il y a ${diff.inDays}j';
@@ -686,7 +687,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     'Points',
                     'Calendrier',
                     'Stats',
-                    'Réglages',
+                    'RÃ©glages',
                   ];
                   return TvFocusWrapper(
                     onTap: () => _onTabTapped(i),
@@ -790,7 +791,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(
-                  isParent ? widget.parentName : '👦 Mode Enfant',
+                  isParent ? widget.parentName : 'ðŸ‘¦ Mode Enfant',
                   style: TextStyle(
                       color: Colors.white.withOpacity(0.6), fontSize: 14),
                 ),
@@ -837,7 +838,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   _drawerItem(
                     icon: Icons.shield_rounded,
-                    label: "Lignes d'Immunité",
+                    label: "Lignes d'ImmunitÃ©",
                     color: Colors.amberAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -850,10 +851,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       });
                     },
                   ),
-                  // ← NOUVEL ITEM : Punitions & Immunités multi-enfants
+                  // â† NOUVEL ITEM : Punitions & ImmunitÃ©s multi-enfants
                   _drawerItem(
                     icon: Icons.balance_rounded,
-                    label: 'Punitions & Immunités',
+                    label: 'Punitions & ImmunitÃ©s',
                     color: Colors.deepOrangeAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -867,7 +868,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   _drawerItem(
                     icon: Icons.swap_vert_circle_rounded,
-                    label: 'Bonus & Pénalités',
+                    label: 'Bonus & PÃ©nalitÃ©s',
                     color: Colors.greenAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -890,7 +891,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 _drawerItem(
                   icon: Icons.sell_rounded,
-                  label: "Vente d'immunités",
+                  label: "Vente d'immunitÃ©s",
                   color: Colors.tealAccent,
                   onTap: () {
                     Navigator.pop(context);
@@ -924,6 +925,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Navigator.push(
                       context,
                       SlidePageRoute(page: const TimelineScreen()),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  icon: Icons.cleaning_services_rounded,
+                  label: 'Taches menageres',
+                  color: Colors.purpleAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const ChoresScreen()),
                     );
                   },
                 ),
@@ -1004,3 +1017,5 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 }
+
+
