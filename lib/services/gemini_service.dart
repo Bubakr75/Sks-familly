@@ -197,14 +197,138 @@ CONSEIL: [1 conseil pratique et motivant pour la semaine prochaine]''';
       'point_ameliorer': result['point_ameliorer'],
     });
   }
+  // ── Chat conseil enfant ──────────────────────────────────────────────────
+  static Future<String> chatWithChild({
+    required String childName,
+    required int age,
+    required String message,
+    List<Map<String, String>> history = const [],
+  }) async {
+    final systemPrompt = '''Tu es un assistant bienveillant et encourageant pour les enfants.
+Tu parles a $childName qui a $age ans.
+Reponds de facon simple, positive et adaptee a son age.
+Tu peux l aider avec ses devoirs, ses questions, ses problemes du quotidien.
+Sois toujours encourageant et bienveillant. Reponds en francais.''';
+
+    final contents = <Map<String, dynamic>>[];
+    contents.add({'parts': [{'text': systemPrompt}], 'role': 'user'});
+    contents.add({'parts': [{'text': 'Bonjour ! Je suis pret a t aider.'}], 'role': 'model'});
+    for (final h in history) {
+      contents.add({'parts': [{'text': h['content'] ?? ''}], 'role': h['role'] == 'user' ? 'user' : 'model'});
+    }
+    contents.add({'parts': [{'text': message}], 'role': 'user'});
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': contents,
+          'generationConfig': {'temperature': 0.8, 'maxOutputTokens': 800},
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['candidates'][0]['content']['parts'][0]['text'] as String;
+      }
+      return 'Je suis la pour t aider ! Pose-moi ta question.';
+    } catch (e) {
+      return 'Desolee, je ne peux pas repondre maintenant. Reessaie !';
+    }
+  }
+
+  // ── Verdict Tribunal ─────────────────────────────────────────────────────
+  static Future<Map<String, dynamic>> judgeTribunal({
+    required String title,
+    required String description,
+    required String plaintiffName,
+    required String accusedName,
+  }) async {
+    final prompt = '''Tu es un juge impartial dans un tribunal familial pour enfants.
+Analyse ce cas et rends un verdict juste et educatif.
+
+Titre de l affaire : $title
+Description : $description
+Plaignant : $plaintiffName
+Accuse : $accusedName
+
+Rends ton verdict en utilisant EXACTEMENT ce format :
+
+VERDICT: [coupable/innocent/classe]
+RAISON: [2-3 phrases expliquant le verdict de facon educative]
+SANCTION: [si coupable: suggestion de sanction adaptee, sinon: rien]
+CONSEIL: [1 conseil pour les deux parties pour eviter ce genre de conflit]''';
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{'parts': [{'text': prompt}], 'role': 'user'}],
+          'generationConfig': {'temperature': 0.6, 'maxOutputTokens': 500},
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        final verdict = _extract(text, 'VERDICT').toLowerCase();
+        final raison = _extract(text, 'RAISON');
+        final sanction = _extract(text, 'SANCTION');
+        final conseil = _extract(text, 'CONSEIL');
+        return {
+          'verdict': verdict.contains('coupable') ? 'guilty' : verdict.contains('innocent') ? 'innocent' : 'dismissed',
+          'raison': raison.isNotEmpty ? raison : 'Verdict rendu par l IA.',
+          'sanction': sanction,
+          'conseil': conseil,
+          'rawText': text,
+        };
+      }
+      return {'verdict': 'dismissed', 'raison': 'Impossible de juger pour le moment.', 'sanction': '', 'conseil': ''};
+    } catch (e) {
+      return {'verdict': 'dismissed', 'raison': 'Erreur de connexion.', 'sanction': '', 'conseil': ''};
+    }
+  }
+
+  // ── Enigme de punition ───────────────────────────────────────────────────
+  static Future<Map<String, dynamic>> generateEnigme({
+    required int age,
+    required String theme,
+  }) async {
+    final prompt = '''Genere une enigme amusante et educative pour un enfant de $age ans.
+Theme : $theme
+L enigme doit etre adaptee a l age, ni trop facile ni trop difficile.
+Reponds UNIQUEMENT avec ce format exact :
+
+ENIGME: [la question ou devinette]
+INDICE: [un petit indice si l enfant bloque]
+REPONSE: [la reponse]
+EXPLICATION: [courte explication educative]''';
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{'parts': [{'text': prompt}], 'role': 'user'}],
+          'generationConfig': {'temperature': 0.9, 'maxOutputTokens': 400},
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        return {
+          'enigme': _extract(text, 'ENIGME'),
+          'indice': _extract(text, 'INDICE'),
+          'reponse': _extract(text, 'REPONSE'),
+          'explication': _extract(text, 'EXPLICATION'),
+        };
+      }
+      return {'enigme': 'Je suis leger comme une plume mais meme le plus fort ne peut me tenir longtemps. Qui suis-je ?', 'indice': 'Pense a la respiration...', 'reponse': 'Le souffle', 'explication': 'Le souffle est invisible mais essentiel a la vie !'};
+    } catch (e) {
+      return {'enigme': 'Plus je seche, plus je suis mouilee. Qui suis-je ?', 'indice': 'C est utile apres le bain...', 'reponse': 'Une serviette', 'explication': 'La serviette absorbe l eau en sechant !'};
+    }
+  }
 }
-
-
-
-
-
-
-
-
-
-

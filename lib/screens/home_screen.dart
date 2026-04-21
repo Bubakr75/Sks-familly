@@ -13,6 +13,7 @@ import 'dashboard_screen.dart';
 import 'add_points_screen.dart';
 import 'calendar_screen.dart';
 import 'stats_screen.dart';
+import 'gemini_chat_screen.dart';
 import 'settings_screen.dart';
 import 'badges_screen.dart';
 import 'school_notes_screen.dart';
@@ -887,6 +888,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       context,
                       DoorPageRoute(page: const TribunalScreen()),
                     );
+                  },
+                ),
+                _drawerItem(
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'Gemini AI',
+                  color: Colors.cyanAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showChildPicker(context, (child) {
+                      Navigator.push(context,
+                        SlidePageRoute(page: GeminiChatScreen(child: child)));
+                    });
                   },
                 ),
                 _drawerItem(
