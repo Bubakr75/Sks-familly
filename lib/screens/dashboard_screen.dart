@@ -328,7 +328,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       2: Colors.grey,
       3: Colors.orange
     };
-    final medals = {1: 'ðŸ¥‡', 2: 'ðŸ¥ˆ', 3: 'ðŸ¥‰'};
+    final medals = {1: '🥇', 2: '🥈', 3: '🥉'};
     final avatarRadius = rank == 1 ? 36.0 : 26.0;
 
     return TvFocusWrapper(
@@ -392,28 +392,28 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildQuickActions(FamilyProvider fp) {
     final actions = [
-      _Act('ðŸ“ Punition', Icons.menu_book, Colors.red, () {
+      _Act('📋 Punition', Icons.menu_book, Colors.red, () {
         Navigator.push(
             context,
             SlidePageRoute(
                 page: const PunishmentLinesScreen(),
                 direction: SlideDirection.up));
       }),
-      _Act('ðŸ›¡ï¸ ImmunitÃ©', Icons.shield, Colors.amber, () {
+      _Act('🛡️ Immunite', Icons.shield, Colors.amber, () {
         Navigator.push(
             context, SpinPageRoute(page: const ImmunityLinesScreen()));
       }),
-      _Act('ðŸ“º Ã‰cran', Icons.tv, Colors.blue, () {
+      _Act('📺 Ecran', Icons.tv, Colors.blue, () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(context,
               ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
         });
       }),
-      _Act('âš–ï¸ Tribunal', Icons.gavel, Colors.purple, () {
+      _Act('⚖️ Tribunal', Icons.gavel, Colors.purple, () {
         Navigator.push(
             context, SlidePageRoute(page: const TribunalScreen()));
       }),
-      _Act('ðŸª Ventes', Icons.storefront, Colors.green, () {
+      _Act('🪙 Ventes', Icons.storefront, Colors.green, () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(context,
               DoorPageRoute(page: TradeScreen(childId: childId)));
@@ -437,7 +437,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   offset: Offset(-20 * (1 - value), 0), child: child),
             );
           },
-          child: const Text('âš¡ Actions Rapides',
+          child: const Text('⚡ Actions Rapides',
               style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -514,7 +514,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('ðŸª Ventes en cours',
+        const Text('🪙 Ventes en cours',
             style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -607,7 +607,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  //  SÃ‰LECTEUR ENFANT â€” nouvelle interface moderne
+  //  SELECTEUR ENFANT â€” nouvelle interface moderne
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   void _showChildPickerForNav(
       FamilyProvider fp, Function(String) onSelected) {
@@ -620,7 +620,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      isScrollControlled: true,          // â† permet d'occuper jusqu'Ã  90% de l'Ã©cran
+      isScrollControlled: true,          // â† permet d'occuper jusqu'Ã  90% de l'ecran
       builder: (ctx) => _ChildPickerSheet(
         children: fp.children,
         onSelected: (id) {
@@ -634,7 +634,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  WIDGET SÃ‰LECTEUR â€” sheet scrollable + recherche
+//  WIDGET SELECTEUR â€” sheet scrollable + recherche
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _ChildPickerSheet extends StatefulWidget {
   final List<ChildModel> children;
@@ -689,7 +689,7 @@ class _ChildPickerSheetState extends State<_ChildPickerSheet>
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
-    // Hauteur max = 85 % de l'Ã©cran
+    // Hauteur max = 85 % de l'ecran
     final maxH = MediaQuery.of(context).size.height * 0.85;
 
     return AnimatedBuilder(
@@ -781,9 +781,9 @@ class _ChildPickerSheetState extends State<_ChildPickerSheet>
                   ? const Padding(
                       padding: EdgeInsets.all(32),
                       child: Column(children: [
-                        Text('ðŸ”', style: TextStyle(fontSize: 36)),
+                        Text('📋', style: TextStyle(fontSize: 36)),
                         SizedBox(height: 8),
-                        Text('Aucun rÃ©sultat',
+                        Text('Aucun resultat',
                             style: TextStyle(
                                 color: Colors.white54, fontSize: 14)),
                       ]),
@@ -904,7 +904,7 @@ class _ChildTileState extends State<_ChildTile> {
               ),
             ),
 
-            // Barre de progression verticale + flÃ¨che
+            // Barre de progression verticale + fleche
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -951,5 +951,6 @@ class _Act {
   final VoidCallback onTap;
   _Act(this.label, this.icon, this.color, this.onTap);
 }
+
 
 
