@@ -838,7 +838,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   _drawerItem(
                     label: 'Lignes d Immunite',
-                    label: 'Lignes d Immunite',
+                    icon: Icons.shield_rounded,
                     color: Colors.amberAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -850,11 +850,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         );
                       });
                     },
-                  // NOUVEL ITEM : Punitions et Immunites multi-enfants
+                  ),
                   // NOUVEL ITEM : Punitions et Immunites multi-enfants
                   _drawerItem(
                     label: 'Punitions et Immunites',
-                    label: 'Punitions et Immunites',
+                    icon: Icons.balance_rounded,
                     color: Colors.deepOrangeAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -868,7 +868,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   _drawerItem(
                     label: 'Bonus et Penalites',
-                    label: 'Bonus et Penalites',
+                    icon: Icons.monetization_on_rounded,
                     color: Colors.greenAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -891,7 +891,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 _drawerItem(
                   label: 'Vente d immunites',
-                  label: 'Vente d immunites',
+                  icon: Icons.sell_rounded,
                   color: Colors.tealAccent,
                   onTap: () {
                     Navigator.pop(context);
