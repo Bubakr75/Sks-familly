@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final children = provider.children;
     if (children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Aucun enfant enregistrÃ©'),
+        content: const Text('Aucun enfant enregistre'),
         backgroundColor: Colors.orange.shade700,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -236,13 +236,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(height: 16),
-                  const Text('ðŸ“œ Historique Complet',
+                  const Text('📜 Historique Complet',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('${history.length} entrÃ©e(s)',
+                  Text('\ entree(s)',
                       style: const TextStyle(
                           color: Colors.white54, fontSize: 13)),
                   const SizedBox(height: 12),
@@ -360,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               padding: const EdgeInsets.all(32),
               child: const Center(
-                  child: Text('Aucun enfant enregistrÃ©',
+                  child: Text('Aucun enfant enregistre',
                       style: TextStyle(color: Colors.white54))),
             );
           }
@@ -396,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           borderRadius: BorderRadius.circular(2)),
                     ),
                     const SizedBox(height: 16),
-                    const Text('ðŸ’° Bonus & PÃ©nalitÃ©s',
+                    const Text('💰 Bonus & Penalites',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -444,14 +444,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     const SizedBox(height: 8),
-                    Text('${entries.length} entrÃ©e(s)',
+                    Text('\ entree(s)',
                         style: const TextStyle(
                             color: Colors.white54, fontSize: 12)),
                     const SizedBox(height: 8),
                     Expanded(
                       child: entries.isEmpty
                           ? const Center(
-                              child: Text('Aucun bonus ou pÃ©nalitÃ©',
+                              child: Text('Aucun bonus ou penalite',
                                   style: TextStyle(color: Colors.white38)))
                           : ListView.builder(
                               controller: scrollController,
@@ -572,7 +572,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   .showSnackBar(
                                                 const SnackBar(
                                                   content: Text(
-                                                      'ðŸ—‘ï¸ EntrÃ©e supprimÃ©e'),
+                                                      '🗑️ Entree supprimee'),
                                                   backgroundColor:
                                                       Colors.red,
                                                   behavior: SnackBarBehavior
@@ -614,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _formatDateTime(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return "Ã€ l'instant";
+    if (diff.inMinutes < 1) return 'A l instant';
     if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
     if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
     if (diff.inDays < 7) return 'Il y a ${diff.inDays}j';
@@ -687,7 +687,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     'Points',
                     'Calendrier',
                     'Stats',
-                    'RÃ©glages',
+                    'Reglages',
                   ];
                   return TvFocusWrapper(
                     onTap: () => _onTabTapped(i),
@@ -791,7 +791,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(
-                  isParent ? widget.parentName : 'ðŸ‘¦ Mode Enfant',
+                  isParent ? widget.parentName : '👦 Mode Enfant',
                   style: TextStyle(
                       color: Colors.white.withOpacity(0.6), fontSize: 14),
                 ),
@@ -837,8 +837,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     },
                   ),
                   _drawerItem(
-                    icon: Icons.shield_rounded,
-                    label: "Lignes d'ImmunitÃ©",
+                    label: 'Lignes d Immunite',
+                    label: 'Lignes d Immunite',
                     color: Colors.amberAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -850,11 +850,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         );
                       });
                     },
-                  ),
-                  // â† NOUVEL ITEM : Punitions & ImmunitÃ©s multi-enfants
+                  // NOUVEL ITEM : Punitions et Immunites multi-enfants
+                  // NOUVEL ITEM : Punitions et Immunites multi-enfants
                   _drawerItem(
-                    icon: Icons.balance_rounded,
-                    label: 'Punitions & ImmunitÃ©s',
+                    label: 'Punitions et Immunites',
+                    label: 'Punitions et Immunites',
                     color: Colors.deepOrangeAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -867,8 +867,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     },
                   ),
                   _drawerItem(
-                    icon: Icons.swap_vert_circle_rounded,
-                    label: 'Bonus & PÃ©nalitÃ©s',
+                    label: 'Bonus et Penalites',
+                    label: 'Bonus et Penalites',
                     color: Colors.greenAccent,
                     onTap: () {
                       Navigator.pop(context);
@@ -890,8 +890,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   },
                 ),
                 _drawerItem(
-                  icon: Icons.sell_rounded,
-                  label: "Vente d'immunitÃ©s",
+                  label: 'Vente d immunites',
+                  label: 'Vente d immunites',
                   color: Colors.tealAccent,
                   onTap: () {
                     Navigator.pop(context);
