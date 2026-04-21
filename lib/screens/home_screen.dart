@@ -896,10 +896,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: Colors.cyanAccent,
                   onTap: () {
                     Navigator.pop(context);
-                    _showChildPicker(context, (child) {
-                      Navigator.push(context,
-                        SlidePageRoute(page: GeminiChatScreen(child: child)));
-                    });
+                    Navigator.push(context,
+                      SlidePageRoute(page: const GeminiChatScreen()));
                   },
                 ),
                 _drawerItem(

@@ -331,4 +331,12 @@ EXPLICATION: [courte explication educative]''';
       return {'enigme': 'Plus je seche, plus je suis mouilee. Qui suis-je ?', 'indice': 'C est utile apres le bain...', 'reponse': 'Une serviette', 'explication': 'La serviette absorbe l eau en sechant !'};
     }
   }
+  static Future<String> chatFamilyAssistant({required String message, required String familyContext, List<Map<String, String>> history = const []}) async {
+    final systemPrompt = 'Tu es un assistant familial intelligent et bienveillant.\n' + 'Tu as acces aux donnees completes de la famille.\n' + familyContext;
+    final contents = <Map<String, dynamic>>[{'parts': [{'text': systemPrompt}], 'role': 'user'}, {'parts': [{'text': 'Bonjour!'}], 'role': 'model'}];
+    for (final h in history) { contents.add({'parts': [{'text': h['content'] ?? ''}], 'role': h['role'] == 'user' ? 'user' : 'model'}); }
+    contents.add({'parts': [{'text': message}], 'role': 'user'});
+    try { final response = await http.post(Uri.parse(_baseUrl + '?key=' + _apiKey), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'contents': contents, 'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1000}})).timeout(const Duration(seconds: 30));
+    if (response.statusCode == 200) { final data = jsonDecode(response.body); return data['candidates'][0]['content']['parts'][0]['text'] as String; }
+    return 'Je ne peux pas repondre pour le moment.'; } catch (e) { return 'Erreur de connexion.'; } }
 }
