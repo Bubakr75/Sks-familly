@@ -977,6 +977,59 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ],
             ),
           ),
+          Divider(color: Colors.white12, height: 1),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                if (isParent) {
+                  context.read<PinProvider>().enterChildMode();
+                } else {
+                  PinGuard.guardAction(context, () {});
+
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    isParent ? Colors.redAccent.withOpacity(0.2) : Colors.greenAccent.withOpacity(0.2),
+                    Colors.transparent,
+                  ]),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isParent ? Colors.redAccent.withOpacity(0.5) : Colors.greenAccent.withOpacity(0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isParent ? Icons.child_care_rounded : Icons.admin_panel_settings_rounded,
+                      color: isParent ? Colors.redAccent : Colors.greenAccent,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      isParent ? 'Passer en mode Enfant' : 'Passer en mode Parent',
+                      style: TextStyle(
+                        color: isParent ? Colors.redAccent : Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.swap_horiz_rounded,
+                      color: isParent ? Colors.redAccent : Colors.greenAccent,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text('v5.0.0',
