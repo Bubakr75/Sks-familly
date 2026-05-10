@@ -763,6 +763,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
 
   // ── Bottom sheet ajout punition ───────────────────────────────────────────
   void _showAddBottomSheet(BuildContext context, FamilyProvider fp, ChildModel child) {
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -775,37 +776,39 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             color: Color(0xFF1E1E2E),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(child: Container(width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
-              const SizedBox(height: 16),
-              const Text('Nouvelle punition',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              _buildTextField(_descController, 'Description de la punition', Icons.edit_document),
-              const SizedBox(height: 12),
-              _buildTextField(_linesController, 'Nombre de lignes', Icons.format_list_numbered, isNumber: true),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  icon: _loading
-                      ? const SizedBox(width: 18, height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.add_circle_rounded),
-                  label: const Text('Ajouter la punition',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  onPressed: _loading ? null : () => _savePunishment(fp, child),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4,
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                const Text('Nouvelle punition',
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                _buildTextField(_descController, 'Description de la punition', Icons.edit_document),
+                const SizedBox(height: 12),
+                _buildTextField(_linesController, 'Nombre de lignes', Icons.format_list_numbered, isNumber: true),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                    icon: _loading
+                        ? const SizedBox(width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.add_circle_rounded),
+                    label: const Text('Ajouter la punition',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    onPressed: _loading ? null : () => _savePunishment(fp, child),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
