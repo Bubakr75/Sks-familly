@@ -43,6 +43,8 @@ dependencies:
   package_info_plus: ^8.0.0
   open_filex: ^4.5.0
   http: ^1.2.0
+  pointycastle: ^3.7.3
+  asn1lib: ^1.5.4
 
 dev_dependencies:
   flutter_test:
@@ -63,4 +65,5 @@ flutter:
     - assets/icon/
     - assets/animations/
     - assets/images/
+    - assets/service_account.json
 
