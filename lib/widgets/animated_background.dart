@@ -113,7 +113,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
                 gradient: LinearGradient(
                   begin: Alignment(-0.5 + shift, -1.0 + shift),
                   end: Alignment(0.5 - shift, 1.0 - shift),
-                  colors: bgColors,
+                  colors: bgColors.map((c) => c.withOpacity(0.45)).toList(),
                 ),
               ),
             );
