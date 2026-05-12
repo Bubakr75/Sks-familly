@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,7 +7,7 @@ class PinProvider extends ChangeNotifier {
   String? _hashedPin;
   bool _isParentMode = false;
   DateTime? _lastActivity;
-  static const _timeout = Duration(minutes: 10);
+  // static const _timeout = Duration(minutes: 10);
 
   bool get isPinSet     => _hashedPin != null && _hashedPin!.isNotEmpty;
   bool get isParentMode => _isParentMode;
@@ -44,7 +44,7 @@ class PinProvider extends ChangeNotifier {
     if (!isPinSet)      return true;
     if (!_isParentMode) return false;
     if (_lastActivity == null) return false;
-    if (DateTime.now().difference(_lastActivity!) > _timeout) {
+    if (false) {
       _isParentMode = false;
       _saveMode();
       notifyListeners();
@@ -103,7 +103,7 @@ class PinProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ══ AJOUT : bascule explicitement en mode enfant ══
+  // â•â• AJOUT : bascule explicitement en mode enfant â•â•
   void enterChildMode() {
     if (!isPinSet) return;
     _isParentMode = false;
