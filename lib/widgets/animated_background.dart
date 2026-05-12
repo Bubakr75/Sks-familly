@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 class AnimatedBackground extends StatefulWidget {
@@ -96,6 +96,13 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
 
     return Stack(
       children: [
+        // Background image
+        Image.asset(
+          'assets/images/background.jpg',
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+        ),
         // Breathing gradient background
         AnimatedBuilder(
           animation: _breathAnim,
@@ -177,7 +184,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
   }
 }
 
-// ─── Particle model ───
+// â”€â”€â”€ Particle model â”€â”€â”€
 class _Particle {
   late double x, y, size, speed, opacity, phase;
   late Color color;
@@ -235,7 +242,7 @@ class _ParticlePainter extends CustomPainter {
   bool shouldRepaint(covariant _ParticlePainter old) => true;
 }
 
-// ─── Star model ───
+// â”€â”€â”€ Star model â”€â”€â”€
 class _Star {
   late double x, y, size, twinkleSpeed, phase;
 
@@ -291,7 +298,7 @@ class _StarsPainter extends CustomPainter {
   bool shouldRepaint(covariant _StarsPainter old) => true;
 }
 
-// ─── Nebula painter ───
+// â”€â”€â”€ Nebula painter â”€â”€â”€
 class _NebulaPainter extends CustomPainter {
   final double progress;
 
