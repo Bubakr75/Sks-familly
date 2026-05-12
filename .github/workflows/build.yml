@@ -83,6 +83,12 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
+      - name: Create missing asset folders
+        run: mkdir -p assets/animations assets/images
+
+      - name: Inject service account
+        run: echo "${{ secrets.SERVICE_ACCOUNT_BASE64 }}" | base64 --decode > assets/service_account.json
+
       - name: Get dependencies
         run: flutter pub get
 
@@ -101,5 +107,3 @@ jobs:
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-
