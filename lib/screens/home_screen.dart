@@ -100,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     if (children.length == 1) {
-      context.read<FamilyProvider>().enterChildMode();
+      context.read<PinProvider>().enterChildMode();
       onSelected(children.first);
       return;
     }
@@ -156,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               autofocus: i == 0,
                               onTap: () {
                                 Navigator.pop(ctx);
-                                context.read<FamilyProvider>().enterChildMode();
+                                context.read<PinProvider>().enterChildMode();
                                 onSelected(child);
                               },
                               child: GlassCard(
@@ -950,7 +950,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               Navigator.push(
                                 context,
                                 SlidePageRoute(
-                                  page: SchoolNotesScreen(childId: child.id),
+                                  page: SchoolNotesScreen(childId: child.id, childName: child.name),
                                 ),
                               );
                             });
