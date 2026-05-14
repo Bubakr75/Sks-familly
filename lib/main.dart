@@ -16,11 +16,17 @@ import 'screens/onboarding_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/notification_service.dart';
 import 'services/update_service.dart';
+import 'utils/tv_detector.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await initializeDateFormatting('fr_FR', null);
+
+  // Detection TV
+  try {
+    await TvDetector.detect();
+  } catch (_) {}
 
   try {
     await NotificationService.init();
@@ -151,6 +157,10 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
 
   @override
   Widget build(BuildContext context) {
+    // Detection TV par taille ecran au premier build
+    final mq = MediaQuery.of(context);
+    TvDetector.detectFromContext(mq.size.shortestSide, mq.size.longestSide);
+
     return Consumer<ThemeProvider>(
       builder: (_, themeProvider, __) => MaterialApp(
         navigatorKey: NotificationService.navigatorKey,

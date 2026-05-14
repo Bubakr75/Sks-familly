@@ -1,14 +1,14 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
 import '../models/child_model.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
+import '../utils/tv_detector.dart';
 import 'home_screen.dart';
 import 'child_dashboard_screen.dart';
 
@@ -25,14 +25,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late AnimationController _buttonController;
   late AnimationController _particleController;
   late AnimationController _cardController;
-
   late Animation<double> _logoFade;
   late Animation<double> _logoScale;
   late Animation<double> _pulseAnim;
   late Animation<double> _btn1Slide;
   late Animation<double> _btn2Slide;
   late Animation<double> _cardFade;
-
   final List<_WelcomeParticle> _particles = [];
   final _rng = math.Random();
 
@@ -96,7 +94,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.dispose();
   }
 
-  // ── Mode Parent ────────────────────────────────────────────────────────────
   void _handleParentMode() {
     final pin = context.read<PinProvider>();
     if (!pin.isPinSet) {
@@ -137,7 +134,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   fontSize: 24, letterSpacing: 8, color: Colors.white),
               decoration: InputDecoration(
                 counterText: '',
-                hintText: '• • • •',
+                hintText: '* * * *',
                 hintStyle: const TextStyle(
                     fontSize: 24, letterSpacing: 8, color: Colors.white30),
                 suffixIcon: IconButton(
@@ -155,8 +152,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Annuler',
-                    style: TextStyle(color: Colors.grey[400]))),
+                child:
+                    Text('Annuler', style: TextStyle(color: Colors.grey[400]))),
             FilledButton(
               onPressed: () => _validatePin(ctx, pinCtrl),
               child: const Text('Valider'),
@@ -183,8 +180,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         ]),
         backgroundColor: Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 2),
       ));
     }
@@ -197,39 +193,44 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       backgroundColor: const Color(0xFF0D1B2A),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          const Text('Qui êtes-vous ?',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          ...parents.map((name) => ListTile(
-                leading: CircleAvatar(
-                  backgroundColor:
-                      const Color(0xFF00E5FF).withOpacity(0.15),
-                  child: const Icon(Icons.person_rounded,
-                      color: Color(0xFF00E5FF)),
-                ),
-                title: Text(name,
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w600)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _navigateToHome(name);
-                },
-              )),
-          const SizedBox(height: 8),
-        ]),
+      builder: (ctx) => TvFocusScope(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Text('Qui etes-vous ?',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            ...parents.asMap().entries.map((entry) => TvFocusWrapper(
+                  autofocus: entry.key == 0,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _navigateToHome(entry.value);
+                  },
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor:
+                          const Color(0xFF00E5FF).withOpacity(0.15),
+                      child: const Icon(Icons.person_rounded,
+                          color: Color(0xFF00E5FF)),
+                    ),
+                    title: Text(entry.value,
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w600)),
+                  ),
+                )),
+            const SizedBox(height: 8),
+          ]),
+        ),
       ),
     );
   }
@@ -248,35 +249,28 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  // ══ CORRECTION MODE ENFANT : bascule en mode enfant + navigation directe ══
   void _handleChildMode() {
     final fp = context.read<FamilyProvider>();
     final pin = context.read<PinProvider>();
 
     if (fp.children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Aucun enfant enregistré pour l\'instant.'),
+        content: Text('Aucun enfant enregistre pour le moment.'),
         behavior: SnackBarBehavior.floating,
       ));
       return;
     }
 
-    // ── Bascule en mode enfant AVANT de naviguer ──
     pin.enterChildMode();
 
     if (fp.children.length == 1) {
-      // Un seul enfant → on va directement sur son dashboard
       _navigateToChildDashboard(fp.children.first.id);
       return;
     }
-
     _showChildPicker(fp.children);
   }
 
-  // ══ CORRECTION : navigation vers ChildDashboardScreen via HomeScreen ══
   void _navigateToChildDashboard(String childId) {
-    // On va d'abord sur HomeScreen, puis le dashboard enfant s'ouvre dessus
-    // pour que le bouton retour revienne bien sur HomeScreen
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -285,11 +279,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),
       ),
-    ).then((_) {
-      // Petite sécurité : on navigue vers le dashboard enfant après
-    });
-
-    // Navigation directe vers le dashboard enfant par-dessus HomeScreen
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.push(
@@ -302,7 +292,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     });
   }
 
-  // ══ CORRECTION SCROLL : DraggableScrollableSheet au lieu de Column min ══
   void _showChildPicker(List<ChildModel> children) {
     showModalBottomSheet(
       context: context,
@@ -315,92 +304,95 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           maxChildSize: 0.92,
           expand: false,
           builder: (_, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF0D1B2A),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[700],
-                      borderRadius: BorderRadius.circular(2),
+            return TvFocusScope(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0D1B2A),
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[700],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Qui es-tu ?',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  // ══ Liste scrollable ══
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      itemCount: children.length,
-                      itemBuilder: (_, i) {
-                        final child = children[i];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: ListTile(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            tileColor: const Color(0xFF7C4DFF)
-                                .withOpacity(0.08),
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  const Color(0xFF7C4DFF).withOpacity(0.15),
-                              radius: 24,
-                              child: child.hasPhoto
-                                  ? ClipOval(
-                                      child: Image.memory(
-                                        base64Decode(child.photoBase64),
-                                        width: 48,
-                                        height: 48,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    )
-                                  : Text(
-                                      child.avatar.isEmpty
-                                          ? '🧒'
-                                          : child.avatar,
-                                      style:
-                                          const TextStyle(fontSize: 22)),
-                            ),
-                            title: Text(
-                              child.name,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16),
-                            ),
-                            subtitle: Text(
-                              '${child.points} pts · Nv.${child.currentLevelNumber}',
-                              style: TextStyle(
-                                  color: Colors.grey[500], fontSize: 12),
-                            ),
-                            trailing: const Icon(Icons.chevron_right,
-                                color: Colors.white38),
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              // ══ CORRECTION : navigue vers le dashboard enfant ══
-                              _navigateToChildDashboard(child.id);
-                            },
-                          ),
-                        );
-                      },
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Qui es-tu ?',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        itemCount: children.length,
+                        itemBuilder: (_, i) {
+                          final child = children[i];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: TvFocusWrapper(
+                              autofocus: i == 0,
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                _navigateToChildDashboard(child.id);
+                              },
+                              child: ListTile(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                                tileColor:
+                                    const Color(0xFF7C4DFF).withOpacity(0.08),
+                                leading: CircleAvatar(
+                                  backgroundColor: const Color(0xFF7C4DFF)
+                                      .withOpacity(0.15),
+                                  radius: 24,
+                                  child: child.hasPhoto
+                                      ? ClipOval(
+                                          child: Image.memory(
+                                            base64Decode(child.photoBase64),
+                                            width: 48,
+                                            height: 48,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        )
+                                      : Text(
+                                          child.avatar.isEmpty
+                                              ? '?'
+                                              : child.avatar,
+                                          style:
+                                              const TextStyle(fontSize: 22)),
+                                ),
+                                title: Text(
+                                  child.name,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16),
+                                ),
+                                subtitle: Text(
+                                  '${child.points} pts - Nv.${child.currentLevelNumber}',
+                                  style: TextStyle(
+                                      color: Colors.grey[500], fontSize: 12),
+                                ),
+                                trailing: const Icon(Icons.chevron_right,
+                                    color: Colors.white38),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -414,43 +406,42 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('❔ Comment utiliser SKS Family ?',
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Comment utiliser SKS Family ?',
             style: TextStyle(color: Colors.white, fontSize: 18)),
-        content: SingleChildScrollView(
+        content: const SingleChildScrollView(
           child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('👨‍👩‍👧‍👦 Mode Parent',
-                    style: TextStyle(
-                        color: Colors.cyan, fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
-                Text('• Gère les points, tâches, punitions et récompenses',
-                    style: TextStyle(color: Colors.white70)),
-                Text('• Crée des objectifs et suit les progrès',
-                    style: TextStyle(color: Colors.white70)),
-                Text('• Accède au tribunal familial',
-                    style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 16),
-                Text('🧒 Mode Enfant',
-                    style: TextStyle(
-                        color: Color(0xFF7C4DFF),
-                        fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
-                Text('• Voit ses points et ses badges',
-                    style: TextStyle(color: Colors.white70)),
-                Text('• Suit ses objectifs et punitions',
-                    style: TextStyle(color: Colors.white70)),
-                Text('• Peut faire des échanges avec les autres enfants',
-                    style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 20),
-                Text('💡 Le mode Parent est protégé par un code PIN.',
-                    style: TextStyle(
-                        color: Colors.amber,
-                        fontStyle: FontStyle.italic)),
-              ]),
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Mode Parent',
+                  style: TextStyle(
+                      color: Colors.cyan, fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('Gere les points, taches, punitions et recompenses',
+                  style: TextStyle(color: Colors.white70)),
+              Text('Cree des objectifs et suit les progres',
+                  style: TextStyle(color: Colors.white70)),
+              Text('Accede au tribunal familial',
+                  style: TextStyle(color: Colors.white70)),
+              SizedBox(height: 16),
+              Text('Mode Enfant',
+                  style: TextStyle(
+                      color: Color(0xFF7C4DFF),
+                      fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('Voit ses points et ses badges',
+                  style: TextStyle(color: Colors.white70)),
+              Text('Suit ses objectifs et punitions',
+                  style: TextStyle(color: Colors.white70)),
+              Text('Peut faire des echanges avec les autres enfants',
+                  style: TextStyle(color: Colors.white70)),
+              SizedBox(height: 20),
+              Text('Le mode Parent est protege par un code PIN.',
+                  style: TextStyle(
+                      color: Colors.amber, fontStyle: FontStyle.italic)),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -465,6 +456,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isTV = TvDetector.isTV;
+
+    // Tailles adaptees TV
+    final logoSize = isTV ? 140.0 : 110.0;
+    final titleSize = isTV ? 48.0 : 38.0;
+    final subtitleSize = isTV ? 18.0 : 14.0;
+    final btnHeight = isTV ? 80.0 : 62.0;
+    final btnFontSize = isTV ? 24.0 : 19.0;
+    final btnIconSize = isTV ? 32.0 : 26.0;
+    final btnPadding = isTV ? 40.0 : 28.0;
+    final emojiSize = isTV ? 54.0 : 48.0;
+    final childEmojiSize = isTV ? 32.0 : 26.0;
 
     return AnimatedBackground(
       child: Scaffold(
@@ -491,9 +494,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
-                    const SizedBox(height: 32),
+                    SizedBox(height: isTV ? 40 : 32),
 
-                    // ══ LOGO ══
+                    // LOGO
                     FadeTransition(
                       opacity: _logoFade,
                       child: ScaleTransition(
@@ -501,8 +504,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         child: AnimatedBuilder(
                           animation: _pulseAnim,
                           builder: (_, __) => Container(
-                            width: 110,
-                            height: 110,
+                            width: logoSize,
+                            height: logoSize,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: const LinearGradient(
@@ -522,9 +525,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 ),
                               ],
                             ),
-                            child: const Center(
-                              child: Text('👨‍👩‍👧‍👦',
-                                  style: TextStyle(fontSize: 48)),
+                            child: Center(
+                              child: Text('',
+                                  style: TextStyle(fontSize: emojiSize)),
                             ),
                           ),
                         ),
@@ -533,7 +536,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                     const SizedBox(height: 20),
 
-                    // ══ TITRE ══
+                    // TITRE
                     FadeTransition(
                       opacity: _logoFade,
                       child: ShaderMask(
@@ -544,10 +547,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             Color(0xFF7C4DFF),
                           ],
                         ).createShader(bounds),
-                        child: const Text(
+                        child: Text(
                           'SKS Family',
                           style: TextStyle(
-                            fontSize: 38,
+                            fontSize: titleSize,
                             fontWeight: FontWeight.w900,
                             color: Colors.white,
                             letterSpacing: 2,
@@ -555,84 +558,76 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 6),
-
                     FadeTransition(
                       opacity: _logoFade,
                       child: Text(
-                        'Le système de points familial',
+                        'Le systeme de points familial',
                         style: TextStyle(
-                            fontSize: 14,
+                            fontSize: subtitleSize,
                             color: Colors.grey[400],
                             letterSpacing: 1),
                       ),
                     ),
 
-                    const SizedBox(height: 28),
+                    SizedBox(height: isTV ? 36 : 28),
 
-                    // ══ CARTES ENFANTS ══
+                    // CARTES ENFANTS
                     Consumer<FamilyProvider>(
                       builder: (_, fp, __) {
                         if (fp.children.isEmpty) {
                           return FadeTransition(
                             opacity: _cardFade,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
                               child: Container(
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  borderRadius:
-                                      BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(20),
                                   color: Colors.white.withOpacity(0.04),
                                   border: Border.all(
-                                      color:
-                                          Colors.white.withOpacity(0.08)),
+                                      color: Colors.white.withOpacity(0.08)),
                                 ),
                                 child: Column(children: [
-                                  const Text('🏠',
+                                  const Text('',
                                       style: TextStyle(fontSize: 36)),
                                   const SizedBox(height: 8),
-                                  Text('Aucun enfant enregistré',
+                                  Text('Aucun enfant enregistre',
                                       style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 14)),
                                   const SizedBox(height: 4),
                                   Text(
-                                      'Connectez-vous en mode Parent\npour commencer',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 12)),
+                                    'Connectez-vous en mode Parent\npour commencer',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12),
+                                  ),
                                 ]),
                               ),
                             ),
                           );
                         }
-
-                        final sorted =
-                            List<ChildModel>.from(fp.children)
-                              ..sort((a, b) =>
-                                  b.points.compareTo(a.points));
-
+                        final sorted = List<ChildModel>.from(fp.children)
+                          ..sort((a, b) => b.points.compareTo(a.points));
                         return FadeTransition(
                           opacity: _cardFade,
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 24),
                                 child: Row(children: [
-                                  const Text('🏆 ',
+                                  const Text(' ',
                                       style: TextStyle(fontSize: 16)),
                                   Text(
                                     'Classement de la famille',
                                     style: TextStyle(
                                         color: Colors.grey[400],
-                                        fontSize: 13,
+                                        fontSize: isTV ? 16 : 13,
                                         fontWeight: FontWeight.w600,
                                         letterSpacing: 0.5),
                                   ),
@@ -640,17 +635,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                               const SizedBox(height: 10),
                               SizedBox(
-                                height: 130,
+                                height: isTV ? 160 : 130,
                                 child: ListView.builder(
                                   scrollDirection: Axis.horizontal,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20),
                                   itemCount: sorted.length,
-                                  itemBuilder: (_, i) =>
-                                      _ChildStatCard(
+                                  itemBuilder: (_, i) => _ChildStatCard(
                                     child: sorted[i],
                                     rank: i + 1,
                                     delay: i * 100,
+                                    isTV: isTV,
                                   ),
                                 ),
                               ),
@@ -660,22 +655,22 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       },
                     ),
 
-                    const SizedBox(height: 24),
+                    SizedBox(height: isTV ? 32 : 24),
 
-                    // ══ BOUTON PARENT ══
+                    // BOUTON PARENT
                     SlideTransition(
                       position: Tween<Offset>(
                         begin: const Offset(-1, 0),
                         end: Offset.zero,
                       ).animate(_btn1Slide),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 28),
+                        padding: EdgeInsets.symmetric(horizontal: btnPadding),
                         child: TvFocusWrapper(
+                          autofocus: isTV,
                           onTap: _handleParentMode,
                           child: Container(
                             width: double.infinity,
-                            height: 62,
+                            height: btnHeight,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(20),
                               gradient: const LinearGradient(
@@ -693,17 +688,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 ),
                               ],
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.shield_rounded,
-                                    color: Colors.black, size: 26),
-                                SizedBox(width: 12),
+                                    color: Colors.black, size: btnIconSize),
+                                const SizedBox(width: 12),
                                 Text(
                                   'Mode Parent',
                                   style: TextStyle(
                                     color: Colors.black,
-                                    fontSize: 19,
+                                    fontSize: btnFontSize,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -714,27 +709,26 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 14),
+                    SizedBox(height: isTV ? 18 : 14),
 
-                    // ══ BOUTON ENFANT ══
+                    // BOUTON ENFANT
                     SlideTransition(
                       position: Tween<Offset>(
                         begin: const Offset(1, 0),
                         end: Offset.zero,
                       ).animate(_btn2Slide),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 28),
+                        padding: EdgeInsets.symmetric(horizontal: btnPadding),
                         child: TvFocusWrapper(
                           onTap: _handleChildMode,
                           child: Container(
                             width: double.infinity,
-                            height: 62,
+                            height: btnHeight,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(0xFF7C4DFF)
-                                    .withOpacity(0.6),
+                                color:
+                                    const Color(0xFF7C4DFF).withOpacity(0.6),
                                 width: 2,
                               ),
                               gradient: LinearGradient(
@@ -744,16 +738,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 ],
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('🧒', style: TextStyle(fontSize: 26)),
-                                SizedBox(width: 12),
+                                Text('',
+                                    style:
+                                        TextStyle(fontSize: childEmojiSize)),
+                                const SizedBox(width: 12),
                                 Text(
                                   'Mode Enfant',
                                   style: TextStyle(
-                                    color: Color(0xFF7C4DFF),
-                                    fontSize: 19,
+                                    color: const Color(0xFF7C4DFF),
+                                    fontSize: btnFontSize,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -766,67 +762,64 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                     const SizedBox(height: 20),
 
-                    // ══ STATS GLOBALES ══
+                    // STATS GLOBALES
                     Consumer<FamilyProvider>(
                       builder: (_, fp, __) {
                         if (fp.children.isEmpty) {
                           return const SizedBox.shrink();
                         }
-                        final totalPts = fp.children
-                            .fold<int>(0, (s, c) => s + c.points);
-                        final totalBadges = fp.children.fold<int>(
-                            0, (s, c) => s + c.badgeIds.length);
-                        final topChild =
-                            fp.childrenSorted.isNotEmpty
-                                ? fp.childrenSorted.first
-                                : null;
+                        final totalPts =
+                            fp.children.fold(0, (s, c) => s + c.points);
+                        final totalBadges = fp.children
+                            .fold(0, (s, c) => s + c.badgeIds.length);
+                        final topChild = fp.childrenSorted.isNotEmpty
+                            ? fp.childrenSorted.first
+                            : null;
                         return FadeTransition(
                           opacity: _cardFade,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 24),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14, horizontal: 16),
+                              padding: EdgeInsets.symmetric(
+                                  vertical: isTV ? 18 : 14,
+                                  horizontal: 16),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(18),
                                 color: Colors.white.withOpacity(0.04),
                                 border: Border.all(
-                                    color:
-                                        Colors.white.withOpacity(0.07)),
+                                    color: Colors.white.withOpacity(0.07)),
                               ),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceAround,
                                 children: [
                                   _StatBubble(
-                                    icon: '⭐',
-                                    value: '$totalPts',
-                                    label: 'Points total',
-                                  ),
+                                      icon: '',
+                                      value: '$totalPts',
+                                      label: 'Points total',
+                                      isTV: isTV),
                                   Container(
                                       width: 1,
                                       height: 36,
-                                      color: Colors.white
-                                          .withOpacity(0.1)),
+                                      color: Colors.white.withOpacity(0.1)),
                                   _StatBubble(
-                                    icon: '🏅',
-                                    value: '$totalBadges',
-                                    label: 'Badges',
-                                  ),
+                                      icon: '',
+                                      value: '$totalBadges',
+                                      label: 'Badges',
+                                      isTV: isTV),
                                   Container(
                                       width: 1,
                                       height: 36,
-                                      color: Colors.white
-                                          .withOpacity(0.1)),
+                                      color: Colors.white.withOpacity(0.1)),
                                   _StatBubble(
-                                    icon: '👑',
-                                    value: topChild?.name
-                                            .split(' ')
-                                            .first ??
-                                        '—',
-                                    label: 'Leader',
-                                  ),
+                                      icon: '',
+                                      value: topChild?.name
+                                              .split(' ')
+                                              .first ??
+                                          '-',
+                                      label: 'Leader',
+                                      isTV: isTV),
                                 ],
                               ),
                             ),
@@ -834,7 +827,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         );
                       },
                     ),
-
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -847,15 +839,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  CARTE ENFANT
-// ══════════════════════════════════════════════════════════════════════════════
+// CARTE ENFANT
 class _ChildStatCard extends StatefulWidget {
   final ChildModel child;
   final int rank;
   final int delay;
+  final bool isTV;
   const _ChildStatCard(
-      {required this.child, required this.rank, required this.delay});
+      {required this.child,
+      required this.rank,
+      required this.delay,
+      required this.isTV});
   @override
   State<_ChildStatCard> createState() => _ChildStatCardState();
 }
@@ -864,6 +858,7 @@ class _ChildStatCardState extends State<_ChildStatCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
+
   @override
   void initState() {
     super.initState();
@@ -897,11 +892,11 @@ class _ChildStatCardState extends State<_ChildStatCard>
   String get _rankEmoji {
     switch (widget.rank) {
       case 1:
-        return '🥇';
+        return '';
       case 2:
-        return '🥈';
+        return '';
       case 3:
-        return '🥉';
+        return '';
       default:
         return '${widget.rank}';
     }
@@ -910,10 +905,15 @@ class _ChildStatCardState extends State<_ChildStatCard>
   @override
   Widget build(BuildContext context) {
     final c = widget.child;
+    final cardWidth = widget.isTV ? 140.0 : 110.0;
+    final avatarSize = widget.rank == 1
+        ? (widget.isTV ? 50.0 : 44.0)
+        : (widget.isTV ? 36.0 : 30.0);
+
     return ScaleTransition(
       scale: _anim,
       child: Container(
-        width: 110,
+        width: cardWidth,
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -942,8 +942,8 @@ class _ChildStatCardState extends State<_ChildStatCard>
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: avatarSize,
+                  height: avatarSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _rankColor.withOpacity(0.15),
@@ -958,8 +958,9 @@ class _ChildStatCardState extends State<_ChildStatCard>
                           ),
                         )
                       : Center(
-                          child: Text(c.avatar.isEmpty ? '🧒' : c.avatar,
-                              style: const TextStyle(fontSize: 22))),
+                          child: Text(c.avatar.isEmpty ? '?' : c.avatar,
+                              style: TextStyle(
+                                  fontSize: widget.isTV ? 24 : 22))),
                 ),
                 Positioned(
                   top: -6,
@@ -972,9 +973,9 @@ class _ChildStatCardState extends State<_ChildStatCard>
             const SizedBox(height: 8),
             Text(
               c.name.split(' ').first,
-              style: const TextStyle(
+              style: TextStyle(
                   color: Colors.white,
-                  fontSize: 13,
+                  fontSize: widget.isTV ? 15 : 13,
                   fontWeight: FontWeight.w700),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -983,7 +984,7 @@ class _ChildStatCardState extends State<_ChildStatCard>
             Text('${c.points} pts',
                 style: TextStyle(
                     color: _rankColor,
-                    fontSize: 12,
+                    fontSize: widget.isTV ? 14 : 12,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             ClipRRect(
@@ -992,7 +993,7 @@ class _ChildStatCardState extends State<_ChildStatCard>
                 value: c.levelProgress.clamp(0.0, 1.0),
                 minHeight: 4,
                 backgroundColor: Colors.white.withOpacity(0.08),
-                valueColor: AlwaysStoppedAnimation<Color>(_rankColor),
+                valueColor: AlwaysStoppedAnimation(_rankColor),
               ),
             ),
             const SizedBox(height: 2),
@@ -1005,37 +1006,39 @@ class _ChildStatCardState extends State<_ChildStatCard>
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  STAT BUBBLE
-// ══════════════════════════════════════════════════════════════════════════════
+// STAT BUBBLE
 class _StatBubble extends StatelessWidget {
   final String icon;
   final String value;
   final String label;
+  final bool isTV;
   const _StatBubble(
-      {required this.icon, required this.value, required this.label});
+      {required this.icon,
+      required this.value,
+      required this.label,
+      required this.isTV});
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(icon, style: const TextStyle(fontSize: 18)),
+        Text(icon, style: TextStyle(fontSize: isTV ? 22 : 18)),
         const SizedBox(height: 4),
         Text(value,
-            style: const TextStyle(
+            style: TextStyle(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: isTV ? 20 : 16,
                 fontWeight: FontWeight.w800)),
         Text(label,
-            style: TextStyle(color: Colors.grey[500], fontSize: 10)),
+            style: TextStyle(
+                color: Colors.grey[500], fontSize: isTV ? 12 : 10)),
       ],
     );
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  PARTICULES
-// ══════════════════════════════════════════════════════════════════════════════
+// PARTICULES
 class _WelcomeParticle {
   late double x, y, speed, size;
   _WelcomeParticle(math.Random rng) {
@@ -1049,8 +1052,8 @@ class _WelcomeParticle {
 class _WelcomeParticlePainter extends CustomPainter {
   final List<_WelcomeParticle> particles;
   final double time;
-  _WelcomeParticlePainter(
-      {required this.particles, required this.time});
+  _WelcomeParticlePainter({required this.particles, required this.time});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = Colors.white.withOpacity(0.15);
