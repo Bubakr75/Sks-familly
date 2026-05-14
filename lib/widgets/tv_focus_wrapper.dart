@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/tv_detector.dart';
 
 class TvFocusWrapper extends StatefulWidget {
   final Widget child;
@@ -142,6 +143,96 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
     }
 
     return focusWidget;
+  }
+}
+
+/// Wrapper pour TextField sur TV : empeche le D-pad de sortir du champ
+class TvTextField extends StatelessWidget {
+  final TextEditingController? controller;
+  final String? labelText;
+  final String? hintText;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool obscureText;
+  final Widget? prefixIcon;
+  final Widget? suffixIcon;
+  final int? maxLength;
+  final bool autofocus;
+  final TextAlign textAlign;
+  final TextStyle? style;
+  final InputDecoration? decoration;
+  final ValueChanged<String>? onSubmitted;
+  final int? maxLines;
+
+  const TvTextField({
+    super.key,
+    this.controller,
+    this.labelText,
+    this.hintText,
+    this.keyboardType,
+    this.inputFormatters,
+    this.obscureText = false,
+    this.prefixIcon,
+    this.suffixIcon,
+    this.maxLength,
+    this.autofocus = false,
+    this.textAlign = TextAlign.start,
+    this.style,
+    this.decoration,
+    this.onSubmitted,
+    this.maxLines = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final field = TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      obscureText: obscureText,
+      maxLength: maxLength,
+      autofocus: autofocus,
+      textAlign: textAlign,
+      maxLines: maxLines,
+      style: style ?? const TextStyle(color: Colors.white),
+      onSubmitted: onSubmitted,
+      decoration: decoration ?? InputDecoration(
+        labelText: labelText,
+        hintText: hintText,
+        labelStyle: const TextStyle(color: Colors.white60),
+        hintStyle: const TextStyle(color: Colors.white30),
+        prefixIcon: prefixIcon,
+        suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: Colors.white10,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF448AFF), width: 2),
+        ),
+      ),
+    );
+
+    if (!TvDetector.isTV) return field;
+
+    // Sur TV : intercepte les fleches haut/bas pour ne pas sortir du champ
+    return Focus(
+      onKey: (node, event) {
+        if (event is RawKeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+              event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            // Sur TV, on bloque la sortie du TextField avec haut/bas
+            // L'utilisateur doit appuyer sur Enter/Back pour quitter le champ
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: field,
+    );
   }
 }
 
