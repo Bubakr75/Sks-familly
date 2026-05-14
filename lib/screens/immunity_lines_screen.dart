@@ -299,20 +299,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                   _detailRow('Expire le', current.expiresLabel,
                       Colors.orangeAccent),
                 const SizedBox(height: 20),
-                // ── Barre de progression lignes ──
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: current.lines > 0
-                        ? (current.lines - current.usedLines) /
-                            current.lines
-                        : 0,
-                    minHeight: 8,
-                    backgroundColor: Colors.white12,
-                    valueColor: AlwaysStoppedAnimation(
-                        _statusColor(current)),
-                  ),
-                ),
                 const SizedBox(height: 20),
                 if (current.isUsable) ...[
                   SizedBox(
@@ -422,6 +408,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: AnimatedBackground(
+            backgroundImage: 'assets/images/immunity_bg.png',
             child: SafeArea(
               child: Column(children: [
 
@@ -607,10 +594,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                             padding: const EdgeInsets.symmetric(
                                 vertical: 10),
                             decoration: BoxDecoration(
-                              color: _tabIndex == 0
-                                  ? Colors.greenAccent
-                                      .withOpacity(0.2)
-                                  : Colors.white.withOpacity(0.05),
+                              color: Colors.transparent,
                               borderRadius:
                                   BorderRadius.circular(12),
                               border: Border.all(
@@ -819,19 +803,6 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                           color: Colors.white38, size: 20),
                     ]),
                     const SizedBox(height: 10),
-                    // ✅ Barre de progression lignes restantes
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: imm.lines > 0
-                            ? imm.availableLines / imm.lines
-                            : 0,
-                        minHeight: 5,
-                        backgroundColor: Colors.white10,
-                        valueColor: AlwaysStoppedAnimation(
-                            _statusColor(imm)),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -962,3 +933,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
     );
   }
 }
+
+
+
+

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 class AnimatedBackground extends StatefulWidget {
@@ -7,6 +7,7 @@ class AnimatedBackground extends StatefulWidget {
   final int particleCount;
   final bool showStars;
   final bool showNebula;
+  final String? backgroundImage;
 
   const AnimatedBackground({
     super.key,
@@ -15,6 +16,7 @@ class AnimatedBackground extends StatefulWidget {
     this.particleCount = 30,
     this.showStars = true,
     this.showNebula = true,
+    this.backgroundImage,
   });
 
   @override
@@ -97,9 +99,17 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
     return Stack(
       children: [
         // Background image
-        Image.asset(
-          'assets/images/background.jpg',
-          fit: BoxFit.cover,
+        Opacity(
+          opacity: 1.0,
+          child: Image.asset(
+            widget.backgroundImage ?? 'assets/images/background.jpg',
+            fit: BoxFit.fitHeight,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+        ),
+        Container(
+          color: Colors.black.withOpacity(0.0),
           width: double.infinity,
           height: double.infinity,
         ),
@@ -113,7 +123,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
                 gradient: LinearGradient(
                   begin: Alignment(-0.5 + shift, -1.0 + shift),
                   end: Alignment(0.5 - shift, 1.0 - shift),
-                  colors: bgColors.map((c) => c.withOpacity(0.45)).toList(),
+                  colors: bgColors.map((c) => c.withOpacity(0.0)).toList(),
                 ),
               ),
             );
@@ -171,7 +181,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
               radius: 1.2,
               colors: [
                 Colors.transparent,
-                Colors.black.withOpacity(0.3),
+                Colors.black.withOpacity(0.0),
               ],
             ),
           ),
@@ -184,7 +194,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
   }
 }
 
-// â”€â”€â”€ Particle model â”€â”€â”€
+// ─── Particle model ───
 class _Particle {
   late double x, y, size, speed, opacity, phase;
   late Color color;
@@ -242,7 +252,7 @@ class _ParticlePainter extends CustomPainter {
   bool shouldRepaint(covariant _ParticlePainter old) => true;
 }
 
-// â”€â”€â”€ Star model â”€â”€â”€
+// ─── Star model ───
 class _Star {
   late double x, y, size, twinkleSpeed, phase;
 
@@ -298,7 +308,7 @@ class _StarsPainter extends CustomPainter {
   bool shouldRepaint(covariant _StarsPainter old) => true;
 }
 
-// â”€â”€â”€ Nebula painter â”€â”€â”€
+// ─── Nebula painter ───
 class _NebulaPainter extends CustomPainter {
   final double progress;
 
@@ -351,3 +361,11 @@ class _NebulaPainter extends CustomPainter {
   bool shouldRepaint(covariant _NebulaPainter old) =>
       progress != old.progress;
 }
+
+
+
+
+
+
+
+

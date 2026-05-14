@@ -104,7 +104,7 @@ class _GlassCardState extends State<GlassCard>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(widget.borderRadius),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
                   child: Container(
                     padding: widget.padding ?? const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -113,19 +113,19 @@ class _GlassCardState extends State<GlassCard>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.white.withOpacity(0.12),
-                          Colors.white.withOpacity(0.05),
-                          Colors.white.withOpacity(0.02),
+                          Colors.transparent,
+                          Colors.transparent,
+                          Colors.transparent,
                         ],
                       ),
                       border: Border.all(
                         color: widget.borderColor ??
-                            (widget.glowColor ?? Colors.cyan).withOpacity(0.12),
+                            Colors.transparent,
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.transparent,
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -218,3 +218,4 @@ class _ShimmerPainter extends CustomPainter {
   bool shouldRepaint(covariant _ShimmerPainter old) =>
       progress != old.progress;
 }
+

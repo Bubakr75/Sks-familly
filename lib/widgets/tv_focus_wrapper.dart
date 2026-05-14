@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math' as math;
 
 class TvFocusWrapper extends StatefulWidget {
   final Widget child;
@@ -10,6 +9,7 @@ class TvFocusWrapper extends StatefulWidget {
   final double borderRadius;
   final bool autofocus;
   final double focusScale;
+  final double? order;
 
   const TvFocusWrapper({
     super.key,
@@ -20,6 +20,7 @@ class TvFocusWrapper extends StatefulWidget {
     this.borderRadius = 14,
     this.autofocus = false,
     this.focusScale = 1.04,
+    this.order,
   });
 
   @override
@@ -75,7 +76,7 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
 
   @override
   Widget build(BuildContext context) {
-    return Focus(
+    Widget focusWidget = Focus(
       autofocus: widget.autofocus,
       onFocusChange: _handleFocusChange,
       onKey: _handleKey,
@@ -105,14 +106,12 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
                         ),
                   boxShadow: _isFocused
                       ? [
-                          // Inner glow
                           BoxShadow(
                             color: widget.focusBorderColor
                                 .withOpacity(0.2 * _glowAnim.value),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
-                          // Outer glow
                           BoxShadow(
                             color: widget.focusBorderColor
                                 .withOpacity(0.15 * _glowAnim.value),
@@ -134,13 +133,42 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
         ),
       ),
     );
+
+    if (widget.order != null) {
+      focusWidget = FocusTraversalOrder(
+        order: NumericFocusOrder(widget.order!),
+        child: focusWidget,
+      );
+    }
+
+    return focusWidget;
   }
 }
 
-/// Keyboard handler pour la racine de l'app TV
+class TvFocusScope extends StatelessWidget {
+  final Widget child;
+  final bool autofocus;
+
+  const TvFocusScope({
+    super.key,
+    required this.child,
+    this.autofocus = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusScope(
+      autofocus: autofocus,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: child,
+      ),
+    );
+  }
+}
+
 class TvKeyboardHandler extends StatelessWidget {
   final Widget child;
-
   const TvKeyboardHandler({super.key, required this.child});
 
   @override
@@ -162,7 +190,6 @@ class TvKeyboardHandler extends StatelessWidget {
 class _TvActivateAction extends Action<ActivateIntent> {
   @override
   bool isEnabled(ActivateIntent intent) => true;
-
   @override
   Object? invoke(ActivateIntent intent) => null;
 }
@@ -170,7 +197,6 @@ class _TvActivateAction extends Action<ActivateIntent> {
 class _TvButtonActivateAction extends Action<ButtonActivateIntent> {
   @override
   bool isEnabled(ButtonActivateIntent intent) => true;
-
   @override
   Object? invoke(ButtonActivateIntent intent) => null;
 }
