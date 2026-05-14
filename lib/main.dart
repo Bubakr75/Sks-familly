@@ -26,6 +26,7 @@ void main() async {
   // Detection TV
   try {
     await TvDetector.detect();
+    TvDetector.forceTV(true);
   } catch (_) {}
 
   try {
