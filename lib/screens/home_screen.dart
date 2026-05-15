@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../utils/pin_guard.dart';
+import '../utils/tv_detector.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -724,7 +725,389 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final isParent = context.watch<PinProvider>().isParentMode;
+    final isTV = TvDetector.isTV;
 
+    if (isTV) {
+      return _buildTvLayout(isParent);
+    }
+    return _buildMobileLayout(isParent);
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // LAYOUT TV : sidebar gauche + contenu droite
+  // ════════════════════════════════════════════════════════════
+  Widget _buildTvLayout(bool isParent) {
+    final icons = [
+      Icons.home_rounded,
+      Icons.stars_rounded,
+      Icons.calendar_month_rounded,
+      Icons.bar_chart_rounded,
+      Icons.settings_rounded,
+    ];
+    final labels = [
+      'Accueil',
+      'Points',
+      'Calendrier',
+      'Stats',
+      'Reglages',
+    ];
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: AnimatedBackground(
+        child: Row(
+          children: [
+            // ── SIDEBAR GAUCHE ──
+            Container(
+              width: 220,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D1B2E).withOpacity(0.95),
+                border: Border(
+                  right: BorderSide(
+                    color: Colors.cyanAccent.withOpacity(0.15),
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: SafeArea(
+                child: FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: Column(
+                    children: [
+                      // Logo
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.cyanAccent.withOpacity(0.3),
+                                    Colors.cyanAccent.withOpacity(0.1),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.family_restroom_rounded,
+                                  color: Colors.cyanAccent, size: 22),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'SKS Family',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Divider(color: Colors.white.withOpacity(0.08), height: 1),
+                      const SizedBox(height: 8),
+
+                      // Onglets principaux
+                      ...List.generate(5, (i) {
+                        final isSelected = _currentIndex == i;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          child: TvFocusWrapper(
+                            order: i.toDouble(),
+                            autofocus: i == 0,
+                            focusBorderColor: Colors.cyanAccent,
+                            onTap: () => _onTabTapped(i),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.cyanAccent.withOpacity(0.15)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    icons[i],
+                                    color: isSelected
+                                        ? Colors.cyanAccent
+                                        : Colors.white38,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    labels[i],
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.cyanAccent
+                                          : Colors.white60,
+                                      fontSize: 15,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+
+                      Divider(
+                          color: Colors.white.withOpacity(0.08),
+                          height: 20,
+                          indent: 16,
+                          endIndent: 16),
+
+                      // Raccourcis
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 0),
+                          children: [
+                            if (isParent) ...[
+                              _tvSidebarItem(
+                                icon: Icons.school_rounded,
+                                label: 'Notes',
+                                color: Colors.orangeAccent,
+                                order: 10,
+                                onTap: () {
+                                  PinGuard.guardAction(context, () {
+                                    _showChildPicker(context, (child) {
+                                      Navigator.push(
+                                        context,
+                                        SlidePageRoute(
+                                          page: SchoolNotesScreen(
+                                              childId: child.id,
+                                              childName: child.name,
+                                              childAge: 10),
+                                        ),
+                                      );
+                                    });
+                                  });
+                                },
+                              ),
+                              _tvSidebarItem(
+                                icon: Icons.edit_document,
+                                label: 'Punitions',
+                                color: Colors.redAccent,
+                                order: 11,
+                                onTap: () {
+                                  PinGuard.guardAction(context, () {
+                                    Navigator.push(
+                                      context,
+                                      SlidePageRoute(
+                                          page: const PunishmentLinesScreen()),
+                                    );
+                                  });
+                                },
+                              ),
+                              _tvSidebarItem(
+                                icon: Icons.shield_rounded,
+                                label: 'Immunites',
+                                color: Colors.amberAccent,
+                                order: 12,
+                                onTap: () {
+                                  PinGuard.guardAction(context, () {
+                                    Navigator.push(
+                                      context,
+                                      SlidePageRoute(
+                                          page: const ImmunityLinesScreen()),
+                                    );
+                                  });
+                                },
+                              ),
+                              _tvSidebarItem(
+                                icon: Icons.swap_vert_circle_rounded,
+                                label: 'Bonus',
+                                color: Colors.greenAccent,
+                                order: 13,
+                                onTap: () {
+                                  PinGuard.guardAction(context, () {
+                                    _showBonusPenaltyHistory(context);
+                                  });
+                                },
+                              ),
+                            ],
+                            _tvSidebarItem(
+                              icon: Icons.gavel_rounded,
+                              label: 'Tribunal',
+                              color: Colors.purpleAccent,
+                              order: 14,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  DoorPageRoute(page: const TribunalScreen()),
+                                );
+                              },
+                            ),
+                            _tvSidebarItem(
+                              icon: Icons.sell_rounded,
+                              label: 'Ventes',
+                              color: Colors.tealAccent,
+                              order: 15,
+                              onTap: () {
+                                _showChildPicker(context, (child) {
+                                  Navigator.push(
+                                    context,
+                                    DoorPageRoute(
+                                      page: TradeScreen(childId: child.id),
+                                    ),
+                                  );
+                                });
+                              },
+                            ),
+                            _tvSidebarItem(
+                              icon: Icons.emoji_events_rounded,
+                              label: 'Badges',
+                              color: Colors.yellowAccent,
+                              order: 16,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  ZoomPageRoute(page: const BadgesScreen()),
+                                );
+                              },
+                            ),
+                            _tvSidebarItem(
+                              icon: Icons.timeline_rounded,
+                              label: 'Timeline',
+                              color: Colors.cyanAccent,
+                              order: 17,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  SlidePageRoute(page: const TimelineScreen()),
+                                );
+                              },
+                            ),
+                            if (isParent) ...[
+                              _tvSidebarItem(
+                                icon: Icons.sync_rounded,
+                                label: 'Sync',
+                                color: Colors.lightBlueAccent,
+                                order: 18,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    SlidePageRoute(
+                                        page: const FamilyScreen()),
+                                  );
+                                },
+                              ),
+                              _tvSidebarItem(
+                                icon: Icons.history_rounded,
+                                label: 'Historique',
+                                color: Colors.white70,
+                                order: 19,
+                                onTap: () {
+                                  _showFullHistory(context);
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      // Version
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          'v5.0.0 TV',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.2),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // ── CONTENU DROITE ──
+            Expanded(
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey(_currentIndex),
+                    child: _getScreen(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tvSidebarItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required double order,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: TvFocusWrapper(
+        order: order,
+        focusBorderColor: color,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, color: color, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // LAYOUT MOBILE : navbar en bas (inchange)
+  // ════════════════════════════════════════════════════════════
+  Widget _buildMobileLayout(bool isParent) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
@@ -862,7 +1245,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildDrawer(BuildContext context, bool isParent) {
     const drawerBg = Color(0xFF0D1B2E);
     const accentColor = Colors.cyanAccent;
-    bool isFirstItem = true;
 
     return Drawer(
       backgroundColor: drawerBg,
@@ -950,7 +1332,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               Navigator.push(
                                 context,
                                 SlidePageRoute(
-                                  page: SchoolNotesScreen(childId: child.id, childName: child.name, childAge: 10),
+                                  page: SchoolNotesScreen(
+                                      childId: child.id,
+                                      childName: child.name,
+                                      childAge: 10),
                                 ),
                               );
                             });
