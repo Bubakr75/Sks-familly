@@ -97,34 +97,25 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
                   borderRadius: BorderRadius.circular(widget.borderRadius),
                   border: _isFocused
                       ? Border.all(
-                          color: widget.focusBorderColor
-                              .withOpacity(_glowAnim.value),
+                          color: widget.focusBorderColor.withOpacity(_glowAnim.value),
                           width: widget.focusBorderWidth,
                         )
-                      : Border.all(
-                          color: Colors.transparent,
-                          width: widget.focusBorderWidth,
-                        ),
+                      : Border.all(color: Colors.transparent, width: widget.focusBorderWidth),
                   boxShadow: _isFocused
                       ? [
                           BoxShadow(
-                            color: widget.focusBorderColor
-                                .withOpacity(0.2 * _glowAnim.value),
-                            blurRadius: 8,
-                            spreadRadius: 1,
+                            color: widget.focusBorderColor.withOpacity(0.2 * _glowAnim.value),
+                            blurRadius: 8, spreadRadius: 1,
                           ),
                           BoxShadow(
-                            color: widget.focusBorderColor
-                                .withOpacity(0.15 * _glowAnim.value),
-                            blurRadius: 20,
-                            spreadRadius: 2,
+                            color: widget.focusBorderColor.withOpacity(0.15 * _glowAnim.value),
+                            blurRadius: 20, spreadRadius: 2,
                           ),
                         ]
                       : [],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                      widget.borderRadius - widget.focusBorderWidth),
+                  borderRadius: BorderRadius.circular(widget.borderRadius - widget.focusBorderWidth),
                   child: child,
                 ),
               ),
@@ -146,8 +137,11 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
   }
 }
 
-/// Wrapper pour TextField sur TV : empeche le D-pad de sortir du champ
-class TvTextField extends StatelessWidget {
+/// TextField optimise pour TV :
+/// - Bloque TOUTES les fleches directionnelles pour ne pas perdre le focus
+/// - OK/Enter ouvre le clavier systeme
+/// - Back ferme le clavier et rend le focus
+class TvTextField extends StatefulWidget {
   final TextEditingController? controller;
   final String? labelText;
   final String? hintText;
@@ -162,6 +156,7 @@ class TvTextField extends StatelessWidget {
   final TextStyle? style;
   final InputDecoration? decoration;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
   final int? maxLines;
 
   const TvTextField({
@@ -180,29 +175,55 @@ class TvTextField extends StatelessWidget {
     this.style,
     this.decoration,
     this.onSubmitted,
+    this.onChanged,
     this.maxLines = 1,
   });
 
   @override
+  State<TvTextField> createState() => _TvTextFieldState();
+}
+
+class _TvTextFieldState extends State<TvTextField> {
+  late FocusNode _focusNode;
+  bool _hasFocus = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      setState(() => _hasFocus = _focusNode.hasFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final field = TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      obscureText: obscureText,
-      maxLength: maxLength,
-      autofocus: autofocus,
-      textAlign: textAlign,
-      maxLines: maxLines,
-      style: style ?? const TextStyle(color: Colors.white),
-      onSubmitted: onSubmitted,
-      decoration: decoration ?? InputDecoration(
-        labelText: labelText,
-        hintText: hintText,
+      controller: widget.controller,
+      focusNode: _focusNode,
+      keyboardType: widget.keyboardType,
+      inputFormatters: widget.inputFormatters,
+      obscureText: widget.obscureText,
+      maxLength: widget.maxLength,
+      autofocus: widget.autofocus,
+      textAlign: widget.textAlign,
+      maxLines: widget.maxLines,
+      style: widget.style ?? const TextStyle(color: Colors.white),
+      onSubmitted: widget.onSubmitted,
+      onChanged: widget.onChanged,
+      decoration: widget.decoration ?? InputDecoration(
+        labelText: widget.labelText,
+        hintText: widget.hintText,
         labelStyle: const TextStyle(color: Colors.white60),
         hintStyle: const TextStyle(color: Colors.white30),
-        prefixIcon: prefixIcon,
-        suffixIcon: suffixIcon,
+        prefixIcon: widget.prefixIcon,
+        suffixIcon: widget.suffixIcon,
         filled: true,
         fillColor: Colors.white10,
         border: OutlineInputBorder(
@@ -218,20 +239,51 @@ class TvTextField extends StatelessWidget {
 
     if (!TvDetector.isTV) return field;
 
-    // Sur TV : intercepte les fleches haut/bas pour ne pas sortir du champ
-    return Focus(
-      onKey: (node, event) {
-        if (event is RawKeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
-              event.logicalKey == LogicalKeyboardKey.arrowDown) {
-            // Sur TV, on bloque la sortie du TextField avec haut/bas
-            // L'utilisateur doit appuyer sur Enter/Back pour quitter le champ
-            return KeyEventResult.handled;
+    // Sur TV : intercepte TOUTES les fleches + ouvre le clavier sur OK
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _hasFocus ? const Color(0xFF00E5FF) : Colors.transparent,
+          width: 2,
+        ),
+        boxShadow: _hasFocus
+            ? [BoxShadow(color: const Color(0xFF00E5FF).withOpacity(0.3), blurRadius: 12, spreadRadius: 1)]
+            : [],
+      ),
+      child: RawKeyboardListener(
+        focusNode: FocusNode(),
+        onKey: (event) {
+          if (event is RawKeyDownEvent) {
+            // Bloquer les fleches pour ne pas sortir du TextField
+            if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+                event.logicalKey == LogicalKeyboardKey.arrowDown ||
+                event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                event.logicalKey == LogicalKeyboardKey.arrowRight) {
+              // Ne rien faire : empeche le focus de partir
+            }
+            // OK/Enter : s'assurer que le TextField a le focus et le clavier s'ouvre
+            if (event.logicalKey == LogicalKeyboardKey.select ||
+                event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+              if (!_focusNode.hasFocus) {
+                _focusNode.requestFocus();
+                SystemChannels.textInput.invokeMethod('TextInput.show');
+              }
+            }
           }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: field,
+        },
+        child: GestureDetector(
+          onTap: () {
+            _focusNode.requestFocus();
+            SystemChannels.textInput.invokeMethod('TextInput.show');
+          },
+          child: AbsorbPointer(
+            absorbing: false,
+            child: field,
+          ),
+        ),
+      ),
     );
   }
 }
