@@ -132,8 +132,6 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
   }
 }
 
-/// TextField pour TV : ouvre un clavier integre navigable au D-pad
-/// Sur mobile : TextField normal
 class TvTextField extends StatefulWidget {
   final TextEditingController? controller;
   final String? labelText;
@@ -201,16 +199,38 @@ class _TvTextFieldState extends State<TvTextField> {
   }
 
   void _openTvKeyboard() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => TvKeyboard(
-        controller: _ctrl,
-        title: widget.keyboardTitle ?? widget.labelText ?? 'Saisir du texte',
-        onDone: () {
-          Navigator.pop(ctx);
-          widget.onSubmitted?.call(_ctrl.text);
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black87,
+        pageBuilder: (context, anim, secondAnim) {
+          return _TvKeyboardOverlay(
+            controller: _ctrl,
+            title: widget.keyboardTitle ?? widget.labelText ?? 'Saisir du texte',
+            onDone: () {
+              Navigator.of(context).pop();
+              widget.onSubmitted?.call(_ctrl.text);
+              // Restore focus to this field
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (mounted) _focusNode.requestFocus();
+              });
+            },
+            onCancel: () {
+              Navigator.of(context).pop();
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (mounted) _focusNode.requestFocus();
+              });
+            },
+          );
+        },
+        transitionsBuilder: (context, anim, secondAnim, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+            child: child,
+          );
         },
       ),
     );
@@ -219,7 +239,6 @@ class _TvTextFieldState extends State<TvTextField> {
   @override
   Widget build(BuildContext context) {
     if (!TvDetector.isTV) {
-      // Mobile : TextField normal
       return TextField(
         controller: _ctrl,
         keyboardType: widget.keyboardType,
@@ -248,10 +267,9 @@ class _TvTextFieldState extends State<TvTextField> {
       );
     }
 
-    // TV : bouton qui ouvre le clavier integre
     final currentText = _ctrl.text;
     final displayText = widget.obscureText && currentText.isNotEmpty
-        ? '\u{2022}' * currentText.length
+        ? '\u2022' * currentText.length
         : currentText;
 
     return Focus(
@@ -288,13 +306,13 @@ class _TvTextFieldState extends State<TvTextField> {
           ),
           child: Row(
             children: [
-              if (widget.decoration?.prefixIcon != null) ...[
-                widget.decoration!.prefixIcon!,
+              if (widget.prefixIcon != null) ...[
+                widget.prefixIcon!,
                 const SizedBox(width: 8),
               ],
               Expanded(
                 child: Text(
-                  displayText.isEmpty ? (widget.labelText ?? widget.hintText ?? 'Appuyez OK pour ecrire') : displayText,
+                  displayText.isEmpty ? (widget.hintText ?? widget.labelText ?? 'Appuyez OK pour ecrire') : displayText,
                   style: TextStyle(
                     color: displayText.isEmpty ? Colors.white38 : Colors.white,
                     fontSize: (widget.style?.fontSize ?? 16),
@@ -308,14 +326,56 @@ class _TvTextFieldState extends State<TvTextField> {
                     color: const Color(0xFF00E5FF).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.keyboard, color: Color(0xFF00E5FF), size: 16),
-                    const SizedBox(width: 4),
-                    const Text('OK', style: TextStyle(color: Color(0xFF00E5FF), fontSize: 13, fontWeight: FontWeight.bold)),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.keyboard, color: Color(0xFF00E5FF), size: 16),
+                    SizedBox(width: 4),
+                    Text('OK', style: TextStyle(color: Color(0xFF00E5FF), fontSize: 13, fontWeight: FontWeight.bold)),
                   ]),
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Overlay plein ecran qui contient le TvKeyboard avec son propre FocusScope
+class _TvKeyboardOverlay extends StatelessWidget {
+  final TextEditingController controller;
+  final String title;
+  final VoidCallback onDone;
+  final VoidCallback onCancel;
+
+  const _TvKeyboardOverlay({
+    required this.controller,
+    required this.title,
+    required this.onDone,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: FocusScope(
+        autofocus: true,
+        child: Column(
+          children: [
+            // Zone du haut : tap pour fermer
+            Expanded(
+              child: GestureDetector(
+                onTap: onCancel,
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+            // Clavier en bas
+            TvKeyboard(
+              controller: controller,
+              title: title,
+              onDone: onDone,
+            ),
+          ],
         ),
       ),
     );
