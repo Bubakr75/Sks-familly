@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 class AnimatedBackground extends StatefulWidget {
@@ -103,7 +103,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
           opacity: 1.0,
           child: Image.asset(
             widget.backgroundImage ?? 'assets/images/background.jpg',
-            fit: BoxFit.fitHeight,
+            fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
           ),
