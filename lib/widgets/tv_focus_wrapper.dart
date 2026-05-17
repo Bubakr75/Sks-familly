@@ -151,8 +151,6 @@ class TvTextField extends StatefulWidget {
   final int? maxLines;
   final int? minLines;
   final TextCapitalization textCapitalization;
-  final int? minLines;
-  final TextCapitalization textCapitalization;
   final String? keyboardTitle;
 
   const TvTextField({
@@ -173,8 +171,6 @@ class TvTextField extends StatefulWidget {
     this.onSubmitted,
     this.onChanged,
     this.maxLines = 1,
-    this.minLines,
-    this.textCapitalization = TextCapitalization.none,
     this.minLines,
     this.textCapitalization = TextCapitalization.none,
     this.keyboardTitle,
@@ -256,8 +252,6 @@ class _TvTextFieldState extends State<TvTextField> {
         autofocus: widget.autofocus,
         textAlign: widget.textAlign,
         maxLines: widget.maxLines,
-        minLines: widget.minLines,
-        textCapitalization: widget.textCapitalization,
         minLines: widget.minLines,
         textCapitalization: widget.textCapitalization,
         style: widget.style ?? const TextStyle(color: Colors.white),
