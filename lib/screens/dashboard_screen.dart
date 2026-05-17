@@ -331,88 +331,55 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildQuickActionsTV(FamilyProvider fp) {
-    final actions = [
-      _Act('\u{1F4CB} Punition', Icons.menu_book, Colors.red, () {
+    final items = [
+      {'emoji': '\u{1F4DD}', 'label': 'Punition', 'color': Colors.redAccent, 'onTap': () {
         Navigator.push(context, SlidePageRoute(page: const PunishmentLinesScreen(), direction: SlideDirection.up));
-      }),
-      _Act('\u{1F6E1} Immunite', Icons.shield, Colors.amber, () {
+      }},
+      {'emoji': '\u{1F6E1}', 'label': 'Immunite', 'color': Colors.amber, 'onTap': () {
         Navigator.push(context, SpinPageRoute(page: const ImmunityLinesScreen()));
-      }),
-      _Act('\u{1F4FA} Ecran', Icons.tv, Colors.blue, () {
+      }},
+      {'emoji': '\u{1F4FA}', 'label': 'Fiche Enfant', 'color': Colors.lightBlue, 'onTap': () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(context, ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
         });
-      }),
-      _Act('\u{2696} Tribunal', Icons.gavel, Colors.purple, () {
+      }},
+      {'emoji': '\u{2696}', 'label': 'Tribunal', 'color': Colors.purpleAccent, 'onTap': () {
         Navigator.push(context, SlidePageRoute(page: const TribunalScreen()));
-      }),
-      _Act('\u{1FA99} Ventes', Icons.storefront, Colors.green, () {
+      }},
+      {'emoji': '\u{1FA99}', 'label': 'Ventes', 'color': Colors.greenAccent, 'onTap': () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(context, DoorPageRoute(page: TradeScreen(childId: childId)));
         });
-      }),
-      _Act('\u{1F4DD} Notes', Icons.note_alt, Colors.deepPurple, () {
+      }},
+      {'emoji': '\u{1F4DA}', 'label': 'Notes Scolaires', 'color': Colors.deepPurpleAccent, 'onTap': () {
         Navigator.push(context, SlidePageRoute(page: const MultiChildEvaluationScreen()));
-      }),
-    ];
-
-    final subtitles = [
-      'Lignes a copier',
-      'Protection speciale',
-      'Tableau enfant',
-      'Justice familiale',
-      'Marche immunites',
-      'Evaluation scolaire',
+      }},
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 800),
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.translate(offset: Offset(-20 * (1 - value), 0), child: child),
-            );
-          },
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF00E5FF), Color(0xFF6C63FF)]),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [BoxShadow(color: const Color(0xFF00E5FF).withOpacity(0.3), blurRadius: 12)],
-                ),
-                child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
-              ),
-              const SizedBox(width: 14),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Actions Rapides',
-                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                  Text('Acces direct aux fonctions', style: TextStyle(color: Colors.white38, fontSize: 13)),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
+        const Text('\u{26A1} Actions Rapides',
+            style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        const Text('Choisissez une action', style: TextStyle(color: Colors.white38, fontSize: 16)),
+        const SizedBox(height: 24),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 14,
-          crossAxisSpacing: 14,
-          childAspectRatio: 1.6,
-          children: List.generate(actions.length, (i) {
-            final action = actions[i];
-            final subtitle = subtitles[i];
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 2.0,
+          children: List.generate(items.length, (i) {
+            final item = items[i];
             final anim = i < _actionAnims.length ? _actionAnims[i] : null;
-            final tile = _actionTileTV(action, subtitle);
+            final tile = _emojiTileTV(
+              item['emoji'] as String,
+              item['label'] as String,
+              item['color'] as Color,
+              item['onTap'] as VoidCallback,
+            );
             if (anim == null) return tile;
             return AnimatedBuilder(
               animation: anim,
@@ -430,86 +397,30 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _actionTileTV(_Act action, [String subtitle = '']) {
+  Widget _emojiTileTV(String emoji, String label, Color color, VoidCallback onTap) {
     return TvFocusWrapper(
-      onTap: action.onTap,
-      focusBorderColor: action.color,
+      onTap: onTap,
+      focusBorderColor: color,
+      borderRadius: 18,
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              action.color.withOpacity(0.12),
-              action.color.withOpacity(0.04),
-              const Color(0xFF0D1B2E).withOpacity(0.6),
-            ],
-          ),
-          border: Border.all(color: action.color.withOpacity(0.2), width: 1.5),
-          boxShadow: [
-            BoxShadow(color: action.color.withOpacity(0.08), blurRadius: 20, spreadRadius: 2),
-          ],
+          borderRadius: BorderRadius.circular(18),
+          color: color.withOpacity(0.10),
+          border: Border.all(color: color.withOpacity(0.25), width: 1.5),
         ),
-        child: Stack(
+        child: Row(
           children: [
-            Positioned(
-              top: -15, right: -15,
-              child: Container(
-                width: 70, height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: action.color.withOpacity(0.06),
+            Text(emoji, style: const TextStyle(fontSize: 36)),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                 ),
-              ),
-            ),
-            Positioned(
-              top: 0, left: 20, right: 20,
-              child: Container(
-                height: 1.5,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.transparent, action.color.withOpacity(0.4), Colors.transparent],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 56, height: 56,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [action.color.withOpacity(0.3), action.color.withOpacity(0.1)],
-                      ),
-                      border: Border.all(color: action.color.withOpacity(0.4), width: 2),
-                      boxShadow: [BoxShadow(color: action.color.withOpacity(0.3), blurRadius: 16, spreadRadius: 2)],
-                    ),
-                    child: Icon(action.icon, color: action.color, size: 28),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(action.label,
-                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        if (subtitle.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(subtitle,
-                              style: TextStyle(color: action.color.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.w500)),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.arrow_forward_ios_rounded, color: action.color.withOpacity(0.4), size: 18),
-                ],
               ),
             ),
           ],
@@ -517,9 +428,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       ),
     );
   }
-    );
-  }
-
   Widget _buildActiveTradesTV(FamilyProvider fp) {
     final active = fp.trades.where((t) => t.isActive).toList();
     if (active.isEmpty) return const SizedBox.shrink();
