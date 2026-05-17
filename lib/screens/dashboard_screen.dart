@@ -356,6 +356,15 @@ class _DashboardScreenState extends State<DashboardScreen>
       }),
     ];
 
+    final subtitles = [
+      'Lignes a copier',
+      'Protection speciale',
+      'Tableau enfant',
+      'Justice familiale',
+      'Marche immunites',
+      'Evaluation scolaire',
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -368,21 +377,43 @@ class _DashboardScreenState extends State<DashboardScreen>
               child: Transform.translate(offset: Offset(-20 * (1 - value), 0), child: child),
             );
           },
-          child: const Text('\u{26A1} Actions Rapides',
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF00E5FF), Color(0xFF6C63FF)]),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: const Color(0xFF00E5FF).withOpacity(0.3), blurRadius: 12)],
+                ),
+                child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 14),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Actions Rapides',
+                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  Text('Acces direct aux fonctions', style: TextStyle(color: Colors.white38, fontSize: 13)),
+                ],
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.4,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          childAspectRatio: 1.6,
           children: List.generate(actions.length, (i) {
             final action = actions[i];
+            final subtitle = subtitles[i];
             final anim = i < _actionAnims.length ? _actionAnims[i] : null;
-            if (anim == null) return _actionTileTV(action);
+            final tile = _actionTileTV(action, subtitle);
+            if (anim == null) return tile;
             return AnimatedBuilder(
               animation: anim,
               builder: (context, child) {
@@ -391,7 +422,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   child: Opacity(opacity: anim.value.clamp(0.0, 1.0), child: child),
                 );
               },
-              child: _actionTileTV(action),
+              child: tile,
             );
           }),
         ),
@@ -399,32 +430,93 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _actionTileTV(_Act action) {
+  Widget _actionTileTV(_Act action, [String subtitle = '']) {
     return TvFocusWrapper(
       onTap: action.onTap,
-      child: GlassCard(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: action.color.withOpacity(0.15),
-                  boxShadow: [BoxShadow(color: action.color.withOpacity(0.3), blurRadius: 16, spreadRadius: 3)],
-                ),
-                child: Icon(action.icon, color: action.color, size: 36),
-              ),
-              const SizedBox(height: 12),
-              Text(action.label,
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center),
+      focusBorderColor: action.color,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              action.color.withOpacity(0.12),
+              action.color.withOpacity(0.04),
+              const Color(0xFF0D1B2E).withOpacity(0.6),
             ],
           ),
+          border: Border.all(color: action.color.withOpacity(0.2), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: action.color.withOpacity(0.08), blurRadius: 20, spreadRadius: 2),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: -15, right: -15,
+              child: Container(
+                width: 70, height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: action.color.withOpacity(0.06),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0, left: 20, right: 20,
+              child: Container(
+                height: 1.5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, action.color.withOpacity(0.4), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [action.color.withOpacity(0.3), action.color.withOpacity(0.1)],
+                      ),
+                      border: Border.all(color: action.color.withOpacity(0.4), width: 2),
+                      boxShadow: [BoxShadow(color: action.color.withOpacity(0.3), blurRadius: 16, spreadRadius: 2)],
+                    ),
+                    child: Icon(action.icon, color: action.color, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(action.label,
+                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        if (subtitle.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(subtitle,
+                              style: TextStyle(color: action.color.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.w500)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios_rounded, color: action.color.withOpacity(0.4), size: 18),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
     );
   }
 
