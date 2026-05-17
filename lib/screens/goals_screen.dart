@@ -1,5 +1,6 @@
-// lib/screens/goals_screen.dart
+﻿// lib/screens/goals_screen.dart
 import 'package:flutter/material.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../utils/pin_guard.dart';
@@ -346,7 +347,7 @@ class GoalsScreen extends StatelessWidget {
                 onChanged: (v) => setState(() => selectedChildId = v),
               ),
               const SizedBox(height: 14),
-              TextField(
+              TvTextField(
                 controller: titleCtrl,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -100,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 16),
-              TextField(
+              TvTextField(
                 controller:  ctrl,
                 keyboardType: TextInputType.number,
                 obscureText:  _obscure,

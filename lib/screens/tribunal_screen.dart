@@ -1,4 +1,4 @@
-// lib/screens/tribunal_screen.dart
+Ôªø// lib/screens/tribunal_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -50,7 +50,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                     const LinearGradient(
                             colors: [Colors.purple, Colors.amber])
                         .createShader(bounds),
-                child: const Text('??è Tribunal Familial',
+                child: const Text('??ÔøΩ Tribunal Familial',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white)),
@@ -256,7 +256,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                       borderRadius: BorderRadius.circular(2))),
             ),
             const SizedBox(height: 20),
-            Text('??è ${tc.title}',
+            Text('??ÔøΩ ${tc.title}',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -409,7 +409,7 @@ class _TribunalScreenState extends State<TribunalScreen>
           style: const TextStyle(color: Colors.white),
         ),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(
+          TvTextField(
             controller: reasonCtrl,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -427,7 +427,7 @@ class _TribunalScreenState extends State<TribunalScreen>
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          TvTextField(
             controller: pointsCtrl,
             // Autorise chiffres et signe moins
             keyboardType: const TextInputType.numberWithOptions(
@@ -476,7 +476,7 @@ class _TribunalScreenState extends State<TribunalScreen>
               );
               if (ctx.mounted) Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: const Text('??è Verdict rendu !'),
+                content: const Text('??ÔøΩ Verdict rendu !'),
                 backgroundColor: Colors.purple.shade700,
               ));
             },
@@ -508,14 +508,14 @@ class _TribunalScreenState extends State<TribunalScreen>
           backgroundColor: Colors.grey.shade900,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20)),
-          title: const Text('??è Nouvelle Affaire',
+          title: const Text('??ÔøΩ Nouvelle Affaire',
               style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
+                TvTextField(
                   controller: titleCtrl,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
@@ -534,7 +534,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                TvTextField(
                   controller: descCtrl,
                   style: const TextStyle(color: Colors.white),
                   maxLines: 3,
@@ -644,7 +644,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: const Text('??è Affaire deposee !'),
+                  content: const Text('??ÔøΩ Affaire deposee !'),
                   backgroundColor: Colors.purple.shade700,
                 ));
               },

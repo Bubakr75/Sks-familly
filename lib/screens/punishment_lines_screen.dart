@@ -631,7 +631,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 const SizedBox(width: 12),
                 SizedBox(
                   width: isTV ? 100 : 80,
-                  child: TextField(
+                  child: TvTextField(
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: isTV ? 24 : 18),
@@ -744,7 +744,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 const SizedBox(width: 12),
                 SizedBox(
                   width: isTV ? 100 : 80,
-                  child: TextField(
+                  child: TvTextField(
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: isTV ? 24 : 18),
@@ -848,7 +848,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   }
 
   Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false}) {
-    return TextField(
+    return TvTextField(
       controller: ctrl,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       style: TextStyle(color: Colors.white, fontSize: isTV ? 18 : 14),
@@ -1187,12 +1187,12 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Nouvelle question', style: TextStyle(color: Colors.white, fontSize: isTV ? 24 : 18)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: qCtrl, style: TextStyle(color: Colors.white, fontSize: isTV ? 18 : 14),
+          TvTextField(controller: qCtrl, style: TextStyle(color: Colors.white, fontSize: isTV ? 18 : 14),
             decoration: InputDecoration(labelText: 'Question', labelStyle: TextStyle(color: Colors.white54, fontSize: isTV ? 16 : 14),
                 enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
                 focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.amberAccent)))),
           const SizedBox(height: 12),
-          TextField(controller: aCtrl, style: TextStyle(color: Colors.white, fontSize: isTV ? 18 : 14),
+          TvTextField(controller: aCtrl, style: TextStyle(color: Colors.white, fontSize: isTV ? 18 : 14),
             decoration: InputDecoration(labelText: 'Reponse', labelStyle: TextStyle(color: Colors.white54, fontSize: isTV ? 16 : 14),
                 enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
                 focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.amberAccent)))),

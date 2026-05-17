@@ -1,4 +1,4 @@
-// lib/screens/trade_screen.dart
+﻿// lib/screens/trade_screen.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -989,7 +989,7 @@ class _TradeScreenState extends State<TradeScreen>
                     Center(
                       child: SizedBox(
                         width: 120,
-                        child: TextField(
+                        child: TvTextField(
                           controller: linesCtrl,
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
@@ -1038,7 +1038,7 @@ class _TradeScreenState extends State<TradeScreen>
                     const Text('Service demandé en échange :',
                         style: TextStyle(color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 8),
-                    TextField(
+                    TvTextField(
                       controller: serviceCtrl,
                       onChanged: (_) => setDialogState(() {}),
                       style: const TextStyle(color: Colors.white),
@@ -1161,7 +1161,7 @@ class _TradeScreenState extends State<TradeScreen>
                   const Text('Note optionnelle :',
                       style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 8),
-                  TextField(
+                  TvTextField(
                     controller: noteCtrl,
                     style: const TextStyle(color: Colors.white),
                     maxLines: 2,

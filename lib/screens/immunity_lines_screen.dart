@@ -1,4 +1,4 @@
-// lib/screens/immunity_lines_screen.dart
+﻿// lib/screens/immunity_lines_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -112,7 +112,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
               style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(
+              TvTextField(
                 controller: reasonCtrl,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
@@ -135,7 +135,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
               const SizedBox(height: 8),
               SizedBox(
                 width: 120,
-                child: TextField(
+                child: TvTextField(
                   controller: linesCtrl,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,

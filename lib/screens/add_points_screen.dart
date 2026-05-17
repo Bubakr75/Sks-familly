@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -820,7 +820,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                               }).toList(),
                             ),
                             const SizedBox(height: 12),
-                            TextField(
+                            TvTextField(
                               controller: _reasonCtrl,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(

@@ -1,4 +1,4 @@
-// lib/screens/badges_screen.dart
+﻿// lib/screens/badges_screen.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -832,7 +832,7 @@ class BadgesScreen extends StatelessWidget {
                   );
                 }).toList()),
             const SizedBox(height: 16),
-            TextField(
+            TvTextField(
                 controller: nameCtrl,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
@@ -844,7 +844,7 @@ class BadgesScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none))),
             const SizedBox(height: 12),
-            TextField(
+            TvTextField(
                 controller: descCtrl,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
@@ -856,7 +856,7 @@ class BadgesScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none))),
             const SizedBox(height: 12),
-            TextField(
+            TvTextField(
                 controller: pointsCtrl,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: Colors.white),

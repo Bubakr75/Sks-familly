@@ -1035,7 +1035,7 @@ class _ChildPickerSheetState extends State<_ChildPickerSheet> with SingleTickerP
                     color: Colors.white10, borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: Colors.white12),
                   ),
-                  child: TextField(
+                  child: TvTextField(
                     onChanged: (v) => setState(() => _search = v),
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                     decoration: const InputDecoration(

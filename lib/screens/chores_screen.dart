@@ -1,5 +1,6 @@
 ﻿import 'dart:math';
 import 'package:flutter/material.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -295,7 +296,7 @@ class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMix
           ),
           if (_selectedChore == 'Tâche personnalisée') ...[
             const SizedBox(height: 12),
-            TextField(
+            TvTextField(
               controller: _customChoreCtrl,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(

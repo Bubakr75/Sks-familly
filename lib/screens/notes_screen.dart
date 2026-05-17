@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/note_model.dart';
@@ -87,7 +88,7 @@ class _NotesScreenState extends State<NotesScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: TvTextField(
                         controller: _noteController,
                         style: const TextStyle(color: Colors.white),
                         maxLines: 3,
@@ -358,7 +359,7 @@ class _NotesScreenState extends State<NotesScreen> {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: NeonText(
             text: 'Modifier la note', fontSize: 18, color: Colors.white),
-        content: TextField(
+        content: TvTextField(
           controller: editCtrl,
           style: const TextStyle(color: Colors.white),
           maxLines: 5,

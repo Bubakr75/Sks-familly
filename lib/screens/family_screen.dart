@@ -187,7 +187,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
               const Text('Les autres appareils devront utiliser le nouveau code.',
                   style: TextStyle(fontSize: 13)),
               const SizedBox(height: 16),
-              TextField(
+              TvTextField(
                 controller: controller,
                 textCapitalization: TextCapitalization.characters,
                 textAlign: TextAlign.center,

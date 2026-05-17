@@ -1,8 +1,9 @@
-// lib/screens/child_dashboard_screen.dart
+﻿// lib/screens/child_dashboard_screen.dart
 
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -208,7 +209,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
           const SizedBox(height: 12),
-          TextField(
+          TvTextField(
             controller:   emojiCtrl,
             style:        const TextStyle(color: Colors.white, fontSize: 30),
             textAlign:    TextAlign.center,
@@ -227,7 +228,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 10),
-          TextField(
+          TvTextField(
             controller: labelCtrl,
             style:      const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -457,7 +458,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             backgroundColor: const Color(0xFF1A1A2E),
             title: const Text('PIN parent',
                 style: TextStyle(color: Colors.white)),
-            content: TextField(
+            content: TvTextField(
               controller:   ctrl,
               obscureText:  true,
               keyboardType: TextInputType.number,
@@ -505,7 +506,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Modifier le slogan',
             style: TextStyle(color: Colors.white)),
-        content: TextField(
+        content: TvTextField(
           controller: ctrl,
           style:      const TextStyle(color: Colors.white),
           maxLength:  60,

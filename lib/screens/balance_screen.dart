@@ -1,4 +1,4 @@
-// lib/screens/balance_screen.dart
+﻿// lib/screens/balance_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -170,7 +170,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     }).toList(),
                   ),
                   const SizedBox(height: 10),
-                  TextField(
+                  TvTextField(
                     controller: descCtrl,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(

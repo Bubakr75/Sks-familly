@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../services/gemini_service.dart';
@@ -283,7 +284,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
+            child: TvTextField(
               controller: _controller,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
