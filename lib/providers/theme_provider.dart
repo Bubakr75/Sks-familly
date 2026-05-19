@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/tv_detector.dart';
 
 class ThemeProvider extends ChangeNotifier {
   bool _isDark = true;
