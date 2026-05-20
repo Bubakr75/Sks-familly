@@ -1,4 +1,5 @@
 ﻿import 'dart:convert';
+import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -135,7 +136,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                   child: child.photoBase64 != null && child.photoBase64!.isNotEmpty
                                       ? ClipRRect(
                                           borderRadius: BorderRadius.circular(13),
-                                          child: Image.memory(base64Decode(child.photoBase64!),
+                                          child: Image.memory(ImageCacheUtil.fromBase64(child.photoBase64!),
                                               fit: BoxFit.cover, width: isTV ? 64 : 50, height: isTV ? 64 : 50,
                                               errorBuilder: (_, __, ___) => Center(
                                                   child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar,
@@ -264,7 +265,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                       border: Border.all(color: const Color(0xFF00E5FF).withOpacity(0.3)),
                     ),
                     child: photoBase64 != null
-                        ? ClipOval(child: Image.memory(base64Decode(photoBase64!), fit: BoxFit.cover, width: 80, height: 80))
+                        ? ClipOval(child: Image.memory(ImageCacheUtil.fromBase64(photoBase64!), fit: BoxFit.cover, width: 80, height: 80))
                         : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                             const Icon(Icons.add_a_photo_rounded, color: Color(0xFF00E5FF), size: 28),
                             const SizedBox(height: 4),

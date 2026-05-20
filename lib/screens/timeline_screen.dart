@@ -1,4 +1,4 @@
-// lib/screens/timeline_screen.dart
+﻿// lib/screens/timeline_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +7,8 @@ import '../models/history_entry.dart';
 import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/tv_focus_wrapper.dart';
+import '../utils/tv_detector.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  Correspondance catégorie → icône / couleur / libellé
@@ -239,7 +241,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   Widget _childChip(String? id, String name, String avatar) {
     final selected = _selectedChildId == id;
-    return GestureDetector(
+    return TvFocusWrapper(
       onTap: () => setState(() => _selectedChildId = id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -286,7 +288,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
               ? _activeCategories.contains('tribunal')
               : _activeCategories.contains(cat);
           final color = _categoryColor(cat);
-          return GestureDetector(
+      return TvFocusWrapper(
             onTap: () => setState(() {
               if (cat == 'tribunal') {
                 if (_activeCategories.contains('tribunal')) {

@@ -92,7 +92,7 @@ void main() async {
   try {
     await familyProvider.init();
     try {
-      await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
+      await NotificationService.scheduleDailyReminder(hour: 20, minute: 0);
     } catch (e) {
       if (kDebugMode) debugPrint('Schedule reminder error: $e');
     }

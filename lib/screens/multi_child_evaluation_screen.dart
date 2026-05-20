@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../models/child_model.dart';
 import '../services/gemini_service.dart';
 import '../providers/family_provider.dart';
+import '../widgets/tv_focus_wrapper.dart';
+import '../utils/tv_detector.dart';
 import '../widgets/animated_background.dart';
 
 class MultiChildEvaluationScreen extends StatefulWidget {
@@ -192,7 +194,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
               final selected = _selectedIds.contains(child.id);
               final colors = [const Color(0xFF6C63FF), const Color(0xFFFF6584), const Color(0xFF43E97B), const Color(0xFFFA8231), const Color(0xFF00D2FF)];
               final color = colors[i % colors.length];
-              return GestureDetector(
+              return TvFocusWrapper(
                 onTap: () => setState(() { if (selected) _selectedIds.remove(child.id); else _selectedIds.add(child.id); }),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
@@ -348,7 +350,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                         spacing: 8, runSpacing: 8,
                         children: qAnswers.asMap().entries.map((ae) {
                           final isSelected = selectedAnswer == ae.key;
-                          return GestureDetector(
+                          return TvFocusWrapper(
                             onTap: () => _setAnswer(child.id, _currentQuestion, ae.key),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),

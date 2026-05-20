@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/family_provider.dart';
 import '../services/gemini_service.dart';
 import '../models/child_model.dart';
+import '../widgets/tv_focus_wrapper.dart';
+import '../utils/tv_detector.dart';
+import '../widgets/glass_card.dart';
 
 // ─────────────────────────────────────────────
 // MODÈLES INTERNES
@@ -109,45 +112,91 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
     final totalPoints = child.points;
     final recentReasons = fp.getRecentReasons(widget.childId);
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AiQuestionnaireSheet(
-        childName: widget.childName,
-        childAge: widget.childAge,
-        history: _notes,
-        bonusCount: bonusCount,
-        penaltyCount: penaltyCount,
-        activePunishments: activePunishments,
-        usableImmunities: usableImmunities,
-        streakDays: streakDays,
-        totalPoints: totalPoints,
-        recentReasons: recentReasons,
-        onComplete: (result) {
-          Navigator.pop(context);
-          _showResult(result);
-        },
-      ),
-    );
+    final useDialog = TvDetector.isTV;
+    if (useDialog) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: _AiQuestionnaireSheet(
+            childName: widget.childName,
+            childAge: widget.childAge,
+            history: _notes,
+            bonusCount: bonusCount,
+            penaltyCount: penaltyCount,
+            activePunishments: activePunishments,
+            usableImmunities: usableImmunities,
+            streakDays: streakDays,
+            totalPoints: totalPoints,
+            recentReasons: recentReasons,
+            onComplete: (result) {
+              Navigator.pop(context);
+              _showResult(result);
+            },
+          ),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _AiQuestionnaireSheet(
+          childName: widget.childName,
+          childAge: widget.childAge,
+          history: _notes,
+          bonusCount: bonusCount,
+          penaltyCount: penaltyCount,
+          activePunishments: activePunishments,
+          usableImmunities: usableImmunities,
+          streakDays: streakDays,
+          totalPoints: totalPoints,
+          recentReasons: recentReasons,
+          onComplete: (result) {
+            Navigator.pop(context);
+            _showResult(result);
+          },
+        ),
+      );
+    }
   }
 
   void _showResult(_AiEvalResult result) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AiResultSheet(
-        result: result,
-        childName: widget.childName,
-        onSave: () {
-          Navigator.pop(context);
-          _saveEvaluation(result);
-        },
-      ),
-    );
+    if (TvDetector.isTV) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: _AiResultSheet(
+            result: result,
+            childName: widget.childName,
+            onSave: () {
+              Navigator.pop(context);
+              _saveEvaluation(result);
+            },
+          ),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _AiResultSheet(
+          result: result,
+          childName: widget.childName,
+          onSave: () {
+            Navigator.pop(context);
+            _saveEvaluation(result);
+          },
+        ),
+      );
+    }
   }
-
   Future<void> _saveEvaluation(_AiEvalResult result) async {
     final fp = Provider.of<FamilyProvider>(context, listen: false);
     final moyenne = ((result.aiNote + result.parentNote) / 2).round();
@@ -217,7 +266,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: TvDetector.isTV ? null : FloatingActionButton.extended(
         onPressed: _loading ? null : _startQuestionnaire,
         backgroundColor: const Color(0xFF6C63FF),
         icon: _loading
@@ -689,7 +738,7 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
             final choice = q['choices'][i] as String;
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: GestureDetector(
+              child: TvFocusWrapper(
                 onTap: () {
                   setState(() {
                     _answers[q['key']] = choice;

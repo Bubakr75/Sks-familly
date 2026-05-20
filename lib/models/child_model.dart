@@ -1,4 +1,7 @@
-// lib/models/child_model.dart
+﻿// lib/models/child_model.dart
+
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class ChildModel {
   String  id;
@@ -16,7 +19,10 @@ class ChildModel {
   int?    streakDays;
   List<String>? previousPhotos;
 
-  // ── Données journalières ──
+  // -- PIN individuel (hash SHA-256) --
+  String? pinHash;
+
+  // -- Donnees journalieres --
   int?          bonusCount;
   int?          penaltyCount;
   int?          activePunishments;
@@ -37,6 +43,7 @@ class ChildModel {
     this.accentColorHex,
     this.streakDays,
     this.previousPhotos,
+    this.pinHash,
     this.bonusCount,
     this.penaltyCount,
     this.activePunishments,
@@ -46,9 +53,23 @@ class ChildModel {
         createdAt = createdAt ?? DateTime.now();
 
   bool get hasPhoto => photoBase64.isNotEmpty;
+  bool get hasPinSet => pinHash != null && pinHash!.isNotEmpty;
+
+  /// Hash un PIN brut en SHA-256
+  static String hashPin(String rawPin) {
+    final bytes  = utf8.encode(rawPin);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  /// Verifie si le PIN brut correspond au hash stocke
+  bool verifyPin(String rawPin) {
+    if (pinHash == null || pinHash!.isEmpty) return true; // pas de PIN = acces libre
+    return hashPin(rawPin) == pinHash;
+  }
 
   String get levelTitle {
-    if (points >= 300) return 'Niveau MAX ⭐';
+    if (points >= 300) return 'Niveau MAX \u2B50';
     if (points >= 220) return 'Niveau 5';
     if (points >= 150) return 'Niveau 4';
     if (points >= 90)  return 'Niveau 3';
@@ -99,6 +120,7 @@ class ChildModel {
     String?       accentColorHex,
     int?          streakDays,
     List<String>? previousPhotos,
+    String?       pinHash,
     int?          bonusCount,
     int?          penaltyCount,
     int?          activePunishments,
@@ -119,6 +141,7 @@ class ChildModel {
       accentColorHex:    accentColorHex    ?? this.accentColorHex,
       streakDays:        streakDays        ?? this.streakDays,
       previousPhotos:    previousPhotos    ?? this.previousPhotos,
+      pinHash:           pinHash           ?? this.pinHash,
       bonusCount:        bonusCount        ?? this.bonusCount,
       penaltyCount:      penaltyCount      ?? this.penaltyCount,
       activePunishments: activePunishments ?? this.activePunishments,
@@ -143,6 +166,7 @@ class ChildModel {
     if (accentColorHex    != null) map['accentColorHex']    = accentColorHex;
     if (streakDays        != null) map['streakDays']        = streakDays;
     if (previousPhotos    != null) map['previousPhotos']    = previousPhotos;
+    if (pinHash           != null) map['pinHash']           = pinHash;
     if (bonusCount        != null) map['bonusCount']        = bonusCount;
     if (penaltyCount      != null) map['penaltyCount']      = penaltyCount;
     if (activePunishments != null) map['activePunishments'] = activePunishments;
@@ -171,6 +195,7 @@ class ChildModel {
       previousPhotos:    map['previousPhotos'] != null
           ? List<String>.from(map['previousPhotos'])
           : null,
+      pinHash:           map['pinHash'] as String?,
       bonusCount:        (map['bonusCount']        as num?)?.toInt(),
       penaltyCount:      (map['penaltyCount']      as num?)?.toInt(),
       activePunishments: (map['activePunishments'] as num?)?.toInt(),

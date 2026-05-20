@@ -173,7 +173,124 @@ class _SettingsScreenState extends State<SettingsScreen>
     ).then((_) => ctrl.dispose());
   }
 
-  // ─── Sélecteur de couleur ───────────────────────────────────
+
+  // --- Dialog PIN enfant ---
+  void _showChildPinDialog(String childId, String childName, bool hasPinSet) {
+    final fp = context.read<FamilyProvider>();
+    final ctrl = TextEditingController();
+    bool obscure = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          backgroundColor: const Color(0xFF0D1B2A),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(children: [
+            Icon(hasPinSet ? Icons.lock_rounded : Icons.lock_open_rounded,
+                color: Colors.amber, size: 28),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                hasPinSet ? 'Modifier le PIN de $childName' : 'Creer un PIN pour $childName',
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                hasPinSet
+                    ? 'Entrez un nouveau code PIN (4 chiffres).'
+                    : 'Creez un code PIN pour que $childName puisse se connecter sur la TV.',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TvTextField(
+                controller: ctrl,
+                keyboardType: TextInputType.number,
+                obscureText: obscure,
+                maxLength: 4,
+                autofocus: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 28, letterSpacing: 12, color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: '\u2022 \u2022 \u2022 \u2022',
+                  hintStyle: const TextStyle(fontSize: 28, letterSpacing: 12, color: Colors.white30),
+                  counterText: '',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                        obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        color: Colors.white54),
+                    onPressed: () => setS(() => obscure = !obscure),
+                  ),
+                ),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onSubmitted: (_) {
+                  final pin = ctrl.text.trim();
+                  if (pin.length == 4) {
+                    fp.setChildPin(childId, pin);
+                    Navigator.pop(ctx);
+                    _showSnack('\u2705 PIN de $childName enregistre.');
+                    setState(() {});
+                  }
+                },
+              ),
+              if (hasPinSet) ...[
+                const SizedBox(height: 12),
+                TvFocusWrapper(
+                  onTap: () {
+                    fp.removeChildPin(childId);
+                    Navigator.pop(ctx);
+                    _showSnack('\u{1F513} PIN de $childName supprime.', isWarning: true);
+                    setState(() {});
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.red.withOpacity(0.1),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                      SizedBox(width: 8),
+                      Text('Supprimer le PIN', style: TextStyle(color: Colors.redAccent, fontSize: 14)),
+                    ]),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Annuler', style: TextStyle(color: Colors.grey[400])),
+            ),
+            FilledButton(
+              onPressed: () {
+                final pin = ctrl.text.trim();
+                if (pin.length == 4) {
+                  fp.setChildPin(childId, pin);
+                  Navigator.pop(ctx);
+                    _showSnack('\u2705 PIN de $childName enregistre.');
+                  setState(() {});
+                } else {
+                  HapticFeedback.heavyImpact();
+                  _showSnack('\u26A0\uFE0F Le PIN doit avoir 4 chiffres.', isWarning: true);
+                }
+              },
+              child: const Text('Valider'),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) => ctrl.dispose());
+  }
+
+    // ─── Sélecteur de couleur ───────────────────────────────────
   void _showColorPicker() {
     final themeProvider = context.read<ThemeProvider>();
     showModalBottomSheet(
@@ -613,6 +730,53 @@ class _SettingsScreenState extends State<SettingsScreen>
                   ),
                   const SizedBox(height: 16),
 
+                                    // --- Gerer les PINs enfants ---
+                  _animatedSection(
+                      index: 6,
+                      child: _sectionTitle('\u{1F511} PINs enfants')),
+                  _animatedSection(
+                    index: 6,
+                    child: GlassCard(
+                      child: Column(
+                        children: [
+                          ...fp.children.map((child) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: TvFocusWrapper(
+                              onTap: () => _showChildPinDialog(child.id, child.name, child.hasPinSet),
+                              child: _settingRow(
+                                icon: child.hasPinSet ? Icons.lock_rounded : Icons.lock_open_rounded,
+                                iconColor: child.hasPinSet ? Colors.green : Colors.grey,
+                                title: child.name,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: (child.hasPinSet ? Colors.green : Colors.grey).withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        child.hasPinSet ? '\u{1F512} PIN actif' : '\u{1F513} Pas de PIN',
+                                        style: TextStyle(
+                                          color: child.hasPinSet ? Colors.green : Colors.grey,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.chevron_right, color: Colors.white38),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   // ─── Zone dangereuse ─────────────────────
                   _animatedSection(
                       index: 7,

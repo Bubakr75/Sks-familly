@@ -1432,4 +1432,23 @@ class FamilyProvider extends ChangeNotifier {
         .map((h) => h.reason)
         .toList();
   }
+
+  // -- PIN individuel par enfant --
+  Future<void> setChildPin(String childId, String rawPin) async {
+    final child = getChild(childId);
+    if (child == null) return;
+    child.pinHash = ChildModel.hashPin(rawPin);
+    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+    if (_firestore.isConnected) await _firestore.saveChild(child);
+    notifyListeners();
+  }
+
+  Future<void> removeChildPin(String childId) async {
+    final child = getChild(childId);
+    if (child == null) return;
+    child.pinHash = null;
+    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+    if (_firestore.isConnected) await _firestore.saveChild(child);
+    notifyListeners();
+  }
 }

@@ -1,4 +1,5 @@
 ﻿import 'dart:convert';
+import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -83,7 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildChildAvatar(ChildModel child, double radius) {
     if (child.hasPhoto) {
       try {
-        final bytes = base64Decode(child.photoBase64);
+        final bytes = ImageCacheUtil.fromBase64(child.photoBase64);
         return Container(
           width: radius * 2, height: radius * 2,
           decoration: BoxDecoration(

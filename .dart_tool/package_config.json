@@ -104,6 +104,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "csslib",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/csslib-1.0.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
+    },
+    {
       "name": "cupertino_icons",
       "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/cupertino_icons-1.0.8",
       "packageUri": "lib/",
@@ -282,6 +288,12 @@
       "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/hive_flutter-1.1.0",
       "packageUri": "lib/",
       "languageVersion": "2.12"
+    },
+    {
+      "name": "html",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/html-0.15.6",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
     },
     {
       "name": "http",
@@ -672,6 +684,36 @@
       "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.2.0",
       "packageUri": "lib/",
       "languageVersion": "3.1"
+    },
+    {
+      "name": "video_player",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/video_player-2.11.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "video_player_android",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/video_player_android-2.9.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "video_player_avfoundation",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/video_player_avfoundation-2.9.7",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "video_player_platform_interface",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/video_player_platform_interface-6.7.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "video_player_web",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/video_player_web-2.4.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
     },
     {
       "name": "vm_service",

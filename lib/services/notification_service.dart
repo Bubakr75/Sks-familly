@@ -1,3 +1,4 @@
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -47,6 +48,16 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await android?.createNotificationChannel(androidChannel);
     await android?.createNotificationChannel(reminderChannel);
+
+    // Demander la permission POST_NOTIFICATIONS sur Android 13+
+    if (Platform.isAndroid) {
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        await androidPlugin.requestNotificationsPermission();
+        await androidPlugin.requestExactAlarmsPermission();
+      }
+    }
 
     _initialized = true;
   }

@@ -1,9 +1,12 @@
-// lib/screens/screen_time_screen.dart
+﻿// lib/screens/screen_time_screen.dart
 import 'dart:convert';
+import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/family_provider.dart';
+import '../widgets/tv_focus_wrapper.dart';
+import '../utils/tv_detector.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 
@@ -512,7 +515,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                   if (child.hasPhoto)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.memory(base64Decode(child.photoBase64!),
+                      child: Image.memory(ImageCacheUtil.fromBase64(child.photoBase64!),
                           width: 36, height: 36, fit: BoxFit.cover),
                     )
                   else
@@ -619,7 +622,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
               scrollDirection: Axis.horizontal,
               children: provider.children.map((c) {
                 final isSelected = c.id == _selectedChildId;
-                return GestureDetector(
+              return TvFocusWrapper(
                   onTap: () => setState(() => _selectedChildId = c.id),
                   child: Container(
                     margin: const EdgeInsets.only(right: 10),
@@ -822,7 +825,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                           ? _joursSources.reduce((a, b) => a > b ? a : b)
                           : -1;
                       final isAvailable = i > minSource;
-                      return GestureDetector(
+                return TvFocusWrapper(
                         onTap: isAvailable
                             ? () => setState(() {
                                   _jourCible = i;
@@ -877,7 +880,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                   runSpacing: 8,
                   children: List.generate(_jourCible, (i) {
                     final isSelected = _joursSources.contains(i);
-                    return GestureDetector(
+              return TvFocusWrapper(
                       onTap: () => setState(() {
                         if (isSelected) {
                           _joursSources.remove(i);

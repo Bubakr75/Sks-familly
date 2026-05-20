@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:math' as math;
 import '../utils/tv_detector.dart';
 import 'tv_keyboard.dart';
 
@@ -33,17 +34,13 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
     with SingleTickerProviderStateMixin {
   bool _isFocused = false;
   late AnimationController _glowController;
-  late Animation<double> _glowAnim;
 
   @override
   void initState() {
     super.initState();
     _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _glowAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+      duration: const Duration(milliseconds: 2500),
     );
   }
 
@@ -56,10 +53,10 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
   void _handleFocusChange(bool hasFocus) {
     setState(() => _isFocused = hasFocus);
     if (hasFocus) {
-      _glowController.repeat(reverse: true);
+      _glowController.repeat();
     } else {
       _glowController.stop();
-      _glowController.value = 0.0;
+      _glowController.reset();
     }
   }
 
@@ -85,33 +82,52 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedBuilder(
-          animation: _glowAnim,
+          animation: _glowController,
           builder: (context, child) {
             return AnimatedScale(
               scale: _isFocused ? widget.focusScale : 1.0,
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutCubic,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(widget.borderRadius),
-                  border: _isFocused
-                      ? Border.all(
-                          color: widget.focusBorderColor.withOpacity(_glowAnim.value),
-                          width: widget.focusBorderWidth,
-                        )
-                      : Border.all(color: Colors.transparent, width: widget.focusBorderWidth),
-                  boxShadow: _isFocused
-                      ? [
-                          BoxShadow(color: widget.focusBorderColor.withOpacity(0.2 * _glowAnim.value), blurRadius: 8, spreadRadius: 1),
-                          BoxShadow(color: widget.focusBorderColor.withOpacity(0.15 * _glowAnim.value), blurRadius: 20, spreadRadius: 2),
-                        ]
-                      : [],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(widget.borderRadius - widget.focusBorderWidth),
-                  child: child,
+              child: Container(
+                decoration: _isFocused ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(widget.borderRadius + 2),
+                  gradient: SweepGradient(
+                    center: Alignment.center,
+                    startAngle: _glowController.value * 2 * math.pi,
+                    endAngle: _glowController.value * 2 * math.pi + 2 * math.pi,
+                    colors: const [
+                      Color(0xFF00E5FF),
+                      Color(0xFF7C4DFF),
+                      Color(0xFFFF6090),
+                      Color(0xFFFFAB40),
+                      Color(0xFF00E676),
+                      Color(0xFF00E5FF),
+                    ],
+                    stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: HSLColor.fromAHSL(1, (_glowController.value * 360) % 360, 1, 0.5).toColor().withOpacity(0.4),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                    BoxShadow(
+                      color: HSLColor.fromAHSL(1, ((_glowController.value * 360) + 180) % 360, 1, 0.5).toColor().withOpacity(0.2),
+                      blurRadius: 40,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ) : null,
+                padding: _isFocused ? const EdgeInsets.all(2.5) : null,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(widget.borderRadius),
+                    color: _isFocused ? const Color(0xFF0D1B2A) : null,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(widget.borderRadius - (_isFocused ? 1 : 0)),
+                    child: child,
+                  ),
                 ),
               ),
             );

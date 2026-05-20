@@ -36,6 +36,7 @@ dependencies:
   sensors_plus: ^6.1.1
 
   # Local notifications
+  video_player: ^2.9.2
   flutter_local_notifications: ^18.0.1
   timezone: ^0.10.0
 
@@ -62,8 +63,9 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
+    - assets/
     - assets/icon/
     - assets/animations/
     - assets/images/
+    - assets/videos/family_bg.mp4
     - assets/service_account.json
-

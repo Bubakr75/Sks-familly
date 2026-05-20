@@ -1,5 +1,6 @@
 ﻿import 'dart:math';
 import 'dart:convert';
+import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -681,7 +682,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                             backgroundColor: _accentColor
                                                 .withValues(alpha: 0.3),
                                             backgroundImage: child.hasPhoto
-                                                ? MemoryImage(base64Decode(
+                                                ? MemoryImage(ImageCacheUtil.fromBase64(
                                                     child.photoBase64))
                                                 : null,
                                             child: !child.hasPhoto

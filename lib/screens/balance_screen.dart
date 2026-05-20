@@ -1,9 +1,12 @@
 ﻿// lib/screens/balance_screen.dart
 import 'dart:convert';
+import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../widgets/tv_focus_wrapper.dart';
+import '../utils/tv_detector.dart';
 import '../models/child_model.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
@@ -143,7 +146,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     runSpacing: 8,
                     children: descPresets.map((d) {
                       final isSel = desc == d;
-                      return GestureDetector(
+                      return TvFocusWrapper(
                         onTap: () => setS(() => desc = isSel ? '' : d),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -199,7 +202,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     runSpacing: 8,
                     children: [10, 20, 30, 50, 100, 200].map((n) {
                       final isSel = nbLines == n;
-                      return GestureDetector(
+                      return TvFocusWrapper(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -401,7 +404,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     runSpacing: 8,
                     children: reasonPresets.map((r) {
                       final isSel = reason == r;
-                      return GestureDetector(
+                      return TvFocusWrapper(
                         onTap: () => setS(() => reason = isSel ? '' : r),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -436,7 +439,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     runSpacing: 8,
                     children: [5, 10, 20, 30, 50, 100].map((n) {
                       final isSel = nbLines == n;
-                      return GestureDetector(
+                      return TvFocusWrapper(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -488,7 +491,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   ),
                   const SizedBox(height: 16),
                   // Date expiration optionnelle
-                  GestureDetector(
+                  TvFocusWrapper(
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: ctx,
@@ -540,7 +543,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                         ),
                         const Spacer(),
                         if (expiresAt != null)
-                          GestureDetector(
+                          TvFocusWrapper(
                             onTap: () => setS(() => expiresAt = null),
                             child: const Icon(Icons.close,
                                 color: Colors.white38, size: 16),
@@ -679,7 +682,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   ...punishments.map((p) {
                     final isSel = selPunishment?.id == p.id;
                     final remaining = p.totalLines - p.completedLines;
-                    return GestureDetector(
+                    return TvFocusWrapper(
                       onTap: () => setS(() => selPunishment = p),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
@@ -728,7 +731,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   const SizedBox(height: 8),
                   ...immunities.map((im) {
                     final isSel = selImmunity?.id == im.id;
-                    return GestureDetector(
+                    return TvFocusWrapper(
                       onTap: () => setS(() => selImmunity = im),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
@@ -1004,7 +1007,7 @@ class _BalanceScreenState extends State<BalanceScreen>
     final completedCount =
         allPunishments.where((p) => p.isCompleted).length;
 
-    return GestureDetector(
+    return TvFocusWrapper(
       onTap: () => _toggleSelect(child.id),
       onLongPress: () => _toggleSelect(child.id),
       child: AnimatedContainer(
@@ -1063,7 +1066,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     radius: 22,
                     backgroundColor: Colors.cyanAccent.withOpacity(0.2),
                     backgroundImage: child.hasPhoto
-                        ? MemoryImage(base64Decode(child.photoBase64!))
+                        ? MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64!))
                         : null,
                     child: !child.hasPhoto
                         ? Text(
@@ -1230,7 +1233,7 @@ class _BalanceScreenState extends State<BalanceScreen>
           radius: 16,
           backgroundColor: Colors.cyanAccent.withOpacity(0.2),
           backgroundImage: child.hasPhoto
-              ? MemoryImage(base64Decode(child.photoBase64!))
+              ? MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64!))
               : null,
           child: !child.hasPhoto
               ? Text(
