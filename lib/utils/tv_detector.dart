@@ -19,10 +19,13 @@ class TvDetector {
 
   static bool get isTV => _isTV ?? false;
 
-  static void detectFromContext(double shortestSide, double longestSide) {
+  static void detectFromContext(double shortestSide, double longestSide, {double devicePixelRatio = 1.0}) {
     if (_isTV != null) return;
-    _isTV = shortestSide >= 540 && longestSide >= 960;
-    if (kDebugMode) debugPrint('TV detection via screen: $_isTV (short=$shortestSide, long=$longestSide)');
+    // TV = grand ecran + faible densite de pixels + ratio large
+    final ratio = longestSide / shortestSide;
+    final isTvScreen = shortestSide >= 540 && longestSide >= 960 && devicePixelRatio <= 2.0 && ratio < 2.0;
+    _isTV = isTvScreen;
+    if (kDebugMode) debugPrint('TV detection via screen: $_isTV (short=$shortestSide, long=$longestSide, dpr=$devicePixelRatio, ratio=$ratio)');
   }
 
   static void forceTV(bool value) => _isTV = value;

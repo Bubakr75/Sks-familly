@@ -55,7 +55,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
     _videoBgController = VideoPlayerController.asset('assets/videos/family_bg.mp4')
       ..initialize().then((_) {
         _videoBgController.setLooping(true);
-        _videoBgController.setVolume(0);
+        _videoBgController.setVolume(1.0);
         _videoBgController.play();
         // Listener pour relancer avant la fin et eviter le freeze
         _videoBgController.addListener(() {

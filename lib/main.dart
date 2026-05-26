@@ -160,7 +160,7 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
   Widget build(BuildContext context) {
     // Detection TV par taille ecran au premier build
     final mq = MediaQuery.of(context);
-    TvDetector.detectFromContext(mq.size.shortestSide, mq.size.longestSide);
+    TvDetector.detectFromContext(mq.size.shortestSide, mq.size.longestSide, devicePixelRatio: mq.devicePixelRatio);
 
     return Consumer<ThemeProvider>(
       builder: (_, themeProvider, __) => MaterialApp(
