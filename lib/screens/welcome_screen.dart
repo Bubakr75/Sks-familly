@@ -442,6 +442,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
   }
 
   Widget _buildMobileLayout(Size size) {
+    // Pendant l'intro (19s) : meme affichage que TV
+    if (!_introDone && _selectedProfileId == null) {
+      return Scaffold(backgroundColor: Colors.black, body: Stack(children: [
+        if (_videoBgController.value.isInitialized)
+          SizedBox.expand(child: FittedBox(fit: BoxFit.cover, child: SizedBox(
+            width: _videoBgController.value.size.width,
+            height: _videoBgController.value.size.height,
+            child: VideoPlayer(_videoBgController)))),
+        Container(color: Colors.black.withOpacity(0.55)),
+        SafeArea(child: _buildProfileCarousel(size)),
+      ]));
+    }
+    // Apres l'intro : layout mobile classique
     return AnimatedBackground(child: Scaffold(backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.small(onPressed: _showInteractiveHelp, backgroundColor: Colors.cyan.withOpacity(0.85),
         child: const Icon(Icons.help_outline_rounded, color: Colors.white)),
