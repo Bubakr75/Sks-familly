@@ -1,6 +1,5 @@
 ﻿// lib/screens/welcome_screen.dart
 
-import 'dart:convert';
 import 'dart:ui';
 import '../utils/image_cache_util.dart';
 import 'dart:math' as math;
@@ -12,8 +11,8 @@ import 'package:provider/provider.dart';
 import '../models/child_model.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
-import '../widgets/animated_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
+import '../widgets/animated_background.dart';
 import '../utils/tv_detector.dart';
 import 'home_screen.dart';
 import 'child_dashboard_screen.dart';
@@ -87,12 +86,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
     final fp = context.read<FamilyProvider>(); final pin = context.read<PinProvider>();
     if (_selectedProfileId == 'parent_maman' || _selectedProfileId == 'parent_papa' || _selectedProfileId == 'parent') {
       if (!pin.isPinSet) { _loginAsParent(_getParentName()); return; }
-      if (pin.verifyPin(_pinInput)) _loginAsParent(_getParentName()); else _handlePinError();
+      if (pin.verifyPin(_pinInput)) {
+        _loginAsParent(_getParentName());
+      } else {
+        _handlePinError();
+      }
     } else {
       final child = fp.children.firstWhere((c) => c.id == _selectedProfileId, orElse: () => ChildModel(id: '', name: ''));
       if (child.id.isEmpty) return;
       if (!child.hasPinSet) { _loginAsChild(child.id); return; }
-      if (child.verifyPin(_pinInput)) _loginAsChild(child.id); else _handlePinError();
+      if (child.verifyPin(_pinInput)) {
+        _loginAsChild(child.id);
+      } else {
+        _handlePinError();
+      }
     }
   }
   String _getParentName() { if (_selectedProfileId == 'parent_maman') return 'Maman'; if (_selectedProfileId == 'parent_papa') return 'Papa'; return 'Parent'; }
@@ -164,7 +171,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
       ),
     );
   }
-  void _handleParentMode() { final pin = context.read<PinProvider>(); if (!pin.isPinSet) _navigateToHome('Parent'); else _showPinDialog(); }
+  void _handleParentMode() { final pin = context.read<PinProvider>(); if (!pin.isPinSet) {
+    _navigateToHome('Parent');
+  } else {
+    _showPinDialog();
+  } }
   void _showPinDialog() {
     final pinCtrl = TextEditingController(); bool obscure = true;
     showDialog(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => AlertDialog(
@@ -419,7 +430,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
   Widget _buildPinRow(List<String> keys) {
     return Row(mainAxisAlignment: MainAxisAlignment.center, children: keys.map((key) { final isBack = key == '\u232B'; final isOk = key == '\u2713';
       return Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: TvFocusWrapper(autofocus: key == '5',
-        onTap: () { if (isBack) _onPinBackspace(); else if (isOk) _validateTvPin(); else _onPinDigit(key); },
+        onTap: () { if (isBack) {
+          _onPinBackspace();
+        } else if (isOk) _validateTvPin(); else _onPinDigit(key); },
         child: Container(width: 80, height: 80, decoration: BoxDecoration(borderRadius: BorderRadius.circular(16),
           color: isBack ? Colors.orange.withOpacity(0.1) : isOk ? Colors.green.withOpacity(0.1) : Colors.white.withOpacity(0.06),
           border: Border.all(color: isBack ? Colors.orange.withOpacity(0.4) : isOk ? Colors.green.withOpacity(0.4) : Colors.white.withOpacity(0.15), width: 2)),
@@ -429,22 +442,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
   }
 
   Widget _buildMobileLayout(Size size) {
-    return Scaffold(backgroundColor: Colors.black,
+    return AnimatedBackground(child: Scaffold(backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.small(onPressed: _showInteractiveHelp, backgroundColor: Colors.cyan.withOpacity(0.85),
         child: const Icon(Icons.help_outline_rounded, color: Colors.white)),
-      body: Stack(children: [
-        // Video de fond
-        if (_videoBgController.value.isInitialized)
-          SizedBox.expand(child: FittedBox(fit: BoxFit.cover, child: SizedBox(
-            width: _videoBgController.value.size.width,
-            height: _videoBgController.value.size.height,
-            child: VideoPlayer(_videoBgController)))),
-        // Overlay sombre
-        Container(color: Colors.black.withOpacity(0.5)),
-        // Particules
+      body: SafeArea(child: Stack(children: [
         AnimatedBuilder(animation: _particleController, builder: (_, __) => CustomPaint(
           size: Size(size.width, size.height), painter: _WelcomeParticlePainter(particles: _particles, time: _particleController.value))),
-        SafeArea(child: Stack(children: [
         SingleChildScrollView(physics: const BouncingScrollPhysics(), child: Column(children: [
           const SizedBox(height: 32),
           FadeTransition(opacity: _logoFade, child: ScaleTransition(scale: _logoScale,
@@ -461,12 +464,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
           FadeTransition(opacity: _logoFade, child: Text('Le systeme de points familial', style: TextStyle(fontSize: 14, color: Colors.grey[400], letterSpacing: 1))),
           const SizedBox(height: 28),
           Consumer<FamilyProvider>(builder: (_, fp, __) {
-            if (fp.children.isEmpty) return FadeTransition(opacity: _cardFade, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 24),
+            if (fp.children.isEmpty) {
+              return FadeTransition(opacity: _cardFade, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
                 color: Colors.white.withOpacity(0.04), border: Border.all(color: Colors.white.withOpacity(0.08))),
                 child: Column(children: [const Text('\u{1F476}', style: TextStyle(fontSize: 36)), const SizedBox(height: 8),
                   Text('Aucun enfant enregistre', style: TextStyle(color: Colors.grey[400], fontSize: 14)), const SizedBox(height: 4),
                   Text('Connectez-vous en mode Parent\npour commencer', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600], fontSize: 12))]))));
+            }
             final sorted = List<ChildModel>.from(fp.children)..sort((a, b) => b.points.compareTo(a.points));
             return FadeTransition(opacity: _cardFade, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: Row(children: [
@@ -510,7 +515,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                   Container(width: 1, height: 36, color: Colors.white.withOpacity(0.1)),
                   _StatBubble(icon: '\u{1F451}', value: topChild?.name.split(' ').first ?? '-', label: 'Leader', isTV: false)]))));
           }),
-          const SizedBox(height: 32)]))]))]));
+          const SizedBox(height: 32)]))]))));
+
 
   }
 }

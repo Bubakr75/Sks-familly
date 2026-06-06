@@ -1,4 +1,4 @@
-﻿// lib/screens/timeline_screen.dart
+// lib/screens/timeline_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +8,6 @@ import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import '../utils/tv_detector.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  Correspondance catégorie → icône / couleur / libellé
@@ -350,7 +349,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   // ── Badge plage de dates ──────────────────────────────────
   Widget _buildDateRangeBadge() {
     if (_dateRange == null) return const SizedBox.shrink();
-    final f = (DateTime d) =>
+    String f(DateTime d) =>
         '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

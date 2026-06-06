@@ -1,6 +1,5 @@
-﻿// lib/screens/home_screen.dart
+// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
@@ -22,13 +21,12 @@ import 'immunity_lines_screen.dart';
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
-import 'child_dashboard_screen.dart';
 import 'timeline_screen.dart';
 import '../widgets/animated_page_transition.dart';
 
 class HomeScreen extends StatefulWidget {
   final String parentName;
-  const HomeScreen({Key? key, this.parentName = 'Parent'}) : super(key: key);
+  const HomeScreen({super.key, this.parentName = 'Parent'});
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }

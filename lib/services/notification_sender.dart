@@ -1,5 +1,4 @@
-﻿import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -42,13 +41,13 @@ class NotificationSender {
 
     final asn1Parser = ASN1Parser(Uint8List.fromList(keyBytes));
     final topSeq = asn1Parser.nextObject() as ASN1Sequence;
-    final privateKeyOctet = topSeq.elements![2] as ASN1OctetString;
+    final privateKeyOctet = topSeq.elements[2] as ASN1OctetString;
 
     final pkParser = ASN1Parser(Uint8List.fromList(privateKeyOctet.valueBytes()));
     final pkSeq = pkParser.nextObject() as ASN1Sequence;
 
-    final modulus = (pkSeq.elements![1] as ASN1Integer).valueAsBigInteger;
-    final privateExponent = (pkSeq.elements![3] as ASN1Integer).valueAsBigInteger;
+    final modulus = (pkSeq.elements[1] as ASN1Integer).valueAsBigInteger;
+    final privateExponent = (pkSeq.elements[3] as ASN1Integer).valueAsBigInteger;
 
     final rsaPrivKey = pc.RSAPrivateKey(modulus, privateExponent, null, null);
     final signer = pc.Signer('SHA-256/RSA');

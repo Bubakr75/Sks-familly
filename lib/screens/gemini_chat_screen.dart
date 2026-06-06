@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -25,7 +25,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
       buf.writeln('');
       buf.writeln('Enfant : ${child.name}');
       buf.writeln('  Points : ${child.points}');
-      buf.writeln('  Niveau : ' + child.levelTitle);
+      buf.writeln('  Niveau : ${child.levelTitle}');
       final punishments = fp.punishments.where((p) => p.childId == child.id && !p.isCompleted).toList();
       buf.writeln('  Punitions actives : ${punishments.length}');
       for (final p in punishments) {
@@ -44,7 +44,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
     for (final tc in activeCases) {
       final plaintiff = fp.getChild(tc.plaintiffId)?.name ?? '?';
       final accused = fp.getChild(tc.accusedId)?.name ?? '?';
-      buf.writeln('  - ${tc.title} (${plaintiff} vs ${accused}) - ${tc.statusLabel}');
+      buf.writeln('  - ${tc.title} ($plaintiff vs $accused) - ${tc.statusLabel}');
     }
     buf.writeln('');
     buf.writeln('=== HISTORIQUE RECENT ===');
@@ -65,10 +65,10 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
       _isLoading = true;
     });
     _scrollToBottom();
-    final context_data = _buildFamilyContext(fp);
+    final contextData = _buildFamilyContext(fp);
     final response = await GeminiService.chatFamilyAssistant(
       message: text,
-      familyContext: context_data,
+      familyContext: contextData,
       history: _messages.sublist(0, _messages.length - 1),
     );
     setState(() {

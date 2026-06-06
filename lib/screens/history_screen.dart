@@ -1,8 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import '../utils/tv_detector.dart';
 import '../models/history_entry.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';

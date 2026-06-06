@@ -1,12 +1,10 @@
-﻿// lib/screens/child_dashboard_screen.dart
+// lib/screens/child_dashboard_screen.dart
 
 import 'dart:convert';
 import '../utils/image_cache_util.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import '../utils/tv_detector.dart';
-import '../utils/tv_detector.dart';
 import '../utils/tv_detector.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,8 +17,6 @@ import '../models/badge_model.dart';
 import '../models/history_entry.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/timeline_widget.dart';
-import 'timeline_screen.dart';
 
 // ─── Arc screen-time ─────────────────────────────────────────
 class _ScreenTimePainter extends CustomPainter {
@@ -949,8 +945,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     return Expanded(
                       child: TvFocusWrapper(
                         onTap: () => setState(() {
-                          if (sel) _joursSources.remove(i);
-                          else     _joursSources.add(i);
+                          if (sel) {
+                            _joursSources.remove(i);
+                          } else {
+                            _joursSources.add(i);
+                          }
                         }),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
@@ -1205,8 +1204,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     if (jour == 'Dimanche') return fp.getSundayMinutes(child.id);
     final globalScore = fp.getWeeklyGlobalScore(child.id);
     int base = 0;
-    if (globalScore >= 18)      base = 180;
-    else if (globalScore >= 16) base = 150;
+    if (globalScore >= 18) {
+      base = 180;
+    } else if (globalScore >= 16) base = 150;
     else if (globalScore >= 14) base = 120;
     else if (globalScore >= 12) base = 90;
     else if (globalScore >= 10) base = 60;

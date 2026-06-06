@@ -1,4 +1,4 @@
-﻿// lib/screens/trade_screen.dart
+// lib/screens/trade_screen.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -601,8 +601,9 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
       final buyer = provider.getChild(trade.toChildId);
       final dateStr = DateFormat('dd/MM/yy \u00E0 HH:mm', 'fr_FR').format(trade.createdAt);
       final Color statusColor;
-      if (trade.isCompleted) statusColor = const Color(0xFF00E676);
-      else if (trade.isRejected) statusColor = Colors.red;
+      if (trade.isCompleted) {
+        statusColor = const Color(0xFF00E676);
+      } else if (trade.isRejected) statusColor = Colors.red;
       else statusColor = Colors.grey;
       return Container(
         margin: EdgeInsets.only(bottom: isTV ? 14 : 10),

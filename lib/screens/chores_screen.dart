@@ -1,4 +1,4 @@
-﻿import 'dart:math';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../utils/tv_detector.dart';
@@ -414,7 +414,11 @@ class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMix
               ),
             TvFocusWrapper(
               onTap: () => setState(() {
-                if (excluded) _excludedIds.remove(child.id); else _excludedIds.add(child.id);
+                if (excluded) {
+                  _excludedIds.remove(child.id);
+                } else {
+                  _excludedIds.add(child.id);
+                }
               }),
               child: Padding(padding: EdgeInsets.all(isTV ? 10 : 8),
                 child: Icon(excluded ? Icons.visibility : Icons.visibility_off,

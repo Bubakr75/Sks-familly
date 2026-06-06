@@ -107,14 +107,9 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: HSLColor.fromAHSL(1, (_glowController.value * 360) % 360, 1, 0.5).toColor().withOpacity(0.4),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                    BoxShadow(
-                      color: HSLColor.fromAHSL(1, ((_glowController.value * 360) + 180) % 360, 1, 0.5).toColor().withOpacity(0.2),
-                      blurRadius: 40,
-                      spreadRadius: 4,
+                      color: HSLColor.fromAHSL(1, (_glowController.value * 360) % 360, 1, 0.5).toColor().withOpacity(0.35),
+                      blurRadius: 12,
+                      spreadRadius: 1,
                     ),
                   ],
                 ) : null,

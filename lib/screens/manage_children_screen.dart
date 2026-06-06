@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -133,10 +133,10 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                     color: primary.withOpacity(0.12),
                                     border: Border.all(color: primary.withOpacity(0.3)),
                                   ),
-                                  child: child.photoBase64 != null && child.photoBase64!.isNotEmpty
+                                  child: child.photoBase64.isNotEmpty
                                       ? ClipRRect(
                                           borderRadius: BorderRadius.circular(13),
-                                          child: Image.memory(ImageCacheUtil.fromBase64(child.photoBase64!),
+                                          child: Image.memory(ImageCacheUtil.fromBase64(child.photoBase64),
                                               fit: BoxFit.cover, width: isTV ? 64 : 50, height: isTV ? 64 : 50,
                                               errorBuilder: (_, __, ___) => Center(
                                                   child: Text(child.avatar.isEmpty ? '\u{1F466}' : child.avatar,
@@ -177,8 +177,9 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                     color: const Color(0xFF162033),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                     onSelected: (val) {
-                                      if (val == 'edit') PinGuard.guardAction(context, () => _showEditDialog(context, child));
-                                      else if (val == 'photo') PinGuard.guardAction(context, () => _showPhotoOptions(context, child.id, provider));
+                                      if (val == 'edit') {
+                                        PinGuard.guardAction(context, () => _showEditDialog(context, child));
+                                      } else if (val == 'photo') PinGuard.guardAction(context, () => _showPhotoOptions(context, child.id, provider));
                                       else if (val == 'delete') PinGuard.guardAction(context, () => _confirmDelete(context, child.id, child.name, provider));
                                     },
                                     itemBuilder: (_) => const [

@@ -11,7 +11,6 @@ import 'firebase_options.dart';
 import 'providers/family_provider.dart';
 import 'providers/pin_provider.dart';
 import 'providers/theme_provider.dart';
-import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/notification_service.dart';
@@ -26,7 +25,6 @@ void main() async {
   // Detection TV
   try {
     await TvDetector.detect();
-    TvDetector.forceTV(true);
   } catch (_) {}
 
   try {
@@ -41,16 +39,18 @@ void main() async {
     try {
       try {
         Firebase.app();
-        if (kDebugMode)
+        if (kDebugMode) {
           debugPrint('Firebase already initialized (attempt $attempt)');
+        }
         firebaseReady = true;
         break;
       } catch (_) {}
 
       await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform);
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint('Firebase initialized OK (attempt $attempt)');
+      }
       firebaseReady = true;
       break;
     } catch (e) {
@@ -60,15 +60,18 @@ void main() async {
         firebaseReady = true;
         break;
       }
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint('Firebase init attempt $attempt failed: $e');
-      if (attempt < 3)
+      }
+      if (attempt < 3) {
         await Future.delayed(Duration(milliseconds: 500 * attempt));
+      }
     }
   }
 
-  if (!firebaseReady && kDebugMode)
+  if (!firebaseReady && kDebugMode) {
     debugPrint('WARNING: Firebase not initialized after 3 attempts');
+  }
 
   if (firebaseReady) {
     try {
@@ -226,3 +229,4 @@ class _StartupRouterState extends State<_StartupRouter> {
     return const WelcomeScreen();
   }
 }
+

@@ -1,4 +1,4 @@
-﻿// lib/providers/family_provider.dart
+// lib/providers/family_provider.dart
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -457,7 +457,9 @@ class FamilyProvider extends ChangeNotifier {
     final keysToRemove = _screenTimeBox.keys
         .where((k) => k.toString().startsWith(id))
         .toList();
-    for (final key in keysToRemove) await _screenTimeBox.delete(key);
+    for (final key in keysToRemove) {
+      await _screenTimeBox.delete(key);
+    }
     await _saveAllLocal();
     if (_firestore.isConnected) await _firestore.deleteChild(id);
     notifyListeners();
@@ -876,7 +878,9 @@ class FamilyProvider extends ChangeNotifier {
           h.category == 'screen_time_bonus' ||
           h.category == 'saturday_rating'   ||
           h.category == 'tribunal_vote'     ||
-          h.category == 'tribunal_verdict') return false;
+          h.category == 'tribunal_verdict') {
+        return false;
+      }
       final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
       return datesCochees.contains(entryDay);
     }).toList();

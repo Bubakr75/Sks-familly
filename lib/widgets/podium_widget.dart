@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/child_model.dart';
@@ -50,7 +50,7 @@ class PodiumWidget extends StatelessWidget {
         ));
       },
       focusBorderColor: primaryColor,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: 14,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
@@ -112,3 +112,4 @@ class PodiumWidget extends StatelessWidget {
     }
   }
 }
+

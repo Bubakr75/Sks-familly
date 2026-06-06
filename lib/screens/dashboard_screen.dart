@@ -1,10 +1,8 @@
-﻿import 'dart:convert';
 import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
-import '../models/trade_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -15,7 +13,6 @@ import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'tribunal_screen.dart';
-import 'school_notes_screen.dart';
 import 'multi_child_evaluation_screen.dart';
 
 class DashboardScreen extends StatefulWidget {

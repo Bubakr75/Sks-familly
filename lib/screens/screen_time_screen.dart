@@ -1,14 +1,11 @@
-﻿// lib/screens/screen_time_screen.dart
-import 'dart:convert';
+// lib/screens/screen_time_screen.dart
 import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/family_provider.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import '../utils/tv_detector.dart';
 import '../widgets/animated_background.dart';
-import '../widgets/glass_card.dart';
 
 class ScreenTimeScreen extends StatefulWidget {
   const ScreenTimeScreen({super.key});
@@ -515,7 +512,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                   if (child.hasPhoto)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.memory(ImageCacheUtil.fromBase64(child.photoBase64!),
+                      child: Image.memory(ImageCacheUtil.fromBase64(child.photoBase64),
                           width: 36, height: 36, fit: BoxFit.cover),
                     )
                   else

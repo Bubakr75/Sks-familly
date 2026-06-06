@@ -1,5 +1,6 @@
-﻿// lib/screens/goals_screen.dart
+// lib/screens/goals_screen.dart
 import 'package:flutter/material.dart';
+import '../widgets/glass_widgets.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../utils/tv_detector.dart';
 import 'package:provider/provider.dart';
@@ -315,3 +316,4 @@ class GoalsScreen extends StatelessWidget {
     ));
   }
 }
+

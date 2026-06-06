@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/punishment_lines.dart';
@@ -1232,7 +1232,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       }
       try {
         final themeWithHero = hero != null && hero != 'Personnalise' ? '$theme avec des references a $hero' : theme;
-        questions = await GeminiService.generateQuizQuestions(theme: themeWithHero, age: age);
+        questions = GeminiService.generateQuizQuestions(theme: themeWithHero, age: age);
       } catch (e) {
         if (mounted) Navigator.pop(context);
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur Gemini: $e')));
@@ -1279,8 +1279,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 final opt = e.value;
                 Color color = Colors.white10;
                 if (answered) {
-                  if (idx == correctIndex) color = Colors.green.withAlpha(100);
-                  else if (idx == selectedIndex) color = Colors.red.withAlpha(100);
+                  if (idx == correctIndex) {
+                    color = Colors.green.withAlpha(100);
+                  } else if (idx == selectedIndex) color = Colors.red.withAlpha(100);
                 } else if (idx == selectedIndex) {
                   color = Colors.amberAccent.withAlpha(80);
                 }

@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
@@ -88,7 +88,7 @@ class GeminiService {
   }) async {
     final List<String> details = [];
     for (int i = 0; i < questions.length && i < rawAnswers.length; i++) {
-      details.add('- ' + (questions[i]['question'] ?? '') + ' => ' + rawAnswers[i].toString());
+      details.add('${'- ' + (questions[i]['question'] ?? '')} => ${rawAnswers[i]}');
     }
     final answersText = details.join('\n');
     final prompt = '''Tu es un éducateur bienveillant et expert en développement de l'enfant.
@@ -108,7 +108,7 @@ CONSEIL: [1 conseil pratique et motivant pour la semaine prochaine]''';
 
     try {
       final response = await http.post(
-        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [{'parts': [{'text': prompt}]}],
@@ -119,7 +119,7 @@ CONSEIL: [1 conseil pratique et motivant pour la semaine prochaine]''';
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
-        print('EVAL_OK_' + childName + ': ' + text.substring(0, text.length > 150 ? 150 : text.length));
+        print('EVAL_OK_$childName: ${text.substring(0, text.length > 150 ? 150 : text.length)}');
         final appreciation = _extract(text, 'APPRECIATION');
         final pointFort = _extract(text, 'POINT_FORT');
         final pointAmeliorer = _extract(text, 'POINT_AMELIORER');
@@ -133,11 +133,11 @@ CONSEIL: [1 conseil pratique et motivant pour la semaine prochaine]''';
           'conseil': conseil.isNotEmpty ? conseil : 'Garde le cap !',
         };
       } else {
-        print('EVAL_ERR_' + childName + ': ' + response.statusCode.toString());
+        print('EVAL_ERR_$childName: ${response.statusCode}');
         return {'nom': childName, 'note': score, 'appreciation': 'Bonne semaine dans l\'ensemble.', 'point_fort': 'Comportement correct', 'point_ameliorer': 'Maintenir les efforts', 'conseil': 'Continue comme ça !'};
       }
     } catch (e) {
-      print('EVAL_CATCH_' + childName + ': ' + e.toString());
+      print('EVAL_CATCH_$childName: $e');
       return {'nom': childName, 'note': score, 'appreciation': 'Bonne semaine dans l\'ensemble.', 'point_fort': 'Comportement correct', 'point_ameliorer': 'Maintenir les efforts', 'conseil': 'Continue comme ça !'};
     }
   }
@@ -147,7 +147,7 @@ CONSEIL: [1 conseil pratique et motivant pour la semaine prochaine]''';
     required String context,
     required Map<String, dynamic> answers,
   }) async {
-    print('GROUP_EVAL: ' + childNames.length.toString() + ' enfants');
+    print('GROUP_EVAL: ${childNames.length} enfants');
     final questions = generateQuizQuestions(theme: context, age: 10);
     final futures = childNames.map((name) {
       final raw = answers[name];
@@ -163,7 +163,7 @@ CONSEIL: [1 conseil pratique et motivant pour la semaine prochaine]''';
       return _evaluateOneChild(childName: name, score: score, rawAnswers: childAnswers, questions: questions);
     });
     final results = await Future.wait(futures);
-    print('GROUP_DONE: ' + results.length.toString() + ' resultats');
+    print('GROUP_DONE: ${results.length} resultats');
     return {'evaluations': results};
   }
 
@@ -220,7 +220,7 @@ Sois toujours encourageant et bienveillant. Reponds en francais.''';
 
     try {
       final response = await http.post(
-        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': contents,
@@ -262,7 +262,7 @@ CONSEIL: [1 conseil pour les deux parties pour eviter ce genre de conflit]''';
 
     try {
       final response = await http.post(
-        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [{'parts': [{'text': prompt}], 'role': 'user'}],
@@ -308,7 +308,7 @@ EXPLICATION: [courte explication educative]''';
 
     try {
       final response = await http.post(
-        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [{'parts': [{'text': prompt}], 'role': 'user'}],
@@ -332,11 +332,11 @@ EXPLICATION: [courte explication educative]''';
     }
   }
   static Future<String> chatFamilyAssistant({required String message, required String familyContext, List<Map<String, String>> history = const []}) async {
-    final systemPrompt = 'Tu es un assistant familial intelligent et bienveillant.\n' + 'Tu as acces aux donnees completes de la famille.\n' + familyContext;
+    final systemPrompt = 'Tu es un assistant familial intelligent et bienveillant.\nTu as acces aux donnees completes de la famille.\n$familyContext';
     final contents = <Map<String, dynamic>>[{'parts': [{'text': systemPrompt}], 'role': 'user'}, {'parts': [{'text': 'Bonjour!'}], 'role': 'model'}];
     for (final h in history) { contents.add({'parts': [{'text': h['content'] ?? ''}], 'role': h['role'] == 'user' ? 'user' : 'model'}); }
     contents.add({'parts': [{'text': message}], 'role': 'user'});
-    try { final response = await http.post(Uri.parse(_baseUrl + '?key=' + _apiKey), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'contents': contents, 'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1000}})).timeout(const Duration(seconds: 30));
+    try { final response = await http.post(Uri.parse('$_baseUrl?key=$_apiKey'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'contents': contents, 'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1000}})).timeout(const Duration(seconds: 30));
     if (response.statusCode == 200) { final data = jsonDecode(response.body); return data['candidates'][0]['content']['parts'][0]['text'] as String; }
     return 'Je ne peux pas repondre pour le moment.'; } catch (e) { return 'Erreur de connexion.'; } }
 }

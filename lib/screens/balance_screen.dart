@@ -1,18 +1,14 @@
-﻿// lib/screens/balance_screen.dart
-import 'dart:convert';
+// lib/screens/balance_screen.dart
 import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import '../utils/tv_detector.dart';
 import '../models/child_model.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
 import '../widgets/animated_background.dart';
-import '../widgets/glass_card.dart';
-import '../widgets/tv_focus_wrapper.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({super.key});
@@ -1009,7 +1005,6 @@ class _BalanceScreenState extends State<BalanceScreen>
 
     return TvFocusWrapper(
       onTap: () => _toggleSelect(child.id),
-      onLongPress: () => _toggleSelect(child.id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         margin: const EdgeInsets.only(bottom: 14),
@@ -1066,7 +1061,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     radius: 22,
                     backgroundColor: Colors.cyanAccent.withOpacity(0.2),
                     backgroundImage: child.hasPhoto
-                        ? MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64!))
+                        ? MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64))
                         : null,
                     child: !child.hasPhoto
                         ? Text(
@@ -1233,7 +1228,7 @@ class _BalanceScreenState extends State<BalanceScreen>
           radius: 16,
           backgroundColor: Colors.cyanAccent.withOpacity(0.2),
           backgroundImage: child.hasPhoto
-              ? MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64!))
+              ? MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64))
               : null,
           child: !child.hasPhoto
               ? Text(

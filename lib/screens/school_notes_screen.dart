@@ -1,14 +1,11 @@
-﻿import 'dart:convert';
-import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/family_provider.dart';
 import '../services/gemini_service.dart';
-import '../models/child_model.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../utils/tv_detector.dart';
-import '../widgets/glass_card.dart';
 
 // ─────────────────────────────────────────────
 // MODÈLES INTERNES
@@ -57,7 +54,7 @@ class SchoolNotesScreen extends StatefulWidget {
 class _SchoolNotesScreenState extends State<SchoolNotesScreen>
     with TickerProviderStateMixin {
   List<Map<String, dynamic>> _notes = [];
-  bool _loading = false;
+  final bool _loading = false;
 
   late AnimationController _notebookController;
   late Animation<double> _notebookAnimation;

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -76,7 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final pinProvider = context.read<PinProvider>();
     final ctrl        = TextEditingController();
     final isSet       = pinProvider.isPinSet;
-    bool  _obscure    = true;
+    bool  obscure    = true;
 
     showDialog(
       context: context,
@@ -103,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               TvTextField(
                 controller:  ctrl,
                 keyboardType: TextInputType.number,
-                obscureText:  _obscure,
+                obscureText:  obscure,
                 maxLength:    6,
                 autofocus:    true,
                 textAlign:    TextAlign.center,
@@ -112,11 +112,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                   hintText:     '• • • •',
                   counterText:  '',
                   suffixIcon:   IconButton(
-                    icon: Icon(_obscure
+                    icon: Icon(obscure
                         ? Icons.visibility_off_rounded
                         : Icons.visibility_rounded),
                     onPressed: () =>
-                        setStateDialog(() => _obscure = !_obscure),
+                        setStateDialog(() => obscure = !obscure),
                   ),
                 ),
                 inputFormatters: [
