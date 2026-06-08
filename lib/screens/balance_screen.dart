@@ -1,14 +1,15 @@
 // lib/screens/balance_screen.dart
-import '../utils/image_cache_util.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
-import '../widgets/tv_focus_wrapper.dart';
 import '../models/child_model.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/tv_focus_wrapper.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({super.key});
@@ -142,7 +143,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     runSpacing: 8,
                     children: descPresets.map((d) {
                       final isSel = desc == d;
-                      return TvFocusWrapper(
+                      return GestureDetector(
                         onTap: () => setS(() => desc = isSel ? '' : d),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -169,7 +170,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     }).toList(),
                   ),
                   const SizedBox(height: 10),
-                  TvTextField(
+                  TextField(
                     controller: descCtrl,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
@@ -198,7 +199,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     runSpacing: 8,
                     children: [10, 20, 30, 50, 100, 200].map((n) {
                       final isSel = nbLines == n;
-                      return TvFocusWrapper(
+                      return GestureDetector(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -400,7 +401,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     runSpacing: 8,
                     children: reasonPresets.map((r) {
                       final isSel = reason == r;
-                      return TvFocusWrapper(
+                      return GestureDetector(
                         onTap: () => setS(() => reason = isSel ? '' : r),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -435,7 +436,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     runSpacing: 8,
                     children: [5, 10, 20, 30, 50, 100].map((n) {
                       final isSel = nbLines == n;
-                      return TvFocusWrapper(
+                      return GestureDetector(
                         onTap: () => setS(() => nbLines = n),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -487,7 +488,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   ),
                   const SizedBox(height: 16),
                   // Date expiration optionnelle
-                  TvFocusWrapper(
+                  GestureDetector(
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: ctx,
@@ -539,7 +540,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                         ),
                         const Spacer(),
                         if (expiresAt != null)
-                          TvFocusWrapper(
+                          GestureDetector(
                             onTap: () => setS(() => expiresAt = null),
                             child: const Icon(Icons.close,
                                 color: Colors.white38, size: 16),
@@ -678,7 +679,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   ...punishments.map((p) {
                     final isSel = selPunishment?.id == p.id;
                     final remaining = p.totalLines - p.completedLines;
-                    return TvFocusWrapper(
+                    return GestureDetector(
                       onTap: () => setS(() => selPunishment = p),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
@@ -727,7 +728,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   const SizedBox(height: 8),
                   ...immunities.map((im) {
                     final isSel = selImmunity?.id == im.id;
-                    return TvFocusWrapper(
+                    return GestureDetector(
                       onTap: () => setS(() => selImmunity = im),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
@@ -1003,8 +1004,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     final completedCount =
         allPunishments.where((p) => p.isCompleted).length;
 
-    return TvFocusWrapper(
+    return GestureDetector(
       onTap: () => _toggleSelect(child.id),
+      onLongPress: () => _toggleSelect(child.id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         margin: const EdgeInsets.only(bottom: 14),
@@ -1061,7 +1063,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     radius: 22,
                     backgroundColor: Colors.cyanAccent.withOpacity(0.2),
                     backgroundImage: child.hasPhoto
-                        ? MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64))
+                        ? MemoryImage(base64Decode(child.photoBase64!))
                         : null,
                     child: !child.hasPhoto
                         ? Text(
@@ -1228,7 +1230,7 @@ class _BalanceScreenState extends State<BalanceScreen>
           radius: 16,
           backgroundColor: Colors.cyanAccent.withOpacity(0.2),
           backgroundImage: child.hasPhoto
-              ? MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64))
+              ? MemoryImage(base64Decode(child.photoBase64!))
               : null,
           child: !child.hasPhoto
               ? Text(

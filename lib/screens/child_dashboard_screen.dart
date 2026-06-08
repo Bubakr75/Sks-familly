@@ -1,11 +1,8 @@
 // lib/screens/child_dashboard_screen.dart
 
 import 'dart:convert';
-import '../utils/image_cache_util.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../widgets/tv_focus_wrapper.dart';
-import '../utils/tv_detector.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +14,8 @@ import '../models/badge_model.dart';
 import '../models/history_entry.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/timeline_widget.dart';
+import 'timeline_screen.dart';
 
 // ─── Arc screen-time ─────────────────────────────────────────
 class _ScreenTimePainter extends CustomPainter {
@@ -209,7 +208,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
           const SizedBox(height: 12),
-          TvTextField(
+          TextField(
             controller:   emojiCtrl,
             style:        const TextStyle(color: Colors.white, fontSize: 30),
             textAlign:    TextAlign.center,
@@ -228,7 +227,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
           ),
           const SizedBox(height: 10),
-          TvTextField(
+          TextField(
             controller: labelCtrl,
             style:      const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -346,7 +345,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       try {
         core = CircleAvatar(
             radius: radius,
-            backgroundImage: MemoryImage(ImageCacheUtil.fromBase64(child.photoBase64)));
+            backgroundImage: MemoryImage(base64Decode(child.photoBase64)));
       } catch (_) {
         core = _letterAvatar(child, radius, color);
       }
@@ -400,76 +399,39 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   // ─── Sélecteur enfant ────────────────────────────────────
   void _showChildSwitcher(FamilyProvider fp) {
-    final isTV = TvDetector.isTV;
-    if (isTV) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Choisir un enfant',
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text('Choisir un enfant',
+              style: TextStyle(
+                  color: Colors.white, fontSize: 16,
+                  fontWeight: FontWeight.bold),
               textAlign: TextAlign.center),
-          content: SizedBox(
-            width: 400,
-            child: TvFocusScope(
-              child: Column(mainAxisSize: MainAxisSize.min,
-                children: fp.children.map((c) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: TvFocusWrapper(
-                    autofocus: c.id == _selectedChildId,
-                    onTap: () { setState(() => _selectedChildId = c.id); Navigator.pop(ctx); _loadPrefs(c.id); },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: c.id == _selectedChildId ? Colors.white.withOpacity(0.1) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: c.id == _selectedChildId ? Colors.greenAccent.withOpacity(0.5) : Colors.white12),
-                      ),
-                      child: Row(children: [
-                        _buildAvatar(c, 22, showFrame: false),
-                        const SizedBox(width: 12),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(c.name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                          Text('${c.points} pts', style: const TextStyle(color: Colors.white54, fontSize: 16)),
-                        ])),
-                        if (c.id == _selectedChildId)
-                          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 24),
-                      ]),
-                    ),
-                  ),
-                )).toList(),
-              ),
-            ),
-          ),
-        ),
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        builder: (_) => ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Text('Choisir un enfant',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            ...fp.children.map((c) => ListTile(
-              leading:  _buildAvatar(c, 22, showFrame: false),
-              title:    Text(c.name, style: const TextStyle(color: Colors.white)),
-              subtitle: Text('${c.points} pts', style: const TextStyle(color: Colors.white54)),
-              trailing: c.id == _selectedChildId
-                  ? const Icon(Icons.check_circle, color: Colors.greenAccent) : null,
-              onTap: () { setState(() => _selectedChildId = c.id); Navigator.pop(context); _loadPrefs(c.id); },
-            )),
-          ],
-        ),
-      );
-    }
+          const SizedBox(height: 12),
+          ...fp.children.map((c) => ListTile(
+            leading:  _buildAvatar(c, 22, showFrame: false),
+            title:    Text(c.name,
+                style: const TextStyle(color: Colors.white)),
+            subtitle: Text('${c.points} pts',
+                style: const TextStyle(color: Colors.white54)),
+            trailing: c.id == _selectedChildId
+                ? const Icon(Icons.check_circle, color: Colors.greenAccent)
+                : null,
+            onTap: () {
+              setState(() => _selectedChildId = c.id);
+              Navigator.pop(context);
+              _loadPrefs(c.id);
+            },
+          )),
+        ],
+      ),
+    );
   }
 
   // ─── Edition photo / bannière / slogan ───────────────────
@@ -495,7 +457,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             backgroundColor: const Color(0xFF1A1A2E),
             title: const Text('PIN parent',
                 style: TextStyle(color: Colors.white)),
-            content: TvTextField(
+            content: TextField(
               controller:   ctrl,
               obscureText:  true,
               keyboardType: TextInputType.number,
@@ -543,7 +505,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Modifier le slogan',
             style: TextStyle(color: Colors.white)),
-        content: TvTextField(
+        content: TextField(
           controller: ctrl,
           style:      const TextStyle(color: Colors.white),
           maxLength:  60,
@@ -744,76 +706,75 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
 
         const SizedBox(height: 12),
-        if (!TvDetector.isTV) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: color,
-                    side: BorderSide(color: color.withOpacity(0.5)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => _editPhoto(child, fp),
-                  icon: const Icon(Icons.camera_alt, size: 16),
-                  label: const Text('Photo', style: TextStyle(fontSize: 12)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: color,
+                  side: BorderSide(color: color.withOpacity(0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
+                onPressed: () => _editPhoto(child, fp),
+                icon:  const Icon(Icons.camera_alt, size: 16),
+                label: const Text('Photo', style: TextStyle(fontSize: 12)),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: frame,
-                    side: BorderSide(color: frame.withOpacity(0.5)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => _editBanner(child, fp, requirePin: false),
-                  icon: const Icon(Icons.image, size: 16),
-                  label: const Text('Banniere', style: TextStyle(fontSize: 11)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: frame,
+                  side: BorderSide(color: frame.withOpacity(0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
+                onPressed: () => _editBanner(child, fp, requirePin: false),
+                icon:  const Icon(Icons.image, size: 16),
+                label: const Text('Bannière 🖼️', style: TextStyle(fontSize: 11)),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white54,
-                    side: const BorderSide(color: Colors.white24),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => _editBanner(child, fp, requirePin: true),
-                  icon: const Icon(Icons.lock, size: 16),
-                  label: const Text('Banniere (PIN)', style: TextStyle(fontSize: 11)),
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white54,
                   side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () => _editSlogan(child, fp),
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Modifier le slogan',
-                    style: TextStyle(fontSize: 12)),
+                onPressed: () => _editBanner(child, fp, requirePin: true),
+                icon:  const Icon(Icons.lock, size: 16),
+                label: const Text('Bannière 🔒', style: TextStyle(fontSize: 11)),
               ),
             ),
+          ]),
+        ),
+
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white54,
+                side: const BorderSide(color: Colors.white24),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => _editSlogan(child, fp),
+              icon:  const Icon(Icons.edit, size: 16),
+              label: const Text('Modifier le slogan',
+                  style: TextStyle(fontSize: 12)),
+            ),
           ),
-        ],
+        ),
 
         const SizedBox(height: 16),
         Padding(
@@ -943,13 +904,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   children: List.generate(7, (i) {
                     final sel = _joursSources.contains(i);
                     return Expanded(
-                      child: TvFocusWrapper(
+                      child: GestureDetector(
                         onTap: () => setState(() {
-                          if (sel) {
-                            _joursSources.remove(i);
-                          } else {
-                            _joursSources.add(i);
-                          }
+                          if (sel) _joursSources.remove(i);
+                          else     _joursSources.add(i);
                         }),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
@@ -1022,7 +980,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             itemBuilder: (_, i) {
               final j        = _joursNoms[i];
               final selected = j == _selectedDay;
-              return TvFocusWrapper(
+              return GestureDetector(
                 onTap: () => setState(() => _selectedDay = j),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1077,7 +1035,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Widget _joursShortcut(String label, Set<int> jours, Color color) {
     final isActive = _joursSources.length == jours.length &&
         _joursSources.containsAll(jours);
-    return TvFocusWrapper(
+    return GestureDetector(
       onTap: () => setState(() => _joursSources = Set.from(jours)),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1150,23 +1108,19 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           children: [15, 30, 60].map((min) => Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: TvFocusWrapper(
-                onTap: () async {
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color.withOpacity(0.2),
+                  foregroundColor: color,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () async {
                   await fp.addScreenTimeBonus(
                       child.id, min, 'Bonus parent +$min min');
-                  _triggerBonusAnim('+$min min');
+                  _triggerBonusAnim('+$min min 🎉');
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: color.withOpacity(0.4)),
-                  ),
-                  child: Center(child: Text('+$min min',
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold,
-                      fontSize: TvDetector.isTV ? 18 : 12))),
-                ),
+                child: Text('+$min min', style: const TextStyle(fontSize: 12)),
               ),
             ),
           )).toList());
@@ -1204,9 +1158,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     if (jour == 'Dimanche') return fp.getSundayMinutes(child.id);
     final globalScore = fp.getWeeklyGlobalScore(child.id);
     int base = 0;
-    if (globalScore >= 18) {
-      base = 180;
-    } else if (globalScore >= 16) base = 150;
+    if (globalScore >= 18)      base = 180;
+    else if (globalScore >= 16) base = 150;
     else if (globalScore >= 14) base = 120;
     else if (globalScore >= 12) base = 90;
     else if (globalScore >= 10) base = 60;
@@ -1287,7 +1240,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             itemBuilder: (_, i) {
               final f   = _historyFilters[i];
               final sel = f == _historyFilter;
-              return TvFocusWrapper(
+              return GestureDetector(
                 onTap: () => setState(() => _historyFilter = f),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),

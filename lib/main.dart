@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -11,21 +11,16 @@ import 'firebase_options.dart';
 import 'providers/family_provider.dart';
 import 'providers/pin_provider.dart';
 import 'providers/theme_provider.dart';
+import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/notification_service.dart';
 import 'services/update_service.dart';
-import 'utils/tv_detector.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await initializeDateFormatting('fr_FR', null);
-
-  // Detection TV
-  try {
-    await TvDetector.detect();
-  } catch (_) {}
 
   try {
     await NotificationService.init();
@@ -39,39 +34,26 @@ void main() async {
     try {
       try {
         Firebase.app();
-        if (kDebugMode) {
-          debugPrint('Firebase already initialized (attempt $attempt)');
-        }
+        if (kDebugMode) debugPrint('Firebase already initialized (attempt $attempt)');
         firebaseReady = true;
         break;
       } catch (_) {}
-
-      await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform);
-      if (kDebugMode) {
-        debugPrint('Firebase initialized OK (attempt $attempt)');
-      }
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      if (kDebugMode) debugPrint('Firebase initialized OK (attempt $attempt)');
       firebaseReady = true;
       break;
     } catch (e) {
-      if (e.toString().contains('already been initialized') ||
-          e.toString().contains('duplicate-app')) {
+      if (e.toString().contains('already been initialized') || e.toString().contains('duplicate-app')) {
         if (kDebugMode) debugPrint('Firebase was already initialized');
         firebaseReady = true;
         break;
       }
-      if (kDebugMode) {
-        debugPrint('Firebase init attempt $attempt failed: $e');
-      }
-      if (attempt < 3) {
-        await Future.delayed(Duration(milliseconds: 500 * attempt));
-      }
+      if (kDebugMode) debugPrint('Firebase init attempt $attempt failed: $e');
+      if (attempt < 3) await Future.delayed(Duration(milliseconds: 500 * attempt));
     }
   }
 
-  if (!firebaseReady && kDebugMode) {
-    debugPrint('WARNING: Firebase not initialized after 3 attempts');
-  }
+  if (!firebaseReady && kDebugMode) debugPrint('WARNING: Firebase not initialized after 3 attempts');
 
   if (firebaseReady) {
     try {
@@ -95,7 +77,7 @@ void main() async {
   try {
     await familyProvider.init();
     try {
-      await NotificationService.scheduleDailyReminder(hour: 20, minute: 0);
+      await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
     } catch (e) {
       if (kDebugMode) debugPrint('Schedule reminder error: $e');
     }
@@ -130,8 +112,7 @@ class SKSFamilyApp extends StatefulWidget {
   State<SKSFamilyApp> createState() => _SKSFamilyAppState();
 }
 
-class _SKSFamilyAppState extends State<SKSFamilyApp>
-    with WidgetsBindingObserver {
+class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -161,10 +142,6 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
 
   @override
   Widget build(BuildContext context) {
-    // Detection TV par taille ecran au premier build
-    final mq = MediaQuery.of(context);
-    TvDetector.detectFromContext(mq.size.shortestSide, mq.size.longestSide, devicePixelRatio: mq.devicePixelRatio);
-
     return Consumer<ThemeProvider>(
       builder: (_, themeProvider, __) => MaterialApp(
         navigatorKey: NotificationService.navigatorKey,
@@ -172,32 +149,23 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
           return Shortcuts(
-            shortcuts: {
-              const SingleActivator(LogicalKeyboardKey.select):
-                  const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.enter):
-                  const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.numpadEnter):
-                  const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.gameButtonA):
-                  const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.goBack):
-                  const DismissIntent(),
-              const SingleActivator(LogicalKeyboardKey.browserBack):
-                  const DismissIntent(),
-              const SingleActivator(LogicalKeyboardKey.escape):
-                  const DismissIntent(),
+            shortcuts: <ShortcutActivator, Intent>{
+              const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.numpadEnter): const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.gameButtonA): const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.goBack): const DismissIntent(),
+              const SingleActivator(LogicalKeyboardKey.browserBack): const DismissIntent(),
+              const SingleActivator(LogicalKeyboardKey.escape): const DismissIntent(),
             },
             child: FocusTraversalGroup(
-              policy: OrderedTraversalPolicy(),
+              policy: ReadingOrderTraversalPolicy(),
               child: child ?? const SizedBox(),
             ),
           );
         },
         theme: themeProvider.theme,
-        home: widget.showOnboarding
-            ? const OnboardingScreen()
-            : const _StartupRouter(),
+        home: widget.showOnboarding ? const OnboardingScreen() : const _StartupRouter(),
       ),
     );
   }
@@ -229,4 +197,3 @@ class _StartupRouterState extends State<_StartupRouter> {
     return const WelcomeScreen();
   }
 }
-

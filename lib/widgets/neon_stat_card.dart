@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 class NeonStatCard extends StatefulWidget {
   final String label;

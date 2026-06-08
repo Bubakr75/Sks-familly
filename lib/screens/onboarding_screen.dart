@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/glass_card.dart';
 import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {

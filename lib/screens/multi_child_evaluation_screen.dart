@@ -1,13 +1,13 @@
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/child_model.dart';
 import '../services/gemini_service.dart';
 import '../providers/family_provider.dart';
-import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_background.dart';
 
 class MultiChildEvaluationScreen extends StatefulWidget {
-  const MultiChildEvaluationScreen({super.key});
+  const MultiChildEvaluationScreen({Key? key}) : super(key: key);
   @override
   State<MultiChildEvaluationScreen> createState() => _MultiChildEvaluationScreenState();
 }
@@ -79,7 +79,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
         final q = _questions[i];
         final answerIndex = i < answers.length ? (answers[i] ?? 0) : 0;
         final answersList = List<String>.from(q['answers'] ?? []);
-        childAnswers['q$i'] = answerIndex < answersList.length ? answersList[answerIndex] : '';
+        childAnswers['q' + i.toString()] = answerIndex < answersList.length ? answersList[answerIndex] : '';
       }
       allAnswers[child.name] = childAnswers;
     }
@@ -113,7 +113,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
       setState(() { _results = results; _evaluating = false; _step = 3; });
     } catch (e) {
       setState(() => _evaluating = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.redAccent));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: ' + e.toString()), backgroundColor: Colors.redAccent));
     }
   }
 
@@ -123,7 +123,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
       final result = _results[child.id];
       if (result == null) continue;
       final moyenne = ((result.aiNote + result.parentNote) / 2).round();
-      fp.addNote(child.id, 'Bulletin: IA=${result.aiNote}/20 Parent=${result.parentNote}/20 Moy=$moyenne/20 | ${result.appreciation}');
+      fp.addNote(child.id, 'Bulletin: IA=' + result.aiNote.toString() + '/20 Parent=' + result.parentNote.toString() + '/20 Moy=' + moyenne.toString() + '/20 | ' + result.appreciation);
     }
     Navigator.pop(context);
   }
@@ -150,7 +150,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                 margin: const EdgeInsets.only(right: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(color: _accent.withOpacity(0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: _accent.withOpacity(0.5))),
-                child: Text('Étape $_step/3', style: const TextStyle(color: _accentLight, fontSize: 12, fontWeight: FontWeight.bold)),
+                child: Text('Étape ${_step}/3', style: const TextStyle(color: _accentLight, fontSize: 12, fontWeight: FontWeight.bold)),
               ),
           ],
         ),
@@ -192,12 +192,8 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
               final selected = _selectedIds.contains(child.id);
               final colors = [const Color(0xFF6C63FF), const Color(0xFFFF6584), const Color(0xFF43E97B), const Color(0xFFFA8231), const Color(0xFF00D2FF)];
               final color = colors[i % colors.length];
-              return TvFocusWrapper(
-                onTap: () => setState(() { if (selected) {
-                  _selectedIds.remove(child.id);
-                } else {
-                  _selectedIds.add(child.id);
-                } }),
+              return GestureDetector(
+                onTap: () => setState(() { if (selected) _selectedIds.remove(child.id); else _selectedIds.add(child.id); }),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   margin: const EdgeInsets.only(bottom: 12),
@@ -352,7 +348,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                         spacing: 8, runSpacing: 8,
                         children: qAnswers.asMap().entries.map((ae) {
                           final isSelected = selectedAnswer == ae.key;
-                          return TvFocusWrapper(
+                          return GestureDetector(
                             onTap: () => _setAnswer(child.id, _currentQuestion, ae.key),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),

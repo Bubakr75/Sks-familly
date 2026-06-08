@@ -1,4 +1,4 @@
-// lib/screens/tribunal_screen.dart
+﻿// lib/screens/tribunal_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -50,7 +50,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                     const LinearGradient(
                             colors: [Colors.purple, Colors.amber])
                         .createShader(bounds),
-                child: const Text('??� Tribunal Familial',
+                child: const Text('⚖️ Tribunal Familial',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white)),
@@ -256,7 +256,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                       borderRadius: BorderRadius.circular(2))),
             ),
             const SizedBox(height: 20),
-            Text('??� ${tc.title}',
+            Text('⚖️ ${tc.title}',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -280,19 +280,19 @@ class _TribunalScreenState extends State<TribunalScreen>
             const SizedBox(height: 20),
             if (isParent && !tc.isClosed) ...[
               if (tc.status == TribunalStatus.filed)
-                _actionButton('▶️ Ouvrir l\'audience', Colors.blue,
+                _actionButton('â–¶ï¸ Ouvrir l\'audience', Colors.blue,
                     () {
                   fp.startTribunalHearing(tc.id);
                   if (ctx.mounted) Navigator.pop(ctx);
                 }),
               if (tc.status == TribunalStatus.inProgress)
                 _actionButton(
-                    '?? Passer en deliberation', Colors.purple, () {
+                    '🤔 Passer en deliberation', Colors.purple, () {
                   fp.startTribunalDeliberation(tc.id);
                   if (ctx.mounted) Navigator.pop(ctx);
                 }),
               if (tc.status == TribunalStatus.deliberation) ...[
-                _actionButton('?? Demander l IA', Colors.cyan, () async {
+                _actionButton('🤖 Demander l IA', Colors.cyan, () async {
                   Navigator.pop(ctx);
                   final plaintiff = fp.getChild(tc.plaintiffId)?.name ?? '?';
                   final accused = fp.getChild(tc.accusedId)?.name ?? '?';
@@ -305,19 +305,19 @@ class _TribunalScreenState extends State<TribunalScreen>
                   if (context.mounted) _showGeminiVerdict(fp, tc, result);
                 }),
                 const SizedBox(height: 8),
-                _actionButton('?? Coupable', Colors.red, () {
+                _actionButton('⚠️ Coupable', Colors.red, () {
                   if (ctx.mounted) Navigator.pop(ctx);
                   _showVerdictDialog(fp, tc, TribunalVerdict.guilty);
                 }),
                 const SizedBox(height: 8),
-                _actionButton('? Innocent', Colors.green, () {
+                _actionButton('✅ Innocent', Colors.green, () {
                   if (ctx.mounted) Navigator.pop(ctx);
                   _showVerdictDialog(
                       fp, tc, TribunalVerdict.innocent);
                 }),
               ],
               const SizedBox(height: 8),
-              _actionButton('??? Classer sans suite', Colors.grey,
+              _actionButton('🗑️ Classer sans suite', Colors.grey,
                   () {
                 fp.dismissTribunalCase(tc.id);
                 if (ctx.mounted) Navigator.pop(ctx);
@@ -327,7 +327,7 @@ class _TribunalScreenState extends State<TribunalScreen>
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Center(
-                  child: Text('?? Mode parent requis pour agir',
+                  child: Text('🔒 Mode parent requis pour agir',
                       style: TextStyle(
                           color: Colors.white.withOpacity(0.4),
                           fontSize: 13)),
@@ -404,12 +404,12 @@ class _TribunalScreenState extends State<TribunalScreen>
             borderRadius: BorderRadius.circular(20)),
         title: Text(
           verdict == TribunalVerdict.guilty
-              ? '?? Verdict : Coupable'
-              : '? Verdict : Innocent',
+              ? '⚠️ Verdict : Coupable'
+              : '✅ Verdict : Innocent',
           style: const TextStyle(color: Colors.white),
         ),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TvTextField(
+          TextField(
             controller: reasonCtrl,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -427,7 +427,7 @@ class _TribunalScreenState extends State<TribunalScreen>
             ),
           ),
           const SizedBox(height: 12),
-          TvTextField(
+          TextField(
             controller: pointsCtrl,
             // Autorise chiffres et signe moins
             keyboardType: const TextInputType.numberWithOptions(
@@ -476,7 +476,7 @@ class _TribunalScreenState extends State<TribunalScreen>
               );
               if (ctx.mounted) Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: const Text('??� Verdict rendu !'),
+                content: const Text('⚖️ Verdict rendu !'),
                 backgroundColor: Colors.purple.shade700,
               ));
             },
@@ -508,14 +508,14 @@ class _TribunalScreenState extends State<TribunalScreen>
           backgroundColor: Colors.grey.shade900,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20)),
-          title: const Text('??� Nouvelle Affaire',
+          title: const Text('⚖️ Nouvelle Affaire',
               style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TvTextField(
+                TextField(
                   controller: titleCtrl,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
@@ -534,7 +534,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                TvTextField(
+                TextField(
                   controller: descCtrl,
                   style: const TextStyle(color: Colors.white),
                   maxLines: 3,
@@ -635,9 +635,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                 if (title.isEmpty ||
                     plaintiffId == null ||
                     accusedId == null ||
-                    plaintiffId == accusedId) {
-                  return;
-                }
+                    plaintiffId == accusedId) return;
                 fp.fileTribunalCase(
                   title: title,
                   description: descCtrl.text.trim(),
@@ -646,7 +644,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: const Text('??� Affaire deposee !'),
+                  content: const Text('⚖️ Affaire deposee !'),
                   backgroundColor: Colors.purple.shade700,
                 ));
               },
@@ -663,7 +661,7 @@ class _TribunalScreenState extends State<TribunalScreen>
     final sanction = result['sanction'] as String;
     final conseil = result['conseil'] as String;
     final color = verdict == 'guilty' ? Colors.red : verdict == 'innocent' ? Colors.green : Colors.grey;
-    final emoji = verdict == 'guilty' ? '??' : verdict == 'innocent' ? '?' : '??';
+    final emoji = verdict == 'guilty' ? '⚠️' : verdict == 'innocent' ? '✅' : '📁';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -699,6 +697,5 @@ class _TribunalScreenState extends State<TribunalScreen>
     );
   }
 }
-
 
 

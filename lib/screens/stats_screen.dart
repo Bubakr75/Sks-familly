@@ -5,6 +5,7 @@ import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/timeline_widget.dart';   // ✅ ajout
 import 'timeline_screen.dart';              // ✅ ajout pour "Tout voir"
 

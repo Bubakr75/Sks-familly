@@ -1,6 +1,5 @@
-﻿import 'dart:math';
+import 'dart:math';
 import 'dart:convert';
-import '../utils/image_cache_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -682,7 +681,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                             backgroundColor: _accentColor
                                                 .withValues(alpha: 0.3),
                                             backgroundImage: child.hasPhoto
-                                                ? MemoryImage(ImageCacheUtil.fromBase64(
+                                                ? MemoryImage(base64Decode(
                                                     child.photoBase64))
                                                 : null,
                                             child: !child.hasPhoto
@@ -821,7 +820,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                               }).toList(),
                             ),
                             const SizedBox(height: 12),
-                            TvTextField(
+                            TextField(
                               controller: _reasonCtrl,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(

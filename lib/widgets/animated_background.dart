@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 class AnimatedBackground extends StatefulWidget {
@@ -7,7 +7,6 @@ class AnimatedBackground extends StatefulWidget {
   final int particleCount;
   final bool showStars;
   final bool showNebula;
-  final String? backgroundImage;
 
   const AnimatedBackground({
     super.key,
@@ -16,7 +15,6 @@ class AnimatedBackground extends StatefulWidget {
     this.particleCount = 30,
     this.showStars = true,
     this.showNebula = true,
-    this.backgroundImage,
   });
 
   @override
@@ -98,21 +96,6 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
 
     return Stack(
       children: [
-        // Background image
-        Opacity(
-          opacity: 1.0,
-          child: Image.asset(
-            widget.backgroundImage ?? 'assets/images/background.jpg',
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-          ),
-        ),
-        Container(
-          color: Colors.black.withOpacity(0.0),
-          width: double.infinity,
-          height: double.infinity,
-        ),
         // Breathing gradient background
         AnimatedBuilder(
           animation: _breathAnim,
@@ -123,7 +106,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
                 gradient: LinearGradient(
                   begin: Alignment(-0.5 + shift, -1.0 + shift),
                   end: Alignment(0.5 - shift, 1.0 - shift),
-                  colors: bgColors.map((c) => c.withOpacity(0.0)).toList(),
+                  colors: bgColors,
                 ),
               ),
             );
@@ -181,7 +164,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
               radius: 1.2,
               colors: [
                 Colors.transparent,
-                Colors.black.withOpacity(0.0),
+                Colors.black.withOpacity(0.3),
               ],
             ),
           ),
@@ -361,11 +344,3 @@ class _NebulaPainter extends CustomPainter {
   bool shouldRepaint(covariant _NebulaPainter old) =>
       progress != old.progress;
 }
-
-
-
-
-
-
-
-
