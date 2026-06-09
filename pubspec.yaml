@@ -1,7 +1,7 @@
 ﻿name: family_score
 description: "SKS Family - Systeme de points et recompenses pour la famille"
 publish_to: 'none'
-version: 4.9.0+20
+version: 4.8.0+378
 
 environment:
   sdk: '>=3.3.0 <4.0.0'   # âœ… CORRIGÃ‰
@@ -69,3 +69,4 @@ flutter:
     - assets/images/
     - assets/videos/family_bg.mp4
     - assets/service_account.json
+
