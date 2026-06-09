@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -34,16 +34,17 @@ Future<void> bootstrap() async {
 
 Future<void> _initializeHive() async {
   await Hive.initFlutter();
-  if (kDebugMode) debugPrint('✅ Hive initialized');
+  if (kDebugMode) debugPrint('âœ… Hive initialized');
 }
 
 Future<void> _initializeNotifications() async {
   try {
     await NotificationService.init();
     await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
-    if (kDebugMode) debugPrint('✅ Notifications initialized');
+    await NotificationService.scheduleMonthlyReminder(hour: 18, minute: 0);
+    if (kDebugMode) debugPrint('âœ… Notifications initialized');
   } catch (e) {
-    if (kDebugMode) debugPrint('❌ Notification error: $e');
+    if (kDebugMode) debugPrint('âŒ Notification error: $e');
   }
 }
 
@@ -53,9 +54,9 @@ Future<void> _initializeFirebase() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     await FcmService().init();
-    if (kDebugMode) debugPrint('✅ Firebase & FCM initialized');
+    if (kDebugMode) debugPrint('âœ… Firebase & FCM initialized');
   } catch (e) {
-    if (kDebugMode) debugPrint('❌ Firebase error: $e');
+    if (kDebugMode) debugPrint('âŒ Firebase error: $e');
   }
 }
 
@@ -70,9 +71,9 @@ Future<void> _initializeProviders() async {
       pinProvider.init(),
       themeProvider.init(),
     ]);
-    if (kDebugMode) debugPrint('✅ Providers initialized');
+    if (kDebugMode) debugPrint('âœ… Providers initialized');
   } catch (e) {
-    if (kDebugMode) debugPrint('❌ Providers init error: $e');
+    if (kDebugMode) debugPrint('âŒ Providers init error: $e');
   }
 }
 
@@ -81,7 +82,8 @@ Future<bool> _isOnboardingDone() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('onboarding_done') ?? false;
   } catch (e) {
-    if (kDebugMode) debugPrint('❌ SharedPreferences error: $e');
+    if (kDebugMode) debugPrint('âŒ SharedPreferences error: $e');
     return false;
   }
 }
+

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -111,6 +111,33 @@ class NotificationService {
     );
   }
 
+  static Future<void> scheduleMonthlyReminder({int hour = 18, int minute = 0}) async {
+    await _localNotifications.cancel(1003);
+
+    await _localNotifications.zonedSchedule(
+      1003,
+      '\u{1F4CB} Conseil de classe',
+      'Dernier jour du mois : pensez a saisir les notes !',
+      _nextInstanceOfLastDayOfMonth(hour, minute),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'sks_reminder_channel',
+          'Rappels SKS Family',
+          channelDescription: 'Rappels quotidiens et hebdomadaires',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+          styleInformation: BigTextStyleInformation(''),
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  static Future<void> cancelMonthlyReminder() async {
+    await _localNotifications.cancel(1003);
+  }
   static Future<void> cancelDailyReminder() async {
     await _localNotifications.cancel(1001);
   }
@@ -142,6 +169,20 @@ class NotificationService {
     return scheduled;
   }
 
+  static tz.TZDateTime _nextInstanceOfLastDayOfMonth(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    // Dernier jour du mois courant (jour 0 du mois suivant)
+    var lastDay = DateTime(now.year, now.month + 1, 0).day;
+    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, lastDay, hour, minute);
+    // Si deja passe, on prend le dernier jour du mois suivant
+    if (scheduled.isBefore(now)) {
+      final nextMonth = now.month == 12 ? 1 : now.month + 1;
+      final nextYear = now.month == 12 ? now.year + 1 : now.year;
+      lastDay = DateTime(nextYear, nextMonth + 1, 0).day;
+      scheduled = tz.TZDateTime(tz.local, nextYear, nextMonth, lastDay, hour, minute);
+    }
+    return scheduled;
+  }
   // ===== INSTANT NOTIFICATIONS =====
 
   static Future<void> _showLocalNotification({
@@ -376,3 +417,5 @@ class _NotificationOverlayState extends State<_NotificationOverlay>
     );
   }
 }
+
+
