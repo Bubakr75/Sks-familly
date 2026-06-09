@@ -12,6 +12,8 @@ import '../models/immunity_lines.dart';
 import '../models/trade_model.dart';
 import '../models/tribunal_model.dart';
 import '../models/badge_model.dart';
+import 'fcm_service.dart';
+import 'fcm_service.dart';
 
 class FirestoreService {
   static final FirestoreService _instance = FirestoreService._internal();
@@ -63,6 +65,7 @@ class FirestoreService {
         await prefs.setString('device_id', _deviceId!);
       }
       if (_familyId != null) {
+        await FcmService().registerToken();
         _startListening();
         _startKeepAlive();
       }
@@ -118,6 +121,7 @@ class FirestoreService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('family_id', _familyId!);
     await prefs.setString('family_code', code);
+    await FcmService().registerToken();
     _startListening();
     _startKeepAlive();
     return code;
@@ -139,6 +143,7 @@ class FirestoreService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('family_id', _familyId!);
       await prefs.setString('family_code', cleanCode);
+    await FcmService().registerToken();
       _startListening();
       _startKeepAlive();
       return true;
@@ -721,6 +726,7 @@ class FirestoreService {
         .update({'code': cleanCode});
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('family_code', cleanCode);
+    await FcmService().registerToken();
   }
 
   // â”€â”€â”€ Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -989,4 +995,12 @@ class FirestoreService {
     }
   }
 }
+
+
+
+
+
+
+
+
 

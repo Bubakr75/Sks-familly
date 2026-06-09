@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
-// Handler arrière-plan — DOIT être top-level (hors de toute classe)
+// Handler arriÃ¨re-plan â€” DOIT Ãªtre top-level (hors de toute classe)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) debugPrint('BG message: ${message.notification?.title}');
@@ -19,7 +19,7 @@ class FcmService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<void> init() async {
-    // Handler pour les notifications en arrière-plan
+    // Handler pour les notifications en arriÃ¨re-plan
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // Demander la permission notifications
@@ -42,7 +42,7 @@ class FcmService {
       // Sauvegarder le token
       await _saveToken();
 
-      // Écouter les refresh de token
+      // Ã‰couter les refresh de token
       _messaging.onTokenRefresh.listen((newToken) {
         _saveTokenToFirestore(newToken);
       });
@@ -66,14 +66,14 @@ class FcmService {
       );
     });
 
-    // ===== Quand l'utilisateur tape sur la notification (app en arrière-plan) =====
+    // ===== Quand l'utilisateur tape sur la notification (app en arriÃ¨re-plan) =====
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       if (kDebugMode) {
         debugPrint('Notification tapped: ${message.notification?.title}');
       }
     });
 
-    // ===== Si l'app a été ouverte via une notification =====
+    // ===== Si l'app a Ã©tÃ© ouverte via une notification =====
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null && kDebugMode) {
       debugPrint('App opened from notification: ${initialMessage.notification?.title}');
@@ -108,6 +108,11 @@ class FcmService {
       default:
         return NotificationType.sync;
     }
+  }
+
+  // Point d'entree public : a appeler quand family_id devient disponible
+  Future<void> registerToken() async {
+    await _saveToken();
   }
 
   Future<void> _saveToken() async {
@@ -148,3 +153,7 @@ class FcmService {
     }
   }
 }
+
+
+
+
