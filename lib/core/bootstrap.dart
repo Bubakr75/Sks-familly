@@ -22,6 +22,8 @@ Future<void> bootstrap() async {
   await _initializeNotifications();
   await _initializeFirebase();
   await _initializeProviders();
+  // family_id est maintenant charge, on (re)enregistre le token FCM
+  await FcmService().registerToken();
 
   final onboardingDone = await _isOnboardingDone();
 
@@ -86,4 +88,5 @@ Future<bool> _isOnboardingDone() async {
     return false;
   }
 }
+
 

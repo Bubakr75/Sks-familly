@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -103,9 +103,9 @@ class PinProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ══ AJOUT : bascule explicitement en mode enfant ══
+  // â•â• AJOUT : bascule explicitement en mode enfant â•â•
   void enterChildMode() {
-    if (!isPinSet) return;
+    // mode enfant accessible meme sans PIN
     _isParentMode = false;
     _lastActivity = null;
     _saveMode();
@@ -119,3 +119,4 @@ class PinProvider extends ChangeNotifier {
     } catch (_) {}
   }
 }
+

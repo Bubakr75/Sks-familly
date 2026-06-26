@@ -24,6 +24,7 @@ import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
 import 'child_dashboard_screen.dart';
+import 'pending_requests_screen.dart';
 import 'timeline_screen.dart';
 import 'chores_screen.dart';
 import '../widgets/animated_page_transition.dart';
@@ -852,21 +853,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       });
                     },
                   ),
-                  // NOUVEL ITEM : Punitions et Immunites multi-enfants
-                  _drawerItem(
-                    label: 'Punitions et Immunites',
-                    icon: Icons.balance_rounded,
-                    color: Colors.deepOrangeAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      PinGuard.guardAction(context, () {
-                        Navigator.push(
-                          context,
-                          SlidePageRoute(page: const BalanceScreen()),
-                        );
-                      });
-                    },
-                  ),
+                  
                   _drawerItem(
                     label: 'Bonus et Penalites',
                     icon: Icons.monetization_on_rounded,
@@ -878,7 +865,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     },
                   ),
                 ],
+// NOUVEL ITEM : Punitions et Immunites multi-enfants
+                  _drawerItem(
+                    label: 'Punitions et Immunites',
+                    icon: Icons.balance_rounded,
+                    color: Colors.deepOrangeAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(page: const BalanceScreen()),
+                        );
+                    },
+                  ),
                 _drawerItem(
+                  icon: Icons.notifications_active_rounded,
+                  label: context.watch<FamilyProvider>().pendingRequestsCount > 0
+                      ? 'Demandes a valider (' + context.watch<FamilyProvider>().pendingRequestsCount.toString() + ')'
+                      : 'Demandes a valider',
+                  color: Colors.pinkAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const PendingRequestsScreen()),
+                    );
+                  },
+                ),
+            _drawerItem(
                   icon: Icons.gavel_rounded,
                   label: 'Tribunal',
                   color: Colors.purpleAccent,
@@ -890,6 +905,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
+
+                if (isParent)
+                  _drawerItem(
+                    icon: Icons.child_care_rounded,
+                    label: 'Passer en mode enfant',
+                    color: Colors.tealAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.read<PinProvider>().lockParentMode();
+                    },
+                  ),
                 _drawerItem(
                   icon: Icons.auto_awesome_rounded,
                   label: 'Gemini AI',
@@ -1028,6 +1054,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 }
+
+
+
+
+
 
 
 

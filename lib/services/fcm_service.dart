@@ -20,7 +20,10 @@ class FcmService {
 
   Future<void> init() async {
     // Handler pour les notifications en arriÃ¨re-plan
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    // Sur web, le background est gere par le service worker (firebase-messaging-sw.js)
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    }
 
     // Demander la permission notifications
     final settings = await _messaging.requestPermission(
@@ -112,29 +115,63 @@ class FcmService {
 
   // Point d'entree public : a appeler quand family_id devient disponible
   Future<void> registerToken() async {
+    try {
+      await FirebaseFirestore.instance.collection('debug_logs').add({
+        'step': 'registerToken appele',
+        'platform': kIsWeb ? 'web' : 'android',
+        'at': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+    print('SKS: registerToken appele platform=' + (kIsWeb ? 'web' : 'android'));
     await _saveToken();
   }
 
   Future<void> _saveToken() async {
     try {
-      final token = await _messaging.getToken();
-      if (kDebugMode) debugPrint('FCM Token: $token');
+      final token = kIsWeb
+          ? await _messaging.getToken(vapidKey: 'BPlYsfIrUVb_LRNt8q1acG2bufeaL4SOvv1KM0Cdkpx16X3cpQm9-16o5Z_QY5lWAoWf_bh04LtrfCO5n4u8Tlo')
+          : await _messaging.getToken();
+      print('SKS: FCM Token = ' + token.toString());
       if (token != null) {
+        print('SKS: ECRITURE DIRECTE en cours');
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          var deviceId = prefs.getString('device_id');
+          deviceId ??= DateTime.now().millisecondsSinceEpoch.toString();
+          await _db.collection('families').doc('HFnzg4vyT6YFU5RsVXsy').collection('fcm_tokens').doc(deviceId).set({
+            'token': token,
+            'deviceId': deviceId,
+            'platform': kIsWeb ? 'web' : 'android',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+          print('SKS: ECRITURE DIRECTE REUSSIE deviceId=' + deviceId);
+        } catch (err) {
+          print('SKS: ECRITURE DIRECTE ERREUR = ' + err.toString());
+        }
         await _saveTokenToFirestore(token);
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('FCM getToken error: $e');
+      print('SKS: getToken ERREUR = ' + e.toString());
+      try {
+        await FirebaseFirestore.instance.collection('debug_logs').add({
+          'error': e.toString(),
+          'platform': kIsWeb ? 'web' : 'android',
+          'at': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
     }
   }
 
   Future<void> _saveTokenToFirestore(String token) async {
+    print('SKS: _saveTokenToFirestore ATTEINTE');
     try {
       final prefs = await SharedPreferences.getInstance();
       final familyId = prefs.getString('family_id');
       final deviceId = prefs.getString('device_id');
 
-      if (familyId == null || deviceId == null) return;
+      if (familyId == null || deviceId == null) { print('SKS: STOP familyId=' + familyId.toString() + ' deviceId=' + deviceId.toString()); return; }
 
+      print('SKS: ECRITURE vers familyId=' + familyId + ' deviceId=' + deviceId);
       await _db
           .collection('families')
           .doc(familyId)
@@ -143,16 +180,27 @@ class FcmService {
           .set({
         'token': token,
         'deviceId': deviceId,
-        'platform': 'android',
+        'platform': kIsWeb ? 'web' : 'android',
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      if (kDebugMode) debugPrint('FCM token saved for device $deviceId');
+      print('SKS: TOKEN ENREGISTRE OK pour ' + deviceId);
     } catch (e) {
-      if (kDebugMode) debugPrint('Save FCM token error: $e');
+      print('SKS: ECRITURE ERREUR = ' + e.toString());
     }
   }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

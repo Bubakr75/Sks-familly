@@ -12,6 +12,7 @@ import '../models/immunity_lines.dart';
 import '../models/trade_model.dart';
 import '../models/tribunal_model.dart';
 import '../models/badge_model.dart';
+import '../models/pending_request.dart';
 import 'fcm_service.dart';
 import 'fcm_service.dart';
 
@@ -38,6 +39,7 @@ class FirestoreService {
   StreamSubscription? _tradesSub;
   StreamSubscription? _tribunalSub;
   StreamSubscription? _badgesSub;
+  StreamSubscription? _requestsSub;
   StreamSubscription? _screenTimeSub;
 
   Timer? _keepAliveTimer;
@@ -52,11 +54,13 @@ class FirestoreService {
   void Function(List<TradeModel>)? onTradesChanged;
   void Function(List<TribunalCase>)? onTribunalChanged;
   void Function(List<BadgeModel>)? onBadgesChanged;
+  void Function(List<PendingRequest>)? onRequestsChanged;
   void Function(Map<String, dynamic>)? onScreenTimeChanged;
 
   // â”€â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> init() async {
     try {
+      await FirebaseFirestore.instance.collection('debug_logs').add({'step': 'init demarre', 'at': FieldValue.serverTimestamp()});
       final prefs = await SharedPreferences.getInstance();
       _familyId = prefs.getString('family_id');
       _deviceId = prefs.getString('device_id');
@@ -64,6 +68,7 @@ class FirestoreService {
         _deviceId = _generateDeviceId();
         await prefs.setString('device_id', _deviceId!);
       }
+      await FirebaseFirestore.instance.collection('debug_logs').add({'step': 'familyId vaut', 'value': _familyId ?? 'NULL', 'at': FieldValue.serverTimestamp()});
       if (_familyId != null) {
         await FcmService().registerToken();
         _startListening();
@@ -71,6 +76,7 @@ class FirestoreService {
       }
     } catch (e) {
       if (kDebugMode) debugPrint('FirestoreService init error: $e');
+      try { await FirebaseFirestore.instance.collection('debug_logs').add({'step': 'init erreur', 'error': e.toString(), 'at': FieldValue.serverTimestamp()}); } catch (_) {}
     }
   }
 
@@ -329,6 +335,15 @@ class FirestoreService {
       onBadgesChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
 
+    _requestsSub = fRef.collection('requests').snapshots().listen((s) {
+      final list = s.docs.map((doc) {
+        final d = Map<String, dynamic>.from(doc.data());
+        d['id'] = doc.id;
+        return PendingRequest.fromMap(d);
+      }).toList();
+      onRequestsChanged?.call(list);
+    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
     _screenTimeSub = fRef.collection('screen_time').snapshots().listen((s) {
       _markDataReceived();
       final Map<String, dynamic> data = {};
@@ -349,6 +364,7 @@ class FirestoreService {
     _tradesSub?.cancel();
     _tribunalSub?.cancel();
     _badgesSub?.cancel();
+    _requestsSub?.cancel();
     _screenTimeSub?.cancel();
     _childrenSub = null;
     _historySub = null;
@@ -359,6 +375,7 @@ class FirestoreService {
     _tradesSub = null;
     _tribunalSub = null;
     _badgesSub = null;
+    _requestsSub = null;
     _screenTimeSub = null;
   }
 
@@ -514,6 +531,36 @@ class FirestoreService {
           .set(data);
     } catch (e) {
       if (kDebugMode) debugPrint('savePunishment error: $e');
+    }
+  }
+
+  Future<void> saveRequest(PendingRequest r) async {
+    if (_familyId == null) return;
+    try {
+      final data = r.toMap();
+      data['lastModifiedBy'] = deviceId;
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('requests')
+          .doc(r.id)
+          .set(data);
+    } catch (e) {
+      if (kDebugMode) debugPrint('saveRequest error: $e');
+    }
+  }
+
+  Future<void> deleteRequest(String rId) async {
+    if (_familyId == null) return;
+    try {
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('requests')
+          .doc(rId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) debugPrint('deleteRequest error: $e');
     }
   }
 
@@ -995,6 +1042,11 @@ class FirestoreService {
     }
   }
 }
+
+
+
+
+
 
 
 
