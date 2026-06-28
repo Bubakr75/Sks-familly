@@ -1,31 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/emerald_theme.dart';
 
 class ThemeProvider extends ChangeNotifier {
   bool _isDark = true;
   int _colorIndex = 0;
-  int _bgIndex = 0;
+  int _bgIndex = 4; // Forêt (émeraude) par défaut
 
   static const List<Color> accentColors = [
-    Color(0xFF7B68EE),
-    Color(0xFF00BCD4),
-    Color(0xFFFF7043),
-    Color(0xFF66BB6A),
-    Color(0xFFFFCA28),
-    Color(0xFFEC407A),
-    Color(0xFF9575CD),
-    Color(0xFF26C6DA),
+    EmeraldPalette.emerald,    // Émeraude (par défaut)
+    Color(0xFF7B68EE),         // Violet
+    Color(0xFF00BCD4),         // Cyan
+    Color(0xFFFF7043),         // Orange
+    Color(0xFFFFCA28),         // Jaune
+    Color(0xFFEC407A),         // Rose
+    Color(0xFF9575CD),         // Lavande
+    Color(0xFF26C6DA),         // Turquoise
   ];
 
   static const List<Map<String, dynamic>> backgroundColors = [
+    {'color': EmeraldPalette.background, 'label': 'Émeraude'},
     {'color': Color(0xFF0A0E21), 'label': 'Nuit'},
     {'color': Color(0xFF121212), 'label': 'Noir'},
     {'color': Color(0xFF1C1C2E), 'label': 'Ardoise'},
     {'color': Color(0xFF1A0F2E), 'label': 'Violet'},
-    {'color': Color(0xFF0F1E17), 'label': 'Foret'},
+    {'color': Color(0xFF0F1E17), 'label': 'Forêt'},
     {'color': Color(0xFF1E1114), 'label': 'Bordeaux'},
-    {'color': Color(0xFF0E1A2B), 'label': 'Ocean'},
-    {'color': Color(0xFF1E1B0F), 'label': 'Ambre'},
+    {'color': Color(0xFF0E1A2B), 'label': 'Océan'},
   ];
 
   bool get isDark => _isDark;
@@ -46,29 +47,30 @@ class ThemeProvider extends ChangeNotifier {
         useMaterial3: true,
         scaffoldBackgroundColor: bgColor,
         canvasColor: bgColor,
-        cardColor: bgColor.withValues(alpha: 0.8),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFFE8E8F0)),
-          bodyMedium: TextStyle(color: Color(0xFFD0D0DC)),
-          bodySmall: TextStyle(color: Color(0xFFB0B0C0)),
-          titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(color: Color(0xFFF0F0FF), fontWeight: FontWeight.w600),
+        cardColor: EmeraldPalette.surface,
+        textTheme: TextTheme(
+          bodyLarge: TextStyle(color: EmeraldPalette.textPrimary),
+          bodyMedium: TextStyle(color: EmeraldPalette.textPrimary),
+          bodySmall: TextStyle(color: EmeraldPalette.textSecondary),
+          titleLarge: TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.w600),
         ),
         appBarTheme: AppBarTheme(
           backgroundColor: bgColor,
-          foregroundColor: Colors.white,
+          foregroundColor: EmeraldPalette.textPrimary,
           elevation: 0,
-          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+          titleTextStyle: TextStyle(color: EmeraldPalette.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
         ),
         dialogTheme: DialogThemeData(
-          backgroundColor: Color.lerp(bgColor, Colors.white, 0.08)!,
-          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-          contentTextStyle: const TextStyle(color: Color(0xFFCCCCDD), fontSize: 14),
+          backgroundColor: EmeraldPalette.surface,
+          titleTextStyle: TextStyle(color: EmeraldPalette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+          contentTextStyle: TextStyle(color: EmeraldPalette.textSecondary, fontSize: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             foregroundColor: Colors.white,
+            backgroundColor: primary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
@@ -80,21 +82,21 @@ class ThemeProvider extends ChangeNotifier {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.07),
-          labelStyle: const TextStyle(color: Color(0xFF9999AA)),
-          hintStyle: const TextStyle(color: Color(0xFF666680)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+          fillColor: EmeraldPalette.surfaceLow,
+          labelStyle: TextStyle(color: EmeraldPalette.textSecondary),
+          hintStyle: TextStyle(color: EmeraldPalette.textMuted),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: EmeraldPalette.glassBorder)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: EmeraldPalette.glassBorder)),
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primary, width: 2)),
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: bgColor,
           selectedItemColor: primary,
-          unselectedItemColor: const Color(0xFF666680),
+          unselectedItemColor: EmeraldPalette.textMuted,
         ),
         snackBarTheme: SnackBarThemeData(
-          backgroundColor: Color.lerp(bgColor, Colors.white, 0.15),
-          contentTextStyle: const TextStyle(color: Colors.white),
+          backgroundColor: EmeraldPalette.surfaceHigh,
+          contentTextStyle: TextStyle(color: EmeraldPalette.textPrimary),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           behavior: SnackBarBehavior.floating,
         ),
@@ -108,6 +110,11 @@ class ThemeProvider extends ChangeNotifier {
             return Colors.white.withValues(alpha: 0.1);
           }),
         ),
+        dividerTheme: DividerThemeData(
+          color: EmeraldPalette.glassBorder,
+          thickness: 1,
+        ),
+        iconTheme: IconThemeData(color: EmeraldPalette.textPrimary),
       );
     } else {
       return ThemeData(

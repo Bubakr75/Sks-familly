@@ -753,7 +753,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           horizontal: isSelected ? 16 : 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? Colors.cyanAccent.withOpacity(0.12)
+                            ? EmeraldPalette.emerald.withValues(alpha: 0.12)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -765,8 +765,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             duration: const Duration(milliseconds: 200),
                             child: Icon(icons[i],
                                 color: isSelected
-                                    ? Colors.cyanAccent
-                                    : Colors.white38,
+                                    ? EmeraldPalette.emeraldLight
+                                    : EmeraldPalette.textMuted,
                                 size: 24),
                           ),
                           const SizedBox(height: 4),
@@ -774,8 +774,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             duration: const Duration(milliseconds: 200),
                             style: TextStyle(
                               color: isSelected
-                                  ? Colors.cyanAccent
-                                  : Colors.white38,
+                                  ? EmeraldPalette.emeraldLight
+                                  : EmeraldPalette.textMuted,
                               fontSize: isSelected ? 11 : 10,
                               fontWeight: isSelected
                                   ? FontWeight.bold
@@ -797,8 +797,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildDrawer(BuildContext context, bool isParent) {
-    const drawerBg = Color(0xFF0D1B2E);
-    const accentColor = Colors.cyanAccent;
+    const drawerBg = EmeraldPalette.background;
+    const accentColor = EmeraldPalette.emeraldLight;
     return Drawer(
       backgroundColor: drawerBg,
       child: SafeArea(

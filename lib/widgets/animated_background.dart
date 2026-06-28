@@ -87,10 +87,10 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
   @override
   Widget build(BuildContext context) {
     final defaultColors = [
-      const Color(0xFF0A0A1A),
-      const Color(0xFF0D1B2A),
-      const Color(0xFF1B1040),
-      const Color(0xFF0A0A1A),
+      const Color(0xFF051410),
+      const Color(0xFF0A1F1A),
+      const Color(0xFF0F2620),
+      const Color(0xFF051410),
     ];
     final bgColors = widget.colors ?? defaultColors;
 
