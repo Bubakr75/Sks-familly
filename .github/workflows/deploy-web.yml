@@ -1,0 +1,68 @@
+name: Deploy Web to Firebase
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Deploy Web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Create missing asset folders
+        run: |
+          mkdir -p assets/animations assets/images
+
+      - name: Inject service account
+        run: echo "${{ secrets.SERVICE_ACCOUNT_BASE64 }}" | base64 --decode > assets/service_account.json
+
+      - name: Inject Gemini API Key
+        run: |
+          python3 - << 'PYEOF'
+          import os
+          api_key = os.environ.get('GEMINI_API_KEY', '').replace('\n', '').replace('\r', '').strip()
+          with open('lib/services/gemini_service.dart', 'r') as f:
+              content = f.read()
+          content = content.replace("String.fromEnvironment('GEMINI_API_KEY')", "'" + api_key + "'")
+          with open('lib/services/gemini_service.dart', 'w') as f:
+              f.write(content)
+          print("OK longueur: " + str(len(api_key)))
+          PYEOF
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Build Web
+        run: flutter build web --release --no-tree-shake-icons
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: sks-familly-3f205
+          channelId: live
+          entryPoint: './'
+        env:
+          FIREBASE_CLI_PREVIEWS: hostingchannels
