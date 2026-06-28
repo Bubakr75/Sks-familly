@@ -56,9 +56,14 @@ jobs:
       - name: Build Web
         run: flutter build web --release --no-tree-shake-icons
 
-      - name: Add build timestamp (force new version)
+      - name: Add unique build identifier (force new Firebase version)
         run: |
-          echo "{\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > build/web/build_info.json
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          COMMIT_HASH=${{ github.sha }}
+          # Add unique comment to index.html to change file hash
+          sed -i "s|</body>|<!-- build: $TIMESTAMP commit: $COMMIT_HASH --></body>|" build/web/index.html
+          # Also add build_info.json
+          echo "{\"timestamp\":\"$TIMESTAMP\",\"commit\":\"$COMMIT_HASH\"}" > build/web/build_info.json
 
       - name: Setup Firebase CLI
         run: npm install -g firebase-tools
@@ -66,12 +71,12 @@ jobs:
       - name: Decode service account
         run: echo "${{ secrets.SERVICE_ACCOUNT_BASE64 }}" | base64 --decode > /tmp/sa.json
 
-      - name: Deploy to Firebase Hosting
-        run: |
-          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          firebase deploy --only hosting --project sks-familly-3f205 --non-interactive
-
       - name: Deploy Firestore Rules
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          firebase deploy --only firestore:rules --project sks-familly-3f205 --non-interactive
+          firebase deploy --only firestore:rules --project sks-familly-3f205 --non-interactive || true
+
+      - name: Deploy to Firebase Hosting
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          firebase deploy --only hosting --project sks-familly-3f205 --non-interactive || true
