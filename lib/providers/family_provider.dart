@@ -15,6 +15,7 @@ import '../models/immunity_lines.dart';
 import '../models/tribunal_model.dart';
 import '../models/trade_model.dart';
 import '../models/pending_request.dart';
+import '../models/parent_profile.dart';
 import '../services/firestore_service.dart';
 
 class FamilyProvider extends ChangeNotifier {
@@ -42,6 +43,7 @@ class FamilyProvider extends ChangeNotifier {
   List<ImmunityLines>   _immunities    = [];
   List<TribunalCase>    _tribunalCases = [];
   List<BadgeModel>      _customBadges  = [];
+  List<ParentProfile>   _parentProfiles = [];
   List<TradeModel>      _trades        = [];
   List<PendingRequest>  _pendingRequests = [];
 
@@ -84,6 +86,7 @@ class FamilyProvider extends ChangeNotifier {
   List<BadgeModel>      get customBadges      => _customBadges;
   List<TradeModel>      get trades            => _trades;
   List<PendingRequest>  get pendingRequests   => _pendingRequests;
+  List<ParentProfile>   get parentProfiles    => _parentProfiles;
   String?               get familyCode        => _familyCode;
   String?               get familyId          => _familyCode;
   bool                  get isSyncEnabled     => _firestore.isConnected;
@@ -263,6 +266,10 @@ class FamilyProvider extends ChangeNotifier {
       for (final entry in data.entries) {
         _screenTimeBox.put(entry.key, entry.value);
       }
+      notifyListeners();
+    };
+    _firestore.onParentProfilesChanged = (list) {
+      _parentProfiles = list;
       notifyListeners();
     };
   }
@@ -810,6 +817,19 @@ class FamilyProvider extends ChangeNotifier {
     }
     if (_firestore.isConnected) await _firestore.deleteCustomBadge(id);
     notifyListeners();
+  }
+
+  // ─── Profils parents ─────────────────────────────────────────────────
+  Future<void> saveParentProfile(ParentProfile profile) async {
+    if (_firestore.isConnected) {
+      await _firestore.saveParentProfile(profile);
+    }
+  }
+
+  Future<void> deleteParentProfile(String id) async {
+    if (_firestore.isConnected) {
+      await _firestore.deleteParentProfile(id);
+    }
   }
 
   // â”€â”€â”€ Temps Ã©cran â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

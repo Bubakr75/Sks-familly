@@ -11,6 +11,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/quick_shortcut_panel.dart';
 import 'pin_verification_screen.dart';
+import 'profile_selection_screen.dart';
 import 'dashboard_screen.dart';
 import 'add_points_screen.dart';
 import 'calendar_screen.dart';
@@ -648,63 +649,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
                   child: EmeraldModeBanner(
                     isParentMode: isParent,
-                    parentName: widget.parentName,
+                    parentName: pinProvider.currentParentName,
                     childName: familyProvider.children.isNotEmpty
                         ? familyProvider.children.first.name
                         : 'Enfant',
                     onLockTap: isParent
                         ? () {
-                            // Verrouiller le mode parent → repasse en mode enfant
+                            // Verrouiller le mode parent → retour à l'écran de sélection de profil
                             context.read<PinProvider>().lockParentMode();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Row(
-                                  children: [
-                                    Icon(Icons.lock_rounded,
-                                        color: Colors.white, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Mode parent verrouille'),
-                                  ],
-                                ),
-                                backgroundColor: EmeraldPalette.emeraldDark,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        : null,
-                    // Bouton "Mode Parent" : ouvre l'écran PIN pour activer le mode parent
-                    onUnlockTap: !isParent
-                        ? () {
-                            Navigator.push<bool>(
+                            Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
                                   builder: (_) =>
-                                      const PinVerificationScreen()),
-                            ).then((result) {
-                              if (result == true) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Row(
-                                      children: [
-                                        Icon(Icons.shield_rounded,
-                                            color: Colors.white, size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Mode parent active'),
-                                      ],
-                                    ),
-                                    backgroundColor: EmeraldPalette.gold,
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12)),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              }
-                            });
+                                      const ProfileSelectionScreen()),
+                            );
+                          }
+                        : null,
+                    // Bouton "Mode Parent" : retour à l'écran de sélection de profil
+                    onUnlockTap: !isParent
+                        ? () {
+                            context.read<PinProvider>().lockParentMode();
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ProfileSelectionScreen()),
+                            );
                           }
                         : null,
                   ),

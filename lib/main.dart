@@ -14,6 +14,7 @@ import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'screens/profile_selection_screen.dart';
 import 'services/notification_service.dart';
 import 'services/update_service.dart';
 
@@ -194,6 +195,6 @@ class _StartupRouterState extends State<_StartupRouter> {
 
   @override
   Widget build(BuildContext context) {
-    return const WelcomeScreen();
+    return const ProfileSelectionScreen();
   }
 }

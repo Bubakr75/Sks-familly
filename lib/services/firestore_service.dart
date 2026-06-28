@@ -13,6 +13,7 @@ import '../models/trade_model.dart';
 import '../models/tribunal_model.dart';
 import '../models/badge_model.dart';
 import '../models/pending_request.dart';
+import '../models/parent_profile.dart';
 import 'fcm_service.dart';
 import 'fcm_service.dart';
 
@@ -41,6 +42,7 @@ class FirestoreService {
   StreamSubscription? _badgesSub;
   StreamSubscription? _requestsSub;
   StreamSubscription? _screenTimeSub;
+  StreamSubscription? _parentProfilesSub;
 
   Timer? _keepAliveTimer;
   DateTime _lastDataReceived = DateTime.now();
@@ -56,6 +58,7 @@ class FirestoreService {
   void Function(List<BadgeModel>)? onBadgesChanged;
   void Function(List<PendingRequest>)? onRequestsChanged;
   void Function(Map<String, dynamic>)? onScreenTimeChanged;
+  void Function(List<ParentProfile>)? onParentProfilesChanged;
 
   // â”€â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> init() async {
@@ -352,6 +355,18 @@ class FirestoreService {
       }
       onScreenTimeChanged?.call(data);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
+    // ─── Profils parents ───
+    _parentProfilesSub = fRef.collection('parent_profiles').snapshots().listen((s) {
+      _markDataReceived();
+      final list = s.docs.map((doc) {
+        final d = Map<String, dynamic>.from(doc.data());
+        d['id'] = doc.id;
+        return ParentProfile.fromMap(d);
+      }).toList();
+      list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      onParentProfilesChanged?.call(list);
+    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
   }
 
   void _stopListening() {
@@ -366,6 +381,7 @@ class FirestoreService {
     _badgesSub?.cancel();
     _requestsSub?.cancel();
     _screenTimeSub?.cancel();
+    _parentProfilesSub?.cancel();
     _childrenSub = null;
     _historySub = null;
     _goalsSub = null;
@@ -377,6 +393,7 @@ class FirestoreService {
     _badgesSub = null;
     _requestsSub = null;
     _screenTimeSub = null;
+    _parentProfilesSub = null;
   }
 
   // â”€â”€â”€ WRITE : Children â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1039,6 +1056,37 @@ class FirestoreService {
     } catch (e) {
       if (kDebugMode) debugPrint('forceRefresh error: $e');
       reconnect();
+    }
+  }
+
+  // ─── Profils parents ──────────────────────────────────────────────────
+  Future<void> saveParentProfile(ParentProfile profile) async {
+    if (_familyId == null) return;
+    try {
+      final data = profile.toMap();
+      data['lastModifiedBy'] = deviceId;
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('parent_profiles')
+          .doc(profile.id)
+          .set(data);
+    } catch (e) {
+      if (kDebugMode) debugPrint('saveParentProfile error: $e');
+    }
+  }
+
+  Future<void> deleteParentProfile(String profileId) async {
+    if (_familyId == null) return;
+    try {
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('parent_profiles')
+          .doc(profileId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) debugPrint('deleteParentProfile error: $e');
     }
   }
 }

@@ -2,12 +2,16 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/parent_profile.dart';
 
 class PinProvider extends ChangeNotifier {
   String? _hashedPin;
   bool _isParentMode = false;
   DateTime? _lastActivity;
-  static const _timeout = Duration(minutes: 30); // 30 min avant verrouillage auto
+
+  // Plus de timeout : une fois en mode parent, on y reste jusqu'à verrouillage
+  // manuel ou fermeture de l'app.
+  // (sécurité conservée : au démarrage de l'app, toujours en mode enfant)
 
   // Anti-brute force
   int _failedAttempts = 0;
@@ -15,8 +19,13 @@ class PinProvider extends ChangeNotifier {
   static const _maxAttempts = 3;
   static const _lockoutDuration = Duration(minutes: 2);
 
+  // Profil parent actuellement connecté (pour afficher son nom + photo)
+  ParentProfile? _currentParentProfile;
+
   bool get isPinSet     => _hashedPin != null && _hashedPin!.isNotEmpty;
   bool get isParentMode => _isParentMode;
+  ParentProfile? get currentParentProfile => _currentParentProfile;
+  String get currentParentName => _currentParentProfile?.name ?? 'Parent';
 
   /// True si le compte est temporairement bloqué (trop de tentatives échouées)
   bool get isLockedOut =>
@@ -47,16 +56,14 @@ class PinProvider extends ChangeNotifier {
       await prefs.remove('parent_pin');
     }
 
-    // ⚠️ CORRIGÉ : NE JAMAIS restaurer _isParentMode depuis prefs.
-    // Au démarrage, on est TOUJOURS en mode enfant, même si l'app a été
-    // fermée en mode parent. Sinon un enfant qui ouvre l'app serait
-    // directement en mode parent sans taper le PIN.
+    // ⚠️ Sécurité : au démarrage, TOUJOURS en mode enfant.
+    // Le mode parent n'est JAMAIS restauré depuis prefs.
     _isParentMode = false;
     _lastActivity = null;
     _failedAttempts = 0;
     _lockoutUntil = null;
+    _currentParentProfile = null;
 
-    // Nettoyer l'ancienne valeur persistée (au cas où elle existerait)
     await prefs.remove('is_parent_mode');
 
     notifyListeners();
@@ -66,16 +73,11 @@ class PinProvider extends ChangeNotifier {
     _lastActivity = DateTime.now();
   }
 
+  /// Vérifie si on peut faire une action parent.
+  /// Plus de timeout : si on est en mode parent, on y reste.
   bool canPerformParentAction() {
     if (!isPinSet)      return true;
     if (!_isParentMode) return false;
-    if (_lastActivity == null) return false;
-    if (DateTime.now().difference(_lastActivity!) > _timeout) {
-      _isParentMode = false;
-      _lastActivity = null;
-      notifyListeners();
-      return false;
-    }
     refreshActivity();
     return true;
   }
@@ -90,7 +92,6 @@ class PinProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('parent_pin_hashed', _hashedPin!);
     await prefs.remove('parent_pin');
-    // ⚠️ NE PAS sauvegarder is_parent_mode en prefs
     notifyListeners();
   }
 
@@ -100,6 +101,7 @@ class PinProvider extends ChangeNotifier {
     _lastActivity = null;
     _failedAttempts = 0;
     _lockoutUntil = null;
+    _currentParentProfile = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('parent_pin_hashed');
     await prefs.remove('parent_pin');
@@ -108,8 +110,7 @@ class PinProvider extends ChangeNotifier {
   }
 
   /// Vérifie le PIN. Retourne true si correct, false sinon.
-  /// Gère en interne le blocage anti-brute-force (3 essais → 2 min de blocage).
-  /// Vérifier [isLockedOut] avant d'appeler pour savoir si le compte est bloqué.
+  /// Gère le blocage anti-brute-force.
   bool verifyPin(String rawInput) {
     if (isLockedOut) return false;
     if (_hashedPin == null) return false;
@@ -120,7 +121,6 @@ class PinProvider extends ChangeNotifier {
       _lastActivity = DateTime.now();
       _failedAttempts = 0;
       _lockoutUntil = null;
-      // ⚠️ NE PAS sauvegarder is_parent_mode en prefs
       notifyListeners();
       return true;
     } else {
@@ -134,6 +134,16 @@ class PinProvider extends ChangeNotifier {
     }
   }
 
+  /// Active le mode parent avec un profil parent spécifique (papa, maman, etc.)
+  void unlockParentModeWithProfile(ParentProfile profile) {
+    _isParentMode = true;
+    _lastActivity = DateTime.now();
+    _currentParentProfile = profile;
+    _failedAttempts = 0;
+    _lockoutUntil = null;
+    notifyListeners();
+  }
+
   void unlockParentMode() {
     _isParentMode = true;
     _lastActivity = DateTime.now();
@@ -143,6 +153,7 @@ class PinProvider extends ChangeNotifier {
   void lockParentMode() {
     _isParentMode = false;
     _lastActivity = null;
+    _currentParentProfile = null;
     notifyListeners();
   }
 
@@ -150,6 +161,7 @@ class PinProvider extends ChangeNotifier {
     if (!isPinSet) return;
     _isParentMode = false;
     _lastActivity = null;
+    _currentParentProfile = null;
     notifyListeners();
   }
 }
