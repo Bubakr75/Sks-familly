@@ -66,4 +66,4 @@ jobs:
       - name: Deploy to Firebase Hosting
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          firebase deploy --only hosting --project sks-familly-3f205 --non-interactive
+          firebase deploy --only hosting --project sks-familly-3f205 --non-interactive --force
