@@ -17,7 +17,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
 
-// â”€â”€â”€ Arc screen-time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Arc screen-time ─────────────────────────────────────────
 class _ScreenTimePainter extends CustomPainter {
   final double progress;
   final double animValue;
@@ -62,16 +62,16 @@ class _ScreenTimePainter extends CustomPainter {
       old.progress != progress || old.animValue != animValue;
 }
 
-// â”€â”€â”€ ModÃ¨le badge personnalisÃ© local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Modèle badge personnalisé local ─────────────────────────
 class _CustomBadgeItem {
   String emoji;
   String label;
   _CustomBadgeItem({required this.emoji, required this.label});
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────
 //  MAIN WIDGET
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────
 class ChildDashboardScreen extends StatefulWidget {
   final String? childId;
   const ChildDashboardScreen({super.key, this.childId});
@@ -98,7 +98,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   String _historyFilter = 'Tout';
   static const _historyFilters = [
-    'Tout', 'Bonus', 'Punition', 'ImmunitÃ©', 'Tribunal', 'Ã‰cole', 'Ã‰change',
+    'Tout', 'Bonus', 'Punition', 'Immunité', 'Tribunal', 'École', 'Échange',
   ];
 
   Set<int> _joursSources = {0, 1, 2, 3, 4};
@@ -162,7 +162,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     super.dispose();
   }
 
-  // â”€â”€â”€ Prefs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Prefs ───────────────────────────────────────────────
   Future<void> _loadPrefs(String childId) async {
     final prefs  = await SharedPreferences.getInstance();
     final raw    = prefs.getStringList('custom_badges_$childId') ?? [];
@@ -192,7 +192,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await prefs.setStringList('hidden_badges_$childId', _hiddenDefaultBadgeIds);
   }
 
-  // â”€â”€â”€ Badges perso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Badges perso ────────────────────────────────────────
   Future<void> _addCustomBadge(String childId) async {
     final emojiCtrl = TextEditingController();
     final labelCtrl = TextEditingController();
@@ -204,7 +204,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             style: TextStyle(color: Colors.white)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           const Text(
-            'ðŸ’¡ Appuie sur le champ Ã©moji et utilise le clavier de ton tÃ©lÃ©phone',
+            'ðŸ’¡ Appuie sur le champ émoji et utilise le clavier de ton téléphone',
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
           const SizedBox(height: 12),
@@ -214,7 +214,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             textAlign:    TextAlign.center,
             keyboardType: TextInputType.text,
             decoration: InputDecoration(
-              labelText:  'Ã‰moji',
+              labelText:  'Émoji',
               labelStyle: const TextStyle(color: Colors.white54),
               hintText:   'ðŸ†',
               hintStyle:  const TextStyle(color: Colors.white24),
@@ -284,7 +284,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await _saveHiddenBadges(childId);
   }
 
-  // â”€â”€â”€ Couleurs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Couleurs ────────────────────────────────────────────
   Color _childColor(ChildModel child) {
     if (child.accentColorHex != null) {
       try {
@@ -312,10 +312,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Color _categoryColor(HistoryEntry e) {
     final cat = e.category.toLowerCase();
     if (cat.contains('punition') || cat.contains('penalty')) return Colors.redAccent;
-    if (cat.contains('immunitÃ©') || cat.contains('immunity')) return Colors.amberAccent;
+    if (cat.contains('immunité') || cat.contains('immunity')) return Colors.amberAccent;
     if (cat.contains('tribunal') || cat.contains('verdict')) return Colors.purpleAccent;
-    if (cat.contains('school') || cat.contains('Ã©cole') || cat.contains('note')) return Colors.blueAccent;
-    if (cat.contains('Ã©change') || cat.contains('trade')) return Colors.tealAccent;
+    if (cat.contains('school') || cat.contains('école') || cat.contains('note')) return Colors.blueAccent;
+    if (cat.contains('échange') || cat.contains('trade')) return Colors.tealAccent;
     if (cat.contains('screen')) return Colors.cyanAccent;
     if (e.isBonus) return Colors.greenAccent;
     return Colors.redAccent;
@@ -324,16 +324,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   String _categoryEmoji(HistoryEntry e) {
     final cat = e.category.toLowerCase();
     if (cat.contains('punition')) return 'ðŸ“';
-    if (cat.contains('immunitÃ©')) return 'ðŸ›¡ï¸';
+    if (cat.contains('immunité')) return 'ðŸ›¡ï¸';
     if (cat.contains('tribunal') || cat.contains('verdict')) return 'âš–ï¸';
     if (cat.contains('school') || cat.contains('note')) return 'ðŸ“š';
-    if (cat.contains('Ã©change') || cat.contains('trade')) return 'ðŸ”„';
+    if (cat.contains('échange') || cat.contains('trade')) return 'ðŸ”„';
     if (cat.contains('screen')) return 'ðŸ“º';
     if (e.isBonus) return 'âœ…';
     return 'âŒ';
   }
 
-  // â”€â”€â”€ Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Avatar ──────────────────────────────────────────────
   Widget _buildAvatar(ChildModel child, double radius,
       {bool showFrame = true}) {
     final color      = _childColor(child);
@@ -397,7 +397,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 color:      color)),
       );
 
-  // â”€â”€â”€ SÃ©lecteur enfant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Sélecteur enfant ────────────────────────────────────
   void _showChildSwitcher(FamilyProvider fp) {
     showModalBottomSheet(
       context: context,
@@ -434,7 +434,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // â”€â”€â”€ Edition photo / banniÃ¨re / slogan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Edition photo / bannière / slogan ───────────────────
   Future<void> _editPhoto(ChildModel child, FamilyProvider fp) async {
     final xfile = await ImagePicker().pickImage(
         source: ImageSource.gallery, imageQuality: 80, maxWidth: 600);
@@ -532,9 +532,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   //  BUILD
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(builder: (context, fp, _) {
@@ -589,7 +589,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             unselectedLabelColor: Colors.white38,
             tabs: const [
               Tab(icon: Icon(Icons.person),      text: 'Profil'),
-              Tab(icon: Icon(Icons.tv),           text: 'Ã‰cran'),
+              Tab(icon: Icon(Icons.tv),           text: 'Écran'),
               Tab(icon: Icon(Icons.history),      text: 'Historique'),
               Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
             ],
@@ -613,9 +613,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     });
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════
   //  TAB PROFIL
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════
   // ─── Proposition enfant (penalite / immunite) avec validation parentale ───
   void _showProposeRequestDialog(BuildContext context, FamilyProvider fp, ChildModel child, String type) {
     final isPenalite = type == 'punishment';
@@ -899,9 +899,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               padding: const EdgeInsets.all(20),
               child: Column(children: [
 
-                // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                // BANNIÃˆRE â€” pleine largeur, 200 px, centrÃ©e
-                // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                // ══════════════════════════════════════════
+                // BANNIÃˆRE "” pleine largeur, 200 px, centrée
+                // ══════════════════════════════════════════
                 if (child.bannerBase64 != null &&
                     child.bannerBase64!.isNotEmpty) ...[
                   ClipRRect(
@@ -912,7 +912,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       child: Image.memory(
                         base64Decode(child.bannerBase64!),
                         fit:       BoxFit.cover,
-                        alignment: Alignment.center, // â† CENTRÃ‰ SUR LE VISAGE
+                        alignment: Alignment.center, // â† CENTRÉ SUR LE VISAGE
                       ),
                     ),
                   ),
@@ -1006,7 +1006,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
-                label: const Text('BanniÃ¨re ðŸ–¼ï¸', style: TextStyle(fontSize: 11)),
+                label: const Text('Bannière ðŸ–¼ï¸', style: TextStyle(fontSize: 11)),
               ),
             ),
             const SizedBox(width: 8),
@@ -1021,7 +1021,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: true),
                 icon:  const Icon(Icons.lock, size: 16),
-                label: const Text('BanniÃ¨re ðŸ”’', style: TextStyle(fontSize: 11)),
+                label: const Text('Bannière ðŸ”’', style: TextStyle(fontSize: 11)),
               ),
             ),
           ]),
@@ -1069,9 +1069,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       childAspectRatio:  1.6,
       children: [
         _statCard('ðŸŽ¯', 'Bonus',     '$bonuses',   Colors.greenAccent),
-        _statCard('âš¡', 'PÃ©nalitÃ©s', '$penalties', Colors.redAccent),
-        _statCard('ðŸ†', 'Niveau',    '${child.level} â€“ ${child.levelTitle}', color),
-        _statCard('ðŸ›¡ï¸', 'ImmunitÃ©s',
+        _statCard('âš¡', 'Pénalités', '$penalties', Colors.redAccent),
+        _statCard('ðŸ†', 'Niveau',    '${child.level} "“ ${child.levelTitle}', color),
+        _statCard('ðŸ›¡ï¸', 'Immunités',
             '${fp.getTotalAvailableImmunity(child.id)} lignes',
             Colors.amberAccent),
       ],
@@ -1092,9 +1092,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ]),
       );
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  //  TAB Ã‰CRAN
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════
+  //  TAB ÉCRAN
+  // ════════════════════════════════════════════════════════
   Widget _buildScreenTab(ChildModel child, FamilyProvider fp, Color color) {
     final immunities    = fp.getUsableImmunitiesForChild(child.id);
     final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);
@@ -1120,25 +1120,25 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text('ðŸ“Š RÃ©sumÃ©',
+              Text('ðŸ“Š Résumé',
                   style: TextStyle(
                       color: color, fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 8),
-              _infoRow('ðŸ›¡ï¸ ImmunitÃ©s', '$immunityBonus lignes', Colors.amberAccent),
+              _infoRow('ðŸ›¡ï¸ Immunités', '$immunityBonus lignes', Colors.amberAccent),
               _infoRow('â±ï¸ Bonus parent',
                   '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
                   Colors.greenAccent),
-              _infoRow('ðŸ“… Jour affichÃ©', _selectedDay!, color),
-              _infoRow('â° Temps Ã©cran calculÃ©', _formatMinutes(minutes), Colors.white),
+              _infoRow('ðŸ“… Jour affiché', _selectedDay!, color),
+              _infoRow('â° Temps écran calculé', _formatMinutes(minutes), Colors.white),
               if (_joursSources.isNotEmpty) ...[
                 const Divider(color: Colors.white12, height: 20),
                 _infoRow(
-                    'ðŸ“š Moy. scolaire (jours cochÃ©s)',
+                    'ðŸ“š Moy. scolaire (jours cochés)',
                     schoolAvg >= 0
                         ? '${schoolAvg.toStringAsFixed(1)}/20'
                         : 'Aucune note',
                     Colors.purpleAccent),
-                _infoRow('ðŸ˜Š Comportement (jours cochÃ©s)',
+                _infoRow('ðŸ˜Š Comportement (jours cochés)',
                     '${behaviorScore.toStringAsFixed(1)}/20',
                     Colors.lightBlueAccent),
                 _infoRow('ðŸŒŸ Score global',
@@ -1235,7 +1235,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           alignment: Alignment.centerLeft,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text('ðŸ“… Jour pour le temps d\'Ã©cran',
+            child: Text('ðŸ“… Jour pour le temps d\'écran',
                 style: TextStyle(
                     color: color.withOpacity(0.8),
                     fontSize: 12,
@@ -1290,7 +1290,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w900,
                       fontSize: 28)),
-              const Text('temps Ã©cran',
+              const Text('temps écran',
                   style: TextStyle(color: Colors.white54, fontSize: 12)),
             ]),
           ]),
@@ -1333,7 +1333,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          const Text('ðŸ›¡ï¸ ImmunitÃ©s disponibles',
+          const Text('ðŸ›¡ï¸ Immunités disponibles',
               style: TextStyle(
                   color: Colors.amberAccent, fontWeight: FontWeight.bold,
                   fontSize: 14)),
@@ -1447,9 +1447,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return '${h}h${m.toString().padLeft(2, '0')}';
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════
   //  TAB HISTORIQUE
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════
   Widget _buildHistoryTab(ChildModel child, FamilyProvider fp, Color color) {
     final allEntries = fp.getHistoryForChild(child.id)
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -1462,18 +1462,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               case 'Bonus':
                 return e.isBonus &&
                     !cat.contains('punition') &&
-                    !cat.contains('immunitÃ©') &&
+                    !cat.contains('immunité') &&
                     !cat.contains('tribunal') &&
                     !cat.contains('school') &&
                     !cat.contains('note') &&
-                    !cat.contains('Ã©change');
+                    !cat.contains('échange');
               case 'Punition':   return cat.contains('punition');
-              case 'ImmunitÃ©':   return cat.contains('immunitÃ©') || cat.contains('immunity');
+              case 'Immunité':   return cat.contains('immunité') || cat.contains('immunity');
               case 'Tribunal':   return cat.contains('tribunal') || cat.contains('verdict');
-              case 'Ã‰cole':
+              case 'École':
                 return cat.contains('school') || cat.contains('note') ||
-                    cat.contains('Ã©cole') || cat.contains('saturday');
-              case 'Ã‰change':    return cat.contains('Ã©change') || cat.contains('trade');
+                    cat.contains('école') || cat.contains('saturday');
+              case 'Échange':    return cat.contains('échange') || cat.contains('trade');
               default:           return true;
             }
           }).toList();
@@ -1484,7 +1484,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return SingleChildScrollView(
       padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
       child: Column(children: [
-        // â”€â”€ RÃ©sumÃ© â”€â”€
+        // ── Résumé ──
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1492,7 +1492,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _histStat('âœ… Bonus',     '$bonuses',   Colors.greenAccent),
-                _histStat('âŒ PÃ©nalitÃ©s', '$penalties', Colors.redAccent),
+                _histStat('âŒ Pénalités', '$penalties', Colors.redAccent),
                 _histStat('ðŸ“‹ Total',
                     '${allEntries.length}', Colors.white70),
               ],
@@ -1501,7 +1501,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 12),
 
-        // â”€â”€ Filtres â”€â”€
+        // ── Filtres ──
         SizedBox(
           height: 36,
           child: ListView.separated(
@@ -1537,14 +1537,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 12),
 
-        // â”€â”€ Liste â”€â”€
+        // ── Liste ──
         if (filtered.isEmpty)
           Padding(
             padding: const EdgeInsets.all(32),
             child: Column(children: [
               const Text('ðŸ“­', style: TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
-              Text('Aucune entrÃ©e dans Â« $_historyFilter Â»',
+              Text('Aucune entrée dans Â« $_historyFilter Â»',
                   style: const TextStyle(
                       color: Colors.white54, fontSize: 13),
                   textAlign: TextAlign.center),
@@ -1654,11 +1654,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════
   //  TAB BADGES
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
-  // âœ… CORRIGÃ‰ : fp.badges â†’ BadgeModel.defaultBadges + fp.customBadges
+  // âœ… CORRIGÉ : fp.badges â†’ BadgeModel.defaultBadges + fp.customBadges
   final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
 
   final earned = allBadges
@@ -1676,11 +1676,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-      // â”€â”€ Badges personnalisÃ©s â”€â”€
+      // ── Badges personnalisés ──
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('â­ Badges personnalisÃ©s',
+          Text('â­ Badges personnalisés',
               style: TextStyle(
                   color: color, fontWeight: FontWeight.bold, fontSize: 14)),
           IconButton(
@@ -1692,7 +1692,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       if (_customLocalBadges.isEmpty)
         const Padding(
           padding: EdgeInsets.only(bottom: 12),
-          child: Text('Aucun badge personnalisÃ©. Appuie sur + pour en ajouter.',
+          child: Text('Aucun badge personnalisé. Appuie sur + pour en ajouter.',
               style: TextStyle(color: Colors.white38, fontSize: 12)),
         )
       else
@@ -1748,7 +1748,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       const Divider(color: Colors.white12),
       const SizedBox(height: 8),
 
-      // â”€â”€ Badges obtenus â”€â”€
+      // ── Badges obtenus ──
       Text('ðŸ† Badges obtenus (${earned.length})',
           style: TextStyle(
               color: color, fontWeight: FontWeight.bold, fontSize: 14)),
@@ -1807,7 +1807,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           onPressed: () => _resetHiddenBadges(child.id),
           icon:  const Icon(Icons.visibility, size: 16, color: Colors.white38),
           label: Text(
-              'Afficher les ${_hiddenDefaultBadgeIds.length} badge(s) masquÃ©(s)',
+              'Afficher les ${_hiddenDefaultBadgeIds.length} badge(s) masqué(s)',
               style: const TextStyle(color: Colors.white38, fontSize: 12)),
         ),
       ],
@@ -1816,14 +1816,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       const Divider(color: Colors.white12),
       const SizedBox(height: 8),
 
-      // â”€â”€ Badges verrouillÃ©s â”€â”€
-      Text('ðŸ”’ Badges Ã  dÃ©bloquer (${locked.length})',
+      // ── Badges verrouillés ──
+      Text('ðŸ”’ Badges Ã  débloquer (${locked.length})',
           style: const TextStyle(
               color: Colors.white54, fontWeight: FontWeight.bold,
               fontSize: 14)),
       const SizedBox(height: 8),
       if (locked.isEmpty)
-        const Text('Tous les badges ont Ã©tÃ© dÃ©bloquÃ©s ! ðŸŽ‰',
+        const Text('Tous les badges ont été débloqués ! ðŸŽ‰',
             style: TextStyle(color: Colors.white38, fontSize: 12))
       else
         Wrap(

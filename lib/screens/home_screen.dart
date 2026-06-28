@@ -502,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 overflow:
                                                     TextOverflow.ellipsis),
                                             Text(
-                                                '${entry.date.day}/${entry.date.month}/${entry.date.year} â€¢ ${entry.actionBy}',
+                                                '${entry.date.day}/${entry.date.month}/${entry.date.year} "¢ ${entry.actionBy}',
                                                 style: const TextStyle(
                                                     color: Colors.white38,
                                                     fontSize: 11)),

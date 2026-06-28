@@ -68,9 +68,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     });
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   // DIALOGUE PUNITION MULTI-ENFANTS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   void _showAddPunishmentDialog(BuildContext context, FamilyProvider fp) {
     final selectedChildren =
         fp.children.where((c) => _selectedIds.contains(c.id)).toList();
@@ -82,11 +82,11 @@ class _BalanceScreenState extends State<BalanceScreen>
 
     const descPresets = [
       'Insolence ðŸ˜¤',
-      'DÃ©sobÃ©issance ðŸ™‰',
+      'Désobéissance ðŸ™‰',
       'Dispute ðŸ‘Š',
       'Mensonge ðŸ¤¥',
       'Manque de respect ðŸ˜¡',
-      'BÃªtise ðŸ˜ˆ',
+      'Bêtise ðŸ˜ˆ',
     ];
 
     showModalBottomSheet(
@@ -117,8 +117,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                       const SizedBox(width: 8),
                       Text(
                         selectedChildren.length == 1
-                            ? 'Punition â€” ${selectedChildren.first.name}'
-                            : 'Punition â€” ${selectedChildren.length} enfants',
+                            ? 'Punition "” ${selectedChildren.first.name}'
+                            : 'Punition "” ${selectedChildren.length} enfants',
                         style: const TextStyle(
                             color: Colors.orangeAccent,
                             fontSize: 18,
@@ -175,7 +175,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     controller: descCtrl,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: 'Ou motif personnalisÃ©...',
+                      hintText: 'Ou motif personnalisé...',
                       hintStyle: const TextStyle(color: Colors.white38),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.06),
@@ -261,7 +261,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                             color: Colors.orangeAccent.withOpacity(0.3)),
                       ),
                       child: Text(
-                        'âš ï¸ ${selectedChildren.length} punitions de $nbLines lignes seront crÃ©Ã©es',
+                        'âš ï¸ ${selectedChildren.length} punitions de $nbLines lignes seront créées',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                             color: Colors.orangeAccent, fontSize: 13),
@@ -292,8 +292,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                         });
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(selectedChildren.length == 1
-                              ? 'ðŸ“ $nbLines lignes ajoutÃ©es Ã  ${selectedChildren.first.name}'
-                              : 'ðŸ“ $nbLines lignes ajoutÃ©es Ã  ${selectedChildren.length} enfants'),
+                              ? 'ðŸ“ $nbLines lignes ajoutées Ã  ${selectedChildren.first.name}'
+                              : 'ðŸ“ $nbLines lignes ajoutées Ã  ${selectedChildren.length} enfants'),
                           backgroundColor: Colors.orange.shade700,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
@@ -326,9 +326,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // DIALOGUE IMMUNITÃ‰ MULTI-ENFANTS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
+  // DIALOGUE IMMUNITÉ MULTI-ENFANTS
+  // ─────────────────────────────────────────────────────────
   void _showAddImmunityDialog(BuildContext context, FamilyProvider fp) {
     final selectedChildren =
         fp.children.where((c) => _selectedIds.contains(c.id)).toList();
@@ -340,7 +340,7 @@ class _BalanceScreenState extends State<BalanceScreen>
 
     const reasonPresets = [
       'Bonne conduite ðŸ…',
-      'Aide spontanÃ©e ðŸ¤—',
+      'Aide spontanée ðŸ¤—',
       'Note excellente â­',
       'Semaine parfaite ðŸŒŸ',
       'Surprise parent ðŸŽ',
@@ -375,8 +375,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                       const SizedBox(width: 8),
                       Text(
                         selectedChildren.length == 1
-                            ? 'ImmunitÃ© â€” ${selectedChildren.first.name}'
-                            : 'ImmunitÃ© â€” ${selectedChildren.length} enfants',
+                            ? 'Immunité "” ${selectedChildren.first.name}'
+                            : 'Immunité "” ${selectedChildren.length} enfants',
                         style: const TextStyle(
                             color: Colors.amberAccent,
                             fontSize: 18,
@@ -429,7 +429,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     }).toList(),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Lignes d\'immunitÃ©',
+                  const Text('Lignes d\'immunité',
                       style: TextStyle(color: Colors.white70, fontSize: 14)),
                   const SizedBox(height: 10),
                   Wrap(
@@ -560,7 +560,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                             color: Colors.amberAccent.withOpacity(0.3)),
                       ),
                       child: Text(
-                        'ðŸ›¡ï¸ ${selectedChildren.length} immunitÃ©s de $nbLines lignes seront crÃ©Ã©es',
+                        'ðŸ›¡ï¸ ${selectedChildren.length} immunités de $nbLines lignes seront créées',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                             color: Colors.amberAccent, fontSize: 13),
@@ -589,8 +589,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                         });
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(selectedChildren.length == 1
-                              ? 'ðŸ›¡ï¸ $nbLines lignes d\'immunitÃ© Ã  ${selectedChildren.first.name}'
-                              : 'ðŸ›¡ï¸ $nbLines lignes d\'immunitÃ© Ã  ${selectedChildren.length} enfants'),
+                              ? 'ðŸ›¡ï¸ $nbLines lignes d\'immunité Ã  ${selectedChildren.first.name}'
+                              : 'ðŸ›¡ï¸ $nbLines lignes d\'immunité Ã  ${selectedChildren.length} enfants'),
                           backgroundColor: Colors.amber.shade700,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
@@ -623,9 +623,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // DIALOGUE UTILISER IMMUNITÃ‰ SUR PUNITION (1 enfant)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
+  // DIALOGUE UTILISER IMMUNITÉ SUR PUNITION (1 enfant)
+  // ─────────────────────────────────────────────────────────
   void _showUseImmunityDialog(
       BuildContext context, FamilyProvider fp, String childId) {
     final punishments = fp.punishments
@@ -666,7 +666,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   _sheetHandle(),
                   const SizedBox(height: 16),
                   const Center(
-                    child: Text('âš”ï¸ Utiliser une immunitÃ©',
+                    child: Text('âš”ï¸ Utiliser une immunité',
                         style: TextStyle(
                             color: Colors.tealAccent,
                             fontSize: 18,
@@ -723,7 +723,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     );
                   }),
                   const SizedBox(height: 16),
-                  const Text('ImmunitÃ© Ã  utiliser',
+                  const Text('Immunité Ã  utiliser',
                       style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 8),
                   ...immunities.map((im) {
@@ -824,7 +824,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                               ScaffoldMessenger.of(context)
                                   .showSnackBar(SnackBar(
                                 content: Text(
-                                    'âš”ï¸ $linesToUse lignes effacÃ©es avec l\'immunitÃ©'),
+                                    'âš”ï¸ $linesToUse lignes effacées avec l\'immunité'),
                                 backgroundColor: Colors.teal.shade700,
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(
@@ -833,7 +833,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                             }
                           : null,
                       icon: const Icon(Icons.shield_rounded),
-                      label: const Text('Appliquer l\'immunitÃ©',
+                      label: const Text('Appliquer l\'immunité',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.teal.shade700,
@@ -853,9 +853,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   // BUILD PRINCIPAL
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
@@ -870,7 +870,7 @@ class _BalanceScreenState extends State<BalanceScreen>
             appBar: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              title: const Text('âš–ï¸ Punitions & ImmunitÃ©s',
+              title: const Text('âš–ï¸ Punitions & Immunités',
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold)),
               actions: [
@@ -878,7 +878,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   TextButton(
                     onPressed: () => _selectAll(children),
                     child: Text(
-                      allSelected ? 'DÃ©sÃ©lect.' : 'Tout',
+                      allSelected ? 'Désélect.' : 'Tout',
                       style: const TextStyle(color: Colors.cyanAccent),
                     ),
                   ),
@@ -886,7 +886,7 @@ class _BalanceScreenState extends State<BalanceScreen>
             ),
             body: children.isEmpty
                 ? const Center(
-                    child: Text('Aucun enfant enregistrÃ©',
+                    child: Text('Aucun enfant enregistré',
                         style: TextStyle(color: Colors.white38)))
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
@@ -902,9 +902,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // BARRE D'ACTION MULTI-SÃ‰LECTION
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
+  // BARRE D'ACTION MULTI-SÉLECTION
+  // ─────────────────────────────────────────────────────────
   Widget _buildActionBar(BuildContext context, FamilyProvider fp) {
     final count = _selectedIds.length;
     return ScaleTransition(
@@ -929,7 +929,7 @@ class _BalanceScreenState extends State<BalanceScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '$count enfant${count > 1 ? 's' : ''} sÃ©lectionnÃ©${count > 1 ? 's' : ''}',
+                '$count enfant${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''}',
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
               const SizedBox(height: 10),
@@ -957,7 +957,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                       onPressed: () =>
                           _showAddImmunityDialog(context, fp),
                       icon: const Icon(Icons.shield_rounded, size: 18),
-                      label: const Text('ImmunitÃ©',
+                      label: const Text('Immunité',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.amber.shade700,
@@ -977,7 +977,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                       });
                     },
                     icon: const Icon(Icons.close, color: Colors.white38),
-                    tooltip: 'Annuler la sÃ©lection',
+                    tooltip: 'Annuler la sélection',
                   ),
                 ],
               ),
@@ -988,9 +988,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   // CARD ENFANT
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   Widget _buildChildCard(
       BuildContext context, FamilyProvider fp, ChildModel child) {
     final isSelected = _selectedIds.contains(child.id);
@@ -1035,7 +1035,7 @@ class _BalanceScreenState extends State<BalanceScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // En-tÃªte
+              // En-tête
               Row(
                 children: [
                   AnimatedContainer(
@@ -1119,10 +1119,10 @@ class _BalanceScreenState extends State<BalanceScreen>
                       punishments.isEmpty
                           ? Colors.white24
                           : Colors.redAccent),
-                  _statBadge('âœ… $completedCount terminÃ©es',
+                  _statBadge('âœ… $completedCount terminées',
                       Colors.greenAccent.withOpacity(0.5)),
                   _statBadge(
-                      'ðŸ›¡ï¸ ${immunities.length} immunitÃ©s',
+                      'ðŸ›¡ï¸ ${immunities.length} immunités',
                       immunities.isEmpty
                           ? Colors.white24
                           : Colors.amberAccent),
@@ -1175,11 +1175,11 @@ class _BalanceScreenState extends State<BalanceScreen>
                 }),
                 if (punishments.length > 3)
                   Text(
-                      'â€¦ et ${punishments.length - 3} autre(s) punition(s)',
+                      '"¦ et ${punishments.length - 3} autre(s) punition(s)',
                       style: const TextStyle(
                           color: Colors.white38, fontSize: 11)),
               ],
-              // Bouton utiliser immunitÃ©
+              // Bouton utiliser immunité
               if (punishments.isNotEmpty &&
                   fp.getUsableImmunitiesForChild(child.id).isNotEmpty) ...[
                 const SizedBox(height: 10),
@@ -1190,7 +1190,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                         _showUseImmunityDialog(context, fp, child.id),
                     icon: const Icon(Icons.shield_rounded,
                         color: Colors.tealAccent, size: 16),
-                    label: const Text('Utiliser une immunitÃ©',
+                    label: const Text('Utiliser une immunité',
                         style: TextStyle(color: Colors.tealAccent, fontSize: 13)),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(
@@ -1209,9 +1209,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   // HELPERS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
   Widget _sheetHandle() {
     return Center(
       child: Container(

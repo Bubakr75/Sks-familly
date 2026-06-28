@@ -19,7 +19,7 @@ class ProfileSelectionScreen extends StatefulWidget {
 }
 
 class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnim;
 
@@ -43,7 +43,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBackground(
+    return EmeraldBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -56,54 +56,47 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 40),
+
                       // Logo + titre
                       _buildHeader(),
                       const SizedBox(height: 40),
 
-                      // Titre "Qui est-ce ?"
+                      // Titre "Qui es-tu ?"
                       Text(
-                        'Qui est-ce ?',
-                        style: EmeraldTypography.display.copyWith(fontSize: 28),
+                        'Qui es-tu ?',
+                        style: EmeraldTypography.display.copyWith(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
-                        'Choisissez votre profil pour continuer',
-                        style: EmeraldTypography.caption.copyWith(fontSize: 13),
+                        'Choisis ton profil pour continuer',
+                        style: EmeraldTypography.caption.copyWith(
+                          fontSize: 13,
+                          color: EmeraldPalette.textMuted,
+                        ),
                       ),
                       const SizedBox(height: 30),
 
-                      // Grille des profils parents (si existants)
+                      // Profils parents (cartes premium)
                       if (profiles.isNotEmpty) ...[
-                        _buildProfilesGrid(fp, profiles),
-                        const SizedBox(height: 16),
+                        ...profiles.map((p) => _buildPremiumProfileCard(p)),
+                        const SizedBox(height: 12),
+                        // Bouton gerer les profils
+                        _buildManageButton(fp),
                       ] else ...[
-                        _buildEmptyProfiles(fp),
-                        const SizedBox(height: 16),
+                        _buildWelcomeCard(fp),
                       ],
 
-                      // Séparateur
-                      Row(
-                        children: [
-                          Expanded(
-                              child: Divider(
-                                  color: EmeraldPalette.glassBorder,
-                                  thickness: 1)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text('OU',
-                                style: EmeraldTypography.label
-                                    .copyWith(fontSize: 10)),
-                          ),
-                          Expanded(
-                              child: Divider(
-                                  color: EmeraldPalette.glassBorder,
-                                  thickness: 1)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
-                      // Bouton Mode Parent (PIN direct, sans profil)
+                      // Separateur
+                      _buildSeparator(),
+                      const SizedBox(height: 20),
+
+                      // Bouton Mode Parent (PIN direct)
                       _buildParentModeButton(),
                       const SizedBox(height: 12),
 
@@ -121,34 +114,35 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
     );
   }
 
+  // === HEADER ===
   Widget _buildHeader() {
     return Column(
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 72,
+          height: 72,
           decoration: BoxDecoration(
             gradient: EmeraldPalette.emeraldGradient,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
-                color: EmeraldPalette.emerald.withValues(alpha: 0.3),
-                blurRadius: 20,
-                spreadRadius: 2,
+                color: EmeraldPalette.emerald.withValues(alpha: 0.4),
+                blurRadius: 24,
+                spreadRadius: 3,
               ),
             ],
           ),
           child: const Icon(Icons.family_restroom_rounded,
-              color: Colors.white, size: 32),
+              color: Colors.white, size: 36),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         ShaderMask(
-          shaderCallback: (bounds) => EmeraldPalette.emeraldGradient
-              .createShader(bounds),
+          shaderCallback: (bounds) =>
+              EmeraldPalette.emeraldGradient.createShader(bounds),
           child: const Text(
             'SKS Family',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 32,
               fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: -0.5,
@@ -159,12 +153,222 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
     );
   }
 
-  Widget _buildEmptyProfiles(FamilyProvider fp) {
+  // === CARTE PROFIL PREMIUM ===
+  Widget _buildPremiumProfileCard(ParentProfile profile) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 30 * (1 - value)),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: TvFocusWrapper(
+          onTap: () => _selectProfile(profile),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  EmeraldPalette.surface,
+                  EmeraldPalette.surfaceLow,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: EmeraldPalette.emerald.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: EmeraldPalette.emerald.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Avatar premium avec halo
+                _buildPremiumAvatar(profile, 32),
+                const SizedBox(width: 16),
+                // Infos
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.name,
+                        style: EmeraldTypography.heading.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.shield_rounded,
+                              size: 12,
+                              color: EmeraldPalette.emeraldLight),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Profil Parent',
+                            style: EmeraldTypography.caption.copyWith(
+                              fontSize: 11,
+                              color: EmeraldPalette.emeraldLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Fleche
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: EmeraldPalette.emerald.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: EmeraldPalette.emeraldLight,
+                    size: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // === AVATAR PREMIUM ===
+  Widget _buildPremiumAvatar(ParentProfile profile, double radius) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Halo exterieur
+        Container(
+          width: radius * 2 + 12,
+          height: radius * 2 + 12,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                EmeraldPalette.emerald.withValues(alpha: 0.3),
+                EmeraldPalette.emerald.withValues(alpha: 0.0),
+              ],
+            ),
+          ),
+        ),
+        // Avatar
+        if (profile.hasPhoto)
+          Container(
+            width: radius * 2,
+            height: radius * 2,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: EmeraldPalette.emerald.withValues(alpha: 0.5),
+                width: 2,
+              ),
+            ),
+            child: ClipOval(
+              child: Image.memory(
+                Uri.parse(profile.photoBase64!).data!.contentAsBytes(),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    _buildInitialAvatar(profile, radius),
+              ),
+            ),
+          )
+        else
+          _buildInitialAvatar(profile, radius),
+        // Bordure
+        Container(
+          width: radius * 2 + 2,
+          height: radius * 2 + 2,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: EmeraldPalette.emerald.withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInitialAvatar(ParentProfile profile, double radius) {
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            EmeraldPalette.emerald.withValues(alpha: 0.4),
+            EmeraldPalette.emeraldDark.withValues(alpha: 0.3),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          profile.initial,
+          style: TextStyle(
+            color: EmeraldPalette.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: radius * 0.7,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // === BOUTON GERER LES PROFILS ===
+  Widget _buildManageButton(FamilyProvider fp) {
+    return TextButton.icon(
+      onPressed: () => _openManageProfiles(fp),
+      icon: Icon(Icons.settings_rounded,
+          size: 16, color: EmeraldPalette.textMuted),
+      label: Text(
+        'Gerer les profils',
+        style: EmeraldTypography.caption.copyWith(
+          fontSize: 12,
+          color: EmeraldPalette.textMuted,
+        ),
+      ),
+    );
+  }
+
+  // === CARTE WELCOME (aucun profil) ===
+  Widget _buildWelcomeCard(FamilyProvider fp) {
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: EmeraldPalette.surface,
-        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            EmeraldPalette.surface,
+            EmeraldPalette.surfaceLow,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: EmeraldPalette.emerald.withValues(alpha: 0.3),
           width: 1.5,
@@ -172,47 +376,49 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
         boxShadow: [
           BoxShadow(
             color: EmeraldPalette.emerald.withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: 1,
+            blurRadius: 24,
+            spreadRadius: 2,
           ),
         ],
       ),
       child: Column(
         children: [
-          // Icône animée
+          // Icon
           Container(
-            width: 72,
-            height: 72,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               gradient: EmeraldPalette.emeraldGradient,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
                   color: EmeraldPalette.emerald.withValues(alpha: 0.4),
-                  blurRadius: 16,
-                  spreadRadius: 2,
+                  blurRadius: 20,
+                  spreadRadius: 3,
                 ),
               ],
             ),
-            child: const Icon(Icons.family_restroom_rounded,
-                color: Colors.white, size: 36),
+            child: const Icon(Icons.person_add_rounded,
+                color: Colors.white, size: 40),
           ),
           const SizedBox(height: 20),
-          Text('Bienvenue !',
-              style: EmeraldTypography.display.copyWith(fontSize: 22)),
-          const SizedBox(height: 6),
           Text(
-            'Créez votre premier profil parent pour commencer.\nVous pourrez en ajouter d\'autres plus tard (maman, tata...).',
-              style: EmeraldTypography.caption.copyWith(fontSize: 13),
-              textAlign: TextAlign.center),
+            'Bienvenue !',
+            style: EmeraldTypography.display.copyWith(fontSize: 24),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Creez votre premier profil parent pour commencer.\nVous pourrez en ajouter d\'autres plus tard (maman, tata...).',
+            style: EmeraldTypography.caption.copyWith(fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 24),
-          // Gros bouton "Créer mon profil"
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _openManageProfiles(fp),
               icon: const Icon(Icons.person_add_rounded, size: 22),
-              label: const Text('Créer mon profil parent',
+              label: const Text('Creer mon profil parent',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: EmeraldPalette.emerald,
@@ -229,95 +435,27 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
     );
   }
 
-  Widget _buildProfilesGrid(FamilyProvider fp, List<ParentProfile> profiles) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 14,
-      crossAxisSpacing: 14,
-      childAspectRatio: 0.85,
+  // === SEPARATEUR ===
+  Widget _buildSeparator() {
+    return Row(
       children: [
-        ...profiles.map((p) => _buildProfileCard(p)),
-        // Carte "Ajouter"
-        _buildAddCard(fp),
+        Expanded(
+            child: Divider(
+                color: EmeraldPalette.glassBorder, thickness: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text('OU',
+              style:
+                  EmeraldTypography.label.copyWith(fontSize: 10)),
+        ),
+        Expanded(
+            child: Divider(
+                color: EmeraldPalette.glassBorder, thickness: 1)),
       ],
     );
   }
 
-  Widget _buildProfileCard(ParentProfile profile) {
-    return TvFocusWrapper(
-      onTap: () => _selectProfile(profile),
-      child: Container(
-        decoration: BoxDecoration(
-          color: EmeraldPalette.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: EmeraldPalette.emerald.withValues(alpha: 0.3),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildAvatar(profile, 36),
-            const SizedBox(height: 12),
-            Text(
-              profile.name,
-              style: EmeraldTypography.heading.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Parent',
-              style: EmeraldTypography.caption.copyWith(fontSize: 11),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddCard(FamilyProvider fp) {
-    return TvFocusWrapper(
-      onTap: () => _openManageProfiles(fp),
-      child: Container(
-        decoration: BoxDecoration(
-          color: EmeraldPalette.surfaceLow,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: EmeraldPalette.glassBorder,
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_rounded,
-                size: 32, color: EmeraldPalette.emeraldLight),
-            const SizedBox(height: 8),
-            Text(
-              'Gérer les\nprofils',
-              style: EmeraldTypography.caption.copyWith(fontSize: 11),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+  // === BOUTON MODE PARENT ===
   Widget _buildParentModeButton() {
     return SizedBox(
       width: double.infinity,
@@ -369,6 +507,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
     );
   }
 
+  // === BOUTON MODE ENFANT ===
   Widget _buildChildModeButton(FamilyProvider fp) {
     return SizedBox(
       width: double.infinity,
@@ -405,71 +544,15 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
     );
   }
 
-  Widget _buildAvatar(ParentProfile profile, double radius) {
-    if (profile.hasPhoto) {
-      try {
-        return Container(
-          width: radius * 2,
-          height: radius * 2,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-                color: EmeraldPalette.emerald.withValues(alpha: 0.5),
-                width: 2),
-          ),
-          child: ClipOval(
-            child: Image.memory(
-              Uri.parse(profile.photoBase64!).data!.contentAsBytes(),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  _buildInitialAvatar(profile, radius),
-            ),
-          ),
-        );
-      } catch (_) {}
-    }
-    return _buildInitialAvatar(profile, radius);
-  }
-
-  Widget _buildInitialAvatar(ParentProfile profile, double radius) {
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [
-            EmeraldPalette.emerald.withValues(alpha: 0.4),
-            EmeraldPalette.emeraldDark.withValues(alpha: 0.3),
-          ],
-        ),
-        border: Border.all(
-            color: EmeraldPalette.emerald.withValues(alpha: 0.4), width: 1.5),
-      ),
-      child: Center(
-        child: Text(
-          profile.initial,
-          style: TextStyle(
-            color: EmeraldPalette.textPrimary,
-            fontWeight: FontWeight.w700,
-            fontSize: radius * 0.7,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Actions ──────────────────────────────────────────────────────────
+  // ===== ACTIONS =====
 
   void _enterParentMode() {
     final pin = context.read<PinProvider>();
     if (!pin.isPinSet) {
-      // Pas de PIN défini → on entre directement en mode parent
       pin.unlockParentMode();
       _navigateToHome();
       return;
     }
-    // PIN défini → on affiche l'écran PIN
     Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
@@ -484,13 +567,10 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
   void _selectProfile(ParentProfile profile) {
     final pin = context.read<PinProvider>();
     if (!pin.isPinSet) {
-      // Pas de PIN défini → on entre directement
       pin.unlockParentModeWithProfile(profile);
       _navigateToHome();
       return;
     }
-
-    // PIN défini → on affiche l'écran PIN
     Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
@@ -505,7 +585,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
   void _enterChildMode(FamilyProvider fp) {
     if (fp.children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Aucun enfant enregistré.'),
+        content: const Text('Aucun enfant enregistre.'),
         backgroundColor: EmeraldPalette.warning,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -531,8 +611,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
   void _openManageProfiles(FamilyProvider fp) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-          builder: (_) => const ManageParentProfilesScreen()),
+      MaterialPageRoute(builder: (_) => const ManageParentProfilesScreen()),
     );
   }
 }

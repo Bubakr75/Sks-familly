@@ -94,7 +94,7 @@ class GoalsScreen extends StatelessWidget {
                                         color: Colors.grey),
                                     const SizedBox(height: 8),
                                     Text(
-                                        'DÃ©finissez des objectifs pour vos enfants',
+                                        'Définissez des objectifs pour vos enfants',
                                         style: TextStyle(
                                             color: Colors.grey[600])),
                                   ],
@@ -409,7 +409,7 @@ class GoalsScreen extends StatelessWidget {
                   Navigator.pop(ctx);
                 }
               },
-              child: const Text('CrÃ©er'),
+              child: const Text('Créer'),
             ),
           ],
         ),

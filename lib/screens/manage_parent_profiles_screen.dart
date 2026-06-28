@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +6,6 @@ import 'package:uuid/uuid.dart';
 import '../config/emerald_theme.dart';
 import '../models/parent_profile.dart';
 import '../providers/family_provider.dart';
-import '../providers/pin_provider.dart';
 
 class ManageParentProfilesScreen extends StatefulWidget {
   const ManageParentProfilesScreen({super.key});
@@ -27,7 +25,7 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
           backgroundColor: Colors.transparent,
           elevation: 0,
           title: Text('Profils Parents',
-              style: EmeraldTypography.heading.copyWith(fontSize: 18)),
+              style: EmeraldTypography.heading.copyWith(fontSize: 20)),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () => Navigator.pop(context),
@@ -39,16 +37,41 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  'Créez un profil pour chaque parent (papa, maman, tata...). Chaque profil aura sa photo et son nom. Pour entrer dans l\'app en tant que parent, il faudra choisir un profil puis taper le code parental.',
-                  style: EmeraldTypography.caption.copyWith(fontSize: 12),
+                // Info card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: EmeraldPalette.emerald.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: EmeraldPalette.emerald.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          color: EmeraldPalette.emeraldLight, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Creez un profil pour chaque parent (papa, maman, tata...). Chaque profil a sa photo et son nom.',
+                          style: EmeraldTypography.caption.copyWith(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 20),
+
+                // Profils
                 if (profiles.isEmpty)
                   _buildEmptyState()
                 else
                   ...profiles.map((p) => _buildProfileCard(fp, p)),
+
                 const SizedBox(height: 16),
+
+                // Bouton ajouter
                 _buildAddButton(fp),
                 const SizedBox(height: 30),
               ],
@@ -64,18 +87,26 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: EmeraldPalette.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: EmeraldPalette.glassBorder),
       ),
       child: Column(
         children: [
-          Icon(Icons.person_add_rounded,
-              size: 48, color: EmeraldPalette.emeraldLight),
-          const SizedBox(height: 12),
-          Text('Aucun profil parent',
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              gradient: EmeraldPalette.emeraldGradient,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(Icons.person_add_rounded,
+                color: Colors.white, size: 32),
+          ),
+          const SizedBox(height: 16),
+          Text('Aucun profil',
               style: EmeraldTypography.heading.copyWith(fontSize: 16)),
           const SizedBox(height: 4),
-          Text('Créez votre premier profil ci-dessous',
+          Text('Ajoutez votre premier profil ci-dessous',
               style: EmeraldTypography.caption.copyWith(fontSize: 12)),
         ],
       ),
@@ -85,34 +116,62 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
   Widget _buildProfileCard(FamilyProvider fp, ParentProfile profile) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: EmeraldPalette.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: EmeraldPalette.glassBorder),
+        gradient: LinearGradient(
+          colors: [
+            EmeraldPalette.surface,
+            EmeraldPalette.surfaceLow,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: EmeraldPalette.emerald.withValues(alpha: 0.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
+          // Avatar
           _buildAvatar(profile, 28),
           const SizedBox(width: 14),
+          // Infos
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(profile.name,
-                    style: EmeraldTypography.heading.copyWith(fontSize: 15)),
+                    style: EmeraldTypography.heading.copyWith(fontSize: 16)),
                 if (profile.hasSecurityQuestion)
-                  Text('Question de sécurité définie',
-                      style: EmeraldTypography.caption.copyWith(fontSize: 10)),
+                  Row(
+                    children: [
+                      Icon(Icons.lock_outline_rounded,
+                          size: 12, color: EmeraldPalette.textMuted),
+                      const SizedBox(width: 4),
+                      Text('Securise',
+                          style: EmeraldTypography.caption.copyWith(
+                              fontSize: 10,
+                              color: EmeraldPalette.textMuted)),
+                    ],
+                  ),
               ],
             ),
           ),
+          // Actions
           IconButton(
-            icon: Icon(Icons.edit_rounded, color: EmeraldPalette.emeraldLight, size: 20),
+            icon: Icon(Icons.edit_rounded,
+                color: EmeraldPalette.emeraldLight, size: 20),
             onPressed: () => _showEditDialog(fp, profile: profile),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline_rounded, color: EmeraldPalette.error, size: 20),
+            icon: Icon(Icons.delete_outline_rounded,
+                color: EmeraldPalette.error, size: 20),
             onPressed: () => _confirmDelete(fp, profile),
           ),
         ],
@@ -130,8 +189,9 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
         style: ElevatedButton.styleFrom(
           backgroundColor: EmeraldPalette.emerald,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
@@ -146,13 +206,15 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-                color: EmeraldPalette.emerald.withValues(alpha: 0.5), width: 2),
+                color: EmeraldPalette.emerald.withValues(alpha: 0.5),
+                width: 2),
           ),
           child: ClipOval(
             child: Image.memory(
               Uri.parse(profile.photoBase64!).data!.contentAsBytes(),
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildInitialAvatar(profile, radius),
+              errorBuilder: (_, __, ___) =>
+                  _buildInitialAvatar(profile, radius),
             ),
           ),
         );
@@ -192,7 +254,8 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
   void _showEditDialog(FamilyProvider fp, {ParentProfile? profile}) {
     final isEdit = profile != null;
     final nameCtrl = TextEditingController(text: profile?.name ?? '');
-    final questionCtrl = TextEditingController(text: profile?.securityQuestion ?? '');
+    final questionCtrl =
+        TextEditingController(text: profile?.securityQuestion ?? '');
     final answerCtrl = TextEditingController();
     String? photoBase64 = profile?.photoBase64;
 
@@ -201,9 +264,20 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setInnerState) => AlertDialog(
           backgroundColor: EmeraldPalette.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(isEdit ? 'Modifier le profil' : 'Nouveau profil parent',
-              style: EmeraldTypography.heading.copyWith(fontSize: 18)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Icon(
+                isEdit ? Icons.edit_rounded : Icons.person_add_rounded,
+                color: EmeraldPalette.emeraldLight,
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Text(isEdit ? 'Modifier le profil' : 'Nouveau profil',
+                  style: EmeraldTypography.heading.copyWith(fontSize: 18)),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -220,18 +294,21 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                     );
                     if (xfile != null) {
                       final bytes = await xfile.readAsBytes();
-                      final b64 = Uri.dataFromBytes(bytes,
-                              mimeType: 'image/jpeg')
-                          .toString();
+                      final b64 = Uri.dataFromBytes(bytes, mimeType: 'image/jpeg').toString();
                       setInnerState(() => photoBase64 = b64);
                     }
                   },
                   child: Container(
-                    width: 80,
-                    height: 80,
+                    width: 88,
+                    height: 88,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: EmeraldPalette.surfaceLow,
+                      gradient: photoBase64 == null
+                          ? LinearGradient(colors: [
+                              EmeraldPalette.emerald.withValues(alpha: 0.15),
+                              EmeraldPalette.emeraldDark.withValues(alpha: 0.1),
+                            ])
+                          : null,
                       border: Border.all(
                           color: EmeraldPalette.emerald.withValues(alpha: 0.4),
                           width: 2),
@@ -241,12 +318,21 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                             child: Image.memory(
                               Uri.parse(photoBase64!).data!.contentAsBytes(),
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  Icon(Icons.person, color: EmeraldPalette.emeraldLight),
+                              errorBuilder: (_, __, ___) => Icon(Icons.person,
+                                  color: EmeraldPalette.emeraldLight, size: 36),
                             ),
                           )
-                        : Icon(Icons.add_a_photo_rounded,
-                            color: EmeraldPalette.emeraldLight, size: 28),
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_a_photo_rounded,
+                                  color: EmeraldPalette.emeraldLight, size: 28),
+                              const SizedBox(height: 2),
+                              Text('Photo',
+                                  style: EmeraldTypography.caption
+                                      .copyWith(fontSize: 9)),
+                            ],
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -256,9 +342,8 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                   decoration: InputDecoration(
                     labelText: 'Nom (Papa, Maman, Tata...)',
                     labelStyle: EmeraldTypography.caption,
-                    filled: true,
-                    fillColor: EmeraldPalette.surfaceLow,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: Icon(Icons.person_outline_rounded,
+                        color: EmeraldPalette.emeraldLight, size: 20),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -266,11 +351,10 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                   controller: questionCtrl,
                   style: EmeraldTypography.body,
                   decoration: InputDecoration(
-                    labelText: 'Question de sécurité (optionnel)',
+                    labelText: 'Question de securite (optionnel)',
                     labelStyle: EmeraldTypography.caption,
-                    filled: true,
-                    fillColor: EmeraldPalette.surfaceLow,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: Icon(Icons.help_outline_rounded,
+                        color: EmeraldPalette.emeraldLight, size: 20),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -278,11 +362,10 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                   controller: answerCtrl,
                   style: EmeraldTypography.body,
                   decoration: InputDecoration(
-                    labelText: 'Réponse (optionnel)',
+                    labelText: 'Reponse (optionnel)',
                     labelStyle: EmeraldTypography.caption,
-                    filled: true,
-                    fillColor: EmeraldPalette.surfaceLow,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: Icon(Icons.lock_outline_rounded,
+                        color: EmeraldPalette.emeraldLight, size: 20),
                   ),
                 ),
               ],
@@ -332,9 +415,7 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                         Icon(Icons.check_circle_rounded,
                             color: Colors.white, size: 18),
                         SizedBox(width: 8),
-                        Text(isEdit
-                            ? 'Profil modifie !'
-                            : 'Profil cree !'),
+                        Text(isEdit ? 'Profil modifie !' : 'Profil cree !'),
                       ]),
                       backgroundColor: EmeraldPalette.emerald,
                       behavior: SnackBarBehavior.floating,
@@ -373,8 +454,9 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: EmeraldPalette.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Supprimer ?', style: EmeraldTypography.heading.copyWith(fontSize: 18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('Supprimer ?',
+            style: EmeraldTypography.heading.copyWith(fontSize: 18)),
         content: Text('Supprimer le profil "${profile.name}" ?',
             style: EmeraldTypography.body),
         actions: [
