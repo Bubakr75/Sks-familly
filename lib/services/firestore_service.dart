@@ -14,7 +14,7 @@ import '../models/tribunal_model.dart';
 import '../models/badge_model.dart';
 import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
-import 'fcm_service.dart';
+import '../utils/web_reconnect.dart';
 import 'fcm_service.dart';
 
 class FirestoreService {
@@ -60,10 +60,24 @@ class FirestoreService {
   void Function(Map<String, dynamic>)? onScreenTimeChanged;
   void Function(List<ParentProfile>)? onParentProfilesChanged;
 
-  // ─── Init ────────────────────────────────────────────────────
+  // â”€â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> init() async {
     try {
-      await FirebaseFirestore.instance.collection('debug_logs').add({'step': 'init demarre', 'at': FieldValue.serverTimestamp()});
+      // Configuration Firestore pour iOS Safari Web (long-polling)
+      if (kIsWeb) {
+        try {
+          _db.settings = const Settings(
+            persistenceEnabled: true,
+            sslEnabled: true,
+            webExperimentalForceLongPolling: true,
+            webExperimentalAutoDetectLongPolling: false,
+          );
+          if (kDebugMode) debugPrint('Firestore: long-polling force sur Web');
+        } catch (e) {
+          if (kDebugMode) debugPrint('Firestore settings error: $e');
+        }
+      }
+
       final prefs = await SharedPreferences.getInstance();
       _familyId = prefs.getString('family_id');
       _deviceId = prefs.getString('device_id');
@@ -71,7 +85,11 @@ class FirestoreService {
         _deviceId = _generateDeviceId();
         await prefs.setString('device_id', _deviceId!);
       }
-      await FirebaseFirestore.instance.collection('debug_logs').add({'step': 'familyId vaut', 'value': _familyId ?? 'NULL', 'at': FieldValue.serverTimestamp()});
+
+      // Attacher les ecouteurs Web (visibilitychange, online, focus)
+      // pour reconnecter Firestore quand l'onglet revient au premier plan
+      _startWebLifecycleHandlers();
+
       if (_familyId != null) {
         await FcmService().registerToken();
         _startListening();
@@ -79,17 +97,27 @@ class FirestoreService {
       }
     } catch (e) {
       if (kDebugMode) debugPrint('FirestoreService init error: $e');
-      try { await FirebaseFirestore.instance.collection('debug_logs').add({'step': 'init erreur', 'error': e.toString(), 'at': FieldValue.serverTimestamp()}); } catch (_) {}
     }
   }
 
-  // ─── Dispose ─────────────────────────────────────────────────
+  void _startWebLifecycleHandlers() {
+    try {
+      attachWebReconnectHandlers(() {
+        if (kDebugMode) debugPrint('Web lifecycle event: reconnect Firestore');
+        reconnect();
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('Web lifecycle error: $e');
+    }
+  }
+
+  // â”€â”€â”€ Dispose â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   void dispose() {
     _stopListening();
     _stopKeepAlive();
   }
 
-  // ─── Générateurs ─────────────────────────────────────────────
+  // â”€â”€â”€ GÃ©nÃ©rateurs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   String _generateDeviceId() {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final rng = Random.secure();
@@ -102,7 +130,7 @@ class FirestoreService {
     return List.generate(6, (_) => chars[rng.nextInt(chars.length)]).join();
   }
 
-  // ─── Code famille ────────────────────────────────────────────
+  // â”€â”€â”€ Code famille â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<bool> isCodeAvailable(String code) async {
     final query = await _db
         .collection('families')
@@ -117,7 +145,7 @@ class FirestoreService {
     if (customCode != null && customCode.trim().length >= 4) {
       code = customCode.toUpperCase().trim();
       final available = await isCodeAvailable(code);
-      if (!available) throw Exception('Ce code est déjà utilisé.');
+      if (!available) throw Exception('Ce code est dÃ©jÃ  utilisÃ©.');
     } else {
       code = _generateFamilyCode();
     }
@@ -176,7 +204,7 @@ class FirestoreService {
     await prefs.remove('family_code');
   }
 
-  // ─── Keep-alive ──────────────────────────────────────────────
+  // â”€â”€â”€ Keep-alive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   void reconnect() {
     if (_familyId == null) return;
     _stopListening();
@@ -212,7 +240,7 @@ class FirestoreService {
 
   void _markDataReceived() => _lastDataReceived = DateTime.now();
 
-  // ─── Listeners temps réel ────────────────────────────────────
+  // â”€â”€â”€ Listeners temps rÃ©el â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   void _startListening() {
     if (_familyId == null) return;
     final fRef = _db.collection('families').doc(_familyId);
@@ -396,7 +424,7 @@ class FirestoreService {
     _parentProfilesSub = null;
   }
 
-  // ─── WRITE : Children ────────────────────────────────────────
+  // â”€â”€â”€ WRITE : Children â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveChild(ChildModel child) async {
     if (_familyId == null) return;
     try {
@@ -461,7 +489,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : History ─────────────────────────────────────────
+  // â”€â”€â”€ WRITE : History â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveHistoryEntry(HistoryEntry entry) async {
     if (_familyId == null) return;
     try {
@@ -503,7 +531,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : Goals ───────────────────────────────────────────
+  // â”€â”€â”€ WRITE : Goals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveGoal(GoalModel goal) async {
     if (_familyId == null) return;
     try {
@@ -534,7 +562,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : Punishments ─────────────────────────────────────
+  // â”€â”€â”€ WRITE : Punishments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> savePunishment(PunishmentLines p) async {
     if (_familyId == null) return;
     try {
@@ -595,7 +623,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : Notes ───────────────────────────────────────────
+  // â”€â”€â”€ WRITE : Notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveNote(NoteModel note) async {
     if (_familyId == null) return;
     try {
@@ -626,7 +654,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : Immunities ──────────────────────────────────────
+  // â”€â”€â”€ WRITE : Immunities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveImmunity(ImmunityLines im) async {
     if (_familyId == null) return;
     try {
@@ -657,7 +685,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : Trades ──────────────────────────────────────────
+  // â”€â”€â”€ WRITE : Trades â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveTrade(TradeModel trade) async {
     if (_familyId == null) return;
     try {
@@ -688,7 +716,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : Tribunal ────────────────────────────────────────
+  // â”€â”€â”€ WRITE : Tribunal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveTribunalCase(TribunalCase tc) async {
     if (_familyId == null) return;
     try {
@@ -719,7 +747,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : Badges ──────────────────────────────────────────
+  // â”€â”€â”€ WRITE : Badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveCustomBadge(BadgeModel badge) async {
     if (_familyId == null) return;
     try {
@@ -750,7 +778,7 @@ class FirestoreService {
     }
   }
 
-  // ─── WRITE : Screen Time ─────────────────────────────────────
+  // â”€â”€â”€ WRITE : Screen Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveScreenTimeValue(String key, dynamic value) async {
     if (_familyId == null) return;
     try {
@@ -769,12 +797,12 @@ class FirestoreService {
     }
   }
 
-  // ─── Changement de code ──────────────────────────────────────
+  // â”€â”€â”€ Changement de code â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> changeFamilyCode(String newCode) async {
-    if (_familyId == null) throw Exception('Non connecté.');
+    if (_familyId == null) throw Exception('Non connectÃ©.');
     final cleanCode = newCode.toUpperCase().trim();
     if (cleanCode.length < 4 || cleanCode.length > 10) {
-      throw Exception('Le code doit avoir entre 4 et 10 caractères.');
+      throw Exception('Le code doit avoir entre 4 et 10 caractÃ¨res.');
     }
     final query = await _db
         .collection('families')
@@ -782,7 +810,7 @@ class FirestoreService {
         .limit(1)
         .get();
     if (query.docs.isNotEmpty && query.docs.first.id != _familyId) {
-      throw Exception('Ce code est déjà utilisé par une autre famille.');
+      throw Exception('Ce code est dÃ©jÃ  utilisÃ© par une autre famille.');
     }
     await _db
         .collection('families')
@@ -793,7 +821,7 @@ class FirestoreService {
     await FcmService().registerToken();
   }
 
-  // ─── Reset ───────────────────────────────────────────────────
+  // â”€â”€â”€ Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> resetAllScores() async {
     if (_familyId == null) return;
     try {
@@ -824,7 +852,7 @@ class FirestoreService {
     }
   }
 
-  // ─── Upload complet ──────────────────────────────────────────
+  // â”€â”€â”€ Upload complet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> uploadAllData({
     required List<ChildModel> children,
     required List<HistoryEntry> history,
@@ -946,7 +974,7 @@ class FirestoreService {
     );
   }
 
-  // ─── Force refresh ───────────────────────────────────────────
+  // â”€â”€â”€ Force refresh â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> forceRefresh() async {
     if (_familyId == null) return;
     try {
