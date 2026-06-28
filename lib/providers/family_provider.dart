@@ -725,7 +725,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   lines,
-      reason:   'ðŸ›¡️ Immunité accordée : $reason ($lines ligne${lines > 1 ? 's' : ''})',
+      reason:   ' Immunité accordée : $reason ($lines ligne${lines > 1 ? 's' : ''})',
       category: 'immunité',
       isBonus:  true,
       actionBy: _currentParentName,

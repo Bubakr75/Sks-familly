@@ -113,7 +113,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('ðŸ“', style: TextStyle(fontSize: 24)),
+                      const Text('', style: TextStyle(fontSize: 24)),
                       const SizedBox(width: 8),
                       Text(
                         selectedChildren.length == 1
@@ -292,8 +292,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                         });
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(selectedChildren.length == 1
-                              ? 'ðŸ“ $nbLines lignes ajoutées à ${selectedChildren.first.name}'
-                              : 'ðŸ“ $nbLines lignes ajoutées à ${selectedChildren.length} enfants'),
+                              ? ' $nbLines lignes ajoutées à ${selectedChildren.first.name}'
+                              : ' $nbLines lignes ajoutées à ${selectedChildren.length} enfants'),
                           backgroundColor: Colors.orange.shade700,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
@@ -339,11 +339,11 @@ class _BalanceScreenState extends State<BalanceScreen>
     DateTime? expiresAt;
 
     const reasonPresets = [
-      'Bonne conduite ðŸ…',
+      'Bonne conduite ',
       'Aide spontanée 🤗',
       'Note excellente ⭐',
       'Semaine parfaite 🌟',
-      'Surprise parent ðŸŽ',
+      'Surprise parent ',
       'Effort exceptionnel 💪',
     ];
 
@@ -371,7 +371,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('ðŸ›¡️', style: TextStyle(fontSize: 24)),
+                      const Text('', style: TextStyle(fontSize: 24)),
                       const SizedBox(width: 8),
                       Text(
                         selectedChildren.length == 1
@@ -560,7 +560,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                             color: Colors.amberAccent.withOpacity(0.3)),
                       ),
                       child: Text(
-                        'ðŸ›¡️ ${selectedChildren.length} immunités de $nbLines lignes seront créées',
+                        ' ${selectedChildren.length} immunités de $nbLines lignes seront créées',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                             color: Colors.amberAccent, fontSize: 13),
@@ -589,8 +589,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                         });
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(selectedChildren.length == 1
-                              ? 'ðŸ›¡️ $nbLines lignes d\'immunité à ${selectedChildren.first.name}'
-                              : 'ðŸ›¡️ $nbLines lignes d\'immunité à ${selectedChildren.length} enfants'),
+                              ? ' $nbLines lignes d\'immunité à ${selectedChildren.first.name}'
+                              : ' $nbLines lignes d\'immunité à ${selectedChildren.length} enfants'),
                           backgroundColor: Colors.amber.shade700,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
@@ -1100,7 +1100,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                         border: Border.all(
                             color: Colors.amberAccent.withOpacity(0.4)),
                       ),
-                      child: Text('ðŸ›¡️ $usableImmunity',
+                      child: Text(' $usableImmunity',
                           style: const TextStyle(
                               color: Colors.amberAccent,
                               fontSize: 12,
@@ -1115,14 +1115,14 @@ class _BalanceScreenState extends State<BalanceScreen>
                 runSpacing: 6,
                 children: [
                   _statBadge(
-                      'ðŸ“ ${punishments.length} en cours',
+                      ' ${punishments.length} en cours',
                       punishments.isEmpty
                           ? Colors.white24
                           : Colors.redAccent),
                   _statBadge('✅ $completedCount terminées',
                       Colors.greenAccent.withOpacity(0.5)),
                   _statBadge(
-                      'ðŸ›¡️ ${immunities.length} immunités',
+                      ' ${immunities.length} immunités',
                       immunities.isEmpty
                           ? Colors.white24
                           : Colors.amberAccent),
