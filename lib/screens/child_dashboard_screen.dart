@@ -17,7 +17,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
 
-// ─── Arc screen-time ─────────────────────────────────────────
+// â”€â”€─ Arc screen-time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
 class _ScreenTimePainter extends CustomPainter {
   final double progress;
   final double animValue;
@@ -62,16 +62,16 @@ class _ScreenTimePainter extends CustomPainter {
       old.progress != progress || old.animValue != animValue;
 }
 
-// ─── Modèle badge personnalisé local ─────────────────────────
+// â”€â”€─ Modèle badge personnalisé local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
 class _CustomBadgeItem {
   String emoji;
   String label;
   _CustomBadgeItem({required this.emoji, required this.label});
 }
 
-// ─────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
 //  MAIN WIDGET
-// ─────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
 class ChildDashboardScreen extends StatefulWidget {
   final String? childId;
   const ChildDashboardScreen({super.key, this.childId});
@@ -162,7 +162,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     super.dispose();
   }
 
-  // ─── Prefs ───────────────────────────────────────────────
+  // â”€â”€─ Prefs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
   Future<void> _loadPrefs(String childId) async {
     final prefs  = await SharedPreferences.getInstance();
     final raw    = prefs.getStringList('custom_badges_$childId') ?? [];
@@ -192,7 +192,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await prefs.setStringList('hidden_badges_$childId', _hiddenDefaultBadgeIds);
   }
 
-  // ─── Badges perso ────────────────────────────────────────
+  // â”€â”€─ Badges perso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _addCustomBadge(String childId) async {
     final emojiCtrl = TextEditingController();
     final labelCtrl = TextEditingController();
@@ -216,7 +216,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             decoration: InputDecoration(
               labelText:  'Émoji',
               labelStyle: const TextStyle(color: Colors.white54),
-              hintText:   '',
+              hintText:   '🏆',
               hintStyle:  const TextStyle(color: Colors.white24),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -284,7 +284,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await _saveHiddenBadges(childId);
   }
 
-  // ─── Couleurs ────────────────────────────────────────────
+  // â”€â”€─ Couleurs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Color _childColor(ChildModel child) {
     if (child.accentColorHex != null) {
       try {
@@ -323,17 +323,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   String _categoryEmoji(HistoryEntry e) {
     final cat = e.category.toLowerCase();
-    if (cat.contains('punition')) return '';
-    if (cat.contains('immunité')) return '';
-    if (cat.contains('tribunal') || cat.contains('verdict')) return 'âš–️';
+    if (cat.contains('punition')) return '📝';
+    if (cat.contains('immunité')) return '🛡️';
+    if (cat.contains('tribunal') || cat.contains('verdict')) return 'âš–️';
     if (cat.contains('school') || cat.contains('note')) return '📚';
     if (cat.contains('échange') || cat.contains('trade')) return '🔄';
     if (cat.contains('screen')) return '📺';
     if (e.isBonus) return '✅';
-    return 'âŒ';
+    return '❌';
   }
 
-  // ─── Avatar ──────────────────────────────────────────────
+  // â”€â”€─ Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildAvatar(ChildModel child, double radius,
       {bool showFrame = true}) {
     final color      = _childColor(child);
@@ -390,14 +390,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       CircleAvatar(
         radius: radius,
         backgroundColor: color.withOpacity(0.3),
-        child: Text(child.name[0].toUpperCase(),
+        child: Text(child.name.isEmpty ? '?' : child.name[0].toUpperCase(),
             style: TextStyle(
                 fontSize:   radius * 0.9,
                 fontWeight: FontWeight.bold,
                 color:      color)),
       );
 
-  // ─── Sélecteur enfant ────────────────────────────────────
+  // â”€â”€─ Sélecteur enfant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   void _showChildSwitcher(FamilyProvider fp) {
     showModalBottomSheet(
       context: context,
@@ -434,7 +434,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─── Edition photo / bannière / slogan ───────────────────
+  // â”€â”€─ Edition photo / bannière / slogan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
   Future<void> _editPhoto(ChildModel child, FamilyProvider fp) async {
     final xfile = await ImagePicker().pickImage(
         source: ImageSource.gallery, imageQuality: 80, maxWidth: 600);
@@ -478,7 +478,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     Navigator.pop(ctx);
                   } else {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(content: Text('PIN incorrect âŒ')));
+                        const SnackBar(content: Text('PIN incorrect ❌')));
                   }
                 },
                 child: const Text('Valider'),
@@ -532,9 +532,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
   //  BUILD
-  // ─────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(builder: (context, fp, _) {
@@ -613,9 +613,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     });
   }
 
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB PROFIL
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // ─── Proposition enfant (penalite / immunite) avec validation parentale ───
   void _showProposeRequestDialog(BuildContext context, FamilyProvider fp, ChildModel child, String type) {
     final isPenalite = type == 'punishment';
@@ -857,7 +857,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Widget _buildProfileTab(ChildModel child, FamilyProvider fp, Color color) {
     final frame = _frameColor(child.level);
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 120, bottom: 24),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24),
       child: Column(children: [
         // ─── Boutons proposition enfant ───
         if (!context.watch<PinProvider>().isParentMode)
@@ -899,9 +899,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               padding: const EdgeInsets.all(20),
               child: Column(children: [
 
-                // ══════════════════════════════════════════
-                // BANNIÃˆRE "” pleine largeur, 200 px, centrée
-                // ══════════════════════════════════════════
+                // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                // BANNIÃˆRE — pleine largeur, 200 px, centrée
+                // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                 if (child.bannerBase64 != null &&
                     child.bannerBase64!.isNotEmpty) ...[
                   ClipRRect(
@@ -1006,7 +1006,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
-                label: const Text('Bannière ', style: TextStyle(fontSize: 11)),
+                label: const Text('Bannière 🖼️', style: TextStyle(fontSize: 11)),
               ),
             ),
             const SizedBox(width: 8),
@@ -1070,8 +1070,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       children: [
         _statCard('🎯', 'Bonus',     '$bonuses',   Colors.greenAccent),
         _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
-        _statCard('', 'Niveau',    '${child.level} "“ ${child.levelTitle}', color),
-        _statCard('', 'Immunités',
+        _statCard('🏆', 'Niveau',    '${child.level} – ${child.levelTitle}', color),
+        _statCard('🛡️', 'Immunités',
             '${fp.getTotalAvailableImmunity(child.id)} lignes',
             Colors.amberAccent),
       ],
@@ -1092,9 +1092,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ]),
       );
 
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB ÉCRAN
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildScreenTab(ChildModel child, FamilyProvider fp, Color color) {
     final immunities    = fp.getUsableImmunitiesForChild(child.id);
     final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);
@@ -1112,7 +1112,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final globalScore   = fp.getGlobalScoreForDays(child.id, _joursSources);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
       child: Column(children: [
         GlassCard(
           child: Padding(
@@ -1124,8 +1124,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   style: TextStyle(
                       color: color, fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 8),
-              _infoRow(' Immunités', '$immunityBonus lignes', Colors.amberAccent),
-              _infoRow('â±️ Bonus parent',
+              _infoRow('🛡️ Immunités', '$immunityBonus lignes', Colors.amberAccent),
+              _infoRow('⏱️ Bonus parent',
                   '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
                   Colors.greenAccent),
               _infoRow('📅 Jour affiché', _selectedDay!, color),
@@ -1333,7 +1333,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          const Text(' Immunités disponibles',
+          const Text('🛡️ Immunités disponibles',
               style: TextStyle(
                   color: Colors.amberAccent, fontWeight: FontWeight.bold,
                   fontSize: 14)),
@@ -1341,7 +1341,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ...immunities.map((imm) => Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Row(children: [
-              const Text('', style: TextStyle(fontSize: 16)),
+              const Text('🛡️', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(imm.reason,
@@ -1447,9 +1447,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return '${h}h${m.toString().padLeft(2, '0')}';
   }
 
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB HISTORIQUE
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildHistoryTab(ChildModel child, FamilyProvider fp, Color color) {
     final allEntries = fp.getHistoryForChild(child.id)
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -1482,9 +1482,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final penalties = allEntries.where((h) => !h.isBonus).length;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
       child: Column(children: [
-        // ── Résumé ──
+        // â”€â”€ Résumé â”€â”€
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1492,7 +1492,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _histStat('✅ Bonus',     '$bonuses',   Colors.greenAccent),
-                _histStat('âŒ Pénalités', '$penalties', Colors.redAccent),
+                _histStat('❌ Pénalités', '$penalties', Colors.redAccent),
                 _histStat('📋 Total',
                     '${allEntries.length}', Colors.white70),
               ],
@@ -1501,7 +1501,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 12),
 
-        // ── Filtres ──
+        // â”€â”€ Filtres â”€â”€
         SizedBox(
           height: 36,
           child: ListView.separated(
@@ -1537,7 +1537,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 12),
 
-        // ── Liste ──
+        // â”€â”€ Liste â”€â”€
         if (filtered.isEmpty)
           Padding(
             padding: const EdgeInsets.all(32),
@@ -1627,7 +1627,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         color: Colors.white38, fontSize: 11)),
                 if (e.actionBy != null && e.actionBy!.isNotEmpty) ...[
                   const SizedBox(width: 8),
-                  const Text('Â·',
+                  const Text('·',
                       style: TextStyle(color: Colors.white24)),
                   const SizedBox(width: 4),
                   Text('par ${e.actionBy}',
@@ -1654,9 +1654,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB BADGES
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
   // ✅ CORRIGÉ : fp.badges → BadgeModel.defaultBadges + fp.customBadges
   final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
@@ -1673,10 +1673,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       .toList();
 
   return SingleChildScrollView(
-    padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
+    padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-      // ── Badges personnalisés ──
+      // â”€â”€ Badges personnalisés â”€â”€
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1748,8 +1748,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       const Divider(color: Colors.white12),
       const SizedBox(height: 8),
 
-      // ── Badges obtenus ──
-      Text(' Badges obtenus (${earned.length})',
+      // â”€â”€ Badges obtenus â”€â”€
+      Text('🏆 Badges obtenus (${earned.length})',
           style: TextStyle(
               color: color, fontWeight: FontWeight.bold, fontSize: 14)),
       const SizedBox(height: 8),
@@ -1816,7 +1816,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       const Divider(color: Colors.white12),
       const SizedBox(height: 8),
 
-      // ── Badges verrouillés ──
+      // â”€â”€ Badges verrouillés â”€â”€
       Text('🔒 Badges à débloquer (${locked.length})',
           style: const TextStyle(
               color: Colors.white54, fontWeight: FontWeight.bold,
