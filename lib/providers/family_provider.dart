@@ -821,14 +821,35 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── Profils parents ─────────────────────────────────────────────────
   Future<void> saveParentProfile(ParentProfile profile) async {
+    // Ajouter/mettre à jour en local immédiatement (optimistic update)
+    final idx = _parentProfiles.indexWhere((p) => p.id == profile.id);
+    if (idx >= 0) {
+      _parentProfiles[idx] = profile;
+    } else {
+      _parentProfiles.add(profile);
+    }
+    notifyListeners();
+
+    // Puis synchroniser sur Firestore
     if (_firestore.isConnected) {
-      await _firestore.saveParentProfile(profile);
+      try {
+        await _firestore.saveParentProfile(profile);
+      } catch (e) {
+        if (kDebugMode) debugPrint('saveParentProfile Firestore error: $e');
+      }
     }
   }
 
   Future<void> deleteParentProfile(String id) async {
+    _parentProfiles.removeWhere((p) => p.id == id);
+    notifyListeners();
+
     if (_firestore.isConnected) {
-      await _firestore.deleteParentProfile(id);
+      try {
+        await _firestore.deleteParentProfile(id);
+      } catch (e) {
+        if (kDebugMode) debugPrint('deleteParentProfile Firestore error: $e');
+      }
     }
   }
 

@@ -214,9 +214,9 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                     final picker = ImagePicker();
                     final xfile = await picker.pickImage(
                       source: ImageSource.gallery,
-                      maxWidth: 300,
-                      maxHeight: 300,
-                      imageQuality: 80,
+                      maxWidth: 200,
+                      maxHeight: 200,
+                      imageQuality: 50,
                     );
                     if (xfile != null) {
                       final bytes = await xfile.readAsBytes();
@@ -296,7 +296,16 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
             ElevatedButton(
               onPressed: () async {
                 final name = nameCtrl.text.trim();
-                if (name.isEmpty) return;
+                if (name.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                    content: const Text('Veuillez entrer un nom'),
+                    backgroundColor: EmeraldPalette.error,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ));
+                  return;
+                }
 
                 String? answerHash;
                 if (questionCtrl.text.trim().isNotEmpty &&
@@ -315,8 +324,37 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                   createdAt: profile?.createdAt ?? DateTime.now(),
                 );
 
-                await fp.saveParentProfile(newProfile);
-                if (ctx.mounted) Navigator.pop(ctx);
+                try {
+                  await fp.saveParentProfile(newProfile);
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                      content: Row(children: [
+                        Icon(Icons.check_circle_rounded,
+                            color: Colors.white, size: 18),
+                        SizedBox(width: 8),
+                        Text(isEdit
+                            ? 'Profil modifie !'
+                            : 'Profil cree !'),
+                      ]),
+                      backgroundColor: EmeraldPalette.emerald,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      duration: const Duration(seconds: 2),
+                    ));
+                    Navigator.pop(ctx);
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                      content: Text('Erreur: $e'),
+                      backgroundColor: EmeraldPalette.error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ));
+                  }
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: EmeraldPalette.emerald,

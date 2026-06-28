@@ -73,13 +73,14 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
                       ),
                       const SizedBox(height: 30),
 
-                      // Grille des profils parents
-                      if (profiles.isEmpty)
-                        _buildEmptyProfiles(fp)
-                      else
+                      // Grille des profils parents (si existants)
+                      if (profiles.isNotEmpty) ...[
                         _buildProfilesGrid(fp, profiles),
-
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+                      ] else ...[
+                        _buildEmptyProfiles(fp),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Séparateur
                       Row(
@@ -100,7 +101,11 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
                                   thickness: 1)),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
+
+                      // Bouton Mode Parent (PIN direct, sans profil)
+                      _buildParentModeButton(),
+                      const SizedBox(height: 12),
 
                       // Bouton Mode Enfant
                       _buildChildModeButton(fp),
@@ -313,6 +318,57 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
     );
   }
 
+  Widget _buildParentModeButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: TvFocusWrapper(
+        onTap: () => _enterParentMode(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                EmeraldPalette.gold.withValues(alpha: 0.2),
+                EmeraldPalette.goldLight.withValues(alpha: 0.1),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: EmeraldPalette.gold.withValues(alpha: 0.5),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: EmeraldPalette.gold.withValues(alpha: 0.15),
+                blurRadius: 16,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.shield_rounded,
+                  color: EmeraldPalette.goldLight, size: 24),
+              const SizedBox(width: 10),
+              Text(
+                'Mode Parent',
+                style: EmeraldTypography.heading.copyWith(
+                  fontSize: 16,
+                  color: EmeraldPalette.goldLight,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.lock_rounded,
+                  color: EmeraldPalette.goldLight, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildChildModeButton(FamilyProvider fp) {
     return SizedBox(
       width: double.infinity,
@@ -404,6 +460,26 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
   }
 
   // ─── Actions ──────────────────────────────────────────────────────────
+
+  void _enterParentMode() {
+    final pin = context.read<PinProvider>();
+    if (!pin.isPinSet) {
+      // Pas de PIN défini → on entre directement en mode parent
+      pin.unlockParentMode();
+      _navigateToHome();
+      return;
+    }
+    // PIN défini → on affiche l'écran PIN
+    Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
+    ).then((ok) {
+      if (ok == true) {
+        context.read<PinProvider>().unlockParentMode();
+        _navigateToHome();
+      }
+    });
+  }
 
   void _selectProfile(ParentProfile profile) {
     final pin = context.read<PinProvider>();
