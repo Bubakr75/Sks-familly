@@ -156,28 +156,68 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
 
   Widget _buildEmptyProfiles(FamilyProvider fp) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: EmeraldPalette.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EmeraldPalette.glassBorder),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: EmeraldPalette.emerald.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: EmeraldPalette.emerald.withValues(alpha: 0.1),
+            blurRadius: 20,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Icon(Icons.person_add_rounded,
-              size: 40, color: EmeraldPalette.emeraldLight),
-          const SizedBox(height: 12),
-          Text('Aucun profil parent',
-              style: EmeraldTypography.heading.copyWith(fontSize: 16)),
-          const SizedBox(height: 4),
-          Text('Créez des profils pour les parents',
-              style: EmeraldTypography.caption.copyWith(fontSize: 12)),
-          const SizedBox(height: 16),
-          TextButton.icon(
-            onPressed: () => _openManageProfiles(fp),
-            icon: Icon(Icons.add_rounded, color: EmeraldPalette.emeraldLight),
-            label: Text('Créer un profil',
-                style: TextStyle(color: EmeraldPalette.emeraldLight)),
+          // Icône animée
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              gradient: EmeraldPalette.emeraldGradient,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: EmeraldPalette.emerald.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: const Icon(Icons.family_restroom_rounded,
+                color: Colors.white, size: 36),
+          ),
+          const SizedBox(height: 20),
+          Text('Bienvenue !',
+              style: EmeraldTypography.display.copyWith(fontSize: 22)),
+          const SizedBox(height: 6),
+          Text(
+            'Créez votre premier profil parent pour commencer.\nVous pourrez en ajouter d\'autres plus tard (maman, tata...).',
+              style: EmeraldTypography.caption.copyWith(fontSize: 13),
+              textAlign: TextAlign.center),
+          const SizedBox(height: 24),
+          // Gros bouton "Créer mon profil"
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _openManageProfiles(fp),
+              icon: const Icon(Icons.person_add_rounded, size: 22),
+              label: const Text('Créer mon profil parent',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EmeraldPalette.emerald,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+            ),
           ),
         ],
       ),
