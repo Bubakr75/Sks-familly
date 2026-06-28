@@ -216,7 +216,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             decoration: InputDecoration(
               labelText:  'Émoji',
               labelStyle: const TextStyle(color: Colors.white54),
-              hintText:   'ðŸ†',
+              hintText:   '',
               hintStyle:  const TextStyle(color: Colors.white24),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -323,8 +323,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   String _categoryEmoji(HistoryEntry e) {
     final cat = e.category.toLowerCase();
-    if (cat.contains('punition')) return 'ðŸ“';
-    if (cat.contains('immunité')) return 'ðŸ›¡️';
+    if (cat.contains('punition')) return '';
+    if (cat.contains('immunité')) return '';
     if (cat.contains('tribunal') || cat.contains('verdict')) return 'âš–️';
     if (cat.contains('school') || cat.contains('note')) return '📚';
     if (cat.contains('échange') || cat.contains('trade')) return '🔄';
@@ -1006,7 +1006,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
-                label: const Text('Bannière ðŸ–¼️', style: TextStyle(fontSize: 11)),
+                label: const Text('Bannière ', style: TextStyle(fontSize: 11)),
               ),
             ),
             const SizedBox(width: 8),
@@ -1070,8 +1070,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       children: [
         _statCard('🎯', 'Bonus',     '$bonuses',   Colors.greenAccent),
         _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
-        _statCard('ðŸ†', 'Niveau',    '${child.level} "“ ${child.levelTitle}', color),
-        _statCard('ðŸ›¡️', 'Immunités',
+        _statCard('', 'Niveau',    '${child.level} "“ ${child.levelTitle}', color),
+        _statCard('', 'Immunités',
             '${fp.getTotalAvailableImmunity(child.id)} lignes',
             Colors.amberAccent),
       ],
@@ -1124,7 +1124,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   style: TextStyle(
                       color: color, fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 8),
-              _infoRow('ðŸ›¡️ Immunités', '$immunityBonus lignes', Colors.amberAccent),
+              _infoRow(' Immunités', '$immunityBonus lignes', Colors.amberAccent),
               _infoRow('â±️ Bonus parent',
                   '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
                   Colors.greenAccent),
@@ -1333,7 +1333,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          const Text('ðŸ›¡️ Immunités disponibles',
+          const Text(' Immunités disponibles',
               style: TextStyle(
                   color: Colors.amberAccent, fontWeight: FontWeight.bold,
                   fontSize: 14)),
@@ -1341,7 +1341,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ...immunities.map((imm) => Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Row(children: [
-              const Text('ðŸ›¡️', style: TextStyle(fontSize: 16)),
+              const Text('', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(imm.reason,
@@ -1749,7 +1749,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       const SizedBox(height: 8),
 
       // ── Badges obtenus ──
-      Text('ðŸ† Badges obtenus (${earned.length})',
+      Text(' Badges obtenus (${earned.length})',
           style: TextStyle(
               color: color, fontWeight: FontWeight.bold, fontSize: 14)),
       const SizedBox(height: 8),
