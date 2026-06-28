@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // SKS Family - Dashboard Émeraude Premium
 // =============================================================================
 // Refonte style Apple Fitness + Stripe + palette émeraude
@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../models/trade_model.dart';
+import '../models/history_entry.dart';
 import '../config/emerald_theme.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
@@ -129,6 +130,16 @@ class _DashboardScreenState extends State<DashboardScreen>
     return 'Bonsoir';
   }
 
+  /// Récupère les entrées d'historique du jour (depuis le FamilyProvider via context)
+  List<HistoryEntry> get _historyForToday {
+    // Cette méthode est appelée dans build(), on a donc accès au provider
+    // via le Consumer parent. Mais comme on est dans _DashboardScreenState,
+    // on doit utiliser un contexte. Plus simple : on le passe en paramètre.
+    return _cachedHistory;
+  }
+
+  List<HistoryEntry> _cachedHistory = [];
+
   int _getTodayActionsCount(FamilyProvider fp) {
     final today = DateTime.now();
     final todayStart = DateTime(today.year, today.month, today.day);
@@ -144,6 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         final totalPoints =
             fp.children.fold<int>(0, (sum, c) => sum + c.points);
         final activeTrades = fp.trades.where((t) => t.isActive).toList();
+        _cachedHistory = fp.history;
 
         return EmeraldBackground(
           child: Scaffold(
@@ -160,7 +172,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       child: EmeraldHeader(
                         title: _getGreeting(),
                         subtitle:
-                            '${fp.children.length} enfants · ${fp.currentParentName}',
+                            '${emeraldFormatDate(DateTime.now())} · ${fp.children.length} enfants',
                         actionIcon: Icons.menu_rounded,
                         onActionTap: () => Scaffold.of(context).openDrawer(),
                       ),
@@ -184,6 +196,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                       animation: _actionsAnim,
                       child: _buildQuickActions(fp),
                     ),
+
+                    // Activité récente
+                    if (fp.history.isNotEmpty)
+                      _AnimatedFade(
+                        animation: _tradesAnim,
+                        child: _buildRecentActivity(fp),
+                      ),
 
                     // Active Trades
                     if (activeTrades.isNotEmpty)
@@ -240,35 +259,48 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildPodiumSection(List<ChildModel> sorted) {
+    // Calcul des points gagnés aujourd'hui par enfant
+    final today = DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final pointsTodayByChild = <String, int>{};
+    for (final entry in _historyForToday) {
+      if (entry.isBonus) {
+        pointsTodayByChild[entry.childId] =
+            (pointsTodayByChild[entry.childId] ?? 0) + entry.points;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const EmeraldSectionTitle(
-          title: 'Classement',
-          icon: Icons.emoji_events_outlined,
+          title: 'Nos Étoiles',
+          icon: Icons.auto_awesome_rounded,
         ),
-        EmeraldCard(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-          child: Column(
-            children: [
-              for (int i = 0; i < sorted.length; i++)
-                TvFocusWrapper(
-                  onTap: () => Navigator.push(
-                    context,
-                    ZoomPageRoute(
-                        page: ChildDashboardScreen(childId: sorted[i].id)),
-                  ),
-                  child: EmeraldPodiumRow(
-                    rank: i + 1,
-                    name: sorted[i].name,
-                    points: sorted[i].points,
-                    level: sorted[i].levelTitle,
-                    avatar: _buildChildAvatar(sorted[i], 20),
-                    isTop: i == 0,
-                  ),
-                ),
-            ],
-          ),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 0.62,
+          children: sorted.map((child) {
+            return EmeraldChildCard(
+              name: child.name,
+              levelTitle: child.levelTitle,
+              levelProgress: child.levelProgress,
+              points: child.points,
+              pointsToday: pointsTodayByChild[child.id] ?? 0,
+              badgeCount: child.badgeIds.length,
+              streakDays: child.streakDays,
+              avatar: _buildChildAvatar(child, 32),
+              onTap: () => Navigator.push(
+                context,
+                ZoomPageRoute(
+                    page: ChildDashboardScreen(childId: child.id)),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
@@ -276,18 +308,18 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildQuickActions(FamilyProvider fp) {
     final actions = [
-      _Act('Punition', Icons.menu_book_rounded, EmeraldPalette.error, () {
+      _Act('Lignes Punition', Icons.menu_book_rounded, EmeraldPalette.error, () {
         Navigator.push(
             context,
             SlidePageRoute(
                 page: const PunishmentLinesScreen(),
                 direction: SlideDirection.up));
       }),
-      _Act('Immunité', Icons.shield_rounded, EmeraldPalette.warning, () {
+      _Act("Lignes d'Immunité", Icons.shield_rounded, EmeraldPalette.warning, () {
         Navigator.push(
             context, SpinPageRoute(page: const ImmunityLinesScreen()));
       }),
-      _Act('Écran', Icons.tv_rounded, EmeraldPalette.info, () {
+      _Act('Temps Écran', Icons.tv_rounded, EmeraldPalette.info, () {
         _showChildPickerForNav(fp, (childId) {
           Navigator.push(context,
               ZoomPageRoute(page: ChildDashboardScreen(childId: childId)));
@@ -303,7 +335,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               DoorPageRoute(page: TradeScreen(childId: childId)));
         });
       }),
-      _Act('Notes', Icons.note_alt_rounded, const Color(0xFFEC4899), () {
+      _Act('Notes Scolaires', Icons.note_alt_rounded, const Color(0xFFEC4899), () {
         Navigator.push(
             context, SlidePageRoute(page: const MultiChildEvaluationScreen()));
       }),
@@ -322,7 +354,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.0,
+          childAspectRatio: 0.95,
           children: actions
               .map((a) => EmeraldActionTile(
                     label: a.label,
@@ -331,6 +363,61 @@ class _DashboardScreenState extends State<DashboardScreen>
                     onTap: a.onTap,
                   ))
               .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentActivity(FamilyProvider fp) {
+    // Prendre les 3 dernières entrées d'historique
+    final recent = List<HistoryEntry>.from(fp.history);
+    recent.sort((a, b) => b.date.compareTo(a.date));
+    final top3 = recent.take(3).toList();
+
+    if (top3.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        EmeraldSectionTitle(
+          title: 'Activité récente',
+          icon: Icons.history_rounded,
+        ),
+        EmeraldCard(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            children: top3.map((entry) {
+              final child = fp.getChild(entry.childId);
+              return Column(
+                children: [
+                  EmeraldActivityRow(
+                    childName: child?.name ?? 'Enfant',
+                    reason: entry.reason,
+                    points: entry.points,
+                    isBonus: entry.isBonus,
+                    date: entry.date,
+                    actionBy: entry.actionBy,
+                    onTap: () {
+                      if (child != null) {
+                        Navigator.push(
+                          context,
+                          ZoomPageRoute(
+                              page: ChildDashboardScreen(childId: child.id)),
+                        );
+                      }
+                    },
+                  ),
+                  if (entry != top3.last)
+                    Divider(
+                      color: EmeraldPalette.glassBorder,
+                      height: 1,
+                      indent: 14,
+                      endIndent: 14,
+                    ),
+                ],
+              );
+            }).toList(),
+          ),
         ),
       ],
     );

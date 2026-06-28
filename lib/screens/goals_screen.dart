@@ -1,4 +1,4 @@
-﻿// lib/screens/goals_screen.dart
+// lib/screens/goals_screen.dart
 import 'package:flutter/material.dart';
 import '../widgets/glass_widgets.dart';
 import 'package:provider/provider.dart';

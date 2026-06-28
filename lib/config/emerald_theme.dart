@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // SKS Family - Emerald Design System
 // =============================================================================
 // Design system "Émeraude Premium" inspiré de :
@@ -14,16 +14,16 @@ import 'package:flutter/material.dart';
 class EmeraldPalette {
   EmeraldPalette._();
 
-  // Fonds
-  static const Color background = Color(0xFF0A1F1A); // Vert nuit profond
-  static const Color surface = Color(0xFF122B22); // Vert surface (cards)
-  static const Color surfaceHigh = Color(0xFF1A3829); // Cards hover/active
-  static const Color surfaceLow = Color(0xFF0E2519); // Cards secondaires
+  // Fonds — PLUS SOMBR€ pour contraste max avec les cards
+  static const Color background = Color(0xFF051410); // Vert nuit très sombre
+  static const Color surface = Color(0xFF0F2620); // Vert surface (cards)
+  static const Color surfaceHigh = Color(0xFF193530); // Cards hover/active
+  static const Color surfaceLow = Color(0xFF0A1C17); // Cards secondaires
 
-  // Accents
-  static const Color emerald = Color(0xFF10B981); // Vert vif principal
-  static const Color emeraldLight = Color(0xFF34D399); // Vert clair
-  static const Color emeraldDark = Color(0xFF047857); // Vert foncé
+  // Accents — VERT + VIF (plus de contraste, plus premium)
+  static const Color emerald = Color(0xFF00E676); // Vert vif émeraude (plus flashy)
+  static const Color emeraldLight = Color(0xFF69F0AE); // Vert clair lumineux
+  static const Color emeraldDark = Color(0xFF00C853); // Vert foncé profond
   static const Color gold = Color(0xFFD4AF37); // Doré pour médailles/récompenses
   static const Color goldLight = Color(0xFFF4D160); // Doré clair
 
@@ -316,7 +316,7 @@ class EmeraldActionTile extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -327,14 +327,15 @@ class EmeraldActionTile extends StatelessWidget {
   }
 }
 
-/// Composant : Podium row (style Apple Fitness — épuré, lisible)
-class EmeraldPodiumRow extends StatelessWidget {
+/// Composant : Podium row (style Apple Fitness épuré + glow doré pour le #1)
+class EmeraldPodiumRow extends StatefulWidget {
   final int rank;
   final String name;
   final int points;
   final String level;
   final Widget avatar;
   final bool isTop;
+  final double levelProgress; // 0.0 → 1.0 (progression vers niveau suivant)
 
   const EmeraldPodiumRow({
     super.key,
@@ -344,10 +345,42 @@ class EmeraldPodiumRow extends StatelessWidget {
     required this.level,
     required this.avatar,
     this.isTop = false,
+    this.levelProgress = 0.0,
   });
 
+  @override
+  State<EmeraldPodiumRow> createState() => _EmeraldPodiumRowState();
+}
+
+class _EmeraldPodiumRowState extends State<EmeraldPodiumRow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    _pulseAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    if (widget.isTop) _pulseController.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
   Color get _rankColor {
-    switch (rank) {
+    switch (widget.rank) {
       case 1:
         return EmeraldPalette.goldMedal;
       case 2:
@@ -360,7 +393,7 @@ class EmeraldPodiumRow extends StatelessWidget {
   }
 
   String get _rankEmoji {
-    switch (rank) {
+    switch (widget.rank) {
       case 1:
         return '🥇';
       case 2:
@@ -374,65 +407,131 @@ class EmeraldPodiumRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: isTop
-            ? EmeraldPalette.gold.withValues(alpha: 0.05)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: isTop
-            ? Border.all(
-                color: EmeraldPalette.gold.withValues(alpha: 0.3),
-                width: 1,
-              )
-            : null,
-      ),
+    return AnimatedBuilder(
+      animation: _pulseAnim,
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: widget.isTop
+                ? EmeraldPalette.gold.withValues(alpha: 0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: widget.isTop
+                ? Border.all(
+                    color: EmeraldPalette.gold
+                        .withValues(alpha: 0.4 + _pulseAnim.value * 0.3),
+                    width: 1.5,
+                  )
+                : Border.all(
+                    color: EmeraldPalette.glassBorder,
+                    width: 1,
+                  ),
+            boxShadow: widget.isTop
+                ? [
+                    BoxShadow(
+                      color: EmeraldPalette.gold
+                          .withValues(alpha: 0.15 * _pulseAnim.value),
+                      blurRadius: 20,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
+          ),
+          child: child,
+        );
+      },
       child: Row(
         children: [
-          // Rang
+          // Rang (médaille ou #)
           SizedBox(
             width: 36,
             child: Text(
-              _rankEmoji.isNotEmpty ? _rankEmoji : '#$rank',
+              _rankEmoji.isNotEmpty ? _rankEmoji : '#${widget.rank}',
               style: TextStyle(
-                fontSize: _rankEmoji.isNotEmpty ? 20 : 14,
+                fontSize: _rankEmoji.isNotEmpty ? 22 : 14,
                 fontWeight: FontWeight.w800,
                 color: _rankColor,
               ),
             ),
           ),
           // Avatar
-          avatar,
+          widget.avatar,
           const SizedBox(width: 12),
-          // Nom + niveau
+          // Nom + niveau + barre de progression
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  name,
+                  widget.name,
                   style: EmeraldTypography.heading.copyWith(
                     fontSize: 15,
-                    fontWeight: isTop ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight:
+                        widget.isTop ? FontWeight.w700 : FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  level,
-                  style: EmeraldTypography.caption.copyWith(fontSize: 11),
+                  widget.level,
+                  style: EmeraldTypography.caption.copyWith(fontSize: 10),
+                ),
+                const SizedBox(height: 6),
+                // Barre de progression vers niveau suivant
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: SizedBox(
+                    height: 4,
+                    child: Stack(
+                      children: [
+                        // Track
+                        Container(
+                          decoration: BoxDecoration(
+                            color: EmeraldPalette.surfaceHigh,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                        // Fill animé
+                        FractionallySizedBox(
+                          widthFactor:
+                              widget.levelProgress.clamp(0.0, 1.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: widget.isTop
+                                  ? EmeraldPalette.goldGradient
+                                  : EmeraldPalette.emeraldGradient,
+                              borderRadius: BorderRadius.circular(3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (widget.isTop
+                                          ? EmeraldPalette.gold
+                                          : EmeraldPalette.emerald)
+                                      .withValues(alpha: 0.5),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 10),
           // Points
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '$points',
+                '${widget.points}',
                 style: EmeraldTypography.kpiNumber.copyWith(
-                  fontSize: 18,
-                  color: isTop ? EmeraldPalette.goldLight : EmeraldPalette.emeraldLight,
+                  fontSize: 20,
+                  color: widget.isTop
+                      ? EmeraldPalette.goldLight
+                      : EmeraldPalette.emeraldLight,
                 ),
               ),
               Text(
@@ -636,11 +735,9 @@ class EmeraldBackground extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF0A1F1A),
-              Color(0xFF0A1F1A),
-              Color(0xFF081511),
+              Color(0xFF051410),
+              Color(0xFF041008),
             ],
-            stops: [0, 0.5, 1],
           ),
         ),
         child: child,
@@ -648,4 +745,720 @@ class EmeraldBackground extends StatelessWidget {
     );
   }
 }
+
+/// Composant : Activité récente (ligne d'historique premium)
+class EmeraldActivityRow extends StatelessWidget {
+  final String childName;
+  final String reason;
+  final int points;
+  final bool isBonus;
+  final DateTime date;
+  final String? actionBy;
+  final VoidCallback? onTap;
+
+  const EmeraldActivityRow({
+    super.key,
+    required this.childName,
+    required this.reason,
+    required this.points,
+    required this.isBonus,
+    required this.date,
+    this.actionBy,
+    this.onTap,
+  });
+
+  String _timeAgo() {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return "À l'instant";
+    if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Il y a ${diff.inHours} h';
+    if (diff.inDays < 7) return 'Il y a ${diff.inDays} j';
+    return '${date.day}/${date.month}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = isBonus ? EmeraldPalette.emerald : EmeraldPalette.error;
+    final sign = isBonus ? '+' : '-';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              // Icône accent
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(
+                  isBonus ? Icons.add_rounded : Icons.remove_rounded,
+                  color: accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Infos
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          childName,
+                          style: EmeraldTypography.heading.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '$sign$points',
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      reason,
+                      style: EmeraldTypography.caption.copyWith(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _timeAgo() + (actionBy != null ? ' · $actionBy' : ''),
+                      style: EmeraldTypography.caption.copyWith(
+                        fontSize: 10,
+                        color: EmeraldPalette.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: EmeraldPalette.textMuted,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Helper : Formate une date en français ("lundi 5 juin")
+String emeraldFormatDate(DateTime date) {
+  const weekdays = [
+    'lundi',
+    'mardi',
+    'mercredi',
+    'jeudi',
+    'vendredi',
+    'samedi',
+    'dimanche'
+  ];
+  const months = [
+    'janvier',
+    'février',
+    'mars',
+    'avril',
+    'mai',
+    'juin',
+    'juillet',
+    'août',
+    'septembre',
+    'octobre',
+    'novembre',
+    'décembre'
+  ];
+  return '${weekdays[date.weekday - 1]} ${date.day} ${months[date.month - 1]}';
+}
+
+/// Couleur personnalisée par enfant (basée sur son nom)
+Color emeraldChildAccent(String name) {
+  const palette = [
+    EmeraldPalette.emerald,
+    EmeraldPalette.gold,
+    Color(0xFF8B5CF6), // Violet
+    Color(0xFFEC4899), // Rose
+    Color(0xFF3B82F6), // Bleu
+    Color(0xFFF59E0B), // Ambre
+    Color(0xFF06B6D4), // Cyan
+    Color(0xFFEF4444), // Rouge
+  ];
+  if (name.isEmpty) return palette[0];
+  return palette[name.codeUnitAt(0) % palette.length];
+}
+
+/// Composant : Carte Membre Premium (style carte de visite)
+/// Valorise chaque enfant individuellement, sans compétition.
+class EmeraldChildCard extends StatefulWidget {
+  final String name;
+  final String levelTitle;
+  final double levelProgress; // 0.0 → 1.0
+  final int points;
+  final int pointsToday;
+  final int badgeCount;
+  final int? streakDays;
+  final Widget avatar; // Widget avatar (photo ou initiale)
+  final VoidCallback? onTap;
+
+  const EmeraldChildCard({
+    super.key,
+    required this.name,
+    required this.levelTitle,
+    required this.levelProgress,
+    required this.points,
+    required this.pointsToday,
+    required this.badgeCount,
+    this.streakDays,
+    required this.avatar,
+    this.onTap,
+  });
+
+  @override
+  State<EmeraldChildCard> createState() => _EmeraldChildCardState();
+}
+
+class _EmeraldChildCardState extends State<EmeraldChildCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    );
+    _shimmerAnim = Tween<double>(begin: -1.0, end: 2.0).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
+    );
+    _shimmerController.repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = emeraldChildAccent(widget.name);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: EmeraldPalette.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.25),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // ─── Avatar avec halo coloré + shimmer ───
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Halo
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          accent.withValues(alpha: 0.3),
+                          accent.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Avatar (clipé en cercle)
+                  ClipOval(
+                    child: SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: widget.avatar,
+                    ),
+                  ),
+                  // Bordure colorée
+                  Container(
+                    width: 66,
+                    height: 66,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: accent.withValues(alpha: 0.6),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  // Shimmer subtil
+                  AnimatedBuilder(
+                    animation: _shimmerAnim,
+                    builder: (context, _) {
+                      return ClipOval(
+                        child: SizedBox(
+                          width: 64,
+                          height: 64,
+                          child: ShaderMask(
+                            shaderCallback: (bounds) {
+                              return LinearGradient(
+                                begin: Alignment(
+                                    _shimmerAnim.value - 0.5, 0),
+                                end: Alignment(
+                                    _shimmerAnim.value + 0.5, 0),
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.white.withValues(alpha: 0.15),
+                                  Colors.transparent,
+                                ],
+                              ).createShader(bounds);
+                            },
+                            blendMode: BlendMode.srcOver,
+                            child: Container(color: Colors.transparent),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // ─── Nom + niveau ───
+              Text(
+                widget.name,
+                style: EmeraldTypography.heading.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  widget.levelTitle,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // ─── Barre de progression vers niveau suivant ───
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: SizedBox(
+                  height: 4,
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: EmeraldPalette.surfaceHigh,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor:
+                            widget.levelProgress.clamp(0.0, 1.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                accent,
+                                accent.withValues(alpha: 0.7),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: accent.withValues(alpha: 0.5),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${(widget.levelProgress * 100).round()}%',
+                    style: EmeraldTypography.caption.copyWith(
+                      fontSize: 9,
+                      color: EmeraldPalette.textMuted,
+                    ),
+                  ),
+                  Text(
+                    '${widget.points} pts',
+                    style: EmeraldTypography.caption.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // ─── Mini stats : Badges + Streak ───
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: EmeraldPalette.surfaceLow,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    // Badges
+                    _MiniStat(
+                      icon: Icons.emoji_events_rounded,
+                      value: '${widget.badgeCount}',
+                      label: 'badges',
+                      color: EmeraldPalette.gold,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: EmeraldPalette.glassBorder,
+                    ),
+                    // Streak
+                    _MiniStat(
+                      icon: Icons.local_fire_department_rounded,
+                      value: '${widget.streakDays ?? 0}j',
+                      label: 'streak',
+                      color: EmeraldPalette.warning,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: EmeraldPalette.glassBorder,
+                    ),
+                    // Points du jour
+                    _MiniStat(
+                      icon: Icons.bolt_rounded,
+                      value: '+${widget.pointsToday}',
+                      label: "aujourd'hui",
+                      color: EmeraldPalette.emerald,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _MiniStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 14),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: EmeraldTypography.kpiNumber.copyWith(
+            fontSize: 12,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: EmeraldTypography.caption.copyWith(
+            fontSize: 8,
+            color: EmeraldPalette.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Composant : BANDEAU de MODE (Parent / Enfant)
+/// Affiche un bandeau coloré en haut de l'écran pour distinguer visuellement
+/// le mode actuel. CRITIQUE pour la sécurité : évite qu'un enfant croie être
+/// en mode enfant alors qu'il est en mode parent.
+///
+/// - Mode PARENT : bandeau doré "MODE PARENT · {nom}" + bouton verrouiller
+/// - Mode ENFANT : bandeau émeraude discret "Mode Enfant · {nom}"
+class EmeraldModeBanner extends StatelessWidget {
+  final bool isParentMode;
+  final String parentName;
+  final String childName;
+  final VoidCallback? onLockTap; // Pour verrouiller le mode parent
+  final VoidCallback? onUnlockTap; // Pour activer le mode parent (depuis mode enfant)
+
+  const EmeraldModeBanner({
+    super.key,
+    required this.isParentMode,
+    required this.parentName,
+    required this.childName,
+    this.onLockTap,
+    this.onUnlockTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isParentMode) {
+      // ─── MODE PARENT : bandeau doré voyant ───
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              EmeraldPalette.gold.withValues(alpha: 0.18),
+              EmeraldPalette.goldLight.withValues(alpha: 0.08),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: EmeraldPalette.gold.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: EmeraldPalette.gold.withValues(alpha: 0.15),
+              blurRadius: 12,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: EmeraldPalette.gold.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.shield_rounded,
+                color: EmeraldPalette.goldLight,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'MODE PARENT',
+                    style: EmeraldTypography.label.copyWith(
+                      fontSize: 10,
+                      color: EmeraldPalette.goldLight,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  Text(
+                    parentName,
+                    style: EmeraldTypography.heading.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (onLockTap != null)
+              GestureDetector(
+                onTap: onLockTap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: EmeraldPalette.gold.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: EmeraldPalette.gold.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock_rounded,
+                        color: EmeraldPalette.goldLight,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Verrouiller',
+                        style: EmeraldTypography.caption.copyWith(
+                          fontSize: 11,
+                          color: EmeraldPalette.goldLight,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    } else {
+      // ─── MODE ENFANT : bandeau émeraude discret ───
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: EmeraldPalette.emerald.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: EmeraldPalette.emerald.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: EmeraldPalette.emerald.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.child_care_rounded,
+                color: EmeraldPalette.emeraldLight,
+                size: 14,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Mode Enfant · $childName',
+                style: EmeraldTypography.caption.copyWith(
+                  fontSize: 12,
+                  color: EmeraldPalette.emeraldLight,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Bouton "Mode Parent" pour activer le mode parent
+            if (onUnlockTap != null)
+              GestureDetector(
+                onTap: onUnlockTap,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: EmeraldPalette.gold.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: EmeraldPalette.gold.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.shield_rounded,
+                        color: EmeraldPalette.goldLight,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Mode Parent',
+                        style: EmeraldTypography.caption.copyWith(
+                          fontSize: 11,
+                          color: EmeraldPalette.goldLight,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+  }
+}
+
 

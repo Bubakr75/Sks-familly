@@ -1,14 +1,16 @@
-﻿// lib/screens/home_screen.dart
+// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../config/emerald_theme.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/quick_shortcut_panel.dart';
+import 'pin_verification_screen.dart';
 import 'dashboard_screen.dart';
 import 'add_points_screen.dart';
 import 'calendar_screen.dart';
@@ -24,7 +26,6 @@ import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
 import 'child_dashboard_screen.dart';
-import 'pending_requests_screen.dart';
 import 'timeline_screen.dart';
 import 'chores_screen.dart';
 import '../widgets/animated_page_transition.dart';
@@ -626,6 +627,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final isParent = context.watch<PinProvider>().isParentMode;
+    final pinProvider = context.watch<PinProvider>();
+    final familyProvider = context.watch<FamilyProvider>();
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
@@ -633,26 +636,106 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       floatingActionButton: const QuickShortcutFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: AnimatedBackground(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.03, 0),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
+        child: Column(
+          children: [
+            // ─── BANDEAU DE MODE (Parent / Enfant) ───
+            // Affiché SEULEMENT si un PIN est défini
+            // Protégé par SafeArea pour ne pas être coupé par l'encoche
+            if (pinProvider.isPinSet)
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                  child: EmeraldModeBanner(
+                    isParentMode: isParent,
+                    parentName: widget.parentName,
+                    childName: familyProvider.children.isNotEmpty
+                        ? familyProvider.children.first.name
+                        : 'Enfant',
+                    onLockTap: isParent
+                        ? () {
+                            // Verrouiller le mode parent → repasse en mode enfant
+                            context.read<PinProvider>().lockParentMode();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.lock_rounded,
+                                        color: Colors.white, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Mode parent verrouille'),
+                                  ],
+                                ),
+                                backgroundColor: EmeraldPalette.emeraldDark,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        : null,
+                    // Bouton "Mode Parent" : ouvre l'écran PIN pour activer le mode parent
+                    onUnlockTap: !isParent
+                        ? () {
+                            Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const PinVerificationScreen()),
+                            ).then((result) {
+                              if (result == true) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Row(
+                                      children: [
+                                        Icon(Icons.shield_rounded,
+                                            color: Colors.white, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Mode parent active'),
+                                      ],
+                                    ),
+                                    backgroundColor: EmeraldPalette.gold,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            });
+                          }
+                        : null,
+                  ),
+                ),
               ),
-            );
-          },
-          child: KeyedSubtree(
-            key: ValueKey(_currentIndex),
-            child: _getScreen(),
-          ),
+            // ─── CONTENU PRINCIPAL ───
+            // Chaque écran gère son propre SafeArea
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.03, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey(_currentIndex),
+                  child: _getScreen(),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: SlideTransition(
@@ -853,7 +936,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       });
                     },
                   ),
-                  
+                  // NOUVEL ITEM : Punitions et Immunites multi-enfants
+                  _drawerItem(
+                    label: 'Punitions et Immunites',
+                    icon: Icons.balance_rounded,
+                    color: Colors.deepOrangeAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      PinGuard.guardAction(context, () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(page: const BalanceScreen()),
+                        );
+                      });
+                    },
+                  ),
                   _drawerItem(
                     label: 'Bonus et Penalites',
                     icon: Icons.monetization_on_rounded,
@@ -865,35 +962,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     },
                   ),
                 ],
-// NOUVEL ITEM : Punitions et Immunites multi-enfants
-                  _drawerItem(
-                    label: 'Punitions et Immunites',
-                    icon: Icons.balance_rounded,
-                    color: Colors.deepOrangeAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      
-                        Navigator.push(
-                          context,
-                          SlidePageRoute(page: const BalanceScreen()),
-                        );
-                    },
-                  ),
                 _drawerItem(
-                  icon: Icons.notifications_active_rounded,
-                  label: context.watch<FamilyProvider>().pendingRequestsCount > 0
-                      ? 'Demandes a valider (' + context.watch<FamilyProvider>().pendingRequestsCount.toString() + ')'
-                      : 'Demandes a valider',
-                  color: Colors.pinkAccent,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      SlidePageRoute(page: const PendingRequestsScreen()),
-                    );
-                  },
-                ),
-            _drawerItem(
                   icon: Icons.gavel_rounded,
                   label: 'Tribunal',
                   color: Colors.purpleAccent,
@@ -905,17 +974,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
-
-                if (isParent)
-                  _drawerItem(
-                    icon: Icons.child_care_rounded,
-                    label: 'Passer en mode enfant',
-                    color: Colors.tealAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.read<PinProvider>().lockParentMode();
-                    },
-                  ),
                 _drawerItem(
                   icon: Icons.auto_awesome_rounded,
                   label: 'Gemini AI',
@@ -1054,11 +1112,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 }
-
-
-
-
-
 
 
 

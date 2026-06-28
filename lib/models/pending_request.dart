@@ -1,4 +1,4 @@
-﻿class PendingRequest {
+class PendingRequest {
   String id;
   String type;        // 'punishment' | 'immunity' | 'bonus' | 'tribunal'
   String childId;     // enfant concerne

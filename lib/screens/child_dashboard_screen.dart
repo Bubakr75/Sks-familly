@@ -1,4 +1,4 @@
-﻿// lib/screens/child_dashboard_screen.dart
+// lib/screens/child_dashboard_screen.dart
 
 import 'dart:convert';
 import 'dart:math';
