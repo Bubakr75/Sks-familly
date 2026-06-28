@@ -280,7 +280,7 @@ class _TribunalScreenState extends State<TribunalScreen>
             const SizedBox(height: 20),
             if (isParent && !tc.isClosed) ...[
               if (tc.status == TribunalStatus.filed)
-                _actionButton('â–¶ï¸ Ouvrir l\'audience', Colors.blue,
+                _actionButton('â–¶️ Ouvrir l\'audience', Colors.blue,
                     () {
                   fp.startTribunalHearing(tc.id);
                   if (ctx.mounted) Navigator.pop(ctx);

@@ -171,7 +171,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       _customLocalBadges = raw.map((s) {
         final parts = s.split('||');
         return _CustomBadgeItem(
-          emoji: parts.isNotEmpty ? parts[0] : 'â­',
+          emoji: parts.isNotEmpty ? parts[0] : '⭐',
           label: parts.length > 1 ? parts[1] : s,
         );
       }).toList();
@@ -204,7 +204,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             style: TextStyle(color: Colors.white)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           const Text(
-            'ðŸ’¡ Appuie sur le champ émoji et utilise le clavier de ton téléphone',
+            '💡 Appuie sur le champ émoji et utilise le clavier de ton téléphone',
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
           const SizedBox(height: 12),
@@ -257,7 +257,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               final l = labelCtrl.text.trim();
               if (l.isNotEmpty) {
                 setState(() => _customLocalBadges.add(
-                    _CustomBadgeItem(emoji: e.isEmpty ? 'â­' : e, label: l)));
+                    _CustomBadgeItem(emoji: e.isEmpty ? '⭐' : e, label: l)));
                 _saveCustomBadges(childId);
               }
               Navigator.pop(ctx);
@@ -324,12 +324,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   String _categoryEmoji(HistoryEntry e) {
     final cat = e.category.toLowerCase();
     if (cat.contains('punition')) return 'ðŸ“';
-    if (cat.contains('immunité')) return 'ðŸ›¡ï¸';
-    if (cat.contains('tribunal') || cat.contains('verdict')) return 'âš–ï¸';
-    if (cat.contains('school') || cat.contains('note')) return 'ðŸ“š';
-    if (cat.contains('échange') || cat.contains('trade')) return 'ðŸ”„';
-    if (cat.contains('screen')) return 'ðŸ“º';
-    if (e.isBonus) return 'âœ…';
+    if (cat.contains('immunité')) return 'ðŸ›¡️';
+    if (cat.contains('tribunal') || cat.contains('verdict')) return 'âš–️';
+    if (cat.contains('school') || cat.contains('note')) return '📚';
+    if (cat.contains('échange') || cat.contains('trade')) return '🔄';
+    if (cat.contains('screen')) return '📺';
+    if (e.isBonus) return '✅';
     return 'âŒ';
   }
 
@@ -907,7 +907,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: SizedBox(
-                      height: 200,               // â† PLUS GRANDE (100 â†’ 200)
+                      height: 200,               // â† PLUS GRANDE (100 → 200)
                       width:  double.infinity,
                       child: Image.memory(
                         base64Decode(child.bannerBase64!),
@@ -967,7 +967,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    '${(child.levelProgress * 100).toInt()}% â†’ NIV.${child.level + 1}',
+                    '${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
                     style: const TextStyle(color: Colors.white38, fontSize: 10),
                   ),
                 ),
@@ -1006,7 +1006,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
-                label: const Text('Bannière ðŸ–¼ï¸', style: TextStyle(fontSize: 11)),
+                label: const Text('Bannière ðŸ–¼️', style: TextStyle(fontSize: 11)),
               ),
             ),
             const SizedBox(width: 8),
@@ -1021,7 +1021,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: true),
                 icon:  const Icon(Icons.lock, size: 16),
-                label: const Text('Bannière ðŸ”’', style: TextStyle(fontSize: 11)),
+                label: const Text('Bannière 🔒', style: TextStyle(fontSize: 11)),
               ),
             ),
           ]),
@@ -1068,10 +1068,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       mainAxisSpacing:   10,
       childAspectRatio:  1.6,
       children: [
-        _statCard('ðŸŽ¯', 'Bonus',     '$bonuses',   Colors.greenAccent),
-        _statCard('âš¡', 'Pénalités', '$penalties', Colors.redAccent),
+        _statCard('🎯', 'Bonus',     '$bonuses',   Colors.greenAccent),
+        _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
         _statCard('ðŸ†', 'Niveau',    '${child.level} "“ ${child.levelTitle}', color),
-        _statCard('ðŸ›¡ï¸', 'Immunités',
+        _statCard('ðŸ›¡️', 'Immunités',
             '${fp.getTotalAvailableImmunity(child.id)} lignes',
             Colors.amberAccent),
       ],
@@ -1120,28 +1120,28 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text('ðŸ“Š Résumé',
+              Text('📊 Résumé',
                   style: TextStyle(
                       color: color, fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 8),
-              _infoRow('ðŸ›¡ï¸ Immunités', '$immunityBonus lignes', Colors.amberAccent),
-              _infoRow('â±ï¸ Bonus parent',
+              _infoRow('ðŸ›¡️ Immunités', '$immunityBonus lignes', Colors.amberAccent),
+              _infoRow('â±️ Bonus parent',
                   '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
                   Colors.greenAccent),
-              _infoRow('ðŸ“… Jour affiché', _selectedDay!, color),
-              _infoRow('â° Temps écran calculé', _formatMinutes(minutes), Colors.white),
+              _infoRow('📅 Jour affiché', _selectedDay!, color),
+              _infoRow('⏰ Temps écran calculé', _formatMinutes(minutes), Colors.white),
               if (_joursSources.isNotEmpty) ...[
                 const Divider(color: Colors.white12, height: 20),
                 _infoRow(
-                    'ðŸ“š Moy. scolaire (jours cochés)',
+                    '📚 Moy. scolaire (jours cochés)',
                     schoolAvg >= 0
                         ? '${schoolAvg.toStringAsFixed(1)}/20'
                         : 'Aucune note',
                     Colors.purpleAccent),
-                _infoRow('ðŸ˜Š Comportement (jours cochés)',
+                _infoRow('😊 Comportement (jours cochés)',
                     '${behaviorScore.toStringAsFixed(1)}/20',
                     Colors.lightBlueAccent),
-                _infoRow('ðŸŒŸ Score global',
+                _infoRow('🌟 Score global',
                     '${globalScore.toStringAsFixed(1)}/20',
                     Colors.orangeAccent),
               ],
@@ -1159,7 +1159,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   Icon(Icons.calendar_today, color: color, size: 15),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text('ðŸ“š Jours pour le calcul des notes',
+                    child: Text('📚 Jours pour le calcul des notes',
                         style: TextStyle(
                             color: color, fontWeight: FontWeight.bold,
                             fontSize: 13)),
@@ -1167,7 +1167,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ]),
                 const SizedBox(height: 4),
                 const Text(
-                  'Ex : noter le mercredi pour lundi + mardi â†’ cocher Lun & Mar',
+                  'Ex : noter le mercredi pour lundi + mardi → cocher Lun & Mar',
                   style: TextStyle(color: Colors.white38, fontSize: 11),
                 ),
                 const SizedBox(height: 12),
@@ -1235,7 +1235,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           alignment: Alignment.centerLeft,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text('ðŸ“… Jour pour le temps d\'écran',
+            child: Text('📅 Jour pour le temps d\'écran',
                 style: TextStyle(
                     color: color.withOpacity(0.8),
                     fontSize: 12,
@@ -1333,7 +1333,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          const Text('ðŸ›¡ï¸ Immunités disponibles',
+          const Text('ðŸ›¡️ Immunités disponibles',
               style: TextStyle(
                   color: Colors.amberAccent, fontWeight: FontWeight.bold,
                   fontSize: 14)),
@@ -1341,7 +1341,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ...immunities.map((imm) => Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Row(children: [
-              const Text('ðŸ›¡ï¸', style: TextStyle(fontSize: 16)),
+              const Text('ðŸ›¡️', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(imm.reason,
@@ -1389,7 +1389,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 onPressed: () async {
                   await fp.addScreenTimeBonus(
                       child.id, min, 'Bonus parent +$min min');
-                  _triggerBonusAnim('+$min min ðŸŽ‰');
+                  _triggerBonusAnim('+$min min 🎉');
                 },
                 child: Text('+$min min', style: const TextStyle(fontSize: 12)),
               ),
@@ -1491,9 +1491,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _histStat('âœ… Bonus',     '$bonuses',   Colors.greenAccent),
+                _histStat('✅ Bonus',     '$bonuses',   Colors.greenAccent),
                 _histStat('âŒ Pénalités', '$penalties', Colors.redAccent),
-                _histStat('ðŸ“‹ Total',
+                _histStat('📋 Total',
                     '${allEntries.length}', Colors.white70),
               ],
             ),
@@ -1542,9 +1542,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           Padding(
             padding: const EdgeInsets.all(32),
             child: Column(children: [
-              const Text('ðŸ“­', style: TextStyle(fontSize: 40)),
+              const Text('📭', style: TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
-              Text('Aucune entrée dans Â« $_historyFilter Â»',
+              Text('Aucune entrée dans « $_historyFilter »',
                   style: const TextStyle(
                       color: Colors.white54, fontSize: 13),
                   textAlign: TextAlign.center),
@@ -1622,7 +1622,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               Row(children: [
                 Icon(Icons.access_time, size: 11, color: Colors.white38),
                 const SizedBox(width: 4),
-                Text('$dateLabel Ã  $timeLabel',
+                Text('$dateLabel à $timeLabel',
                     style: const TextStyle(
                         color: Colors.white38, fontSize: 11)),
                 if (e.actionBy != null && e.actionBy!.isNotEmpty) ...[
@@ -1658,7 +1658,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   //  TAB BADGES
   // ════════════════════════════════════════════════════════
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
-  // âœ… CORRIGÉ : fp.badges â†’ BadgeModel.defaultBadges + fp.customBadges
+  // ✅ CORRIGÉ : fp.badges → BadgeModel.defaultBadges + fp.customBadges
   final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
 
   final earned = allBadges
@@ -1680,7 +1680,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('â­ Badges personnalisés',
+          Text('⭐ Badges personnalisés',
               style: TextStyle(
                   color: color, fontWeight: FontWeight.bold, fontSize: 14)),
           IconButton(
@@ -1767,7 +1767,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   backgroundColor: const Color(0xFF1A1A2E),
                   title: const Text('Masquer ce badge ?',
                       style: TextStyle(color: Colors.white)),
-                  content: Text('Masquer Â« ${b.name} Â» de la vue ?',
+                  content: Text('Masquer « ${b.name} » de la vue ?',
                       style: const TextStyle(color: Colors.white70)),
                   actions: [
                     TextButton(
@@ -1817,13 +1817,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       const SizedBox(height: 8),
 
       // ── Badges verrouillés ──
-      Text('ðŸ”’ Badges Ã  débloquer (${locked.length})',
+      Text('🔒 Badges à débloquer (${locked.length})',
           style: const TextStyle(
               color: Colors.white54, fontWeight: FontWeight.bold,
               fontSize: 14)),
       const SizedBox(height: 8),
       if (locked.isEmpty)
-        const Text('Tous les badges ont été débloqués ! ðŸŽ‰',
+        const Text('Tous les badges ont été débloqués ! 🎉',
             style: TextStyle(color: Colors.white38, fontSize: 12))
       else
         Wrap(
@@ -1838,7 +1838,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 border:       Border.all(color: Colors.white24),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('ðŸ”’', style: TextStyle(fontSize: 18)),
+                const Text('🔒', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 6),
                 Text(b.name,
                     style: const TextStyle(

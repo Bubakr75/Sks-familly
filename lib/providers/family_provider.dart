@@ -184,7 +184,7 @@ class FamilyProvider extends ChangeNotifier {
 
   // ───────────────────────────────────────────────────────────
   void _setupFirestoreCallbacks() {
-    // âœ… CORRIGÉ : merge intelligent pour ne pas écraser les points locaux
+    // ✅ CORRIGÉ : merge intelligent pour ne pas écraser les points locaux
     _firestore.onChildrenChanged = (list, _) {
       final Map<String, ChildModel> firestoreMap = {
         for (var c in list) c.id: c
@@ -193,13 +193,13 @@ class FamilyProvider extends ChangeNotifier {
       for (final local in _children) {
         final remote = firestoreMap[local.id];
         if (remote == null) {
-          // Enfant pas encore confirmé sur Firestore â†’ garde le local
+          // Enfant pas encore confirmé sur Firestore → garde le local
           merged.add(local);
         } else if (local.points >= remote.points) {
-          // Local plus récent ou égal â†’ priorité au local
+          // Local plus récent ou égal → priorité au local
           merged.add(local);
         } else {
-          // Firestore plus récent â†’ on prend Firestore
+          // Firestore plus récent → on prend Firestore
           merged.add(remote);
         }
       }
@@ -501,7 +501,7 @@ class FamilyProvider extends ChangeNotifier {
     if (isBonus) { child.points += points; }
     else         { child.points -= points; }
     child.level = child.currentLevelNumber;
-    // âœ… Marque l'enfant comme pending pour protéger ses points
+    // ✅ Marque l'enfant comme pending pour protéger ses points
     _markPending(child.id);
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) await _firestore.saveChild(child);
@@ -725,7 +725,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   lines,
-      reason:   'ðŸ›¡ï¸ Immunité accordée : $reason ($lines ligne${lines > 1 ? 's' : ''})',
+      reason:   'ðŸ›¡️ Immunité accordée : $reason ($lines ligne${lines > 1 ? 's' : ''})',
       category: 'immunité',
       isBonus:  true,
       actionBy: _currentParentName,
@@ -978,7 +978,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   minutes.abs(),
-      reason:   'â± $reason (${minutes > 0 ? '+' : ''}${minutes}min)',
+      reason:   '⏱ $reason (${minutes > 0 ? '+' : ''}${minutes}min)',
       category: 'screen_time_bonus',
       isBonus:  minutes > 0,
       actionBy: _currentParentName,
@@ -1009,7 +1009,7 @@ class FamilyProvider extends ChangeNotifier {
       id:       _uuid.v4(),
       childId:  childId,
       points:   rating,
-      reason:   'â­ Note samedi: $rating/20',
+      reason:   '⭐ Note samedi: $rating/20',
       category: 'saturday_rating',
       isBonus:  true,
       actionBy: _currentParentName,
@@ -1222,11 +1222,11 @@ class FamilyProvider extends ChangeNotifier {
       if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       if (verdict == TribunalVerdict.guilty && penaltyPoints != null) {
         await addPoints(tc.accusedId, penaltyPoints,
-            'âš–ï¸ Verdict tribunal : $reason',
+            'âš–️ Verdict tribunal : $reason',
             category: 'tribunal_verdict', isBonus: false);
       } else if (verdict == TribunalVerdict.innocent && rewardPoints != null) {
         await addPoints(tc.plaintiffId, rewardPoints,
-            'âš–ï¸ Verdict tribunal : $reason',
+            'âš–️ Verdict tribunal : $reason',
             category: 'tribunal_verdict', isBonus: true);
       }
       notifyListeners();
@@ -1253,7 +1253,7 @@ class FamilyProvider extends ChangeNotifier {
         await addPoints(
           tc.accusedId,
           accusedPoints.abs(),
-          'âš–ï¸ Verdict tribunal : $reason',
+          'âš–️ Verdict tribunal : $reason',
           category: 'tribunal_verdict',
           isBonus:  isBonus,
         );
@@ -1367,7 +1367,7 @@ class FamilyProvider extends ChangeNotifier {
       final newImmunity = ImmunityLines(
         id:      _uuid.v4(),
         childId: trade.toChildId,
-        reason:  'ðŸ”„ Acheté Ã  ${getChild(trade.fromChildId)?.name ?? "?"} : ${trade.serviceDescription}',
+        reason:  '🔄 Acheté à ${getChild(trade.fromChildId)?.name ?? "?"} : ${trade.serviceDescription}',
         lines:   trade.immunityLines,
       );
       _markPending(newImmunity.id);
@@ -1384,7 +1384,7 @@ class FamilyProvider extends ChangeNotifier {
         id:       _uuid.v4(),
         childId:  trade.fromChildId,
         points:   trade.immunityLines,
-        reason:   'ðŸ”„ Vente immunité Ã  ${getChild(trade.toChildId)?.name ?? "?"} : ${trade.serviceDescription}',
+        reason:   '🔄 Vente immunité à ${getChild(trade.toChildId)?.name ?? "?"} : ${trade.serviceDescription}',
         category: 'échange',
         isBonus:  false,
         actionBy: _currentParentName,
@@ -1394,7 +1394,7 @@ class FamilyProvider extends ChangeNotifier {
         id:       _uuid.v4(),
         childId:  trade.toChildId,
         points:   trade.immunityLines,
-        reason:   'ðŸ”„ Achat immunité de ${getChild(trade.fromChildId)?.name ?? "?"} : ${trade.serviceDescription}',
+        reason:   '🔄 Achat immunité de ${getChild(trade.fromChildId)?.name ?? "?"} : ${trade.serviceDescription}',
         category: 'échange',
         isBonus:  true,
         actionBy: _currentParentName,

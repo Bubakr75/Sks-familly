@@ -81,12 +81,12 @@ class _BalanceScreenState extends State<BalanceScreen>
     final descCtrl = TextEditingController();
 
     const descPresets = [
-      'Insolence ðŸ˜¤',
-      'Désobéissance ðŸ™‰',
-      'Dispute ðŸ‘Š',
-      'Mensonge ðŸ¤¥',
-      'Manque de respect ðŸ˜¡',
-      'Bêtise ðŸ˜ˆ',
+      'Insolence 😤',
+      'Désobéissance 🙉',
+      'Dispute 👊',
+      'Mensonge 🤥',
+      'Manque de respect 😡',
+      'Bêtise 😈',
     ];
 
     showModalBottomSheet(
@@ -261,7 +261,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                             color: Colors.orangeAccent.withOpacity(0.3)),
                       ),
                       child: Text(
-                        'âš ï¸ ${selectedChildren.length} punitions de $nbLines lignes seront créées',
+                        'âš ️ ${selectedChildren.length} punitions de $nbLines lignes seront créées',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                             color: Colors.orangeAccent, fontSize: 13),
@@ -292,8 +292,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                         });
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(selectedChildren.length == 1
-                              ? 'ðŸ“ $nbLines lignes ajoutées Ã  ${selectedChildren.first.name}'
-                              : 'ðŸ“ $nbLines lignes ajoutées Ã  ${selectedChildren.length} enfants'),
+                              ? 'ðŸ“ $nbLines lignes ajoutées à ${selectedChildren.first.name}'
+                              : 'ðŸ“ $nbLines lignes ajoutées à ${selectedChildren.length} enfants'),
                           backgroundColor: Colors.orange.shade700,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
@@ -340,11 +340,11 @@ class _BalanceScreenState extends State<BalanceScreen>
 
     const reasonPresets = [
       'Bonne conduite ðŸ…',
-      'Aide spontanée ðŸ¤—',
-      'Note excellente â­',
-      'Semaine parfaite ðŸŒŸ',
+      'Aide spontanée 🤗',
+      'Note excellente ⭐',
+      'Semaine parfaite 🌟',
       'Surprise parent ðŸŽ',
-      'Effort exceptionnel ðŸ’ª',
+      'Effort exceptionnel 💪',
     ];
 
     showModalBottomSheet(
@@ -371,7 +371,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('ðŸ›¡ï¸', style: TextStyle(fontSize: 24)),
+                      const Text('ðŸ›¡️', style: TextStyle(fontSize: 24)),
                       const SizedBox(width: 8),
                       Text(
                         selectedChildren.length == 1
@@ -560,7 +560,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                             color: Colors.amberAccent.withOpacity(0.3)),
                       ),
                       child: Text(
-                        'ðŸ›¡ï¸ ${selectedChildren.length} immunités de $nbLines lignes seront créées',
+                        'ðŸ›¡️ ${selectedChildren.length} immunités de $nbLines lignes seront créées',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                             color: Colors.amberAccent, fontSize: 13),
@@ -589,8 +589,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                         });
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(selectedChildren.length == 1
-                              ? 'ðŸ›¡ï¸ $nbLines lignes d\'immunité Ã  ${selectedChildren.first.name}'
-                              : 'ðŸ›¡ï¸ $nbLines lignes d\'immunité Ã  ${selectedChildren.length} enfants'),
+                              ? 'ðŸ›¡️ $nbLines lignes d\'immunité à ${selectedChildren.first.name}'
+                              : 'ðŸ›¡️ $nbLines lignes d\'immunité à ${selectedChildren.length} enfants'),
                           backgroundColor: Colors.amber.shade700,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
@@ -666,7 +666,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   _sheetHandle(),
                   const SizedBox(height: 16),
                   const Center(
-                    child: Text('âš”ï¸ Utiliser une immunité',
+                    child: Text('âš”️ Utiliser une immunité',
                         style: TextStyle(
                             color: Colors.tealAccent,
                             fontSize: 18,
@@ -723,7 +723,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     );
                   }),
                   const SizedBox(height: 16),
-                  const Text('Immunité Ã  utiliser',
+                  const Text('Immunité à utiliser',
                       style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 8),
                   ...immunities.map((im) {
@@ -772,7 +772,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     );
                   }),
                   const SizedBox(height: 16),
-                  const Text('Lignes Ã  effacer',
+                  const Text('Lignes à effacer',
                       style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 8),
                   Row(
@@ -824,7 +824,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                               ScaffoldMessenger.of(context)
                                   .showSnackBar(SnackBar(
                                 content: Text(
-                                    'âš”ï¸ $linesToUse lignes effacées avec l\'immunité'),
+                                    'âš”️ $linesToUse lignes effacées avec l\'immunité'),
                                 backgroundColor: Colors.teal.shade700,
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(
@@ -870,7 +870,7 @@ class _BalanceScreenState extends State<BalanceScreen>
             appBar: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              title: const Text('âš–ï¸ Punitions & Immunités',
+              title: const Text('âš–️ Punitions & Immunités',
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold)),
               actions: [
@@ -1100,7 +1100,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                         border: Border.all(
                             color: Colors.amberAccent.withOpacity(0.4)),
                       ),
-                      child: Text('ðŸ›¡ï¸ $usableImmunity',
+                      child: Text('ðŸ›¡️ $usableImmunity',
                           style: const TextStyle(
                               color: Colors.amberAccent,
                               fontSize: 12,
@@ -1119,10 +1119,10 @@ class _BalanceScreenState extends State<BalanceScreen>
                       punishments.isEmpty
                           ? Colors.white24
                           : Colors.redAccent),
-                  _statBadge('âœ… $completedCount terminées',
+                  _statBadge('✅ $completedCount terminées',
                       Colors.greenAccent.withOpacity(0.5)),
                   _statBadge(
-                      'ðŸ›¡ï¸ ${immunities.length} immunités',
+                      'ðŸ›¡️ ${immunities.length} immunités',
                       immunities.isEmpty
                           ? Colors.white24
                           : Colors.amberAccent),

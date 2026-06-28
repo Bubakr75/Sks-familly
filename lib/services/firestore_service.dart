@@ -117,7 +117,7 @@ class FirestoreService {
     if (customCode != null && customCode.trim().length >= 4) {
       code = customCode.toUpperCase().trim();
       final available = await isCodeAvailable(code);
-      if (!available) throw Exception('Ce code est déjÃ  utilisé.');
+      if (!available) throw Exception('Ce code est déjà utilisé.');
     } else {
       code = _generateFamilyCode();
     }
@@ -782,7 +782,7 @@ class FirestoreService {
         .limit(1)
         .get();
     if (query.docs.isNotEmpty && query.docs.first.id != _familyId) {
-      throw Exception('Ce code est déjÃ  utilisé par une autre famille.');
+      throw Exception('Ce code est déjà utilisé par une autre famille.');
     }
     await _db
         .collection('families')

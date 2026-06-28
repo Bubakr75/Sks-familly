@@ -120,7 +120,7 @@ class GoalsScreen extends StatelessWidget {
                                         child: Row(children: [
                                           Text(
                                               child.avatar.isEmpty
-                                                  ? 'ðŸ‘¦'
+                                                  ? '👦'
                                                   : child.avatar,
                                               style: const TextStyle(
                                                   fontSize: 20)),
@@ -341,7 +341,7 @@ class GoalsScreen extends StatelessWidget {
                     .map((c) => DropdownMenuItem(
                           value: c.id,
                           child: Text(
-                              '${c.avatar.isEmpty ? "ðŸ‘¦" : c.avatar} ${c.name}'),
+                              '${c.avatar.isEmpty ? "👦" : c.avatar} ${c.name}'),
                         ))
                     .toList(),
                 onChanged: (v) => setState(() => selectedChildId = v),
