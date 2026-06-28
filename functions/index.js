@@ -1,10 +1,10 @@
-const functions = require("firebase-functions");
+﻿const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
 const db = admin.firestore();
 
-// ===== HELPER : envoyer à toute la famille SAUF l'émetteur =====
+// ===== HELPER : envoyer Ã  toute la famille SAUF l'Ã©metteur =====
 async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   const tokensSnap = await db
     .collection("families")
@@ -16,7 +16,7 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
 
   const tokens = [];
   tokensSnap.docs.forEach((doc) => {
-    // Ne pas envoyer à l'appareil qui a fait l'action
+    // Ne pas envoyer Ã  l'appareil qui a fait l'action
     if (doc.id !== senderDeviceId) {
       const token = doc.data().token;
       if (token) tokens.push(token);
@@ -35,6 +35,17 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
         sound: "default",
         priority: "high",
       },
+    },
+    webpush: {
+      headers: { Urgency: "high" },
+      notification: {
+        title: title,
+        body: body,
+        icon: "/icons/Icon-192.png",
+        badge: "/icons/Icon-192.png",
+        requireInteraction: true,
+      },
+      fcmOptions: { link: "https://sks-familly-3f205.web.app" },
     },
     tokens: tokens,
   };
@@ -60,7 +71,7 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   }
 }
 
-// Helper : récupérer le nom d'un enfant
+// Helper : rÃ©cupÃ©rer le nom d'un enfant
 async function getChildName(familyId, childId) {
   try {
     const snap = await db.collection("families").doc(familyId).collection("children").doc(childId).get();
@@ -70,7 +81,7 @@ async function getChildName(familyId, childId) {
   }
 }
 
-// ===== 1. POINTS / BADGES (quand un enfant est modifié) =====
+// ===== 1. POINTS / BADGES (quand un enfant est modifiÃ©) =====
 exports.onChildUpdate = functions.firestore
   .document("families/{familyId}/children/{childId}")
   .onUpdate(async (change, context) => {
@@ -82,7 +93,7 @@ exports.onChildUpdate = functions.firestore
     // Points changent
     if (before.points !== after.points) {
       const diff = after.points - before.points;
-      const emoji = diff > 0 ? "⭐" : "⚠️";
+      const emoji = diff > 0 ? "â­" : "âš ï¸";
       const sign = diff > 0 ? "+" : "";
       await sendToFamily(
         familyId,
@@ -100,14 +111,14 @@ exports.onChildUpdate = functions.firestore
       await sendToFamily(
         familyId,
         sender,
-        "🏆 Nouveau badge !",
+        "ðŸ† Nouveau badge !",
         after.name + " a debloque un nouveau badge !",
         { type: "badge", childId: context.params.childId }
       );
     }
   });
 
-// ===== 2. HISTORIQUE (bonus/malus ajouté) =====
+// ===== 2. HISTORIQUE (bonus/malus ajoutÃ©) =====
 exports.onHistoryCreated = functions.firestore
   .document("families/{familyId}/history/{entryId}")
   .onCreate(async (snap, context) => {
@@ -121,20 +132,20 @@ exports.onHistoryCreated = functions.firestore
       await sendToFamily(
         familyId,
         sender,
-        "📚 Note scolaire - " + childName,
+        "ðŸ“š Note scolaire - " + childName,
         data.reason || "Note ajoutee",
         { type: "school_note", childId: data.childId || "" }
       );
       return;
     }
 
-    // Notification temps d'écran
+    // Notification temps d'Ã©cran
     if (data.category === "screen_time_bonus") {
       const childName = await getChildName(familyId, data.childId);
       await sendToFamily(
         familyId,
         sender,
-        "📺 Temps d'ecran - " + childName,
+        "ðŸ“º Temps d'ecran - " + childName,
         data.reason || "Modification",
         { type: "screen_time", childId: data.childId || "" }
       );
@@ -147,7 +158,7 @@ exports.onHistoryCreated = functions.firestore
       await sendToFamily(
         familyId,
         sender,
-        "📋 Note samedi - " + childName,
+        "ðŸ“‹ Note samedi - " + childName,
         data.reason || "Note ajoutee",
         { type: "saturday_rating", childId: data.childId || "" }
       );
@@ -156,7 +167,7 @@ exports.onHistoryCreated = functions.firestore
 
     // Notification standard (bonus/malus)
     const childName = await getChildName(familyId, data.childId);
-    const emoji = data.isBonus ? "✅" : "❌";
+    const emoji = data.isBonus ? "âœ…" : "âŒ";
     const sign = data.isBonus ? "+" : "-";
 
     await sendToFamily(
@@ -180,7 +191,7 @@ exports.onPunishmentCreated = functions.firestore
     await sendToFamily(
       familyId,
       sender,
-      "📝 Punition pour " + childName,
+      "ðŸ“ Punition pour " + childName,
       p.totalLines + ' lignes : "' + p.text + '"',
       { type: "punishment", childId: p.childId || "" }
     );
@@ -202,7 +213,7 @@ exports.onPunishmentUpdated = functions.firestore
         await sendToFamily(
           familyId,
           sender,
-          "🎉 Punition terminee !",
+          "ðŸŽ‰ Punition terminee !",
           childName + " a fini : " + after.totalLines + "/" + after.totalLines + " lignes",
           { type: "punishment_done", childId: after.childId || "" }
         );
@@ -210,7 +221,7 @@ exports.onPunishmentUpdated = functions.firestore
         await sendToFamily(
           familyId,
           sender,
-          "📈 Progres - " + childName,
+          "ðŸ“ˆ Progres - " + childName,
           after.completedLines + "/" + after.totalLines + " lignes (" + pct + "%)",
           { type: "punishment_progress", childId: after.childId || "" }
         );
@@ -230,7 +241,7 @@ exports.onImmunityCreated = functions.firestore
     await sendToFamily(
       familyId,
       sender,
-      "🛡️ Immunite pour " + childName,
+      "ðŸ›¡ï¸ Immunite pour " + childName,
       im.lines + " ligne(s) : " + im.reason,
       { type: "immunity", childId: im.childId || "" }
     );
@@ -249,7 +260,7 @@ exports.onTradeCreated = functions.firestore
     await sendToFamily(
       familyId,
       sender,
-      "🏪 Nouvelle vente",
+      "ðŸª Nouvelle vente",
       seller + " propose " + trade.immunityLines + " ligne(s) a " + buyer + " - " + trade.serviceDescription,
       { type: "trade_new", tradeId: context.params.tradeId }
     );
@@ -272,23 +283,23 @@ exports.onTradeUpdated = functions.firestore
 
     switch (after.status) {
       case "accepted":
-        title = "✅ Vente acceptee";
+        title = "âœ… Vente acceptee";
         body = buyer + " a accepte la vente de " + seller;
         break;
       case "service_done":
-        title = "⏳ Service termine";
+        title = "â³ Service termine";
         body = buyer + " dit avoir rendu le service - validation parent requise";
         break;
       case "completed":
-        title = "🎉 Vente validee !";
+        title = "ðŸŽ‰ Vente validee !";
         body = after.immunityLines + " ligne(s) transferee(s) de " + seller + " a " + buyer;
         break;
       case "cancelled":
-        title = "❌ Vente annulee";
+        title = "âŒ Vente annulee";
         body = "La vente entre " + seller + " et " + buyer + " a ete annulee";
         break;
       case "rejected":
-        title = "🚫 Vente refusee";
+        title = "ðŸš« Vente refusee";
         body = "La vente entre " + seller + " et " + buyer + " a ete refusee";
         break;
       default:
@@ -314,7 +325,7 @@ exports.onTribunalCreated = functions.firestore
     await sendToFamily(
       familyId,
       sender,
-      "⚖️ Nouvelle affaire",
+      "âš–ï¸ Nouvelle affaire",
       tc.title || "Une plainte a ete deposee",
       { type: "tribunal_new", caseId: context.params.caseId }
     );
@@ -330,19 +341,19 @@ exports.onTribunalUpdated = functions.firestore
 
     if (before.status === after.status) return;
 
-    var title = "⚖️ Tribunal";
+    var title = "âš–ï¸ Tribunal";
     switch (after.status) {
       case "scheduled":
-        title = "📅 Audience programmee";
+        title = "ðŸ“… Audience programmee";
         break;
       case "inProgress":
-        title = "🔴 Audience en cours";
+        title = "ðŸ”´ Audience en cours";
         break;
       case "deliberation":
-        title = "🤔 Deliberation en cours";
+        title = "ðŸ¤” Deliberation en cours";
         break;
       case "closed":
-        title = "✅ Affaire close";
+        title = "âœ… Affaire close";
         break;
     }
 
@@ -351,3 +362,4 @@ exports.onTribunalUpdated = functions.firestore
       caseId: context.params.caseId,
     });
   });
+

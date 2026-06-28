@@ -1,4 +1,4 @@
-// lib/screens/child_dashboard_screen.dart
+﻿// lib/screens/child_dashboard_screen.dart
 
 import 'dart:convert';
 import 'dart:math';
@@ -17,7 +17,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
 
-// ─── Arc screen-time ─────────────────────────────────────────
+// â”€â”€â”€ Arc screen-time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _ScreenTimePainter extends CustomPainter {
   final double progress;
   final double animValue;
@@ -62,16 +62,16 @@ class _ScreenTimePainter extends CustomPainter {
       old.progress != progress || old.animValue != animValue;
 }
 
-// ─── Modèle badge personnalisé local ─────────────────────────
+// â”€â”€â”€ ModÃ¨le badge personnalisÃ© local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _CustomBadgeItem {
   String emoji;
   String label;
   _CustomBadgeItem({required this.emoji, required this.label});
 }
 
-// ─────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  MAIN WIDGET
-// ─────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class ChildDashboardScreen extends StatefulWidget {
   final String? childId;
   const ChildDashboardScreen({super.key, this.childId});
@@ -98,7 +98,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   String _historyFilter = 'Tout';
   static const _historyFilters = [
-    'Tout', 'Bonus', 'Punition', 'Immunité', 'Tribunal', 'École', 'Échange',
+    'Tout', 'Bonus', 'Punition', 'ImmunitÃ©', 'Tribunal', 'Ã‰cole', 'Ã‰change',
   ];
 
   Set<int> _joursSources = {0, 1, 2, 3, 4};
@@ -162,7 +162,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     super.dispose();
   }
 
-  // ─── Prefs ───────────────────────────────────────────────
+  // â”€â”€â”€ Prefs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _loadPrefs(String childId) async {
     final prefs  = await SharedPreferences.getInstance();
     final raw    = prefs.getStringList('custom_badges_$childId') ?? [];
@@ -171,7 +171,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       _customLocalBadges = raw.map((s) {
         final parts = s.split('||');
         return _CustomBadgeItem(
-          emoji: parts.isNotEmpty ? parts[0] : '⭐',
+          emoji: parts.isNotEmpty ? parts[0] : 'â­',
           label: parts.length > 1 ? parts[1] : s,
         );
       }).toList();
@@ -192,7 +192,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await prefs.setStringList('hidden_badges_$childId', _hiddenDefaultBadgeIds);
   }
 
-  // ─── Badges perso ────────────────────────────────────────
+  // â”€â”€â”€ Badges perso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _addCustomBadge(String childId) async {
     final emojiCtrl = TextEditingController();
     final labelCtrl = TextEditingController();
@@ -204,7 +204,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             style: TextStyle(color: Colors.white)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           const Text(
-            '💡 Appuie sur le champ émoji et utilise le clavier de ton téléphone',
+            'ðŸ’¡ Appuie sur le champ Ã©moji et utilise le clavier de ton tÃ©lÃ©phone',
             style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
           const SizedBox(height: 12),
@@ -214,9 +214,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             textAlign:    TextAlign.center,
             keyboardType: TextInputType.text,
             decoration: InputDecoration(
-              labelText:  'Émoji',
+              labelText:  'Ã‰moji',
               labelStyle: const TextStyle(color: Colors.white54),
-              hintText:   '🏆',
+              hintText:   'ðŸ†',
               hintStyle:  const TextStyle(color: Colors.white24),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -257,7 +257,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               final l = labelCtrl.text.trim();
               if (l.isNotEmpty) {
                 setState(() => _customLocalBadges.add(
-                    _CustomBadgeItem(emoji: e.isEmpty ? '⭐' : e, label: l)));
+                    _CustomBadgeItem(emoji: e.isEmpty ? 'â­' : e, label: l)));
                 _saveCustomBadges(childId);
               }
               Navigator.pop(ctx);
@@ -284,7 +284,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await _saveHiddenBadges(childId);
   }
 
-  // ─── Couleurs ────────────────────────────────────────────
+  // â”€â”€â”€ Couleurs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Color _childColor(ChildModel child) {
     if (child.accentColorHex != null) {
       try {
@@ -312,10 +312,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Color _categoryColor(HistoryEntry e) {
     final cat = e.category.toLowerCase();
     if (cat.contains('punition') || cat.contains('penalty')) return Colors.redAccent;
-    if (cat.contains('immunité') || cat.contains('immunity')) return Colors.amberAccent;
+    if (cat.contains('immunitÃ©') || cat.contains('immunity')) return Colors.amberAccent;
     if (cat.contains('tribunal') || cat.contains('verdict')) return Colors.purpleAccent;
-    if (cat.contains('school') || cat.contains('école') || cat.contains('note')) return Colors.blueAccent;
-    if (cat.contains('échange') || cat.contains('trade')) return Colors.tealAccent;
+    if (cat.contains('school') || cat.contains('Ã©cole') || cat.contains('note')) return Colors.blueAccent;
+    if (cat.contains('Ã©change') || cat.contains('trade')) return Colors.tealAccent;
     if (cat.contains('screen')) return Colors.cyanAccent;
     if (e.isBonus) return Colors.greenAccent;
     return Colors.redAccent;
@@ -323,17 +323,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   String _categoryEmoji(HistoryEntry e) {
     final cat = e.category.toLowerCase();
-    if (cat.contains('punition')) return '📝';
-    if (cat.contains('immunité')) return '🛡️';
-    if (cat.contains('tribunal') || cat.contains('verdict')) return '⚖️';
-    if (cat.contains('school') || cat.contains('note')) return '📚';
-    if (cat.contains('échange') || cat.contains('trade')) return '🔄';
-    if (cat.contains('screen')) return '📺';
-    if (e.isBonus) return '✅';
-    return '❌';
+    if (cat.contains('punition')) return 'ðŸ“';
+    if (cat.contains('immunitÃ©')) return 'ðŸ›¡ï¸';
+    if (cat.contains('tribunal') || cat.contains('verdict')) return 'âš–ï¸';
+    if (cat.contains('school') || cat.contains('note')) return 'ðŸ“š';
+    if (cat.contains('Ã©change') || cat.contains('trade')) return 'ðŸ”„';
+    if (cat.contains('screen')) return 'ðŸ“º';
+    if (e.isBonus) return 'âœ…';
+    return 'âŒ';
   }
 
-  // ─── Avatar ──────────────────────────────────────────────
+  // â”€â”€â”€ Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildAvatar(ChildModel child, double radius,
       {bool showFrame = true}) {
     final color      = _childColor(child);
@@ -397,7 +397,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 color:      color)),
       );
 
-  // ─── Sélecteur enfant ────────────────────────────────────
+  // â”€â”€â”€ SÃ©lecteur enfant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   void _showChildSwitcher(FamilyProvider fp) {
     showModalBottomSheet(
       context: context,
@@ -434,7 +434,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─── Edition photo / bannière / slogan ───────────────────
+  // â”€â”€â”€ Edition photo / banniÃ¨re / slogan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _editPhoto(ChildModel child, FamilyProvider fp) async {
     final xfile = await ImagePicker().pickImage(
         source: ImageSource.gallery, imageQuality: 80, maxWidth: 600);
@@ -478,7 +478,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     Navigator.pop(ctx);
                   } else {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(content: Text('PIN incorrect ❌')));
+                        const SnackBar(content: Text('PIN incorrect âŒ')));
                   }
                 },
                 child: const Text('Valider'),
@@ -532,9 +532,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //  BUILD
-  // ─────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(builder: (context, fp, _) {
@@ -589,7 +589,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             unselectedLabelColor: Colors.white38,
             tabs: const [
               Tab(icon: Icon(Icons.person),      text: 'Profil'),
-              Tab(icon: Icon(Icons.tv),           text: 'Écran'),
+              Tab(icon: Icon(Icons.tv),           text: 'Ã‰cran'),
               Tab(icon: Icon(Icons.history),      text: 'Historique'),
               Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
             ],
@@ -613,14 +613,285 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     });
   }
 
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB PROFIL
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ─── Proposition enfant (penalite / immunite) avec validation parentale ───
+  void _showProposeRequestDialog(BuildContext context, FamilyProvider fp, ChildModel child, String type) {
+    final isPenalite = type == 'punishment';
+    final mainColor = isPenalite ? const Color(0xFFFF5252) : const Color(0xFFFFC107);
+    final commentCtrl = TextEditingController();
+    final customCtrl = TextEditingController();
+    int nbLines = 20;
+    bool isCustom = false;
+    final presets = [20, 50, 100];
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF1E1E3F), Color(0xFF15152B)],
+              ),
+              border: Border.all(color: mainColor.withOpacity(0.4), width: 1.5),
+              boxShadow: [
+                BoxShadow(color: mainColor.withOpacity(0.25), blurRadius: 30, spreadRadius: 2),
+              ],
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // En-tete avec icone
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: mainColor.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isPenalite ? Icons.edit_document : Icons.shield_rounded,
+                          color: mainColor, size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isPenalite ? 'Me proposer' : 'Me proposer',
+                              style: const TextStyle(color: Colors.white54, fontSize: 13),
+                            ),
+                            Text(
+                              isPenalite ? 'une penalite' : 'une immunite',
+                              style: TextStyle(color: mainColor, fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Champ commentaire
+                  const Text("Qu'as-tu fait ?", style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: TextField(
+                      controller: commentCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: 'Explique ce que tu as fait...',
+                        hintStyle: TextStyle(color: Colors.white30),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Nombre de lignes
+                  const Text('Nombre de lignes', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      ...presets.map((p) {
+                        final sel = !isCustom && nbLines == p;
+                        return GestureDetector(
+                          onTap: () => setS(() { isCustom = false; nbLines = p; }),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 70, height: 60,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              gradient: sel ? LinearGradient(colors: [mainColor, mainColor.withOpacity(0.7)]) : null,
+                              color: sel ? null : Colors.white.withOpacity(0.06),
+                              border: Border.all(color: sel ? mainColor : Colors.white12, width: 1.5),
+                            ),
+                            child: Center(
+                              child: Text('$p',
+                                style: TextStyle(
+                                  color: sel ? Colors.black : Colors.white,
+                                  fontSize: 20, fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      // Bouton Perso
+                      GestureDetector(
+                        onTap: () => setS(() => isCustom = true),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 70, height: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            gradient: isCustom ? LinearGradient(colors: [mainColor, mainColor.withOpacity(0.7)]) : null,
+                            color: isCustom ? null : Colors.white.withOpacity(0.06),
+                            border: Border.all(color: isCustom ? mainColor : Colors.white12, width: 1.5),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.tune_rounded, color: isCustom ? Colors.black : Colors.white, size: 20),
+                                Text('Perso', style: TextStyle(color: isCustom ? Colors.black : Colors.white, fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Champ perso
+                  if (isCustom) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: mainColor.withOpacity(0.5)),
+                      ),
+                      child: TextField(
+                        controller: customCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        decoration: const InputDecoration(
+                          hintText: 'Nombre de lignes...',
+                          hintStyle: TextStyle(color: Colors.white30),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+                  // Boutons actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                          child: const Text('Annuler', style: TextStyle(color: Colors.white54, fontSize: 15)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: mainColor,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: () {
+                            final txt = commentCtrl.text.trim();
+                            if (txt.isEmpty) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(content: Text('Ajoute un commentaire')),
+                              );
+                              return;
+                            }
+                            int finalLines = nbLines;
+                            if (isCustom) {
+                              final parsed = int.tryParse(customCtrl.text.trim());
+                              if (parsed == null || parsed <= 0) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(content: Text('Entre un nombre valide')),
+                                );
+                                return;
+                              }
+                              finalLines = parsed;
+                            }
+                            fp.createRequest(
+                              type: type,
+                              childId: child.id,
+                              requestedBy: child.name,
+                              text: txt,
+                              amount: finalLines,
+                            );
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Demande envoyee ! En attente du parent'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                          child: const Text('Envoyer la demande', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  
   Widget _buildProfileTab(ChildModel child, FamilyProvider fp, Color color) {
     final frame = _frameColor(child.level);
     return SingleChildScrollView(
       padding: const EdgeInsets.only(top: 120, bottom: 24),
       child: Column(children: [
+        // ─── Boutons proposition enfant ───
+        if (!context.watch<PinProvider>().isParentMode)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () => _showProposeRequestDialog(context, fp, child, 'punishment'),
+                    icon: const Icon(Icons.edit_document, size: 18),
+                    label: const Text('Pénalité', style: TextStyle(fontSize: 13)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amberAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () => _showProposeRequestDialog(context, fp, child, 'immunity'),
+                    icon: const Icon(Icons.shield_rounded, size: 18),
+                    label: const Text('Immunité', style: TextStyle(fontSize: 13)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (!context.watch<PinProvider>().isParentMode) const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: GlassCard(
@@ -628,20 +899,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               padding: const EdgeInsets.all(20),
               child: Column(children: [
 
-                // ══════════════════════════════════════════
-                // BANNIÈRE — pleine largeur, 200 px, centrée
-                // ══════════════════════════════════════════
+                // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                // BANNIÃˆRE â€” pleine largeur, 200 px, centrÃ©e
+                // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                 if (child.bannerBase64 != null &&
                     child.bannerBase64!.isNotEmpty) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: SizedBox(
-                      height: 200,               // ← PLUS GRANDE (100 → 200)
+                      height: 200,               // â† PLUS GRANDE (100 â†’ 200)
                       width:  double.infinity,
                       child: Image.memory(
                         base64Decode(child.bannerBase64!),
                         fit:       BoxFit.cover,
-                        alignment: Alignment.center, // ← CENTRÉ SUR LE VISAGE
+                        alignment: Alignment.center, // â† CENTRÃ‰ SUR LE VISAGE
                       ),
                     ),
                   ),
@@ -696,7 +967,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    '${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
+                    '${(child.levelProgress * 100).toInt()}% â†’ NIV.${child.level + 1}',
                     style: const TextStyle(color: Colors.white38, fontSize: 10),
                   ),
                 ),
@@ -735,7 +1006,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: false),
                 icon:  const Icon(Icons.image, size: 16),
-                label: const Text('Bannière 🖼️', style: TextStyle(fontSize: 11)),
+                label: const Text('BanniÃ¨re ðŸ–¼ï¸', style: TextStyle(fontSize: 11)),
               ),
             ),
             const SizedBox(width: 8),
@@ -750,7 +1021,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ),
                 onPressed: () => _editBanner(child, fp, requirePin: true),
                 icon:  const Icon(Icons.lock, size: 16),
-                label: const Text('Bannière 🔒', style: TextStyle(fontSize: 11)),
+                label: const Text('BanniÃ¨re ðŸ”’', style: TextStyle(fontSize: 11)),
               ),
             ),
           ]),
@@ -797,10 +1068,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       mainAxisSpacing:   10,
       childAspectRatio:  1.6,
       children: [
-        _statCard('🎯', 'Bonus',     '$bonuses',   Colors.greenAccent),
-        _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
-        _statCard('🏆', 'Niveau',    '${child.level} – ${child.levelTitle}', color),
-        _statCard('🛡️', 'Immunités',
+        _statCard('ðŸŽ¯', 'Bonus',     '$bonuses',   Colors.greenAccent),
+        _statCard('âš¡', 'PÃ©nalitÃ©s', '$penalties', Colors.redAccent),
+        _statCard('ðŸ†', 'Niveau',    '${child.level} â€“ ${child.levelTitle}', color),
+        _statCard('ðŸ›¡ï¸', 'ImmunitÃ©s',
             '${fp.getTotalAvailableImmunity(child.id)} lignes',
             Colors.amberAccent),
       ],
@@ -821,9 +1092,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ]),
       );
 
-  // ════════════════════════════════════════════════════════
-  //  TAB ÉCRAN
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  TAB Ã‰CRAN
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildScreenTab(ChildModel child, FamilyProvider fp, Color color) {
     final immunities    = fp.getUsableImmunitiesForChild(child.id);
     final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);
@@ -849,28 +1120,28 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text('📊 Résumé',
+              Text('ðŸ“Š RÃ©sumÃ©',
                   style: TextStyle(
                       color: color, fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 8),
-              _infoRow('🛡️ Immunités', '$immunityBonus lignes', Colors.amberAccent),
-              _infoRow('⏱️ Bonus parent',
+              _infoRow('ðŸ›¡ï¸ ImmunitÃ©s', '$immunityBonus lignes', Colors.amberAccent),
+              _infoRow('â±ï¸ Bonus parent',
                   '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
                   Colors.greenAccent),
-              _infoRow('📅 Jour affiché', _selectedDay!, color),
-              _infoRow('⏰ Temps écran calculé', _formatMinutes(minutes), Colors.white),
+              _infoRow('ðŸ“… Jour affichÃ©', _selectedDay!, color),
+              _infoRow('â° Temps Ã©cran calculÃ©', _formatMinutes(minutes), Colors.white),
               if (_joursSources.isNotEmpty) ...[
                 const Divider(color: Colors.white12, height: 20),
                 _infoRow(
-                    '📚 Moy. scolaire (jours cochés)',
+                    'ðŸ“š Moy. scolaire (jours cochÃ©s)',
                     schoolAvg >= 0
                         ? '${schoolAvg.toStringAsFixed(1)}/20'
                         : 'Aucune note',
                     Colors.purpleAccent),
-                _infoRow('😊 Comportement (jours cochés)',
+                _infoRow('ðŸ˜Š Comportement (jours cochÃ©s)',
                     '${behaviorScore.toStringAsFixed(1)}/20',
                     Colors.lightBlueAccent),
-                _infoRow('🌟 Score global',
+                _infoRow('ðŸŒŸ Score global',
                     '${globalScore.toStringAsFixed(1)}/20',
                     Colors.orangeAccent),
               ],
@@ -888,7 +1159,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   Icon(Icons.calendar_today, color: color, size: 15),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text('📚 Jours pour le calcul des notes',
+                    child: Text('ðŸ“š Jours pour le calcul des notes',
                         style: TextStyle(
                             color: color, fontWeight: FontWeight.bold,
                             fontSize: 13)),
@@ -896,7 +1167,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 ]),
                 const SizedBox(height: 4),
                 const Text(
-                  'Ex : noter le mercredi pour lundi + mardi → cocher Lun & Mar',
+                  'Ex : noter le mercredi pour lundi + mardi â†’ cocher Lun & Mar',
                   style: TextStyle(color: Colors.white38, fontSize: 11),
                 ),
                 const SizedBox(height: 12),
@@ -964,7 +1235,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           alignment: Alignment.centerLeft,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text('📅 Jour pour le temps d\'écran',
+            child: Text('ðŸ“… Jour pour le temps d\'Ã©cran',
                 style: TextStyle(
                     color: color.withOpacity(0.8),
                     fontSize: 12,
@@ -1019,7 +1290,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w900,
                       fontSize: 28)),
-              const Text('temps écran',
+              const Text('temps Ã©cran',
                   style: TextStyle(color: Colors.white54, fontSize: 12)),
             ]),
           ]),
@@ -1062,7 +1333,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          const Text('🛡️ Immunités disponibles',
+          const Text('ðŸ›¡ï¸ ImmunitÃ©s disponibles',
               style: TextStyle(
                   color: Colors.amberAccent, fontWeight: FontWeight.bold,
                   fontSize: 14)),
@@ -1070,7 +1341,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ...immunities.map((imm) => Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Row(children: [
-              const Text('🛡️', style: TextStyle(fontSize: 16)),
+              const Text('ðŸ›¡ï¸', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(imm.reason,
@@ -1118,7 +1389,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 onPressed: () async {
                   await fp.addScreenTimeBonus(
                       child.id, min, 'Bonus parent +$min min');
-                  _triggerBonusAnim('+$min min 🎉');
+                  _triggerBonusAnim('+$min min ðŸŽ‰');
                 },
                 child: Text('+$min min', style: const TextStyle(fontSize: 12)),
               ),
@@ -1176,9 +1447,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return '${h}h${m.toString().padLeft(2, '0')}';
   }
 
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB HISTORIQUE
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildHistoryTab(ChildModel child, FamilyProvider fp, Color color) {
     final allEntries = fp.getHistoryForChild(child.id)
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -1191,18 +1462,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               case 'Bonus':
                 return e.isBonus &&
                     !cat.contains('punition') &&
-                    !cat.contains('immunité') &&
+                    !cat.contains('immunitÃ©') &&
                     !cat.contains('tribunal') &&
                     !cat.contains('school') &&
                     !cat.contains('note') &&
-                    !cat.contains('échange');
+                    !cat.contains('Ã©change');
               case 'Punition':   return cat.contains('punition');
-              case 'Immunité':   return cat.contains('immunité') || cat.contains('immunity');
+              case 'ImmunitÃ©':   return cat.contains('immunitÃ©') || cat.contains('immunity');
               case 'Tribunal':   return cat.contains('tribunal') || cat.contains('verdict');
-              case 'École':
+              case 'Ã‰cole':
                 return cat.contains('school') || cat.contains('note') ||
-                    cat.contains('école') || cat.contains('saturday');
-              case 'Échange':    return cat.contains('échange') || cat.contains('trade');
+                    cat.contains('Ã©cole') || cat.contains('saturday');
+              case 'Ã‰change':    return cat.contains('Ã©change') || cat.contains('trade');
               default:           return true;
             }
           }).toList();
@@ -1213,16 +1484,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return SingleChildScrollView(
       padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
       child: Column(children: [
-        // ── Résumé ──
+        // â”€â”€ RÃ©sumÃ© â”€â”€
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _histStat('✅ Bonus',     '$bonuses',   Colors.greenAccent),
-                _histStat('❌ Pénalités', '$penalties', Colors.redAccent),
-                _histStat('📋 Total',
+                _histStat('âœ… Bonus',     '$bonuses',   Colors.greenAccent),
+                _histStat('âŒ PÃ©nalitÃ©s', '$penalties', Colors.redAccent),
+                _histStat('ðŸ“‹ Total',
                     '${allEntries.length}', Colors.white70),
               ],
             ),
@@ -1230,7 +1501,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 12),
 
-        // ── Filtres ──
+        // â”€â”€ Filtres â”€â”€
         SizedBox(
           height: 36,
           child: ListView.separated(
@@ -1266,14 +1537,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 12),
 
-        // ── Liste ──
+        // â”€â”€ Liste â”€â”€
         if (filtered.isEmpty)
           Padding(
             padding: const EdgeInsets.all(32),
             child: Column(children: [
-              const Text('📭', style: TextStyle(fontSize: 40)),
+              const Text('ðŸ“­', style: TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
-              Text('Aucune entrée dans « $_historyFilter »',
+              Text('Aucune entrÃ©e dans Â« $_historyFilter Â»',
                   style: const TextStyle(
                       color: Colors.white54, fontSize: 13),
                   textAlign: TextAlign.center),
@@ -1351,12 +1622,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               Row(children: [
                 Icon(Icons.access_time, size: 11, color: Colors.white38),
                 const SizedBox(width: 4),
-                Text('$dateLabel à $timeLabel',
+                Text('$dateLabel Ã  $timeLabel',
                     style: const TextStyle(
                         color: Colors.white38, fontSize: 11)),
                 if (e.actionBy != null && e.actionBy!.isNotEmpty) ...[
                   const SizedBox(width: 8),
-                  const Text('·',
+                  const Text('Â·',
                       style: TextStyle(color: Colors.white24)),
                   const SizedBox(width: 4),
                   Text('par ${e.actionBy}',
@@ -1383,11 +1654,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB BADGES
-  // ════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
-  // ✅ CORRIGÉ : fp.badges → BadgeModel.defaultBadges + fp.customBadges
+  // âœ… CORRIGÃ‰ : fp.badges â†’ BadgeModel.defaultBadges + fp.customBadges
   final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
 
   final earned = allBadges
@@ -1405,11 +1676,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     padding: const EdgeInsets.only(top: 120, bottom: 24, left: 16, right: 16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-      // ── Badges personnalisés ──
+      // â”€â”€ Badges personnalisÃ©s â”€â”€
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('⭐ Badges personnalisés',
+          Text('â­ Badges personnalisÃ©s',
               style: TextStyle(
                   color: color, fontWeight: FontWeight.bold, fontSize: 14)),
           IconButton(
@@ -1421,7 +1692,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       if (_customLocalBadges.isEmpty)
         const Padding(
           padding: EdgeInsets.only(bottom: 12),
-          child: Text('Aucun badge personnalisé. Appuie sur + pour en ajouter.',
+          child: Text('Aucun badge personnalisÃ©. Appuie sur + pour en ajouter.',
               style: TextStyle(color: Colors.white38, fontSize: 12)),
         )
       else
@@ -1477,8 +1748,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       const Divider(color: Colors.white12),
       const SizedBox(height: 8),
 
-      // ── Badges obtenus ──
-      Text('🏆 Badges obtenus (${earned.length})',
+      // â”€â”€ Badges obtenus â”€â”€
+      Text('ðŸ† Badges obtenus (${earned.length})',
           style: TextStyle(
               color: color, fontWeight: FontWeight.bold, fontSize: 14)),
       const SizedBox(height: 8),
@@ -1496,7 +1767,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   backgroundColor: const Color(0xFF1A1A2E),
                   title: const Text('Masquer ce badge ?',
                       style: TextStyle(color: Colors.white)),
-                  content: Text('Masquer « ${b.name} » de la vue ?',
+                  content: Text('Masquer Â« ${b.name} Â» de la vue ?',
                       style: const TextStyle(color: Colors.white70)),
                   actions: [
                     TextButton(
@@ -1536,7 +1807,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           onPressed: () => _resetHiddenBadges(child.id),
           icon:  const Icon(Icons.visibility, size: 16, color: Colors.white38),
           label: Text(
-              'Afficher les ${_hiddenDefaultBadgeIds.length} badge(s) masqué(s)',
+              'Afficher les ${_hiddenDefaultBadgeIds.length} badge(s) masquÃ©(s)',
               style: const TextStyle(color: Colors.white38, fontSize: 12)),
         ),
       ],
@@ -1545,14 +1816,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       const Divider(color: Colors.white12),
       const SizedBox(height: 8),
 
-      // ── Badges verrouillés ──
-      Text('🔒 Badges à débloquer (${locked.length})',
+      // â”€â”€ Badges verrouillÃ©s â”€â”€
+      Text('ðŸ”’ Badges Ã  dÃ©bloquer (${locked.length})',
           style: const TextStyle(
               color: Colors.white54, fontWeight: FontWeight.bold,
               fontSize: 14)),
       const SizedBox(height: 8),
       if (locked.isEmpty)
-        const Text('Tous les badges ont été débloqués ! 🎉',
+        const Text('Tous les badges ont Ã©tÃ© dÃ©bloquÃ©s ! ðŸŽ‰',
             style: TextStyle(color: Colors.white38, fontSize: 12))
       else
         Wrap(
@@ -1567,7 +1838,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 border:       Border.all(color: Colors.white24),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('🔒', style: TextStyle(fontSize: 18)),
+                const Text('ðŸ”’', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 6),
                 Text(b.name,
                     style: const TextStyle(
@@ -1581,3 +1852,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 }
 
 }
+
+
+
