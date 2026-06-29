@@ -1,10 +1,10 @@
-﻿const functions = require("firebase-functions");
+const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
 const db = admin.firestore();
 
-// ===== HELPER : envoyer Ã  toute la famille SAUF l'Ã©metteur =====
+// ===== HELPER : envoyer à toute la famille SAUF l'émetteur =====
 async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   const tokensSnap = await db
     .collection("families")
@@ -16,7 +16,6 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
 
   const tokens = [];
   tokensSnap.docs.forEach((doc) => {
-    // Ne pas envoyer Ã  l'appareil qui a fait l'action
     if (doc.id !== senderDeviceId) {
       const token = doc.data().token;
       if (token) tokens.push(token);
@@ -27,7 +26,7 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
 
   const message = {
     notification: { title, body },
-    data: data || {},
+    data: Object.assign({ sender: senderDeviceId }, data || {}),
     android: {
       notification: {
         channelId: "sks_family_channel",
@@ -71,7 +70,7 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   }
 }
 
-// Helper : rÃ©cupÃ©rer le nom d'un enfant
+// Helper : récupérer le nom d'un enfant
 async function getChildName(familyId, childId) {
   try {
     const snap = await db.collection("families").doc(familyId).collection("children").doc(childId).get();
@@ -81,7 +80,7 @@ async function getChildName(familyId, childId) {
   }
 }
 
-// ===== 1. POINTS / BADGES (quand un enfant est modifiÃ©) =====
+// ===== 1. BADGES (quand un enfant gagne un nouveau badge) =====
 exports.onChildUpdate = functions.firestore
   .document("families/{familyId}/children/{childId}")
   .onUpdate(async (change, context) => {
@@ -90,35 +89,21 @@ exports.onChildUpdate = functions.firestore
     const familyId = context.params.familyId;
     const sender = after.lastModifiedBy || "";
 
-    // Points changent
-    if (before.points !== after.points) {
-      const diff = after.points - before.points;
-      const emoji = diff > 0 ? "â­" : "âš ï¸";
-      const sign = diff > 0 ? "+" : "";
-      await sendToFamily(
-        familyId,
-        sender,
-        emoji + " " + after.name,
-        sign + diff + " points (total: " + after.points + ")",
-        { type: "points", childId: context.params.childId }
-      );
-    }
-
-    // Nouveau badge
+    // Nouveau badge uniquement (PAS de notif pour les points - volontaire)
     const oldBadges = before.badgeIds || [];
     const newBadges = after.badgeIds || [];
     if (newBadges.length > oldBadges.length) {
       await sendToFamily(
         familyId,
         sender,
-        "ðŸ† Nouveau badge !",
-        after.name + " a debloque un nouveau badge !",
+        "🏆 Nouveau badge !",
+        after.name + " a débloqué un nouveau badge !",
         { type: "badge", childId: context.params.childId }
       );
     }
   });
 
-// ===== 2. HISTORIQUE (bonus/malus ajoutÃ©) =====
+// ===== 2. HISTORIQUE (bonus/malus ajouté) =====
 exports.onHistoryCreated = functions.firestore
   .document("families/{familyId}/history/{entryId}")
   .onCreate(async (snap, context) => {
@@ -132,49 +117,28 @@ exports.onHistoryCreated = functions.firestore
       await sendToFamily(
         familyId,
         sender,
-        "ðŸ“š Note scolaire - " + childName,
-        data.reason || "Note ajoutee",
+        "📚 Note scolaire - " + childName,
+        data.reason || "Note ajoutée",
         { type: "school_note", childId: data.childId || "" }
       );
       return;
     }
 
-    // Notification temps d'Ã©cran
-    if (data.category === "screen_time_bonus") {
-      const childName = await getChildName(familyId, data.childId);
-      await sendToFamily(
-        familyId,
-        sender,
-        "ðŸ“º Temps d'ecran - " + childName,
-        data.reason || "Modification",
-        { type: "screen_time", childId: data.childId || "" }
-      );
-      return;
-    }
-
-    // Notification note samedi
-    if (data.category === "saturday_rating") {
-      const childName = await getChildName(familyId, data.childId);
-      await sendToFamily(
-        familyId,
-        sender,
-        "ðŸ“‹ Note samedi - " + childName,
-        data.reason || "Note ajoutee",
-        { type: "saturday_rating", childId: data.childId || "" }
-      );
+    // PAS de notification pour le temps d'écran ni la note samedi
+    if (data.category === "screen_time_bonus" || data.category === "saturday_rating") {
       return;
     }
 
     // Notification standard (bonus/malus)
     const childName = await getChildName(familyId, data.childId);
-    const emoji = data.isBonus ? "âœ…" : "âŒ";
+    const emoji = data.isBonus ? "✅" : "⚠️";
     const sign = data.isBonus ? "+" : "-";
 
     await sendToFamily(
       familyId,
       sender,
       emoji + " " + childName + " : " + sign + data.points + " pts",
-      data.reason || "Points modifies",
+      data.reason || "Points modifiés",
       { type: "history", childId: data.childId || "" }
     );
   });
@@ -191,7 +155,7 @@ exports.onPunishmentCreated = functions.firestore
     await sendToFamily(
       familyId,
       sender,
-      "ðŸ“ Punition pour " + childName,
+      "📝 Punition pour " + childName,
       p.totalLines + ' lignes : "' + p.text + '"',
       { type: "punishment", childId: p.childId || "" }
     );
@@ -213,15 +177,15 @@ exports.onPunishmentUpdated = functions.firestore
         await sendToFamily(
           familyId,
           sender,
-          "ðŸŽ‰ Punition terminee !",
-          childName + " a fini : " + after.totalLines + "/" + after.totalLines + " lignes",
+          "🎉 Punition terminée !",
+          childName + " a fini : " + after.completedLines + "/" + after.totalLines + " lignes",
           { type: "punishment_done", childId: after.childId || "" }
         );
       } else {
         await sendToFamily(
           familyId,
           sender,
-          "ðŸ“ˆ Progres - " + childName,
+          "📈 Progrès - " + childName,
           after.completedLines + "/" + after.totalLines + " lignes (" + pct + "%)",
           { type: "punishment_progress", childId: after.childId || "" }
         );
@@ -229,7 +193,7 @@ exports.onPunishmentUpdated = functions.firestore
     }
   });
 
-// ===== 4. IMMUNITES =====
+// ===== 4. IMMUNITÉS =====
 exports.onImmunityCreated = functions.firestore
   .document("families/{familyId}/immunities/{imId}")
   .onCreate(async (snap, context) => {
@@ -241,13 +205,13 @@ exports.onImmunityCreated = functions.firestore
     await sendToFamily(
       familyId,
       sender,
-      "ðŸ›¡ï¸ Immunite pour " + childName,
+      "🛡️ Immunité pour " + childName,
       im.lines + " ligne(s) : " + im.reason,
       { type: "immunity", childId: im.childId || "" }
     );
   });
 
-// ===== 5. TRADES (VENTES) =====
+// ===== 5. ÉCHANGES (VENTES) =====
 exports.onTradeCreated = functions.firestore
   .document("families/{familyId}/trades/{tradeId}")
   .onCreate(async (snap, context) => {
@@ -260,8 +224,8 @@ exports.onTradeCreated = functions.firestore
     await sendToFamily(
       familyId,
       sender,
-      "ðŸª Nouvelle vente",
-      seller + " propose " + trade.immunityLines + " ligne(s) a " + buyer + " - " + trade.serviceDescription,
+      "🏪 Nouvelle vente",
+      seller + " propose " + trade.immunityLines + " ligne(s) à " + buyer + " - " + trade.serviceDescription,
       { type: "trade_new", tradeId: context.params.tradeId }
     );
   });
@@ -283,24 +247,24 @@ exports.onTradeUpdated = functions.firestore
 
     switch (after.status) {
       case "accepted":
-        title = "âœ… Vente acceptee";
-        body = buyer + " a accepte la vente de " + seller;
+        title = "✅ Vente acceptée";
+        body = buyer + " a accepté la vente de " + seller;
         break;
       case "service_done":
-        title = "â³ Service termine";
+        title = "⏳ Service terminé";
         body = buyer + " dit avoir rendu le service - validation parent requise";
         break;
       case "completed":
-        title = "ðŸŽ‰ Vente validee !";
-        body = after.immunityLines + " ligne(s) transferee(s) de " + seller + " a " + buyer;
+        title = "🎉 Vente validée !";
+        body = after.immunityLines + " ligne(s) transférée(s) de " + seller + " à " + buyer;
         break;
       case "cancelled":
-        title = "âŒ Vente annulee";
-        body = "La vente entre " + seller + " et " + buyer + " a ete annulee";
+        title = "❌ Vente annulée";
+        body = "La vente entre " + seller + " et " + buyer + " a été annulée";
         break;
       case "rejected":
-        title = "ðŸš« Vente refusee";
-        body = "La vente entre " + seller + " et " + buyer + " a ete refusee";
+        title = "🚫 Vente refusée";
+        body = "La vente entre " + seller + " et " + buyer + " a été refusée";
         break;
       default:
         return;
@@ -325,8 +289,8 @@ exports.onTribunalCreated = functions.firestore
     await sendToFamily(
       familyId,
       sender,
-      "âš–ï¸ Nouvelle affaire",
-      tc.title || "Une plainte a ete deposee",
+      "⚖️ Nouvelle affaire",
+      tc.title || "Une plainte a été déposée",
       { type: "tribunal_new", caseId: context.params.caseId }
     );
   });
@@ -341,19 +305,19 @@ exports.onTribunalUpdated = functions.firestore
 
     if (before.status === after.status) return;
 
-    var title = "âš–ï¸ Tribunal";
+    var title = "⚖️ Tribunal";
     switch (after.status) {
       case "scheduled":
-        title = "ðŸ“… Audience programmee";
+        title = "📅 Audience programmée";
         break;
       case "inProgress":
-        title = "ðŸ”´ Audience en cours";
+        title = "🔴 Audience en cours";
         break;
       case "deliberation":
-        title = "ðŸ¤” Deliberation en cours";
+        title = "🤔 Délibération en cours";
         break;
       case "closed":
-        title = "âœ… Affaire close";
+        title = "✅ Affaire close";
         break;
     }
 
@@ -364,8 +328,6 @@ exports.onTribunalUpdated = functions.firestore
   });
 
 // ===== 7. DEMANDES EN ATTENTE (validation parentale) =====
-// Quand un enfant crée une demande (pénalité / immunité / tribunal),
-// le parent reçoit une notification push pour la valider.
 exports.onRequestCreated = functions.firestore
   .document("families/{familyId}/requests/{reqId}")
   .onCreate(async (snap, context) => {
@@ -373,7 +335,6 @@ exports.onRequestCreated = functions.firestore
     const familyId = context.params.familyId;
     const sender = r.lastModifiedBy || "";
 
-    // Libellé lisible selon le type de demande
     var title = "🔔 Nouvelle demande";
     var body = r.text || "Une demande attend votre validation";
     var notifType = "request";
@@ -409,3 +370,55 @@ exports.onRequestCreated = functions.firestore
     });
   });
 
+// ===== 8. OBJECTIFS (NOUVEAU) =====
+exports.onGoalCreated = functions.firestore
+  .document("families/{familyId}/goals/{goalId}")
+  .onCreate(async (snap, context) => {
+    const g = snap.data();
+    const familyId = context.params.familyId;
+    const sender = g.lastModifiedBy || "";
+    const childName = await getChildName(familyId, g.childId);
+
+    await sendToFamily(
+      familyId,
+      sender,
+      "🎯 Nouvel objectif",
+      childName + " : \"" + (g.title || "") + "\" (" + (g.targetPoints || 0) + " pts)",
+      { type: "goal_new", goalId: context.params.goalId, childId: g.childId || "" }
+    );
+  });
+
+// ===== 9. NOTES (NOUVEAU) =====
+exports.onNoteCreated = functions.firestore
+  .document("families/{familyId}/notes/{noteId}")
+  .onCreate(async (snap, context) => {
+    const n = snap.data();
+    const familyId = context.params.familyId;
+    const sender = n.lastModifiedBy || "";
+    const childName = await getChildName(familyId, n.childId);
+
+    await sendToFamily(
+      familyId,
+      sender,
+      "📌 Note pour " + childName,
+      n.text || "Nouvelle note",
+      { type: "note_new", noteId: context.params.noteId, childId: n.childId || "" }
+    );
+  });
+
+// ===== 10. BADGES PERSONNALISÉS (NOUVEAU) =====
+exports.onCustomBadgeCreated = functions.firestore
+  .document("families/{familyId}/custom_badges/{badgeId}")
+  .onCreate(async (snap, context) => {
+    const b = snap.data();
+    const familyId = context.params.familyId;
+    const sender = b.lastModifiedBy || "";
+
+    await sendToFamily(
+      familyId,
+      sender,
+      "🎖️ Nouveau badge personnalisé",
+      "Badge \"" + (b.name || "") + "\" créé (" + (b.requiredPoints || 0) + " pts)",
+      { type: "custom_badge_new", badgeId: context.params.badgeId }
+    );
+  });

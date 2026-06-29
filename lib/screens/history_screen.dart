@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/history_entry.dart';
-import '../widgets/aurora_background.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -30,7 +30,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
         entries.sort((a, b) => b.date.compareTo(a.date));
 
-        return AuroraBackground(
+        return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(
@@ -148,7 +148,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.reason,
+                  entry.reason ?? 'Sans raison',
                   style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,

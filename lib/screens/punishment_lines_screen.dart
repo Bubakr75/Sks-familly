@@ -4,7 +4,7 @@ import '../providers/family_provider.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
 import '../models/child_model.dart';
-import '../widgets/aurora_background.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../services/gemini_service.dart';
 
@@ -63,7 +63,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     final fp = context.watch<FamilyProvider>();
     final children = fp.children;
     if (children.isEmpty) {
-      return AuroraBackground(
+      return AnimatedBackground(
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(backgroundColor: Colors.transparent,
@@ -80,7 +80,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     final immunities = fp.immunities.where((i) => i.childId == child.id && i.isUsable).toList();
     final totalImmunityLines = immunities.fold<int>(0, (sum, i) => sum + i.availableLines);
 
-    return AuroraBackground(
+    return AnimatedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(

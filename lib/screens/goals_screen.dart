@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/aurora_background.dart';
+import '../widgets/animated_background.dart';
 
 class GoalsScreen extends StatelessWidget {
   const GoalsScreen({super.key});
@@ -15,7 +15,7 @@ class GoalsScreen extends StatelessWidget {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A1F),
+      backgroundColor: const Color(0xFF0A0E21),
       floatingActionButton: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
@@ -32,7 +32,7 @@ class GoalsScreen extends StatelessWidget {
           label: const Text('Objectif'),
         ),
       ),
-      body: AuroraBackground(
+      body: AnimatedBackground(
         child: SafeArea(
           child: Consumer<FamilyProvider>(
             builder: (context, provider, _) {

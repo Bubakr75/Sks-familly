@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/family_provider.dart';
 import '../services/gemini_service.dart';
+import '../models/child_model.dart';
 
 // ─────────────────────────────────────────────
 // MODÈLES INTERNES
@@ -191,7 +193,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A1F),
+      backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -616,7 +618,7 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
-        color: Color(0xFF0A0A1F),
+        color: Color(0xFF1A1A2E),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -843,7 +845,7 @@ class _AiResultSheet extends StatelessWidget {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
-        color: Color(0xFF0A0A1F),
+        color: Color(0xFF1A1A2E),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(

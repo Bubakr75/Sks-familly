@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
-import '../widgets/aurora_background.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 
 class _WheelPainter extends CustomPainter {
@@ -232,7 +232,7 @@ class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMix
     final fp = context.watch<FamilyProvider>();
     final children = fp.children;
 
-    return AuroraBackground(
+    return AnimatedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(

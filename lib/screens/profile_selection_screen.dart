@@ -5,6 +5,7 @@ import '../config/emerald_theme.dart';
 import '../models/parent_profile.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'pin_verification_screen.dart';
 import 'home_screen.dart';

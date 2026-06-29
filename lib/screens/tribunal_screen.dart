@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../models/tribunal_model.dart';
-import '../widgets/aurora_background.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../services/gemini_service.dart';
@@ -39,7 +39,7 @@ class _TribunalScreenState extends State<TribunalScreen>
         final activeCases = fp.activeTribunalCases;
         final closedCases = fp.closedTribunalCases;
 
-        return AuroraBackground(
+        return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(

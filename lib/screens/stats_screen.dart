@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
-import '../widgets/aurora_background.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/timeline_widget.dart';   // ✅ ajout
 import 'timeline_screen.dart';              // ✅ ajout pour "Tout voir"
 
@@ -58,7 +59,7 @@ class _StatsScreenState extends State<StatsScreen>
         final children = fp.children;
 
         if (children.isEmpty) {
-          return AuroraBackground(
+          return AnimatedBackground(
             child: Scaffold(
               backgroundColor: Colors.transparent,
               appBar: AppBar(
@@ -116,7 +117,7 @@ class _StatsScreenState extends State<StatsScreen>
         // ✅ enfant par défaut pour la timeline = premier de la liste
         _selectedChildIdForTimeline ??= children.first.id;
 
-        return AuroraBackground(
+        return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(

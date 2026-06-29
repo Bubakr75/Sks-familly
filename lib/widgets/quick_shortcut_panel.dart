@@ -1,4 +1,5 @@
 // lib/widgets/quick_shortcut_panel.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';

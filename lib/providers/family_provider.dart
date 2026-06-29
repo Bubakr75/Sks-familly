@@ -32,6 +32,7 @@ class FamilyProvider extends ChangeNotifier {
   late Box _badgesBox;
   late Box _metaBox;
   late Box _screenTimeBox;
+  late Box _parentProfilesBox;
   late Box _tradesBox;
   late Box _requestsBox;
 
@@ -141,6 +142,7 @@ class FamilyProvider extends ChangeNotifier {
     _badgesBox      = await Hive.openBox('custom_badges');
     _metaBox        = await Hive.openBox('meta');
     _screenTimeBox  = await Hive.openBox('screen_time');
+    _parentProfilesBox = await Hive.openBox('parent_profiles');
     _tradesBox      = await Hive.openBox('trades');
     _requestsBox    = await Hive.openBox('requests');
     _loadLocal();
@@ -202,6 +204,11 @@ class FamilyProvider extends ChangeNotifier {
         .toList();
     _trades = _tradesBox.values
         .map((v) => TradeModel.fromMap(
+            Map<String, dynamic>.from(jsonDecode(v as String))))
+        .toList();
+    // 🔧 FIX : charger les profils parents depuis le local (sinon disparus au redémarrage)
+    _parentProfiles = _parentProfilesBox.values
+        .map((v) => ParentProfile.fromMap(
             Map<String, dynamic>.from(jsonDecode(v as String))))
         .toList();
     _currentParentName =
@@ -308,6 +315,8 @@ class FamilyProvider extends ChangeNotifier {
     };
     _firestore.onParentProfilesChanged = (list) {
       _parentProfiles = list;
+      // 🔧 FIX : persister en local pour survivre au redémarrage
+      _saveBoxFromList(_parentProfilesBox, _parentProfiles, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
   }
@@ -879,6 +888,8 @@ class FamilyProvider extends ChangeNotifier {
     } else {
       _parentProfiles.add(profile);
     }
+    // 🔧 FIX : persister en local (Hive) pour survivre au redémarrage
+    await _parentProfilesBox.put(profile.id, jsonEncode(profile.toMap()));
     notifyListeners();
 
     // Puis synchroniser sur Firestore
@@ -893,6 +904,8 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<void> deleteParentProfile(String id) async {
     _parentProfiles.removeWhere((p) => p.id == id);
+    // 🔧 FIX : supprimer aussi du local
+    await _parentProfilesBox.delete(id);
     notifyListeners();
 
     if (_firestore.isConnected) {

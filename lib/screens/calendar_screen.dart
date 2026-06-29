@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../providers/family_provider.dart';
-import '../widgets/aurora_background.dart';
+import '../models/history_entry.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 
@@ -119,7 +120,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         final selectedEvents =
             _selectedDay != null ? _getEventsForDay(_selectedDay!, fp) : <Map<String, dynamic>>[];
 
-        return AuroraBackground(
+        return AnimatedBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(

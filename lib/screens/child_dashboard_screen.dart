@@ -12,9 +12,10 @@ import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../models/badge_model.dart';
 import '../models/history_entry.dart';
-import '../widgets/aurora_background.dart';
-import '../widgets/aurora_glass_card.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/timeline_widget.dart';
+import 'timeline_screen.dart';
 
 // â”€â”€─ Arc screen-time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
 class _ScreenTimePainter extends CustomPainter {
@@ -198,7 +199,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A0A1F),
+        backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Ajouter un badge',
             style: TextStyle(color: Colors.white)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -378,7 +379,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         child: Container(
           padding: const EdgeInsets.all(2),
           decoration: const BoxDecoration(
-              shape: BoxShape.circle, color: Color(0xFF0A0A1F)),
+              shape: BoxShape.circle, color: Color(0xFF1A1A2E)),
           child: core,
         ),
       ),
@@ -400,7 +401,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   void _showChildSwitcher(FamilyProvider fp) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0A0A1F),
+      backgroundColor: const Color(0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => ListView(
@@ -453,7 +454,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         builder: (ctx) {
           final ctrl = TextEditingController();
           return AlertDialog(
-            backgroundColor: const Color(0xFF0A0A1F),
+            backgroundColor: const Color(0xFF1A1A2E),
             title: const Text('PIN parent',
                 style: TextStyle(color: Colors.white)),
             content: TextField(
@@ -501,7 +502,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A0A1F),
+        backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Modifier le slogan',
             style: TextStyle(color: Colors.white)),
         content: TextField(
@@ -540,7 +541,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       final children = fp.children;
       if (children.isEmpty) {
         return const Scaffold(
-          backgroundColor: Color(0xFF0A0A1F),
+          backgroundColor: Color(0xFF0F0F1E),
           body: Center(
               child: Text('Aucun enfant',
                   style: TextStyle(color: Colors.white54))),
@@ -556,7 +557,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       final color = _childColor(child);
 
       return Scaffold(
-        backgroundColor:        const Color(0xFF0A0A1F),
+        backgroundColor:        const Color(0xFF0F0F1E),
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -594,7 +595,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ],
           ),
         ),
-        body: AuroraBackground(
+        body: AnimatedBackground(
           child: FadeTransition(
             opacity: _contentFade,
             child: TabBarView(
@@ -1704,7 +1705,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
-                    backgroundColor: const Color(0xFF0A0A1F),
+                    backgroundColor: const Color(0xFF1A1A2E),
                     title: const Text('Supprimer ce badge ?',
                         style: TextStyle(color: Colors.white)),
                     actions: [
@@ -1763,7 +1764,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
-                  backgroundColor: const Color(0xFF0A0A1F),
+                  backgroundColor: const Color(0xFF1A1A2E),
                   title: const Text('Masquer ce badge ?',
                       style: TextStyle(color: Colors.white)),
                   content: Text('Masquer « ${b.name} » de la vue ?',

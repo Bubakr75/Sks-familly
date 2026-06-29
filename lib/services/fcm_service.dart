@@ -18,6 +18,9 @@ class FcmService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  /// Device ID local (pour ignorer nos propres notifications = anti-dédoublement).
+  String? _localDeviceId;
+
   String get _platformName {
     if (kIsWeb) return 'web';
     switch (defaultTargetPlatform) {
@@ -32,6 +35,12 @@ class FcmService {
 
   Future<void> init() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Charger le device ID local (pour l'anti-dédoublement des notifications).
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _localDeviceId = prefs.getString('device_id');
+    } catch (_) {}
 
     final settings = await _messaging.requestPermission(
       alert: true, badge: true, sound: true,
@@ -59,6 +68,15 @@ class FcmService {
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (kDebugMode) debugPrint('FG message: ${message.notification?.title}');
+
+      // 🔑 ANTI-DÉDOUBLEMENT : si le message provient de NOTRE propre appareil,
+      // on ignore l'overlay (notre action locale l'a déjà affiché).
+      final sender = message.data['sender']?.toString() ?? '';
+      if (_localDeviceId != null && sender.isNotEmpty && sender == _localDeviceId) {
+        if (kDebugMode) debugPrint('FCM: message ignoré (notre propre action)');
+        return;
+      }
+
       final notification = message.notification;
       if (notification == null) return;
       final type = _getNotificationType(message.data['type'] ?? '');

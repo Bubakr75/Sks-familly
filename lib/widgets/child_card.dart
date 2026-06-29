@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'glass_widgets.dart';
 import 'package:flutter/services.dart';
 import '../models/child_model.dart';
+import 'glass_card.dart';
 
 class ChildCard extends StatefulWidget {
   final ChildModel child;
@@ -77,7 +78,7 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
 
   bool get _hasValidPhoto {
     final p = widget.child.photoBase64;
-    return p.isNotEmpty && p.length > 100;
+    return p != null && p.isNotEmpty && p.length > 100;
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -361,7 +362,7 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
           child: ClipOval(
             child: _hasValidPhoto
                 ? Image.memory(
-                    base64Decode(widget.child.photoBase64),
+                    base64Decode(widget.child.photoBase64!),
                     width: 100,
                     height: 100,
                     fit: BoxFit.cover,
