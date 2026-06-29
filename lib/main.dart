@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/fcm_service.dart';
+import 'services/auth_service.dart';
 import 'firebase_options.dart';
 import 'providers/family_provider.dart';
 import 'providers/pin_provider.dart';
@@ -88,6 +89,16 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
 
     // 4. FCM (avec timeout)
     if (firebaseReady) {
+      // Authentification anonyme — OBLIGATOIRE avant Firestore (règles strictes)
+      try {
+        await AuthService().ensureConnected().timeout(
+          const Duration(seconds: 8),
+          onTimeout: () => debugPrint('Auth init timeout'),
+        );
+      } catch (e) {
+        if (kDebugMode) debugPrint('AuthService init error: $e');
+      }
+
       try {
         await FcmService().init().timeout(
           const Duration(seconds: 6),
