@@ -131,7 +131,6 @@ class FamilyProvider extends ChangeNotifier {
 
   // ───────────────────────────────────────────────────────────
   Future<void> init() async {
-    try { await FirebaseFirestore.instance.collection('debug_logs').add({'step': 'provider init debut', 'at': FieldValue.serverTimestamp()}); } catch (_) {}
     _childrenBox    = await Hive.openBox('children');
     _historyBox     = await Hive.openBox('history');
     _goalsBox       = await Hive.openBox('goals');
@@ -934,7 +933,9 @@ class FamilyProvider extends ChangeNotifier {
     final weekEntries = _getWeekHistory(childId).where((h) =>
         h.category != 'school_note' &&
         h.category != 'screen_time_bonus' &&
-        h.category != 'saturday_rating').toList();
+        h.category != 'saturday_rating' &&
+        h.category != 'tribunal_vote' &&
+        h.category != 'tribunal_verdict').toList();
     if (weekEntries.isEmpty) return 10.0;
     final bonusCount   = weekEntries.where((h) => h.isBonus).length;
     final penaltyCount = weekEntries.where((h) => !h.isBonus).length;
@@ -1286,11 +1287,11 @@ class FamilyProvider extends ChangeNotifier {
       if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
       if (verdict == TribunalVerdict.guilty && penaltyPoints != null) {
         await addPoints(tc.accusedId, penaltyPoints,
-            'âš–️ Verdict tribunal : $reason',
+            '⚖️ Verdict tribunal : $reason',
             category: 'tribunal_verdict', isBonus: false);
       } else if (verdict == TribunalVerdict.innocent && rewardPoints != null) {
         await addPoints(tc.plaintiffId, rewardPoints,
-            'âš–️ Verdict tribunal : $reason',
+            '⚖️ Verdict tribunal : $reason',
             category: 'tribunal_verdict', isBonus: true);
       }
       notifyListeners();
@@ -1317,7 +1318,7 @@ class FamilyProvider extends ChangeNotifier {
         await addPoints(
           tc.accusedId,
           accusedPoints.abs(),
-          'âš–️ Verdict tribunal : $reason',
+          '⚖️ Verdict tribunal : $reason',
           category: 'tribunal_verdict',
           isBonus:  isBonus,
         );

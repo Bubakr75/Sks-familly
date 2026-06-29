@@ -83,8 +83,9 @@ service cloud.firestore {
         allow write: if true;
       }
 
-      // Requêtes pending
-      match /pending_requests/{requestId} {
+      // Demandes enfants (validation parentale)
+      // ⚠️ IMPORTANT : la collection s'appelle 'requests' (pas 'pending_requests')
+      match /requests/{requestId} {
         allow read: if true;
         allow write: if true;
       }

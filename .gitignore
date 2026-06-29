@@ -47,3 +47,18 @@ app.*.map.json
 env.json
 
 assets/service_account.json
+
+# 🔒 SECRETS - NE JAMAIS COMMITTER
+service_account_b64.txt
+android/key.properties
+android/release-key.jks
+android/app/google-services.json
+android/app/google-services*.json
+android/local.properties
+lib/config/vapid_key.dart
+
+# 🧹 Artefacts de développement
+temp_actions.txt
+fix_*.ps1
+sks-deploy.ps1
+yes/
