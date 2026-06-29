@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/emerald_theme.dart';
+import '../config/app_themes.dart';
 
 class ThemeProvider extends ChangeNotifier {
+  // ─── Identité de thème (système principal) ───
+  String _themeId = AppThemes.defaultId;
+
+  // ─── Système hérité (toujours fonctionnel pour rétro-compat) ───
   bool _isDark = true;
   int _colorIndex = 0;
-  int _bgIndex = 4; // Forêt (émeraude) par défaut
+  int _bgIndex = 0;
 
   static const List<Color> accentColors = [
     EmeraldPalette.emerald,    // Émeraude (par défaut)
@@ -29,75 +34,103 @@ class ThemeProvider extends ChangeNotifier {
     {'color': Color(0xFF0E1A2B), 'label': 'Océan'},
   ];
 
-  bool get isDark => _isDark;
+  // ─── Getters ───
+  String get themeId => _themeId;
+  bool get isDark => activeTheme.isDark;
   int get colorIndex => _colorIndex;
   int get bgIndex => _bgIndex;
-  Color get primaryColor => accentColors[_colorIndex];
-  Color get backgroundColor =>
-      _isDark ? (backgroundColors[_bgIndex]['color'] as Color) : const Color(0xFFF5F5FA);
 
-  ThemeData get theme {
-    final primary = accentColors[_colorIndex];
-    final bgColor = backgroundColor;
+  /// Thème actif (source de vérité pour les couleurs).
+  AppThemeData get activeTheme => AppThemes.byId(_themeId);
 
-    if (_isDark) {
+  Color get primaryColor => activeTheme.primary;
+
+  Color get backgroundColor => activeTheme.background;
+
+  ThemeData get theme => _buildThemeData(activeTheme);
+
+  // ─── Construction du ThemeData à partir d'un AppThemeData ───
+  ThemeData _buildThemeData(AppThemeData t) {
+    final primary = t.primary;
+    final bgColor = t.background;
+    final surface = t.surface;
+
+    if (t.isDark) {
       return ThemeData(
         brightness: Brightness.dark,
         colorSchemeSeed: primary,
         useMaterial3: true,
         scaffoldBackgroundColor: bgColor,
         canvasColor: bgColor,
-        cardColor: EmeraldPalette.surface,
+        cardColor: surface,
         textTheme: TextTheme(
-          bodyLarge: TextStyle(color: EmeraldPalette.textPrimary),
-          bodyMedium: TextStyle(color: EmeraldPalette.textPrimary),
-          bodySmall: TextStyle(color: EmeraldPalette.textSecondary),
-          titleLarge: TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.w600),
+          bodyLarge: TextStyle(color: t.textPrimary),
+          bodyMedium: TextStyle(color: t.textPrimary),
+          bodySmall: TextStyle(color: t.textSecondary),
+          titleLarge:
+              TextStyle(color: t.textPrimary, fontWeight: FontWeight.bold),
+          titleMedium:
+              TextStyle(color: t.textPrimary, fontWeight: FontWeight.w600),
         ),
         appBarTheme: AppBarTheme(
           backgroundColor: bgColor,
-          foregroundColor: EmeraldPalette.textPrimary,
+          foregroundColor: t.textPrimary,
           elevation: 0,
-          titleTextStyle: TextStyle(color: EmeraldPalette.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+          titleTextStyle: TextStyle(
+              color: t.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700),
         ),
         dialogTheme: DialogThemeData(
-          backgroundColor: EmeraldPalette.surface,
-          titleTextStyle: TextStyle(color: EmeraldPalette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
-          contentTextStyle: TextStyle(color: EmeraldPalette.textSecondary, fontSize: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: surface,
+          titleTextStyle: TextStyle(
+              color: t.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold),
+          contentTextStyle: TextStyle(color: t.textSecondary, fontSize: 14),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             foregroundColor: Colors.white,
             backgroundColor: primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: EmeraldPalette.surfaceLow,
-          labelStyle: TextStyle(color: EmeraldPalette.textSecondary),
-          hintStyle: TextStyle(color: EmeraldPalette.textMuted),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: EmeraldPalette.glassBorder)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: EmeraldPalette.glassBorder)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primary, width: 2)),
+          fillColor: t.surfaceLow,
+          labelStyle: TextStyle(color: t.textSecondary),
+          hintStyle: TextStyle(color: t.textMuted),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.glassBorder)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.glassBorder)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primary, width: 2)),
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: bgColor,
           selectedItemColor: primary,
-          unselectedItemColor: EmeraldPalette.textMuted,
+          unselectedItemColor: t.textMuted,
         ),
         snackBarTheme: SnackBarThemeData(
-          backgroundColor: EmeraldPalette.surfaceHigh,
-          contentTextStyle: TextStyle(color: EmeraldPalette.textPrimary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: t.surfaceHigh,
+          contentTextStyle: TextStyle(color: t.textPrimary),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           behavior: SnackBarBehavior.floating,
         ),
         switchTheme: SwitchThemeData(
@@ -106,77 +139,96 @@ class ThemeProvider extends ChangeNotifier {
             return Colors.grey;
           }),
           trackColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return primary.withValues(alpha: 0.3);
+            if (states.contains(WidgetState.selected))
+              return primary.withValues(alpha: 0.3);
             return Colors.white.withValues(alpha: 0.1);
           }),
         ),
         dividerTheme: DividerThemeData(
-          color: EmeraldPalette.glassBorder,
+          color: t.glassBorder,
           thickness: 1,
         ),
-        iconTheme: IconThemeData(color: EmeraldPalette.textPrimary),
+        iconTheme: IconThemeData(color: t.textPrimary),
       );
     } else {
       return ThemeData(
         brightness: Brightness.light,
         colorSchemeSeed: primary,
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F5FA),
-        canvasColor: Colors.white,
-        cardColor: Colors.white,
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFF1A1A2E)),
-          bodyMedium: TextStyle(color: Color(0xFF2E2E42)),
-          bodySmall: TextStyle(color: Color(0xFF5A5A72)),
-          titleLarge: TextStyle(color: Color(0xFF1A1A2E), fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(color: Color(0xFF2E2E42), fontWeight: FontWeight.w600),
+        scaffoldBackgroundColor: bgColor,
+        canvasColor: surface,
+        cardColor: surface,
+        textTheme: TextTheme(
+          bodyLarge: TextStyle(color: t.textPrimary),
+          bodyMedium: TextStyle(color: t.textPrimary),
+          bodySmall: TextStyle(color: t.textSecondary),
+          titleLarge:
+              TextStyle(color: t.textPrimary, fontWeight: FontWeight.bold),
+          titleMedium:
+              TextStyle(color: t.textPrimary, fontWeight: FontWeight.w600),
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF1A1A2E),
+        appBarTheme: AppBarTheme(
+          backgroundColor: bgColor,
+          foregroundColor: t.textPrimary,
           elevation: 0,
           surfaceTintColor: Colors.transparent,
-          titleTextStyle: TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700),
+          titleTextStyle: TextStyle(
+              color: t.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700),
         ),
         dialogTheme: DialogThemeData(
-          backgroundColor: Colors.white,
-          titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.bold),
-          contentTextStyle: const TextStyle(color: Color(0xFF5A5A72), fontSize: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: surface,
+          titleTextStyle: TextStyle(
+              color: t.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold),
+          contentTextStyle: TextStyle(color: t.textSecondary, fontSize: 14),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             foregroundColor: Colors.white,
             backgroundColor: primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: primary,
             side: BorderSide(color: primary.withValues(alpha: 0.4)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFFF0F0F8),
-          labelStyle: const TextStyle(color: Color(0xFF8888AA)),
-          hintStyle: const TextStyle(color: Color(0xFFAAAABB)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1))),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1))),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primary, width: 2)),
+          fillColor: t.surfaceLow,
+          labelStyle: TextStyle(color: t.textSecondary),
+          hintStyle: TextStyle(color: t.textMuted),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.glassBorder)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.glassBorder)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primary, width: 2)),
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,
+          backgroundColor: surface,
           selectedItemColor: primary,
-          unselectedItemColor: const Color(0xFF999999),
+          unselectedItemColor: t.textMuted,
         ),
         cardTheme: CardThemeData(
-          color: Colors.white,
+          color: surface,
           elevation: 2,
           shadowColor: Colors.black.withValues(alpha: 0.08),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
         switchTheme: SwitchThemeData(
           thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -184,16 +236,24 @@ class ThemeProvider extends ChangeNotifier {
             return Colors.grey[400];
           }),
           trackColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return primary.withValues(alpha: 0.3);
+            if (states.contains(WidgetState.selected))
+              return primary.withValues(alpha: 0.3);
             return Colors.grey.withValues(alpha: 0.2);
           }),
         ),
+        dividerTheme: DividerThemeData(
+          color: t.glassBorder,
+          thickness: 1,
+        ),
+        iconTheme: IconThemeData(color: t.textPrimary),
       );
     }
   }
 
+  // ─── Init ───
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
+    _themeId = prefs.getString('theme_id') ?? AppThemes.defaultId;
     _isDark = prefs.getBool('is_dark') ?? true;
     _colorIndex = prefs.getInt('color_index') ?? 0;
     _bgIndex = prefs.getInt('bg_index') ?? 0;
@@ -202,11 +262,25 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── Sélecteur de thème (API principale) ───
+  Future<void> setThemeId(String id) async {
+    _themeId = id;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('theme_id', id);
+    notifyListeners();
+  }
+
+  // ─── API héritée (rétro-compatibilité) ───
   Future<void> toggle() async {
-    _isDark = !_isDark;
+    // En mode multi-thèmes : bascule entre emerald (sombre) et light (clair)
+    if (_themeId == 'light') {
+      await setThemeId('emerald');
+    } else {
+      await setThemeId('light');
+    }
+    _isDark = activeTheme.isDark;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_dark', _isDark);
-    notifyListeners();
   }
 
   Future<void> setColorIndex(int index) async {

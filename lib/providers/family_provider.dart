@@ -47,6 +47,32 @@ class FamilyProvider extends ChangeNotifier {
   List<TradeModel>      _trades        = [];
   List<PendingRequest>  _pendingRequests = [];
 
+  // ─── État de synchronisation (feedback UI) ──────────────────
+  bool _isReconnecting = false;
+  DateTime? _lastSyncAt;
+  bool get isReconnecting => _isReconnecting;
+
+  // Demandes supprimées (approuvées/rejetées) : on les exclut du merge
+  // Firestore pendant ~1min pour éviter qu'elles réapparaissent avant que la
+  // suppression distante ne soit propagée.
+  final Set<String> _deletedRequestIds = {};
+  void _markRequestDeleted(String id) {
+    _deletedRequestIds.add(id);
+    Future.delayed(const Duration(seconds: 60), () => _deletedRequestIds.remove(id));
+  }
+
+  DateTime? get lastSyncAt => _lastSyncAt;
+  String? get lastSyncLabel {
+    final s = _lastSyncAt;
+    if (s == null) return null;
+    final diff = DateTime.now().difference(s);
+    if (diff.inSeconds < 5) return "À l'instant";
+    if (diff.inMinutes < 1) return 'Il y a ${diff.inSeconds}s';
+    if (diff.inHours < 1) return 'Il y a ${diff.inMinutes} min';
+    if (diff.inDays < 1) return 'Il y a ${diff.inHours}h';
+    return 'Il y a ${diff.inDays}j';
+  }
+
   final Set<String> _deletedEntryIds = {};
 
   // ══════════════════════════════════════════════════════════
@@ -184,8 +210,16 @@ class FamilyProvider extends ChangeNotifier {
 
   // ───────────────────────────────────────────────────────────
   void _setupFirestoreCallbacks() {
-    // ✅ CORRIGÉ : merge intelligent pour ne pas écraser les points locaux
+    // ✅ CORRIGÉ : merge basé sur _pendingIds (et non plus sur la comparaison
+    //    de points, qui annulait les pénalités).
+    //    Pendant 30s après une écriture locale (addPoints, punition...), on
+    //    garde la valeur locale pour ne pas se faire écraser par l'ancienne
+    //    valeur distante qui n'a pas encore été répercutée.
     _firestore.onChildrenChanged = (list, _) {
+      // Marquer la synchro réussie (feedback UI)
+      _lastSyncAt = DateTime.now();
+      if (_isReconnecting) _isReconnecting = false;
+
       final Map<String, ChildModel> firestoreMap = {
         for (var c in list) c.id: c
       };
@@ -193,13 +227,14 @@ class FamilyProvider extends ChangeNotifier {
       for (final local in _children) {
         final remote = firestoreMap[local.id];
         if (remote == null) {
-          // Enfant pas encore confirmé sur Firestore → garde le local
+          // Enfant pas (encore) confirmé sur Firestore → on garde le local
           merged.add(local);
-        } else if (local.points >= remote.points) {
-          // Local plus récent ou égal → priorité au local
+        } else if (_pendingIds.contains(local.id)) {
+          // Écriture locale très récente → on garde le local pour éviter
+          // que la vieille valeur distante n'annule une pénalité/un bonus
           merged.add(local);
         } else {
-          // Firestore plus récent → on prend Firestore
+          // Sinon, c'est la valeur distante qui fait foi (multi-appareils)
           merged.add(remote);
         }
       }
@@ -247,7 +282,10 @@ class FamilyProvider extends ChangeNotifier {
       notifyListeners();
     };
     _firestore.onRequestsChanged = (list) {
-      _pendingRequests = _mergeWithPending(list, _pendingRequests, (r) => r.id);
+      // Exclure les demandes récemment approuvées/rejetées (pas encore supprimées
+      // côté Firestore) pour éviter qu'elles réapparaissent.
+      final filtered = list.where((r) => !_deletedRequestIds.contains(r.id)).toList();
+      _pendingRequests = _mergeWithPending(filtered, _pendingRequests, (r) => r.id);
       _saveBoxFromList(_requestsBox, _pendingRequests, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
@@ -300,8 +338,21 @@ class FamilyProvider extends ChangeNotifier {
   // ───────────────────────────────────────────────────────────
   Future<void> reconnectFirestore() async {
     if (_firestore.isConnected) {
-      _firestore.reconnect();
-      _setupFirestoreCallbacks();
+      _isReconnecting = true;
+      notifyListeners();
+      try {
+        _firestore.reconnect();
+        _setupFirestoreCallbacks();
+      } finally {
+        // On laisse _isReconnecting true jusqu'à la prochaine donnée reçue
+        // (le 1er callback le repassera à false), avec un garde-fou de 6s.
+        Future.delayed(const Duration(seconds: 6), () {
+          if (_isReconnecting) {
+            _isReconnecting = false;
+            notifyListeners();
+          }
+        });
+      }
     }
   }
 
@@ -1426,6 +1477,7 @@ class FamilyProvider extends ChangeNotifier {
       child.points   = 0;
       child.level    = 1;
       child.badgeIds = [];
+      _markPending(child.id); // protéger le reset contre l'écrasement distant
       await _childrenBox.put(child.id, jsonEncode(child.toMap()));
       if (_firestore.isConnected) await _firestore.saveChild(child);
     }
@@ -1529,6 +1581,7 @@ class FamilyProvider extends ChangeNotifier {
     }
 
     _pendingRequests.removeWhere((x) => x.id == requestId);
+    _markRequestDeleted(requestId);
     await _requestsBox.delete(requestId);
     if (_firestore.isConnected) await _firestore.deleteRequest(requestId);
     notifyListeners();
@@ -1536,6 +1589,7 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<void> rejectRequest(String requestId) async {
     _pendingRequests.removeWhere((x) => x.id == requestId);
+    _markRequestDeleted(requestId);
     await _requestsBox.delete(requestId);
     if (_firestore.isConnected) await _firestore.deleteRequest(requestId);
     notifyListeners();

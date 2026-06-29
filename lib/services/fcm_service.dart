@@ -62,22 +62,48 @@ class FcmService {
       final notification = message.notification;
       if (notification == null) return;
       final type = _getNotificationType(message.data['type'] ?? '');
-      NotificationService.show(
-        title: notification.title ?? 'SKS Family',
-        message: notification.body ?? '',
-        type: type,
-      );
+      // Sur web : le navigateur affiche DÉJÀ la notification (via le service
+      // worker push). On évite donc le dédoublement en n'affichant que l'overlay
+      // in-app (sans re-notification native).
+      if (kIsWeb) {
+        NotificationService.showOverlayOnly(
+          title: notification.title ?? 'SKS Family',
+          message: notification.body ?? '',
+          type: type,
+        );
+      } else {
+        // Sur mobile : pas de service worker, on affiche la notif native + overlay
+        NotificationService.show(
+          title: notification.title ?? 'SKS Family',
+          message: notification.body ?? '',
+          type: type,
+        );
+      }
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       if (kDebugMode) debugPrint('Notification tapped: ${message.notification?.title}');
+      // Navigation : si c'est une demande, ouvrir l'écran des demandes
+      final type = message.data['type']?.toString() ?? '';
+      if (type.startsWith('request') && onOpenRequest != null) {
+        onOpenRequest!();
+      }
     });
 
     final initialMessage = await _messaging.getInitialMessage();
-    if (initialMessage != null && kDebugMode) {
-      debugPrint('App opened from notification: ${initialMessage.notification?.title}');
+    if (initialMessage != null) {
+      if (kDebugMode) debugPrint('App opened from notification: ${initialMessage.notification?.title}');
+      final type = initialMessage.data['type']?.toString() ?? '';
+      if (type.startsWith('request') && onOpenRequest != null) {
+        // Léger délai pour laisser l'app s'initialiser
+        Future.delayed(const Duration(milliseconds: 800), onOpenRequest!);
+      }
     }
   }
+
+  /// Callback appelé quand l'utilisateur ouvre une notification de demande.
+  /// Doit être branché par le HomeScreen pour naviguer vers PendingRequestsScreen.
+  static void Function()? onOpenRequest;
 
   NotificationType _getNotificationType(String type) {
     switch (type) {
@@ -103,6 +129,12 @@ class FcmService {
       case 'screen_time':
       case 'saturday_rating':
         return NotificationType.screenTime;
+      case 'request':
+      case 'request_punishment':
+      case 'request_immunity':
+      case 'request_tribunal':
+      case 'request_bonus':
+        return NotificationType.sync; // demandes en attente = sync/info
       default:
         return NotificationType.sync;
     }
@@ -122,7 +154,23 @@ class FcmService {
           }
           return;
         }
-        token = await _messaging.getToken(vapidKey: VapidKeyConfig.vapidKey);
+        // Sur Web, le service worker peut ne pas être prêt au 1er appel.
+        // On tente getToken() quelques fois avec un délai court, MAIS avec un
+        // timeout pour ne jamais bloquer le démarrage de l'app.
+        for (int attempt = 1; attempt <= 3; attempt++) {
+          try {
+            token = await _messaging
+                .getToken(vapidKey: VapidKeyConfig.vapidKey)
+                .timeout(const Duration(seconds: 3));
+          } catch (_) {
+            token = null;
+          }
+          if (token != null && token.isNotEmpty) break;
+          if (kDebugMode) {
+            debugPrint('FCM WEB: getToken() tentative $attempt null, retry...');
+          }
+          await Future.delayed(const Duration(seconds: 1));
+        }
       } else {
         token = await _messaging.getToken();
       }

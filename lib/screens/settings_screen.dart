@@ -5,7 +5,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../providers/theme_provider.dart';
-import '../widgets/animated_background.dart';
+import '../config/app_themes.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
@@ -68,6 +69,212 @@ class _SettingsScreenState extends State<SettingsScreen>
         );
       },
       child: child,
+    );
+  }
+
+  // ─── Sélecteur de thème ───────────────────────────────────
+  void _showThemeSelector() {
+    final themeProvider = context.read<ThemeProvider>();
+    String selectedId = themeProvider.themeId;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0F2620),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24)),
+            title: Row(children: [
+              const Icon(Icons.auto_awesome_rounded,
+                  color: Color(0xFF00E676)),
+              const SizedBox(width: 10),
+              const Text('Choisir un thème',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700)),
+            ]),
+            contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: AppThemes.all.map((t) {
+                  final isSelected = t.id == selectedId;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        setStateDialog(() => selectedId = t.id);
+                        themeProvider.setThemeId(t.id);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: t.surface,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isSelected
+                                ? t.primary
+                                : Colors.white.withValues(alpha: 0.08),
+                            width: isSelected ? 2.5 : 1,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color:
+                                        t.primary.withValues(alpha: 0.35),
+                                    blurRadius: 18,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            // Mini mockup (carte + barre)
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: t.background,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                    color: Colors.white
+                                        .withValues(alpha: 0.06)),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    top: 8,
+                                    left: 8,
+                                    right: 8,
+                                    child: Container(
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        color: t.surfaceHigh,
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 8,
+                                    left: 8,
+                                    right: 8,
+                                    child: ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.circular(3),
+                                      child: LinearProgressIndicator(
+                                        value: 0.65,
+                                        minHeight: 6,
+                                        backgroundColor: t.surfaceHigh,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                t.primary),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Infos
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(children: [
+                                    Text(t.emoji,
+                                        style: const TextStyle(
+                                            fontSize: 18)),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      t.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ]),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    t.subtitle,
+                                    style: TextStyle(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.55),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Swatches
+                                  Row(
+                                    children: t.swatches
+                                        .map((c) => Container(
+                                              width: 16,
+                                              height: 16,
+                                              margin:
+                                                  const EdgeInsets.only(
+                                                      right: 4),
+                                              decoration: BoxDecoration(
+                                                color: c,
+                                                borderRadius:
+                                                    BorderRadius
+                                                        .circular(4),
+                                                border: Border.all(
+                                                    color: Colors.white
+                                                        .withValues(
+                                                            alpha: 0.1)),
+                                              ),
+                                            ))
+                                        .toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Check
+                            AnimatedContainer(
+                              duration:
+                                  const Duration(milliseconds: 200),
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected
+                                    ? t.primary
+                                    : Colors.transparent,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? t.primary
+                                      : Colors.white
+                                          .withValues(alpha: 0.2),
+                                  width: 2,
+                                ),
+                              ),
+                              child: isSelected
+                                  ? const Icon(Icons.check_rounded,
+                                      color: Colors.white, size: 18)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Fermer',
+                    style: TextStyle(color: Colors.white70)),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -398,7 +605,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: AnimatedBackground(
+          body: AuroraBackground(
             child: SafeArea(
               child: ListView(
                 padding: const EdgeInsets.all(16),
@@ -443,6 +650,47 @@ class _SettingsScreenState extends State<SettingsScreen>
                   _animatedSection(
                       index: 1,
                       child: _sectionTitle('🎨 Apparence')),
+                  // Sélecteur de thème (3 identités visuelles)
+                  _animatedSection(
+                    index: 2,
+                    child: GlassCard(
+                      child: TvFocusWrapper(
+                        onTap: _showThemeSelector,
+                        child: _settingRow(
+                          icon: Icons.auto_awesome_rounded,
+                          iconColor: primary,
+                          title: 'Thème de l\'app',
+                          subtitle: theme.activeTheme.name,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Mini aperçu des 4 swatches du thème actif
+                              Row(
+                                children: theme.activeTheme.swatches
+                                    .map((c) => Container(
+                                          width: 14,
+                                          height: 14,
+                                          margin: const EdgeInsets.only(
+                                              right: 3),
+                                          decoration: BoxDecoration(
+                                            color: c,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                                color: Colors.white24,
+                                                width: 1),
+                                          ),
+                                        ))
+                                    .toList(),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.chevron_right,
+                                  color: Colors.white38),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   _animatedSection(
                     index: 2,
                     child: GlassCard(
@@ -693,6 +941,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     required IconData icon,
     required Color    iconColor,
     required String   title,
+    String? subtitle,
     required Widget   trailing,
   }) {
     return Padding(
@@ -710,9 +959,25 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ],
             ),
           ),
           trailing,

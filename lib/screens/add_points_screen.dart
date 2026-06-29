@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 
@@ -544,7 +544,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
       builder: (context, provider, _) {
         final children = provider.children;
 
-        return AnimatedBackground(
+        return AuroraBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             body: AnimatedBuilder(

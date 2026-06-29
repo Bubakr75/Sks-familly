@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'firebase_diagnostic_screen.dart';
 
@@ -328,7 +328,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AnimatedBackground(
+      body: AuroraBackground(
         child: SafeArea(
           child: _isLoading
               ? Center(

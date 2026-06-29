@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -17,6 +18,16 @@ class NotificationService {
 
   static Future<void> init() async {
     if (_initialized) return;
+
+    // ⚠️ SUR WEB : flutter_local_notifications n'a pas de support natif
+    // (disponible seulement à partir de 22.0.0-dev). initialize() hang sur web
+    // car aucun delegate n'est enregistré, ce qui bloquait tout le démarrage.
+    // On court-circuite donc sur web : les notifications web passent par FCM
+    // (firebase_messaging) qui, lui, supporte le web via le service worker.
+    if (kIsWeb) {
+      _initialized = true;
+      return;
+    }
 
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Europe/Paris'));
@@ -54,6 +65,7 @@ class NotificationService {
   // ===== SCHEDULED NOTIFICATIONS =====
 
   static Future<void> scheduleDailyReminder({int hour = 19, int minute = 0}) async {
+    if (kIsWeb) return; // pas de notifs locales planifiées sur web
     await _localNotifications.cancel(1001);
 
     await _localNotifications.zonedSchedule(
@@ -80,6 +92,7 @@ class NotificationService {
   static Future<void> scheduleFridayScreenTime({
     required Map<String, String> childrenScreenTime,
   }) async {
+    if (kIsWeb) return;
     await _localNotifications.cancel(1002);
 
     if (childrenScreenTime.isEmpty) return;
@@ -112,6 +125,7 @@ class NotificationService {
   }
 
   static Future<void> scheduleMonthlyReminder({int hour = 18, int minute = 0}) async {
+    if (kIsWeb) return;
     await _localNotifications.cancel(1003);
 
     await _localNotifications.zonedSchedule(
@@ -190,6 +204,7 @@ class NotificationService {
     required String body,
     required int id,
   }) async {
+    if (kIsWeb) return; // pas de notif locale native sur web (FCM s'en charge)
     const androidDetails = AndroidNotificationDetails(
       'sks_family_channel',
       'SKS Family',
@@ -215,6 +230,17 @@ class NotificationService {
       body: message,
       id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
     );
+    _showOverlay(title: title, message: message, type: type);
+  }
+
+  /// Affiche UNIQUEMENT l'overlay in-app (pas de notification native).
+  /// Utilisé sur web où le navigateur affiche déjà la notification via le
+  /// service worker (évite le dédoublement).
+  static void showOverlayOnly({
+    required String title,
+    required String message,
+    required NotificationType type,
+  }) {
     _showOverlay(title: title, message: message, type: type);
   }
 

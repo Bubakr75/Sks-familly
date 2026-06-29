@@ -6,7 +6,7 @@ import '../providers/family_provider.dart';
 import '../models/badge_model.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
 
 // ═══════════════════════════════════════════════════════════
@@ -329,7 +329,7 @@ class BadgesScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: AnimatedBackground(
+      body: AuroraBackground(
         child: Consumer<FamilyProvider>(
           builder: (context, provider, _) {
             final allBadges = [
@@ -692,7 +692,7 @@ class BadgesScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: const Color(0xFF0A0A1F),
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(children: [
@@ -788,7 +788,7 @@ class BadgesScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
+          backgroundColor: const Color(0xFF0A0A1F),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Nouveau pouvoir',
@@ -888,7 +888,7 @@ class BadgesScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: const Color(0xFF0A0A1F),
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(children: [

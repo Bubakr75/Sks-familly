@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../services/gemini_service.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 
 class GeminiChatScreen extends StatefulWidget {
   const GeminiChatScreen({super.key});
@@ -93,7 +93,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
       builder: (context, fp, _) {
-        return AnimatedBackground(
+        return AuroraBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(

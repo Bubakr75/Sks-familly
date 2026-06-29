@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/family_provider.dart';
-import '../widgets/animated_background.dart';
-import '../widgets/glass_card.dart';
+import '../widgets/aurora_background.dart';
 
 class ScreenTimeScreen extends StatefulWidget {
   const ScreenTimeScreen({super.key});
@@ -129,7 +128,6 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
       }).toList();
 
       for (final n in notesJour) {
-        String subject = n.reason;
         int noteValue = n.points;
         int noteMax = 20;
         final match = RegExp(r'^(.+):\s*(\d+)/(\d+)$').firstMatch(n.reason);
@@ -172,7 +170,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AnimatedBackground(
+      body: AuroraBackground(
         child: SafeArea(
           child: Column(
             children: [
@@ -512,7 +510,7 @@ class _ScreenTimeScreenState extends State<ScreenTimeScreen>
                   if (child.hasPhoto)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.memory(base64Decode(child.photoBase64!),
+                      child: Image.memory(base64Decode(child.photoBase64),
                           width: 36, height: 36, fit: BoxFit.cover),
                     )
                   else

@@ -7,7 +7,6 @@ import '../models/parent_profile.dart';
 class PinProvider extends ChangeNotifier {
   String? _hashedPin;
   bool _isParentMode = false;
-  DateTime? _lastActivity;
 
   // Plus de timeout : une fois en mode parent, on y reste jusqu'à verrouillage
   // manuel ou fermeture de l'app.
@@ -56,10 +55,9 @@ class PinProvider extends ChangeNotifier {
       await prefs.remove('parent_pin');
     }
 
-    // ⚠️ Sécurité : au démarrage, TOUJOURS en mode enfant.
+    // ⚠️ Sécurité : au démémarrage, TOUJOURS en mode enfant.
     // Le mode parent n'est JAMAIS restauré depuis prefs.
     _isParentMode = false;
-    _lastActivity = null;
     _failedAttempts = 0;
     _lockoutUntil = null;
     _currentParentProfile = null;
@@ -70,7 +68,7 @@ class PinProvider extends ChangeNotifier {
   }
 
   void refreshActivity() {
-    _lastActivity = DateTime.now();
+    // Plus de timeout : méthode gardée pour compatibilité (no-op).
   }
 
   /// Vérifie si on peut faire une action parent.
@@ -86,7 +84,6 @@ class PinProvider extends ChangeNotifier {
     if (rawPin.isEmpty) return;
     _hashedPin    = _hashPin(rawPin);
     _isParentMode = true;
-    _lastActivity = DateTime.now();
     _failedAttempts = 0;
     _lockoutUntil = null;
     final prefs = await SharedPreferences.getInstance();
@@ -98,7 +95,6 @@ class PinProvider extends ChangeNotifier {
   Future<void> removePin() async {
     _hashedPin    = null;
     _isParentMode = false;
-    _lastActivity = null;
     _failedAttempts = 0;
     _lockoutUntil = null;
     _currentParentProfile = null;
@@ -118,7 +114,6 @@ class PinProvider extends ChangeNotifier {
     final ok = _hashPin(rawInput) == _hashedPin;
     if (ok) {
       _isParentMode = true;
-      _lastActivity = DateTime.now();
       _failedAttempts = 0;
       _lockoutUntil = null;
       notifyListeners();
@@ -137,7 +132,6 @@ class PinProvider extends ChangeNotifier {
   /// Active le mode parent avec un profil parent spécifique (papa, maman, etc.)
   void unlockParentModeWithProfile(ParentProfile profile) {
     _isParentMode = true;
-    _lastActivity = DateTime.now();
     _currentParentProfile = profile;
     _failedAttempts = 0;
     _lockoutUntil = null;
@@ -146,13 +140,11 @@ class PinProvider extends ChangeNotifier {
 
   void unlockParentMode() {
     _isParentMode = true;
-    _lastActivity = DateTime.now();
     notifyListeners();
   }
 
   void lockParentMode() {
     _isParentMode = false;
-    _lastActivity = null;
     _currentParentProfile = null;
     notifyListeners();
   }
@@ -160,7 +152,6 @@ class PinProvider extends ChangeNotifier {
   void enterChildMode() {
     if (!isPinSet) return;
     _isParentMode = false;
-    _lastActivity = null;
     _currentParentProfile = null;
     notifyListeners();
   }

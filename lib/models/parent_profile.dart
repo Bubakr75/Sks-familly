@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Modèle pour un profil parent (papa, maman, tata, etc.)
 class ParentProfile {
   String id;

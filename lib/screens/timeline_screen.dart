@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/history_entry.dart';
 import '../models/child_model.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/glass_card.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     return Consumer<FamilyProvider>(
       builder: (context, fp, _) {
         final entries = _filteredEntries(fp);
-        return AnimatedBackground(
+        return AuroraBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: _buildAppBar(fp),

@@ -6,9 +6,17 @@
 //   - Stripe Dashboard (cards nettes, KPIs organisés)
 //
 // Palette : Vert profond + crème + doré + accent émeraude vif
+//
+// NOTE : depuis l'introduction du multi-thèmes, ces composants s'adaptent au
+// thème actif (Émeraude / Aurora / Clair) via le ThemeProvider. Les constantes
+// EmeraldPalette.* restent disponibles pour la rétro-compatibilité (elles
+// représentent toujours le thème Émeraude natif).
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'app_themes.dart';
+import '../providers/theme_provider.dart';
 
 /// Palette de couleurs Emerald
 class EmeraldPalette {
@@ -132,13 +140,16 @@ class EmeraldTypography {
 }
 
 /// Composant : Card émeraude (style Stripe, bords nets, ombre subtile)
+/// S'adapte au thème actif (Émeraude / Aurora / Clair).
 class EmeraldCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
   final double radius;
   final Color? color;
+  final Color? accentColor; // couleur d'accent pour l'ombre/bordure lumineuse
   final VoidCallback? onTap;
   final Border? border;
+  final bool glow; // active l'ombre colorée premium
 
   const EmeraldCard({
     super.key,
@@ -146,12 +157,17 @@ class EmeraldCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.radius = 16,
     this.color,
+    this.accentColor,
     this.onTap,
     this.border,
+    this.glow = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<ThemeProvider>().activeTheme;
+    final accent = accentColor ?? t.primary;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -160,16 +176,33 @@ class EmeraldCard extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: color ?? EmeraldPalette.surface,
+            // Dégradé vertical subtil : surface → légèrement plus clair en haut
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                (color ?? t.surface),
+                Color.lerp((color ?? t.surface), Colors.black, 0.12)!,
+              ],
+            ),
             borderRadius: BorderRadius.circular(radius),
             border: border ??
-                Border.all(color: EmeraldPalette.glassBorder, width: 1),
+                Border.all(color: accent.withValues(alpha: 0.15), width: 1),
             boxShadow: [
+              // Ombre principale (profondeur)
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: t.isDark ? 0.3 : 0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
               ),
+              // Ombre colorée premium (glow vert/ambre) — signature Émeraude++
+              if (glow)
+                BoxShadow(
+                  color: accent.withValues(alpha: t.isDark ? 0.18 : 0.10),
+                  blurRadius: 20,
+                  spreadRadius: -2,
+                  offset: const Offset(0, 2),
+                ),
             ],
           ),
           child: child,
@@ -204,19 +237,28 @@ class EmeraldKpiCard extends StatelessWidget {
 
     return EmeraldCard(
       padding: const EdgeInsets.all(14),
-      radius: 14,
+      radius: 16,
+      accentColor: accent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Icône dans un halo lumineux (signature Émeraude++)
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: [
+                      accent.withValues(alpha: 0.22),
+                      accent.withValues(alpha: 0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                      color: accent.withValues(alpha: 0.35), width: 1),
                 ),
-                child: Icon(icon, color: accent, size: 14),
+                child: Icon(icon, color: accent, size: 15),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -231,19 +273,27 @@ class EmeraldKpiCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           if (animateCountUp)
             _CountUpText(
               text: value,
-              style: EmeraldTypography.kpiNumber.copyWith(fontSize: 22),
+              style: EmeraldTypography.kpiNumber.copyWith(
+                fontSize: 24,
+                color: EmeraldPalette.textPrimary,
+                height: 1,
+              ),
             )
           else
             Text(
               value,
-              style: EmeraldTypography.kpiNumber.copyWith(fontSize: 22),
+              style: EmeraldTypography.kpiNumber.copyWith(
+                fontSize: 24,
+                color: EmeraldPalette.textPrimary,
+                height: 1,
+              ),
             ),
           if (sublabel != null) ...[
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               sublabel!,
               style: EmeraldTypography.caption.copyWith(fontSize: 10),
@@ -279,7 +329,14 @@ class EmeraldActionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
-            color: EmeraldPalette.surface,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                EmeraldPalette.surface,
+                Color.lerp(EmeraldPalette.surface, Colors.black, 0.12)!,
+              ],
+            ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: accentColor.withValues(alpha: 0.2),
@@ -287,8 +344,15 @@ class EmeraldActionTile extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 8,
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+              // glow coloré premium
+              BoxShadow(
+                color: accentColor.withValues(alpha: 0.14),
+                blurRadius: 18,
+                spreadRadius: -3,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -297,18 +361,23 @@ class EmeraldActionTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: RadialGradient(
+                    colors: [
+                      accentColor.withValues(alpha: 0.28),
+                      accentColor.withValues(alpha: 0.10),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(13),
                   border: Border.all(
-                    color: accentColor.withValues(alpha: 0.3),
+                    color: accentColor.withValues(alpha: 0.4),
                     width: 1,
                   ),
                 ),
                 child: Icon(icon, color: accentColor, size: 22),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 9),
               Text(
                 label,
                 style: EmeraldTypography.body.copyWith(
@@ -719,28 +788,115 @@ class _CountUpTextState extends State<_CountUpText>
   }
 }
 
-/// Fond émeraude avec gradient subtil
-class EmeraldBackground extends StatelessWidget {
+/// Fond émeraude avec gradient subtil — s'adapte au thème actif.
+/// Fond premium avec dégradé + halos lumineux colorés (signature Émeraude++).
+/// Des orbes de lueur (vert/or) flottent lentement en arrière-plan pour donner
+/// de la profondeur et une ambiance premium, sans distraire.
+class EmeraldBackground extends StatefulWidget {
   final Widget child;
 
   const EmeraldBackground({super.key, required this.child});
 
   @override
+  State<EmeraldBackground> createState() => _EmeraldBackgroundState();
+}
+
+class _EmeraldBackgroundState extends State<EmeraldBackground>
+    with TickerProviderStateMixin {
+  late final AnimationController _breathe;
+
+  @override
+  void initState() {
+    super.initState();
+    _breathe = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _breathe.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final t = context.watch<ThemeProvider>().activeTheme;
     return Container(
-      color: EmeraldPalette.background,
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF051410),
-              Color(0xFF041008),
-            ],
-          ),
-        ),
-        child: child,
+      color: t.background,
+      child: AnimatedBuilder(
+        animation: _breathe,
+        builder: (context, _) {
+          // Oscillation douce de l'intensité des halos
+          final p = Curves.easeInOut.transform(_breathe.value);
+          final glow1 = 0.10 + p * 0.06; // 0.10 → 0.16
+          final glow2 = 0.06 + p * 0.05; // 0.06 → 0.11
+
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: t.isDark
+                    ? [
+                        t.background,
+                        Color.lerp(t.background, Colors.black, 0.4)!
+                      ]
+                    : [
+                        t.background,
+                        Color.lerp(t.background, Colors.white, 0.5)!
+                      ],
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Halo primaire (accent) — haut gauche
+                Positioned(
+                  top: -100,
+                  left: -80,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 340,
+                      height: 340,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            t.primary.withValues(alpha: glow1),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Halo secondaire (or) — bas droit
+                Positioned(
+                  bottom: -120,
+                  right: -60,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 300,
+                      height: 300,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            t.gold.withValues(alpha: glow2),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Contenu par-dessus
+                Positioned.fill(child: widget.child),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

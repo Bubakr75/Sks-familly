@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 /// Route avec transition slide + fade
 class SlidePageRoute<T> extends PageRouteBuilder<T> {

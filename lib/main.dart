@@ -11,99 +11,194 @@ import 'firebase_options.dart';
 import 'providers/family_provider.dart';
 import 'providers/pin_provider.dart';
 import 'providers/theme_provider.dart';
-import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/welcome_screen.dart';
 import 'screens/profile_selection_screen.dart';
 import 'services/notification_service.dart';
 import 'services/update_service.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter();
-  await initializeDateFormatting('fr_FR', null);
+void main() {
+  // ⚠️ On lance runApp() LE PLUS VITE POSSIBLE, puis on initialise les
+  // services en arrière-plan. Ainsi, même si un plugin hang sur web,
+  // l'app s'affiche avec un écran de chargement au lieu d'un écran blanc.
+  runApp(const SKSBootstrap());
+}
 
-  try {
-    await NotificationService.init();
-    if (kDebugMode) debugPrint('NotificationService initialized OK');
-  } catch (e) {
-    if (kDebugMode) debugPrint('NotificationService init error: $e');
+/// Widget de démarrage : affiche un splash puis lance l'initialisation
+/// asynchrone des services (Hive, Firebase, providers...) sans bloquer.
+class SKSBootstrap extends StatefulWidget {
+  const SKSBootstrap({super.key});
+  @override
+  State<SKSBootstrap> createState() => _SKSBootstrapState();
+}
+
+class _SKSBootstrapState extends State<SKSBootstrap> {
+  bool _ready = false;
+  bool _showOnboarding = false;
+  // Instances initialisées en arrière-plan, réutilisées par MultiProvider
+  final FamilyProvider _familyProvider = FamilyProvider();
+  final PinProvider _pinProvider = PinProvider();
+  final ThemeProvider _themeProvider = ThemeProvider();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeEverything();
   }
 
-  bool firebaseReady = false;
-  for (int attempt = 1; attempt <= 3; attempt++) {
+  Future<void> _initializeEverything() async {
+    // 1. Binding + Hive + intl (rapide et sûr)
     try {
-      try {
-        Firebase.app();
-        if (kDebugMode) debugPrint('Firebase already initialized (attempt $attempt)');
-        firebaseReady = true;
-        break;
-      } catch (_) {}
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-      if (kDebugMode) debugPrint('Firebase initialized OK (attempt $attempt)');
+      await Hive.initFlutter();
+    } catch (e) {
+      if (kDebugMode) debugPrint('Hive init error: $e');
+    }
+    try {
+      await initializeDateFormatting('fr_FR', null);
+    } catch (e) {
+      if (kDebugMode) debugPrint('intl init error: $e');
+    }
+
+    // 2. Notifications (court-circuité sur web dans le service)
+    try {
+      await NotificationService.init().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => debugPrint('Notification init timeout'),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('NotificationService init error: $e');
+    }
+
+    // 3. Firebase (avec timeout pour ne jamais bloquer)
+    bool firebaseReady = false;
+    try {
+      await Firebase.initializeApp(
+              options: DefaultFirebaseOptions.currentPlatform)
+          .timeout(
+        const Duration(seconds: 8),
+        onTimeout: () => throw Exception('Firebase init timeout'),
+      );
       firebaseReady = true;
-      break;
     } catch (e) {
-      if (e.toString().contains('already been initialized') || e.toString().contains('duplicate-app')) {
-        if (kDebugMode) debugPrint('Firebase was already initialized');
+      if (e.toString().contains('already been initialized') ||
+          e.toString().contains('duplicate-app')) {
         firebaseReady = true;
-        break;
       }
-      if (kDebugMode) debugPrint('Firebase init attempt $attempt failed: $e');
-      if (attempt < 3) await Future.delayed(Duration(milliseconds: 500 * attempt));
+      if (kDebugMode) debugPrint('Firebase init: $e');
     }
-  }
 
-  if (!firebaseReady && kDebugMode) debugPrint('WARNING: Firebase not initialized after 3 attempts');
+    // 4. FCM (avec timeout)
+    if (firebaseReady) {
+      try {
+        await FcmService().init().timeout(
+          const Duration(seconds: 6),
+          onTimeout: () => debugPrint('FCM init timeout'),
+        );
+      } catch (e) {
+        if (kDebugMode) debugPrint('FcmService init error: $e');
+      }
+    }
 
-  if (firebaseReady) {
+    // 5. Providers
     try {
-      await FcmService().init();
-      if (kDebugMode) debugPrint('FcmService initialized OK');
+      await Future.wait<void>([
+        _pinProvider.init(),
+        _themeProvider.init(),
+      ]).timeout(const Duration(seconds: 5));
     } catch (e) {
-      if (kDebugMode) debugPrint('FcmService init error: $e');
+      if (kDebugMode) debugPrint('Provider init error / timeout: $e');
     }
-  }
 
-  final familyProvider = FamilyProvider();
-  final pinProvider = PinProvider();
-  final themeProvider = ThemeProvider();
-
-  try {
-    await Future.wait([pinProvider.init(), themeProvider.init()]);
-  } catch (e) {
-    if (kDebugMode) debugPrint('Provider init error: $e');
-  }
-
-  try {
-    await familyProvider.init();
     try {
-      await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
+      await _familyProvider.init().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () => debugPrint('FamilyProvider init timeout'),
+      );
     } catch (e) {
-      if (kDebugMode) debugPrint('Schedule reminder error: $e');
+      if (kDebugMode) debugPrint('FamilyProvider init error: $e');
     }
-  } catch (e) {
-    if (kDebugMode) debugPrint('FamilyProvider init error: $e');
+
+    // Rappels de notifications (non bloquants, et uniquement hors web)
+    if (!kIsWeb) {
+      try {
+        await NotificationService.scheduleDailyReminder(hour: 19, minute: 0)
+            .timeout(const Duration(seconds: 3));
+      } catch (e) {
+        if (kDebugMode) debugPrint('Schedule reminder error: $e');
+      }
+    }
+
+    // 6. Onboarding ?
+    bool onboardingDone = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      onboardingDone = prefs.getBool('onboarding_done') ?? false;
+    } catch (e) {
+      if (kDebugMode) debugPrint('SharedPreferences error: $e');
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _showOnboarding = !onboardingDone;
+      _ready = true;
+    });
   }
 
-  bool onboardingDone = false;
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    onboardingDone = prefs.getBool('onboarding_done') ?? false;
-  } catch (e) {
-    if (kDebugMode) debugPrint('SharedPreferences error: $e');
+  @override
+  Widget build(BuildContext context) {
+    // Splash pendant l'initialisation
+    return Container(
+      color: const Color(0xFF051410),
+      child: _ready
+          ? MultiProvider(
+              providers: [
+                ChangeNotifierProvider.value(value: _familyProvider),
+                ChangeNotifierProvider.value(value: _pinProvider),
+                ChangeNotifierProvider.value(value: _themeProvider),
+              ],
+              child: SKSFamilyApp(showOnboarding: _showOnboarding),
+            )
+          : const _SplashScreen(),
+    );
   }
+}
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: familyProvider),
-        ChangeNotifierProvider.value(value: pinProvider),
-        ChangeNotifierProvider.value(value: themeProvider),
-      ],
-      child: SKSFamilyApp(showOnboarding: !onboardingDone),
-    ),
-  );
+/// Splash Flutter (au cas où le splash web serait déjà masqué mais que
+/// l'init n'est pas fini).
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Material(
+      color: Color(0xFF051410),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('🏆', style: TextStyle(fontSize: 56)),
+            SizedBox(height: 16),
+            Text(
+              'SKS Family',
+              style: TextStyle(
+                color: Color(0xFFF5F1E8),
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 28),
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class SKSFamilyApp extends StatefulWidget {
@@ -113,7 +208,8 @@ class SKSFamilyApp extends StatefulWidget {
   State<SKSFamilyApp> createState() => _SKSFamilyAppState();
 }
 
-class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver {
+class _SKSFamilyAppState extends State<SKSFamilyApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -151,13 +247,20 @@ class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver
         builder: (context, child) {
           return Shortcuts(
             shortcuts: <ShortcutActivator, Intent>{
-              const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.numpadEnter): const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.gameButtonA): const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.goBack): const DismissIntent(),
-              const SingleActivator(LogicalKeyboardKey.browserBack): const DismissIntent(),
-              const SingleActivator(LogicalKeyboardKey.escape): const DismissIntent(),
+              const SingleActivator(LogicalKeyboardKey.select):
+                  const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.enter):
+                  const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                  const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.gameButtonA):
+                  const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.goBack):
+                  const DismissIntent(),
+              const SingleActivator(LogicalKeyboardKey.browserBack):
+                  const DismissIntent(),
+              const SingleActivator(LogicalKeyboardKey.escape):
+                  const DismissIntent(),
             },
             child: FocusTraversalGroup(
               policy: ReadingOrderTraversalPolicy(),
@@ -166,7 +269,9 @@ class _SKSFamilyAppState extends State<SKSFamilyApp> with WidgetsBindingObserver
           );
         },
         theme: themeProvider.theme,
-        home: widget.showOnboarding ? const OnboardingScreen() : const _StartupRouter(),
+        home: widget.showOnboarding
+            ? const OnboardingScreen()
+            : const _StartupRouter(),
       ),
     );
   }

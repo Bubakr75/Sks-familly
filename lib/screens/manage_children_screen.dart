@@ -8,7 +8,7 @@ import '../providers/pin_provider.dart';
 import '../utils/pin_guard.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/glass_widgets.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 import 'notes_screen.dart';
 
 class ManageChildrenScreen extends StatefulWidget {
@@ -28,7 +28,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E21),
+      backgroundColor: const Color(0xFF0A0A1F),
       floatingActionButton: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
@@ -44,7 +44,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
           label: const Text('Ajouter'),
         ),
       ),
-      body: AnimatedBackground(
+      body: AuroraBackground(
         child: SafeArea(
           child: Column(
             children: [
@@ -152,13 +152,12 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                 border: Border.all(
                                     color: primary.withOpacity(0.3)),
                               ),
-                              child: child.photoBase64 != null &&
-                                      child.photoBase64!.isNotEmpty
+                              child: child.hasPhoto
                                   ? ClipRRect(
                                       borderRadius:
                                           BorderRadius.circular(13),
                                       child: Image.memory(
-                                        base64Decode(child.photoBase64!),
+                                        base64Decode(child.photoBase64),
                                         fit: BoxFit.cover,
                                         width: 50,
                                         height: 50,

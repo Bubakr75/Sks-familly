@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/animated_background.dart';
-import '../widgets/glass_card.dart';
+import '../widgets/aurora_background.dart';
 import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -110,8 +109,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final color = _neonColors[_currentPage % _neonColors.length];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E21),
-      body: AnimatedBackground(
+      backgroundColor: const Color(0xFF0A0A1F),
+      body: AuroraBackground(
         child: SafeArea(
           child: Column(
             children: [

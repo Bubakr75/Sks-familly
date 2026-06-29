@@ -363,3 +363,49 @@ exports.onTribunalUpdated = functions.firestore
     });
   });
 
+// ===== 7. DEMANDES EN ATTENTE (validation parentale) =====
+// Quand un enfant crée une demande (pénalité / immunité / tribunal),
+// le parent reçoit une notification push pour la valider.
+exports.onRequestCreated = functions.firestore
+  .document("families/{familyId}/requests/{reqId}")
+  .onCreate(async (snap, context) => {
+    const r = snap.data();
+    const familyId = context.params.familyId;
+    const sender = r.lastModifiedBy || "";
+
+    // Libellé lisible selon le type de demande
+    var title = "🔔 Nouvelle demande";
+    var body = r.text || "Une demande attend votre validation";
+    var notifType = "request";
+
+    switch (r.type) {
+      case "punishment":
+        title = "📝 Demande de punition";
+        body = (r.requestedBy || "Un enfant") + " propose " + r.amount + " lignes : \"" + (r.text || "") + "\"";
+        notifType = "request_punishment";
+        break;
+      case "immunity":
+        title = "🛡️ Demande d'immunité";
+        body = (r.requestedBy || "Un enfant") + " demande " + r.amount + " lignes d'immunité : \"" + (r.text || "") + "\"";
+        notifType = "request_immunity";
+        break;
+      case "tribunal":
+        title = "⚖️ Demande d'ouverture d'affaire";
+        body = (r.requestedBy || "Un enfant") + " : \"" + (r.text || "") + "\"";
+        notifType = "request_tribunal";
+        break;
+      case "bonus":
+        title = "⭐ Demande de points";
+        body = (r.requestedBy || "Un enfant") + " demande " + r.amount + " points : \"" + (r.text || "") + "\"";
+        notifType = "request_bonus";
+        break;
+    }
+
+    await sendToFamily(familyId, sender, title, body, {
+      type: notifType,
+      requestId: context.params.reqId,
+      requestType: r.type || "",
+      childId: r.childId || "",
+    });
+  });
+

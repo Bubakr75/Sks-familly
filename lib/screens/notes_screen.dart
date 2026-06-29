@@ -4,7 +4,7 @@ import '../providers/family_provider.dart';
 import '../models/note_model.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/glass_widgets.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 
 class NotesScreen extends StatefulWidget {
   final String childId;
@@ -28,8 +28,8 @@ class _NotesScreenState extends State<NotesScreen> {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E21),
-      body: AnimatedBackground(
+      backgroundColor: const Color(0xFF0A0A1F),
+      body: AuroraBackground(
         child: SafeArea(
           child: Column(
             children: [

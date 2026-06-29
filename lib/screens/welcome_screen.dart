@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/child_model.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'home_screen.dart';
 import 'child_dashboard_screen.dart';
@@ -413,7 +413,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: const Color(0xFF0A0A1F),
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('❔ Comment utiliser SKS Family ?',
@@ -466,7 +466,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return AnimatedBackground(
+    return AuroraBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         floatingActionButton: FloatingActionButton.small(

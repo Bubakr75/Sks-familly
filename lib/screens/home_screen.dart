@@ -1,16 +1,21 @@
 // lib/screens/home_screen.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../providers/theme_provider.dart';
 import '../config/emerald_theme.dart';
+import '../ui/app_ui.dart';
 import '../utils/pin_guard.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/quick_shortcut_panel.dart';
-import 'pin_verification_screen.dart';
+import '../widgets/sync_status_bar.dart';
+import '../services/fcm_service.dart';
+import 'pending_requests_screen.dart';
 import 'profile_selection_screen.dart';
 import 'dashboard_screen.dart';
 import 'add_points_screen.dart';
@@ -26,7 +31,6 @@ import 'balance_screen.dart'; // â† NOUVEAU
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
-import 'child_dashboard_screen.dart';
 import 'timeline_screen.dart';
 import 'chores_screen.dart';
 import '../widgets/animated_page_transition.dart';
@@ -51,10 +55,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..forward();
+    // Quand on tape sur une notif de demande, ouvrir l'écran des demandes
+    FcmService.onOpenRequest = () {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PendingRequestsScreen()),
+      );
+    };
   }
 
   @override
   void dispose() {
+    FcmService.onOpenRequest = null;
     _navBarController.dispose();
     super.dispose();
   }
@@ -631,12 +644,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final pinProvider = context.watch<PinProvider>();
     final familyProvider = context.watch<FamilyProvider>();
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF0A0A1F),
       extendBody: true,
       drawer: _buildDrawer(context, isParent),
       floatingActionButton: const QuickShortcutFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: AnimatedBackground(
+      body: AuroraBackground(
         child: Column(
           children: [
             // ─── BANDEAU DE MODE (Parent / Enfant) ───
@@ -682,6 +695,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             // ─── CONTENU PRINCIPAL ───
             // Chaque écran gère son propre SafeArea
+            // Bannière de reconnexion (n'apparaît que pendant une synchro)
+            const SyncStatusBar(),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
@@ -714,13 +729,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           end: Offset.zero,
         ).animate(CurvedAnimation(
             parent: _navBarController, curve: Curves.easeOutCubic)),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D1B2E).withOpacity(0.95),
-            border: Border(
-                top: BorderSide(
-                    color: Colors.cyanAccent.withOpacity(0.15), width: 0.5)),
-          ),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0A0A1F).withValues(alpha: 0.75),
+                border: Border(
+                    top: BorderSide(
+                        color: const Color(0xFF00E5FF).withValues(alpha: 0.25), width: 0.5)),
+              ),
           child: SafeArea(
             top: false,
             child: Padding(
@@ -753,7 +771,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           horizontal: isSelected ? 16 : 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? EmeraldPalette.emerald.withValues(alpha: 0.12)
+                            ? const Color(0xFF00E5FF).withValues(alpha: 0.14)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -765,8 +783,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             duration: const Duration(milliseconds: 200),
                             child: Icon(icons[i],
                                 color: isSelected
-                                    ? EmeraldPalette.emeraldLight
-                                    : EmeraldPalette.textMuted,
+                                    ? const Color(0xFF00E5FF)
+                                    : const Color(0xFF6B6890),
                                 size: 24),
                           ),
                           const SizedBox(height: 4),
@@ -774,8 +792,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             duration: const Duration(milliseconds: 200),
                             style: TextStyle(
                               color: isSelected
-                                  ? EmeraldPalette.emeraldLight
-                                  : EmeraldPalette.textMuted,
+                                  ? const Color(0xFF00E5FF)
+                                  : const Color(0xFF6B6890),
                               fontSize: isSelected ? 11 : 10,
                               fontWeight: isSelected
                                   ? FontWeight.bold
@@ -790,6 +808,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 }),
               ),
             ),
+          ),
+        ),
           ),
         ),
       ),
@@ -942,6 +962,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       context,
                       DoorPageRoute(page: const TribunalScreen()),
                     );
+                  },
+                ),
+                // ─── Accès enfants : Pénalité / Immunité ───
+                // Accessibles SANS PIN : en mode enfant, BalanceScreen crée
+                // une demande (createRequest) à valider par le parent.
+                // En mode parent, BalanceScreen applique directement.
+                _drawerItem(
+                  icon: Icons.assignment_late_rounded,
+                  label: 'Pénalité / Immunité',
+                  color: Colors.redAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, SlidePageRoute(page: const BalanceScreen()));
                   },
                 ),
                 _drawerItem(

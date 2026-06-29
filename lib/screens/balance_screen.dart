@@ -8,9 +8,7 @@ import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
-import '../widgets/animated_background.dart';
-import '../widgets/glass_card.dart';
-import '../widgets/tv_focus_wrapper.dart';
+import '../widgets/aurora_background.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({super.key});
@@ -864,7 +862,7 @@ class _BalanceScreenState extends State<BalanceScreen>
         final allSelected =
             children.isNotEmpty && _selectedIds.length == children.length;
 
-        return AnimatedBackground(
+        return AuroraBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(
@@ -1063,7 +1061,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                     radius: 22,
                     backgroundColor: Colors.cyanAccent.withOpacity(0.2),
                     backgroundImage: child.hasPhoto
-                        ? MemoryImage(base64Decode(child.photoBase64!))
+                        ? MemoryImage(base64Decode(child.photoBase64))
                         : null,
                     child: !child.hasPhoto
                         ? Text(
@@ -1230,7 +1228,7 @@ class _BalanceScreenState extends State<BalanceScreen>
           radius: 16,
           backgroundColor: Colors.cyanAccent.withOpacity(0.2),
           backgroundImage: child.hasPhoto
-              ? MemoryImage(base64Decode(child.photoBase64!))
+              ? MemoryImage(base64Decode(child.photoBase64))
               : null,
           child: !child.hasPhoto
               ? Text(

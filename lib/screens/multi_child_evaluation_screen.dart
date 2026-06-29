@@ -1,10 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/child_model.dart';
 import '../services/gemini_service.dart';
 import '../providers/family_provider.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 
 class MultiChildEvaluationScreen extends StatefulWidget {
   const MultiChildEvaluationScreen({Key? key}) : super(key: key);
@@ -22,7 +21,6 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
   final List<Map<String, dynamic>> _questions = GeminiService.generateQuizQuestions(theme: '', age: 10);
   final Map<String, List<int?>> _answersPerChild = {};
 
-  static const _darkBg = Color(0xFF0D1B2E);
   static const _cardBg = Color(0xFF1A2744);
   static const _accent = Color(0xFF6C63FF);
   static const _accentLight = Color(0xFF9D97FF);
@@ -36,15 +34,6 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
     for (final child in _selectedChildren) {
       final answers = _answersPerChild[child.id] ?? [];
       if (answers.length <= _currentQuestion || answers[_currentQuestion] == null) return false;
-    }
-    return true;
-  }
-
-  bool get _allAnswered {
-    for (final child in _selectedChildren) {
-      final answers = _answersPerChild[child.id] ?? [];
-      if (answers.length < _questions.length) return false;
-      if (answers.any((a) => a == null)) return false;
     }
     return true;
   }
@@ -130,7 +119,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBackground(
+    return AuroraBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(

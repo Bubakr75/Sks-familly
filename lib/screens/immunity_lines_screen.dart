@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/immunity_lines.dart';
 import '../models/history_entry.dart';
 import '../providers/family_provider.dart';
-import '../widgets/animated_background.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
@@ -421,7 +421,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: AnimatedBackground(
+          body: AuroraBackground(
             child: SafeArea(
               child: Column(children: [
 

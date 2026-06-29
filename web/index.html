@@ -1,19 +1,22 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="SKS Family - Application familiale">
+  <meta name="description" content="SKS Family - Application familiale de points et récompenses">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-  <!-- iOS meta tags & icons -->
+  <!-- iOS / Safari meta tags (requis pour Web Push sur iPhone 16.4+) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SKS Family">
+  <meta name="theme-color" content="#051410">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/Icon-512.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
@@ -22,15 +25,199 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
-    body {
+    /* Fond identique au thème Emerald => transition fluide quand Flutter démarre */
+    html, body {
       margin: 0;
       padding: 0;
-      background-color: #1A1A2E;
+      background-color: #051410;
       overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Splash de chargement INLINE (légèrement semi-transparent pour ne JAMAIS
+       masquer Flutter complètement). Se fonde au démarrage. */
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #051410;
+      color: #F5F1E8;
+      z-index: 10;
+      transition: opacity 0.5s ease;
+    }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    #loading .logo {
+      width: 84px; height: 84px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, #00E676, #047857);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 12px 40px rgba(0, 230, 118, 0.35);
+      margin-bottom: 22px;
+    }
+    #loading .title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+    #loading .subtitle { font-size: 13px; color: #94A3A0; margin-top: 6px; }
+    #loading .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid rgba(0,230,118,0.18);
+      border-top-color: #00E676;
+      border-radius: 50%;
+      margin-top: 26px;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Bannière d'installation iOS */
+    #ios-install-banner {
+      position: fixed;
+      left: 12px; right: 12px;
+      bottom: 12px;
+      z-index: 100;
+      background: linear-gradient(135deg, #00E676, #047857);
+      color: #051410;
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    #ios-install-banner.show { display: flex; }
+    #ios-install-banner .emoji { font-size: 22px; }
+    #ios-install-banner .close {
+      margin-left: auto;
+      background: rgba(5,20,16,0.18);
+      border: none;
+      color: #051410;
+      font-size: 18px;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
     }
   </style>
 </head>
 <body>
+  <!-- Splash de chargement (sera masqué dès que le flutter-view apparaît) -->
+  <div id="loading">
+    <div class="logo">🏆</div>
+    <div class="title">SKS Family</div>
+    <div class="subtitle">Chargement…</div>
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Bannière "Ajouter à l'écran d'accueil" pour iOS -->
+  <div id="ios-install-banner">
+    <span class="emoji">📲</span>
+    <span>Pour les notifications sur iPhone, ajoutez SKS à l'écran d'accueil : <b>Partager</b> <span style="font-size:16px">⎋</span> puis <b>Sur l'écran d'accueil</b></span>
+    <button class="close" id="ios-banner-close">✕</button>
+  </div>
+
+  <!-- Flutter (bootstrap gère le chargement de l'app) -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    // ============================================================
+    // 1. ENREGISTREMENT DU SERVICE WORKER (firebase-messaging-sw.js)
+    //    Fait AVANT l'init Firebase côté Dart => notifs web fiabilisées
+    // ============================================================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('firebase-messaging-sw.js')
+          .then(function (reg) {
+            console.log('[SW] Service worker enregistré :', reg.scope);
+          })
+          .catch(function (err) {
+            console.warn('[SW] Échec enregistrement service worker :', err);
+          });
+      });
+    }
+
+    // ============================================================
+    // 2. MASQUER LE SPLASH de façon robuste
+    //    On attend l'apparition du <flutter-view> dans le DOM (polling
+    //    léger). Dès qu'il existe, on masque le splash. Garde-fou 10s.
+    // ============================================================
+    (function () {
+      var loading = document.getElementById('loading');
+      var hidden = false;
+      function hideLoading() {
+        if (hidden || !loading) return;
+        hidden = true;
+        loading.classList.add('hidden');
+        setTimeout(function () {
+          if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
+        }, 600);
+      }
+
+      // a) Dès que le flutter-view est présent => on masque
+      function checkFlutterView() {
+        var fv = document.querySelector('flutter-view');
+        if (fv || document.querySelector('flt-glass-pane')) {
+          // petit délai pour laisser Flutter peindre sa 1re frame
+          setTimeout(hideLoading, 300);
+        } else {
+          setTimeout(checkFlutterView, 250);
+        }
+      }
+      window.addEventListener('load', function () { checkFlutterView(); });
+
+      // b) Événement officiel Flutter (si dispo)
+      window.addEventListener('flutter-first-frame', hideLoading);
+
+      // c) Garde-fou absolu : masque après 10s quoi qu'il arrive
+      setTimeout(hideLoading, 10000);
+    })();
+
+    // ============================================================
+    // 3. PROMPT PWA + DÉTECTION iOS
+    // ============================================================
+    (function () {
+      function isStandalone() {
+        return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+            || window.navigator.standalone === true;
+      }
+      function isIOS() {
+        return /iphone|ipad|ipod/i.test(navigator.userAgent)
+            && !/crios|fxios/i.test(navigator.userAgent);
+      }
+
+      if (isIOS() && !isStandalone()) {
+        try {
+          if (sessionStorage.getItem('sks_ios_banner_dismissed') !== '1') {
+            window.addEventListener('load', function () {
+              setTimeout(function () {
+                var b = document.getElementById('ios-install-banner');
+                if (b) b.classList.add('show');
+              }, 3000);
+            });
+          }
+        } catch (e) {}
+
+        var btn = document.getElementById('ios-banner-close');
+        if (btn) {
+          btn.addEventListener('click', function () {
+            try { sessionStorage.setItem('sks_ios_banner_dismissed', '1'); } catch (e) {}
+            var b = document.getElementById('ios-install-banner');
+            if (b) b.classList.remove('show');
+          });
+        }
+      }
+
+      var deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+      });
+      window.addEventListener('appinstalled', function () {
+        deferredPrompt = null;
+      });
+    })();
+  </script>
 </body>
 </html>

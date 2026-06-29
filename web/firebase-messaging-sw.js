@@ -27,14 +27,20 @@ messaging.onBackgroundMessage(function(payload) {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  // URL cible : data.url (Cloud Functions) si présent, sinon racine
+  const targetUrl = (event.notification.data && event.notification.data.url)
+                  || (event.notification.data && event.notification.data.link)
+                  || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Focus une fenêtre déjà ouverte sur l'app si possible
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
+          if ('navigate' in client) { client.navigate(targetUrl).catch(() => {}); }
           return client.focus();
         }
       }
-      if (clients.openWindow) { return clients.openWindow('/'); }
+      if (clients.openWindow) { return clients.openWindow(targetUrl); }
     })
   );
 });

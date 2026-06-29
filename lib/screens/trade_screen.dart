@@ -339,7 +339,7 @@ class _TradeScreenState extends State<TradeScreen>
         final child = provider.getChild(widget.childId);
         if (child == null) {
           return Scaffold(
-            backgroundColor: const Color(0xFF0a0a2a),
+            backgroundColor: const Color(0xFF0A0A1F),
             body: const Center(
                 child: Text('Enfant non trouvé',
                     style: TextStyle(color: Colors.white))),
@@ -354,7 +354,7 @@ class _TradeScreenState extends State<TradeScreen>
             .toList();
 
         return Scaffold(
-          backgroundColor: const Color(0xFF0a0a2a),
+          backgroundColor: const Color(0xFF0A0A1F),
           appBar: AppBar(
             title: Row(mainAxisSize: MainAxisSize.min, children: [
               TweenAnimationBuilder<double>(
