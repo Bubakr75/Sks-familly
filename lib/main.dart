@@ -8,6 +8,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/fcm_service.dart';
 import 'services/auth_service.dart';
+import 'services/voice_service.dart';
 import 'firebase_options.dart';
 import 'providers/family_provider.dart';
 import 'providers/pin_provider.dart';
@@ -67,6 +68,16 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
       );
     } catch (e) {
       if (kDebugMode) debugPrint('NotificationService init error: $e');
+    }
+
+    // 2b. Voix TTS (non bloquant)
+    try {
+      await VoiceService().init().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => debugPrint('Voice init timeout'),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('VoiceService init error: $e');
     }
 
     // 3. Firebase (avec timeout pour ne jamais bloquer)

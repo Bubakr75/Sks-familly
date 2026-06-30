@@ -1,9 +1,29 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-  static const _apiKey = 'AIzaSyB2-EEc6HBg3Amc8cfP8vun9RO64qDHHx4';
+  // ✅ Modèle corrigé : gemini-2.0-flash (gemini-2.5-flash n'existe pas/plus)
+  // ✅ Clé API récupérée via --dart-define (plus en dur pour la sécurité)
+  static const _baseUrl =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  static const _apiKey = String.fromEnvironment('GEMINI_API_KEY',
+      defaultValue: '');
+
+  /// True si la clé API Gemini est configurée (sinon les appels sont désactivés).
+  static bool get isConfigured => _apiKey.isNotEmpty;
+
+  /// Vérifie que la clé est configurée avant tout appel.
+  static bool _checkKey() {
+    if (_apiKey.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('GeminiService: GEMINI_API_KEY non configurée ! '
+            'Lance avec --dart-define=GEMINI_API_KEY=TA_CLE');
+      }
+      return false;
+    }
+    return true;
+  }
 
   static List<Map<String, dynamic>> generateQuizQuestions({required String theme, required int age}) {
     return [
@@ -107,6 +127,9 @@ POINT_AMELIORER: [1 phrase bienveillante sur un axe de progrès]
 CONSEIL: [1 conseil pratique et motivant pour la semaine prochaine]''';
 
     try {
+      if (!_checkKey()) {
+        return {'nom': childName, 'note': score, 'appreciation': 'L\'assistant IA n\'est pas configuré. Vérifiez la clé API Gemini.', 'point_fort': '—', 'point_ameliorer': '—', 'conseil': '—'};
+      }
       final response = await http.post(
         Uri.parse(_baseUrl + '?key=' + _apiKey),
         headers: {'Content-Type': 'application/json'},
@@ -219,6 +242,7 @@ Sois toujours encourageant et bienveillant. Reponds en francais.''';
     contents.add({'parts': [{'text': message}], 'role': 'user'});
 
     try {
+      if (!_checkKey()) return 'L\'assistant IA n\'est pas configuré.';
       final response = await http.post(
         Uri.parse(_baseUrl + '?key=' + _apiKey),
         headers: {'Content-Type': 'application/json'},
@@ -261,6 +285,9 @@ SANCTION: [si coupable: suggestion de sanction adaptee, sinon: rien]
 CONSEIL: [1 conseil pour les deux parties pour eviter ce genre de conflit]''';
 
     try {
+      if (!_checkKey()) {
+        return {'verdict': 'dismissed', 'raison': 'L\'assistant IA n\'est pas configuré.', 'sanction': '', 'conseil': ''};
+      }
       final response = await http.post(
         Uri.parse(_baseUrl + '?key=' + _apiKey),
         headers: {'Content-Type': 'application/json'},
@@ -307,6 +334,9 @@ REPONSE: [la reponse]
 EXPLICATION: [courte explication educative]''';
 
     try {
+      if (!_checkKey()) {
+        return {'enigme': 'L\'assistant IA n\'est pas configuré.', 'indice': '', 'reponse': '', 'explication': ''};
+      }
       final response = await http.post(
         Uri.parse(_baseUrl + '?key=' + _apiKey),
         headers: {'Content-Type': 'application/json'},
@@ -332,6 +362,7 @@ EXPLICATION: [courte explication educative]''';
     }
   }
   static Future<String> chatFamilyAssistant({required String message, required String familyContext, List<Map<String, String>> history = const []}) async {
+    if (!_checkKey()) return 'L\'assistant IA n\'est pas configuré.';
     final systemPrompt = 'Tu es un assistant familial intelligent et bienveillant.\n' + 'Tu as acces aux donnees completes de la famille.\n' + familyContext;
     final contents = <Map<String, dynamic>>[{'parts': [{'text': systemPrompt}], 'role': 'user'}, {'parts': [{'text': 'Bonjour!'}], 'role': 'model'}];
     for (final h in history) { contents.add({'parts': [{'text': h['content'] ?? ''}], 'role': h['role'] == 'user' ? 'user' : 'model'}); }

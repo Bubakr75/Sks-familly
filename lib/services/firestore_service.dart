@@ -548,6 +548,20 @@ class FirestoreService {
     }
   }
 
+  Future<void> deleteHistoryEntry(String entryId) async {
+    if (_familyId == null) return;
+    try {
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('history')
+          .doc(entryId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) debugPrint('deleteHistoryEntry error: $e');
+    }
+  }
+
   Future<void> deleteGoal(String goalId) async {
     if (_familyId == null) return;
     try {

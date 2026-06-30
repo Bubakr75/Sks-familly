@@ -1486,6 +1486,19 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Réinitialise uniquement les points (et badges) d'un enfant.
+  Future<void> resetChildPoints(String childId) async {
+    final child = getChild(childId);
+    if (child == null) return;
+    child.points = 0;
+    child.level = 1;
+    child.badgeIds = [];
+    _markPending(childId);
+    await _childrenBox.put(childId, jsonEncode(child.toMap()));
+    if (_firestore.isConnected) await _firestore.saveChild(child);
+    notifyListeners();
+  }
+
   Future<void> resetAllScores() async {
     for (final child in _children) {
       child.points   = 0;
@@ -1495,6 +1508,64 @@ class FamilyProvider extends ChangeNotifier {
       await _childrenBox.put(child.id, jsonEncode(child.toMap()));
       if (_firestore.isConnected) await _firestore.saveChild(child);
     }
+    notifyListeners();
+  }
+
+  /// Réinitialise TOUT pour un enfant : points, badges, punitions, immunités,
+  /// objectifs, notes, historique. (Action parent, avec confirmation UI.)
+  Future<void> resetChildCompletely(String childId) async {
+    final child = getChild(childId);
+    if (child == null) return;
+
+    // Points + badges + niveau
+    child.points = 0;
+    child.level = 1;
+    child.badgeIds = [];
+    _markPending(child.id);
+    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+    if (_firestore.isConnected) await _firestore.saveChild(child);
+
+    // Historique de l'enfant
+    final childHistory = _history.where((h) => h.childId == childId).toList();
+    for (final h in childHistory) {
+      _deletedEntryIds.add(h.id);
+      await _historyBox.delete(h.id);
+      if (_firestore.isConnected) await _firestore.deleteHistoryEntry(h.id);
+    }
+    _history.removeWhere((h) => h.childId == childId);
+
+    // Objectifs
+    final childGoals = _goals.where((g) => g.childId == childId).toList();
+    for (final g in childGoals) {
+      await _goalsBox.delete(g.id);
+      if (_firestore.isConnected) await _firestore.deleteGoal(g.id);
+    }
+    _goals.removeWhere((g) => g.childId == childId);
+
+    // Notes
+    final childNotes = _notes.where((n) => n.childId == childId).toList();
+    for (final n in childNotes) {
+      await _notesBox.delete(n.id);
+      if (_firestore.isConnected) await _firestore.deleteNote(n.id);
+    }
+    _notes.removeWhere((n) => n.childId == childId);
+
+    // Punitions
+    final childPunishments = _punishments.where((p) => p.childId == childId).toList();
+    for (final p in childPunishments) {
+      await _punishmentsBox.delete(p.id);
+      if (_firestore.isConnected) await _firestore.deletePunishment(p.id);
+    }
+    _punishments.removeWhere((p) => p.childId == childId);
+
+    // Immunités
+    final childImmunities = _immunities.where((im) => im.childId == childId).toList();
+    for (final im in childImmunities) {
+      await _immunitiesBox.delete(im.id);
+      if (_firestore.isConnected) await _firestore.deleteImmunity(im.id);
+    }
+    _immunities.removeWhere((im) => im.childId == childId);
+
     notifyListeners();
   }
 

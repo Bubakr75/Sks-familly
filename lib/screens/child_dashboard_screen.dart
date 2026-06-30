@@ -581,6 +581,49 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 label: const Text('Changer',
                     style: TextStyle(color: Colors.white70)),
               ),
+            // Menu réinitialisation (parent uniquement)
+            if (context.read<PinProvider>().isParentMode)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white70),
+                color: const Color(0xFF1A1A2E),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                onSelected: (value) {
+                  if (value == 'reset_points') {
+                    _confirmReset(context, fp, child,
+                        'Réinitialiser les points ?',
+                        'Les points de ${child.name} repassent à 0. Les badges seront retirés.',
+                        () async {
+                      await fp.resetChildPoints(child.id);
+                    });
+                  } else if (value == 'reset_all') {
+                    _confirmReset(context, fp, child,
+                        'Tout réinitialiser ?',
+                        'Points, badges, punitions, immunités, objectifs, notes et historique de ${child.name} seront supprimés. Action irréversible.',
+                        () async {
+                      await fp.resetChildCompletely(child.id);
+                      if (context.mounted) Navigator.pop(context);
+                    });
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'reset_points',
+                    child: Row(children: [
+                      Icon(Icons.refresh, color: Colors.amber, size: 20),
+                      SizedBox(width: 10),
+                      Text('Réinitialiser les points', style: TextStyle(color: Colors.white)),
+                    ]),
+                  ),
+                  const PopupMenuItem(
+                    value: 'reset_all',
+                    child: Row(children: [
+                      Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
+                      SizedBox(width: 10),
+                      Text('Tout réinitialiser', style: TextStyle(color: Colors.redAccent)),
+                    ]),
+                  ),
+                ],
+              ),
           ],
           bottom: TabBar(
             controller:           _tabController,
@@ -616,6 +659,43 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB PROFIL
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ─── Confirmation de réinitialisation (parent) ───
+  void _confirmReset(BuildContext context, FamilyProvider fp, ChildModel child,
+      String title, String message, Future<void> Function() onConfirm) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+          const SizedBox(width: 10),
+          Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 17))),
+        ]),
+        content: Text(message, style: TextStyle(color: Colors.white.withValues(alpha: 0.8))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await onConfirm();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Réinitialisé'), backgroundColor: Colors.green),
+                );
+              }
+            },
+            child: const Text('Confirmer', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ─── Proposition enfant (penalite / immunite) avec validation parentale ───
   void _showProposeRequestDialog(BuildContext context, FamilyProvider fp, ChildModel child, String type) {
     final isPenalite = type == 'punishment';

@@ -117,7 +117,9 @@ class UpdateService {
       }
 
       final dir = await getExternalStorageDirectory();
-      final file = File('${dir!.path}/family-score-update.apk');
+      // ⚠️ FIX : nom de fichier cohérent avec l'applicationId pour qu'Android
+      // reconnaisse la mise à jour comme une UPDATE (et non une nouvelle app).
+      final file = File('${dir!.path}/com.bubakr.sks_family-update.apk');
       await file.writeAsBytes(response.bodyBytes);
 
       messenger.hideCurrentSnackBar();

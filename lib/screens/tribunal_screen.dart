@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../services/voice_service.dart';
 import '../models/tribunal_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
@@ -24,6 +25,10 @@ class _TribunalScreenState extends State<TribunalScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // 🔊 Voix joyeuse "SKS Tribunal !" à l'ouverture
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      VoiceService().celebrate('SKS Tribunal !');
+    });
   }
 
   @override

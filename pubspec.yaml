@@ -48,6 +48,9 @@ dependencies:
   pointycastle: ^3.7.3
   asn1lib: ^1.5.4
 
+  # Voix / Text-to-Speech
+  flutter_tts: ^4.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
