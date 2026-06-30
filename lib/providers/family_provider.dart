@@ -18,6 +18,7 @@ import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../utils/image_compressor.dart';
 
 class FamilyProvider extends ChangeNotifier {
   final FirestoreService _firestore = FirestoreService();
@@ -464,7 +465,10 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> updateChildPhoto(String childId, String base64Photo) async {
     final child = getChild(childId);
     if (child == null) return;
-    child.photoBase64 = base64Photo; // local immédiat (base64 pour affichage offline)
+
+    // 📸 COMPRESSION : réduire la taille avant stockage (3-5Mo → ~200Ko)
+    final compressed = await ImageCompressor.compressBase64(base64Photo) ?? base64Photo;
+    child.photoBase64 = compressed; // local immédiat
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
 
     // Si connecté : uploader vers Storage (évite de stocker un gros base64 dans Firestore)
@@ -473,17 +477,17 @@ class FamilyProvider extends ChangeNotifier {
         final url = await StorageService().uploadPhotoBase64(
           familyId: _firestore.familyId!,
           path: 'children/$childId/photo.jpg',
-          base64Data: base64Photo,
+          base64Data: compressed,
         );
         if (url != null) {
           // On stocke l'URL à la place du base64 pour Firestore (léger)
-          // L'affichage local garde le base64, mais Firestore a l'URL.
+          // L'affichage local garde le base64 compressé, mais Firestore a l'URL.
           final childForFirestore = getChild(childId);
           if (childForFirestore != null) {
             childForFirestore.photoBase64 = url;
             await _firestore.saveChild(childForFirestore);
-            // On garde le base64 en local Hive pour l'offline
-            child.photoBase64 = base64Photo;
+            // On garde le base64 compressé en local Hive pour l'offline
+            child.photoBase64 = compressed;
             await _childrenBox.put(child.id, jsonEncode(child.toMap()));
           }
           return;
@@ -500,7 +504,10 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> updateChildBanner(String childId, String base64Banner) async {
     final child = getChild(childId);
     if (child == null) return;
-    child.bannerBase64 = base64Banner;
+
+    // 📸 COMPRESSION
+    final compressed = await ImageCompressor.compressBase64(base64Banner) ?? base64Banner;
+    child.bannerBase64 = compressed;
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
 
     // Si connecté : uploader vers Storage
@@ -509,14 +516,14 @@ class FamilyProvider extends ChangeNotifier {
         final url = await StorageService().uploadPhotoBase64(
           familyId: _firestore.familyId!,
           path: 'children/$childId/banner.jpg',
-          base64Data: base64Banner,
+          base64Data: compressed,
         );
         if (url != null) {
           final childForFirestore = getChild(childId);
           if (childForFirestore != null) {
             childForFirestore.bannerBase64 = url;
             await _firestore.saveChild(childForFirestore);
-            child.bannerBase64 = base64Banner;
+            child.bannerBase64 = compressed;
             await _childrenBox.put(child.id, jsonEncode(child.toMap()));
           }
           return;

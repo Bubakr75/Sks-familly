@@ -32,6 +32,7 @@ dependencies:
 
   # Image picker
   image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
 
   # Animations avancÃ©es
   lottie: ^3.3.1
