@@ -17,6 +17,7 @@ import '../models/trade_model.dart';
 import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 
 class FamilyProvider extends ChangeNotifier {
   final FirestoreService _firestore = FirestoreService();
@@ -463,9 +464,36 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> updateChildPhoto(String childId, String base64Photo) async {
     final child = getChild(childId);
     if (child == null) return;
-    child.photoBase64 = base64Photo;
+    child.photoBase64 = base64Photo; // local immédiat (base64 pour affichage offline)
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-    if (_firestore.isConnected) await _firestore.saveChild(child);
+
+    // Si connecté : uploader vers Storage (évite de stocker un gros base64 dans Firestore)
+    if (_firestore.isConnected && _firestore.familyId != null) {
+      try {
+        final url = await StorageService().uploadPhotoBase64(
+          familyId: _firestore.familyId!,
+          path: 'children/$childId/photo.jpg',
+          base64Data: base64Photo,
+        );
+        if (url != null) {
+          // On stocke l'URL à la place du base64 pour Firestore (léger)
+          // L'affichage local garde le base64, mais Firestore a l'URL.
+          final childForFirestore = getChild(childId);
+          if (childForFirestore != null) {
+            childForFirestore.photoBase64 = url;
+            await _firestore.saveChild(childForFirestore);
+            // On garde le base64 en local Hive pour l'offline
+            child.photoBase64 = base64Photo;
+            await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+          }
+          return;
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('updateChildPhoto Storage error: $e');
+      }
+      // Fallback : sauvegarder en base64 dans Firestore
+      await _firestore.saveChild(child);
+    }
     notifyListeners();
   }
 
@@ -474,7 +502,30 @@ class FamilyProvider extends ChangeNotifier {
     if (child == null) return;
     child.bannerBase64 = base64Banner;
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-    if (_firestore.isConnected) await _firestore.saveChild(child);
+
+    // Si connecté : uploader vers Storage
+    if (_firestore.isConnected && _firestore.familyId != null) {
+      try {
+        final url = await StorageService().uploadPhotoBase64(
+          familyId: _firestore.familyId!,
+          path: 'children/$childId/banner.jpg',
+          base64Data: base64Banner,
+        );
+        if (url != null) {
+          final childForFirestore = getChild(childId);
+          if (childForFirestore != null) {
+            childForFirestore.bannerBase64 = url;
+            await _firestore.saveChild(childForFirestore);
+            child.bannerBase64 = base64Banner;
+            await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+          }
+          return;
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('updateChildBanner Storage error: $e');
+      }
+      await _firestore.saveChild(child);
+    }
     notifyListeners();
   }
 

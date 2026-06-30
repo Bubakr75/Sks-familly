@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // 🔒 Sécurité : seuls les utilisateurs authentifiés peuvent accéder aux photos
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Photos organisées par famille
+    match /families/{familyId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+  }
+}

@@ -342,12 +342,21 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
     Widget core;
     if (child.photoBase64.isNotEmpty) {
-      try {
+      if (child.isPhotoUrl) {
+        // URL Firebase Storage
         core = CircleAvatar(
             radius: radius,
-            backgroundImage: MemoryImage(base64Decode(child.photoBase64)));
-      } catch (_) {
-        core = _letterAvatar(child, radius, color);
+            backgroundColor: color,
+            backgroundImage: NetworkImage(child.photoBase64));
+      } else {
+        // base64 (ancien format ou offline)
+        try {
+          core = CircleAvatar(
+              radius: radius,
+              backgroundImage: MemoryImage(base64Decode(child.photoBase64)));
+        } catch (_) {
+          core = _letterAvatar(child, radius, color);
+        }
       }
     } else {
       core = _letterAvatar(child, radius, color);

@@ -206,6 +206,18 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "firebase_crashlytics",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_crashlytics-4.3.10",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
+      "name": "firebase_crashlytics_platform_interface",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_crashlytics_platform_interface-3.8.10",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
       "name": "firebase_messaging",
       "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_messaging-15.2.10",
       "packageUri": "lib/",
@@ -220,6 +232,24 @@
     {
       "name": "firebase_messaging_web",
       "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_messaging_web-3.10.10",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "firebase_storage",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_storage-12.4.10",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
+      "name": "firebase_storage_platform_interface",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_storage_platform_interface-5.2.10",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
+      "name": "firebase_storage_web",
+      "rootUri": "file:///C:/Users/b2osi/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_storage_web-3.10.17",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },

@@ -78,7 +78,10 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
 
   bool get _hasValidPhoto {
     final p = widget.child.photoBase64;
-    return p != null && p.isNotEmpty && p.length > 100;
+    if (p == null || p.isEmpty) return false;
+    // URL Firebase Storage ou base64 valide
+    if (p.startsWith('http')) return true;
+    return p.length > 100;
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -361,14 +364,23 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
           ),
           child: ClipOval(
             child: _hasValidPhoto
-                ? Image.memory(
-                    base64Decode(widget.child.photoBase64!),
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
-                    gaplessPlayback: true,
-                    errorBuilder: (_, __, ___) => Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
-                  )
+                ? (widget.child.isPhotoUrl
+                    ? Image.network(
+                        widget.child.photoBase64,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                        errorBuilder: (_, __, ___) => Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
+                      )
+                    : Image.memory(
+                        base64Decode(widget.child.photoBase64),
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                        errorBuilder: (_, __, ___) => Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
+                      ))
                 : Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
           ),
         ),

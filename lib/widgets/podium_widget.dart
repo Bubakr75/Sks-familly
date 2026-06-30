@@ -85,7 +85,13 @@ class PodiumWidget extends StatelessWidget {
     const size = 60.0;
     Widget avatarContent;
     if (_hasValidPhoto(child)) {
-      avatarContent = ClipOval(child: Image.memory(base64Decode(child.photoBase64), width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => _emojiAvatar(child, size)));
+      if (child.isPhotoUrl) {
+        // URL Firebase Storage
+        avatarContent = ClipOval(child: Image.network(child.photoBase64, width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => _emojiAvatar(child, size)));
+      } else {
+        // base64
+        avatarContent = ClipOval(child: Image.memory(base64Decode(child.photoBase64), width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => _emojiAvatar(child, size)));
+      }
     } else {
       avatarContent = _emojiAvatar(child, size);
     }
@@ -99,6 +105,8 @@ class PodiumWidget extends StatelessWidget {
 
   bool _hasValidPhoto(ChildModel child) {
     if (child.photoBase64.isEmpty) return false;
+    // URL Firebase Storage acceptée
+    if (child.photoBase64.startsWith('http')) return true;
     if (child.photoBase64.length < 100) return false;
     try { base64Decode(child.photoBase64); return true; } catch (_) { return false; }
   }

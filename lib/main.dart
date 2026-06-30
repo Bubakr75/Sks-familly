@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/fcm_service.dart';
 import 'services/auth_service.dart';
 import 'services/voice_service.dart';
+import 'services/storage_service.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'providers/family_provider.dart';
 import 'providers/pin_provider.dart';
@@ -113,6 +115,14 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
         onTimeout: () => throw Exception('Firebase init timeout'),
       );
       firebaseReady = true;
+
+      // 3b. Crashlytics : capturer tous les plantages en production
+      try {
+        await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+        FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      } catch (e) {
+        if (kDebugMode) debugPrint('Crashlytics init error: $e');
+      }
     } catch (e) {
       if (e.toString().contains('already been initialized') ||
           e.toString().contains('duplicate-app')) {

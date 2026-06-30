@@ -47,6 +47,13 @@ class ChildModel {
 
   bool get hasPhoto => photoBase64.isNotEmpty;
 
+  /// True si la photo est une URL Firebase Storage (commence par http).
+  bool get isPhotoUrl => photoBase64.startsWith('http');
+
+  /// True si la bannière est une URL Firebase Storage.
+  bool get isBannerUrl =>
+      bannerBase64 != null && bannerBase64!.startsWith('http');
+
   String get levelTitle {
     if (points >= 300) return 'Niveau MAX ⭐';
     if (points >= 220) return 'Niveau 5';
