@@ -15,6 +15,7 @@ import 'providers/pin_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/profile_selection_screen.dart';
+import 'screens/intro_video_screen.dart';
 import 'services/notification_service.dart';
 import 'services/update_service.dart';
 
@@ -36,6 +37,7 @@ class SKSBootstrap extends StatefulWidget {
 class _SKSBootstrapState extends State<SKSBootstrap> {
   bool _ready = false;
   bool _showOnboarding = false;
+  bool _showIntro = false; // affiche la vidéo d'intro une fois
   // Instances initialisées en arrière-plan, réutilisées par MultiProvider
   final FamilyProvider _familyProvider = FamilyProvider();
   final PinProvider _pinProvider = PinProvider();
@@ -44,6 +46,27 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
   @override
   void initState() {
     super.initState();
+    _checkIntroThenInit();
+  }
+
+  /// Vérifie si l'intro a déjà été vue, puis lance l'init.
+  Future<void> _checkIntroThenInit() async {
+    bool introSeen = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      introSeen = prefs.getString('intro_seen_version') != null;
+    } catch (_) {}
+    if (!mounted) return;
+    if (!introSeen) {
+      setState(() => _showIntro = true); // joue la vidéo
+    } else {
+      _initializeEverything();
+    }
+  }
+
+  void _onIntroFinished() {
+    if (!mounted) return;
+    setState(() => _showIntro = false);
     _initializeEverything();
   }
 
@@ -167,6 +190,10 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
 
   @override
   Widget build(BuildContext context) {
+    // Écran d'intro vidéo (1ère fois seulement)
+    if (_showIntro) {
+      return IntroVideoScreen(onFinished: _onIntroFinished);
+    }
     // Splash pendant l'initialisation
     return Container(
       color: const Color(0xFF051410),
