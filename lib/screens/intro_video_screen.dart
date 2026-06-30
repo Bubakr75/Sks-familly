@@ -37,6 +37,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
       // 🔊 Son actif + volume max
       _controller.setVolume(1.0);
       _controller.setLooping(false);
+      // Démarrage IMMÉDIAT dès que prêt
       _controller.play();
 
       // À la fin de la vidéo → bascule vers l'app
@@ -84,7 +85,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Vidéo plein écran
+          // Vidéo plein écran (seulement si initialisée, sinon fond noir pur)
           if (_initialized)
             FittedBox(
               fit: BoxFit.cover,
@@ -94,10 +95,10 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
                 child: VideoPlayer(_controller),
               ),
             )
+          // Fond NOIR PUR pendant le court instant de chargement de la vidéo
+          // (pas de spinner, pas de logo, pas de gris)
           else
-            const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+            const SizedBox.shrink(),
 
           // Bouton "Passer" (en bas à droite)
           Positioned(

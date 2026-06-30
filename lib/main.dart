@@ -196,7 +196,7 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
     }
     // Splash pendant l'initialisation
     return Container(
-      color: const Color(0xFF051410),
+      color: const Color(0xFF000000),
       child: _ready
           ? MultiProvider(
               providers: [
@@ -211,42 +211,14 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
   }
 }
 
-/// Splash Flutter (au cas où le splash web serait déjà masqué mais que
-/// l'init n'est pas fini).
+/// Splash Flutter : fond NOIR PUR (zéro logo), pour transition invisible
+/// vers la vidéo d'intro. Plus aucun écran gris/blanc/logo au démarrage.
 class _SplashScreen extends StatelessWidget {
   const _SplashScreen();
 
   @override
   Widget build(BuildContext context) {
-    return const Material(
-      color: Color(0xFF051410),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('🏆', style: TextStyle(fontSize: 56)),
-            SizedBox(height: 16),
-            Text(
-              'SKS Family',
-              style: TextStyle(
-                color: Color(0xFFF5F1E8),
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            SizedBox(height: 28),
-            SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return const Material(color: Color(0xFF000000));
   }
 }
 

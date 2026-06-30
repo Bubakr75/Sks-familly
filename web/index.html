@@ -25,17 +25,16 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
-    /* Fond identique au thème Emerald => transition fluide quand Flutter démarre */
+    /* Fond NOIR PUR pour que la vidéo d'intro démarre sans logo ni écran gris */
     html, body {
       margin: 0;
       padding: 0;
-      background-color: #051410;
+      background-color: #000000;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    /* Splash de chargement INLINE (légèrement semi-transparent pour ne JAMAIS
-       masquer Flutter complètement). Se fonde au démarrage. */
+    /* Splash de chargement : NOIR PUR, sans logo, pour transition invisible vers la vidéo */
     #loading {
       position: fixed;
       inset: 0;
@@ -43,28 +42,12 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #051410;
-      color: #F5F1E8;
+      background: #000000;
+      color: #FFFFFF;
       z-index: 10;
-      transition: opacity 0.5s ease;
+      transition: opacity 0.3s ease;
     }
     #loading.hidden { opacity: 0; pointer-events: none; }
-    #loading .logo {
-      width: 84px; height: 84px;
-      border-radius: 22px;
-      background: linear-gradient(135deg, #00E676, #047857);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 40px;
-      box-shadow: 0 12px 40px rgba(0, 230, 118, 0.35);
-      margin-bottom: 22px;
-    }
-    #loading .title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-    #loading .subtitle { font-size: 13px; color: #94A3A0; margin-top: 6px; }
-    #loading .spinner {
-      width: 28px; height: 28px;
-      border: 3px solid rgba(0,230,118,0.18);
-      border-top-color: #00E676;
-      border-radius: 50%;
       margin-top: 26px;
       animation: spin 0.9s linear infinite;
     }
@@ -103,13 +86,8 @@
   </style>
 </head>
 <body>
-  <!-- Splash de chargement (sera masqué dès que le flutter-view apparaît) -->
-  <div id="loading">
-    <div class="logo">🏆</div>
-    <div class="title">SKS Family</div>
-    <div class="subtitle">Chargement…</div>
-    <div class="spinner"></div>
-  </div>
+  <!-- Splash : fond NOIR PUR (zéro logo, pour transition invisible vers la vidéo d'intro) -->
+  <div id="loading"></div>
 
   <!-- Bannière "Ajouter à l'écran d'accueil" pour iOS -->
   <div id="ios-install-banner">
