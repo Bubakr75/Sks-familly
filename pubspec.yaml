@@ -53,6 +53,7 @@ dependencies:
 
   # Voix / Text-to-Speech
   flutter_tts: ^4.2.0
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -76,4 +77,5 @@ flutter:
     - assets/images/
     - assets/videos/family_bg.mp4
     - assets/videos/intro.mp4
+    - assets/sounds/
 

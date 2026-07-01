@@ -48,22 +48,8 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
   @override
   void initState() {
     super.initState();
-    _checkIntroThenInit();
-  }
-
-  /// Vérifie si l'intro a déjà été vue, puis lance l'init.
-  Future<void> _checkIntroThenInit() async {
-    bool introSeen = false;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      introSeen = prefs.getString('intro_seen_version') != null;
-    } catch (_) {}
-    if (!mounted) return;
-    if (!introSeen) {
-      setState(() => _showIntro = true); // joue la vidéo
-    } else {
-      _initializeEverything();
-    }
+    // L'intro se joue à CHAQUE démarrage (plus de mémorisation)
+    setState(() => _showIntro = true);
   }
 
   void _onIntroFinished() {

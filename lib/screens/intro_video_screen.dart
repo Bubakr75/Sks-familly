@@ -36,12 +36,15 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
       // 🔧 FIX Android : se positionner à la 1ère frame pour forcer l'affichage
       _controller.seekTo(Duration.zero);
       setState(() => _initialized = true);
-      // 🔊 Son actif + volume max
+      // 🔊 Son actif : volume max + s'assurer qu'il n'est pas mute
       _controller.setVolume(1.0);
       _controller.setLooping(false);
       // Lancer la lecture après un court délai pour laisser l'UI peindre la 1ère frame
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) _controller.play();
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (!mounted) return;
+        _controller.play();
+        // Re-forcer le volume après play (Android peut le reset)
+        _controller.setVolume(1.0);
       });
 
       // À la fin de la vidéo → bascule vers l'app
@@ -50,6 +53,10 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
             !_finished &&
             _controller.value.duration > Duration.zero) {
           _goNext();
+        }
+        // Si la vidéo joue mais est mute, forcer le volume
+        if (_controller.value.isPlaying && _controller.value.volume == 0) {
+          _controller.setVolume(1.0);
         }
       });
     }).catchError((e) {

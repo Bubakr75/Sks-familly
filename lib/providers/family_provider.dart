@@ -785,8 +785,8 @@ class FamilyProvider extends ChangeNotifier {
     if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
 
     await recalculateStreak(childId);
-    // 🔊 Voix d'enfant (déçu)
-    VoiceService().sayAsChild('Pénalités ! Oh là là là là !');
+    // 🔊 Voix personnalisée (fichier audio réel)
+    VoiceService().say('penalite');
     notifyListeners();
   }
 
@@ -856,8 +856,8 @@ class FamilyProvider extends ChangeNotifier {
     await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
     if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
 
-    // 🔊 Voix d'enfant (joyeuse)
-    VoiceService().sayAsChild('Immunité ! Youpi !');
+    // 🔊 Voix personnalisée (fichier audio réel ou fallback TTS)
+    VoiceService().say('immunite');
     notifyListeners();
   }
 
