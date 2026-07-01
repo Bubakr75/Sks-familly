@@ -19,6 +19,7 @@ import '../models/parent_profile.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../utils/image_compressor.dart';
+import '../services/voice_service.dart';
 
 class FamilyProvider extends ChangeNotifier {
   final FirestoreService _firestore = FirestoreService();
@@ -784,6 +785,8 @@ class FamilyProvider extends ChangeNotifier {
     if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
 
     await recalculateStreak(childId);
+    // 🔊 Voix d'enfant (déçu)
+    VoiceService().sayAsChild('Pénalités ! Oh là là là là !');
     notifyListeners();
   }
 
@@ -853,6 +856,8 @@ class FamilyProvider extends ChangeNotifier {
     await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
     if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
 
+    // 🔊 Voix d'enfant (joyeuse)
+    VoiceService().sayAsChild('Immunité ! Youpi !');
     notifyListeners();
   }
 

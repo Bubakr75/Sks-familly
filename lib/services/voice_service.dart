@@ -95,6 +95,40 @@ class VoiceService {
     }
   }
 
+  /// Voix de JUGE (homme, très grave, autoritaire).
+  /// Idéal pour le Tribunal.
+  Future<void> sayAsJudge(String text) async {
+    if (!_initialized) await init();
+    if (!_available) return;
+    try {
+      await _tts.setPitch(0.6);  // très grave = voix d'homme
+      await _tts.setSpeechRate(0.4); // lent et posé
+      await _tts.setVolume(1.0);
+      await _tts.speak(text);
+      await _tts.setPitch(1.3); // reset
+      await _tts.setSpeechRate(0.5);
+    } catch (e) {
+      if (kDebugMode) debugPrint('VoiceService.sayAsJudge error: $e');
+    }
+  }
+
+  /// Voix d'ENFANT qui crie (très aigu, vif).
+  /// Idéal pour les pénalités/immunités ("Oh là là là là !").
+  Future<void> sayAsChild(String text) async {
+    if (!_initialized) await init();
+    if (!_available) return;
+    try {
+      await _tts.setPitch(1.9);  // très aigu = enfant
+      await _tts.setSpeechRate(0.6); // vif
+      await _tts.setVolume(1.0);
+      await _tts.speak(text);
+      await _tts.setPitch(1.3); // reset
+      await _tts.setSpeechRate(0.5);
+    } catch (e) {
+      if (kDebugMode) debugPrint('VoiceService.sayAsChild error: $e');
+    }
+  }
+
   /// Coupe la voix en cours (si besoin).
   Future<void> stop() async {
     try {

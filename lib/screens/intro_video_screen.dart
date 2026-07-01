@@ -33,12 +33,16 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
 
     _controller.initialize().then((_) {
       if (!mounted) return;
+      // 🔧 FIX Android : se positionner à la 1ère frame pour forcer l'affichage
+      _controller.seekTo(Duration.zero);
       setState(() => _initialized = true);
       // 🔊 Son actif + volume max
       _controller.setVolume(1.0);
       _controller.setLooping(false);
-      // Démarrage IMMÉDIAT dès que prêt
-      _controller.play();
+      // Lancer la lecture après un court délai pour laisser l'UI peindre la 1ère frame
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) _controller.play();
+      });
 
       // À la fin de la vidéo → bascule vers l'app
       _controller.addListener(() {
@@ -87,12 +91,14 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
         children: [
           // Vidéo plein écran (seulement si initialisée, sinon fond noir pur)
           if (_initialized)
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _controller.value.size.width,
-                height: _controller.value.size.height,
-                child: VideoPlayer(_controller),
+            // 🔧 FIX Android : SizedBox.expand + Center + BoxFit.cover
+            // (plus fiable que FittedBox qui peut casser le rendu vidéo sur Android)
+            SizedBox.expand(
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: _controller.value.aspectRatio,
+                  child: VideoPlayer(_controller),
+                ),
               ),
             )
           // Fond NOIR PUR pendant le court instant de chargement de la vidéo

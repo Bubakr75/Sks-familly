@@ -25,9 +25,9 @@ class _TribunalScreenState extends State<TribunalScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // 🔊 Voix joyeuse "SKS Tribunal !" à l'ouverture
+    // 🔊 Voix de JUGE (grave et autoritaire) à l'ouverture du tribunal
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      VoiceService().celebrate('SKS Tribunal !');
+      VoiceService().sayAsJudge('Tribunal SKS');
     });
   }
 

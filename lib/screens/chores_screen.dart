@@ -24,20 +24,57 @@ class _WheelPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (children.isEmpty) return;
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width, size.height) / 2 - 4;
+    final radius = min(size.width, size.height) / 2 - 8;
     final n = children.length;
     final sliceAngle = 2 * pi / n;
 
+    // 1. Halo lumineux derrière la roue
+    final haloPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF00E676).withValues(alpha: 0.3),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius + 20));
+    canvas.drawCircle(center, radius + 20, haloPaint);
+
+    // 2. Segments (avec dégradés néon)
     for (int i = 0; i < n; i++) {
       final startAngle = rotation + i * sliceAngle - pi / 2;
-      final color = grayed[i] ? Colors.grey.shade700 : colors[i % colors.length];
+      final baseColor = grayed[i] ? Colors.grey.shade800 : colors[i % colors.length];
 
-      final paint = Paint()..color = color..style = PaintingStyle.fill;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sliceAngle, true, paint);
+      // Dégradé radial pour chaque segment (effet 3D)
+      final segmentPaint = Paint()
+        ..shader = SweepGradient(
+          startAngle: startAngle,
+          endAngle: startAngle + sliceAngle,
+          colors: [
+            baseColor,
+            Color.lerp(baseColor, Colors.black, 0.4)!,
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sliceAngle,
+        true,
+        segmentPaint,
+      );
 
-      final borderPaint = Paint()..color = Colors.black.withOpacity(0.35)..style = PaintingStyle.stroke..strokeWidth = 2;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sliceAngle, true, borderPaint);
+      // Bordure dorée entre segments
+      final borderPaint = Paint()
+        ..color = const Color(0xFFD4AF37).withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sliceAngle,
+        true,
+        borderPaint,
+      );
 
+      // 3. Texte (nom de l'enfant) avec halo
       final midAngle = startAngle + sliceAngle / 2;
       final textRadius = radius * 0.62;
       final tx = center.dx + textRadius * cos(midAngle);
@@ -48,16 +85,19 @@ class _WheelPainter extends CustomPainter {
       canvas.rotate(midAngle + pi / 2);
 
       final name = children[i].name;
-      final shortName = name.length > 7 ? '${name.substring(0, 6)}.' : name;
+      final shortName = name.length > 8 ? '${name.substring(0, 7)}.' : name;
 
       final textPainter = TextPainter(
         text: TextSpan(
           text: shortName,
           style: TextStyle(
-            color: grayed[i] ? Colors.white38 : Colors.white,
-            fontSize: n <= 4 ? 14 : (n <= 6 ? 12 : 10),
-            fontWeight: FontWeight.bold,
-            shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
+            color: grayed[i] ? Colors.white30 : Colors.white,
+            fontSize: n <= 4 ? 15 : (n <= 6 ? 13 : 11),
+            fontWeight: FontWeight.w800,
+            shadows: [
+              Shadow(color: Colors.black.withValues(alpha: 0.7), blurRadius: 6),
+              if (!grayed[i]) Shadow(color: baseColor, blurRadius: 8),
+            ],
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -67,8 +107,31 @@ class _WheelPainter extends CustomPainter {
       canvas.restore();
     }
 
-    canvas.drawCircle(center, radius * 0.12, Paint()..color = const Color(0xFF0D1B2E)..style = PaintingStyle.fill);
-    canvas.drawCircle(center, radius * 0.12, Paint()..color = Colors.white24..style = PaintingStyle.stroke..strokeWidth = 2);
+    // 4. Bordure extérieure dorée lumineuse
+    final outerBorder = Paint()
+      ..color = const Color(0xFFD4AF37)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..maskFilter = const MaskFilter.blur(BlurStyle.inner, 2);
+    canvas.drawCircle(center, radius, outerBorder);
+
+    // 5. Centre doré (hub) avec effet 3D
+    final hubRadius = radius * 0.14;
+    final hubPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFFFFD700),
+          const Color(0xFFD4AF37),
+          const Color(0xFF8B6914),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: hubRadius));
+    canvas.drawCircle(center, hubRadius, hubPaint);
+
+    // Anneau sombre autour du hub
+    canvas.drawCircle(center, hubRadius, Paint()
+      ..color = const Color(0xFF0D1B2E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2);
   }
 
   @override
@@ -81,6 +144,38 @@ class ChoresScreen extends StatefulWidget {
 
   @override
   State<ChoresScreen> createState() => _ChoresScreenState();
+}
+
+/// Curseur/aiguille doré pointant vers le segment gagnant.
+class _PointerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFFFD700), Color(0xFFD4AF37), Color(0xFF8B6914)],
+      ).createShader(Offset.zero & size)
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = const Color(0xFF0D1B2E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    // Triangle pointant vers le bas
+    final path = Path();
+    path.moveTo(size.width / 2 - 12, 0);
+    path.lineTo(size.width / 2 + 12, 0);
+    path.lineTo(size.width / 2, size.height);
+    path.close();
+
+    canvas.drawPath(path, paint);
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMixin {
@@ -315,27 +410,57 @@ class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMix
   Widget _buildWheel(List<ChildModel> children) {
     final grayed = children.map((c) => _doneTodayMap.containsKey(c.id) || _excludedIds.contains(c.id)).toList();
 
-    return Stack(
-      alignment: Alignment.topCenter,
-      children: [
-        Positioned(
-          top: 0,
-          child: Icon(Icons.arrow_drop_down, color: Colors.redAccent, size: 48, shadows: const [Shadow(color: Colors.black54, blurRadius: 8)]),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 20),
-          child: AnimatedBuilder(
-            animation: _isSpinning ? _spinAnim : const AlwaysStoppedAnimation(0.0),
-            builder: (context, _) {
-              final rot = _isSpinning ? _spinAnim.value : _currentRotation;
-              return CustomPaint(
-                size: const Size(300, 300),
-                painter: _WheelPainter(children: children, colors: _segmentColors, rotation: rot, grayed: grayed),
-              );
-            },
+    return Center(
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          // Ombre portée derrière la roue
+          Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: Container(
+              width: 308,
+              height: 308,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6C63FF).withValues(alpha: 0.4),
+                    blurRadius: 30,
+                    spreadRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ],
+          // Aiguille / curseur premium (triangle doré)
+          Positioned(
+            top: 0,
+            child: CustomPaint(
+              size: const Size(40, 30),
+              painter: _PointerPainter(),
+            ),
+          ),
+          // La roue elle-même
+          Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: AnimatedBuilder(
+              animation: _isSpinning ? _spinAnim : const AlwaysStoppedAnimation(0.0),
+              builder: (context, _) {
+                final rot = _isSpinning ? _spinAnim.value : _currentRotation;
+                return CustomPaint(
+                  size: const Size(300, 300),
+                  painter: _WheelPainter(children: children, colors: _segmentColors, rotation: rot, grayed: grayed),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
