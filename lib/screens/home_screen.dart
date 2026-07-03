@@ -21,6 +21,8 @@ import 'stats_screen.dart';
 import 'gemini_chat_screen.dart';
 import 'settings_screen.dart';
 import 'badges_screen.dart';
+import 'shop_screen.dart';
+import 'shop_admin_screen.dart';
 import 'school_notes_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
@@ -993,17 +995,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   },
                 ),
                 _drawerItem(
-                  icon: Icons.emoji_events_rounded,
-                  label: 'Badges / Pouvoirs',
+                  icon: Icons.shopping_bag_rounded,
+                  label: 'Boutique',
                   color: Colors.yellowAccent,
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      ZoomPageRoute(page: const BadgesScreen()),
+                      ZoomPageRoute(page: const ShopScreen()),
                     );
                   },
                 ),
+                // Admin boutique (parent uniquement)
+                if (isParent)
+                  _drawerItem(
+                    icon: Icons.admin_panel_settings_rounded,
+                    label: 'Gérer la boutique',
+                    color: Colors.amberAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        ZoomPageRoute(page: const ShopAdminScreen()),
+                      );
+                    },
+                  ),
                 _drawerItem(
                   icon: Icons.timeline_rounded,
                   label: 'Timeline',

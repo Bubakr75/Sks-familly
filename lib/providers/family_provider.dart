@@ -16,6 +16,7 @@ import '../models/tribunal_model.dart';
 import '../models/trade_model.dart';
 import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
+import '../models/reward_model.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../utils/image_compressor.dart';
@@ -37,7 +38,9 @@ class FamilyProvider extends ChangeNotifier {
   late Box _screenTimeBox;
   late Box _parentProfilesBox;
   late Box _tradesBox;
+  late Box _rewardsBox;
   late Box _requestsBox;
+  late Box _purchasesBox;
 
   List<ChildModel>      _children      = [];
   List<HistoryEntry>    _history       = [];
@@ -50,6 +53,7 @@ class FamilyProvider extends ChangeNotifier {
   List<ParentProfile>   _parentProfiles = [];
   List<TradeModel>      _trades        = [];
   List<PendingRequest>  _pendingRequests = [];
+  List<RewardModel>     _rewards = [];
 
   // ─── État de synchronisation (feedback UI) ──────────────────
   bool _isReconnecting = false;
@@ -116,6 +120,7 @@ class FamilyProvider extends ChangeNotifier {
   List<BadgeModel>      get customBadges      => _customBadges;
   List<TradeModel>      get trades            => _trades;
   List<PendingRequest>  get pendingRequests   => _pendingRequests;
+  List<RewardModel>     get rewards            => _rewards;
   List<ParentProfile>   get parentProfiles    => _parentProfiles;
   String?               get familyCode        => _familyCode;
   String?               get familyId          => _familyCode;
@@ -147,6 +152,8 @@ class FamilyProvider extends ChangeNotifier {
     _parentProfilesBox = await Hive.openBox('parent_profiles');
     _tradesBox      = await Hive.openBox('trades');
     _requestsBox    = await Hive.openBox('requests');
+    _rewardsBox     = await Hive.openBox('rewards');
+    _purchasesBox   = await Hive.openBox('purchases');
     _loadLocal();
     try {
       await _firestore.init();
@@ -165,7 +172,7 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // ───────────────────────────────────────────────────────────
-  void _loadLocal() {
+  Future<void> _loadLocal() async {
     _children = _childrenBox.values
         .map((v) => ChildModel.fromMap(
             Map<String, dynamic>.from(jsonDecode(v as String))))
@@ -204,6 +211,17 @@ class FamilyProvider extends ChangeNotifier {
         .map((v) => PendingRequest.fromMap(
             Map<String, dynamic>.from(jsonDecode(v as String))))
         .toList();
+    _rewards = _rewardsBox.values
+        .map((v) => RewardModel.fromMap(
+            Map<String, dynamic>.from(jsonDecode(v as String))))
+        .toList();
+    // Si aucune récompense, on charge les défauts
+    if (_rewards.isEmpty) {
+      _rewards = RewardModel.defaultRewards;
+      for (final r in _rewards) {
+        await _rewardsBox.put(r.id, jsonEncode(r.toMap()));
+      }
+    }
     _trades = _tradesBox.values
         .map((v) => TradeModel.fromMap(
             Map<String, dynamic>.from(jsonDecode(v as String))))
@@ -810,7 +828,30 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> addPhotoToPunishment(String id, String base64Photo) async {
     try {
       final p = _punishments.firstWhere((p) => p.id == id);
-      p.photoUrls.add(base64Photo);
+      
+      // 📸 COMPRESSION + UPLOAD vers Storage (si connecté)
+      if (_firestore.isConnected && _firestore.familyId != null) {
+        try {
+          final compressed = await ImageCompressor.compressBase64(base64Photo) ?? base64Photo;
+          final photoIndex = p.photoUrls.length;
+          final url = await StorageService().uploadPhotoBase64(
+            familyId: _firestore.familyId!,
+            path: 'punishments/${p.id}/photo_$photoIndex.jpg',
+            base64Data: compressed,
+          );
+          if (url != null) {
+            p.photoUrls.add(url);
+          } else {
+            p.photoUrls.add(base64Photo); // Fallback base64
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('addPhotoToPunishment Storage error: $e');
+          p.photoUrls.add(base64Photo);
+        }
+      } else {
+        p.photoUrls.add(base64Photo); // Offline: base64 local
+      }
+      
       await _punishmentsBox.put(p.id, jsonEncode(p.toMap()));
       if (_firestore.isConnected) await _firestore.savePunishment(p);
       notifyListeners();
@@ -1741,6 +1782,136 @@ class FamilyProvider extends ChangeNotifier {
     await _requestsBox.delete(requestId);
     if (_firestore.isConnected) await _firestore.deleteRequest(requestId);
     notifyListeners();
+  }
+
+  // ─── BOUTIQUE DE RÉCOMPENSES ───────────────────────────────────
+
+  Future<void> addReward({
+    required String title,
+    required int cost,
+    String icon = '🎁',
+    String description = '',
+    String category = 'custom',
+    int? maxPerWeek,
+  }) async {
+    final r = RewardModel(
+      id: 'reward_${_uuid.v4()}',
+      title: title,
+      cost: cost,
+      icon: icon,
+      description: description,
+      category: category,
+      maxPerWeek: maxPerWeek,
+    );
+    _rewards.add(r);
+    await _rewardsBox.put(r.id, jsonEncode(r.toMap()));
+    if (_firestore.isConnected) {
+      await _firestore.saveReward(r.toMap(), r.id);
+    }
+    notifyListeners();
+  }
+
+  Future<void> deleteReward(String id) async {
+    _rewards.removeWhere((r) => r.id == id);
+    await _rewardsBox.delete(id);
+    if (_firestore.isConnected) {
+      await _firestore.deleteReward(id);
+    }
+    notifyListeners();
+  }
+
+  /// L'enfant achète une récompense. Déduit les points et crée une demande.
+  /// Retourne true si l'achat a réussi.
+  Future<bool> purchaseReward(String childId, String rewardId) async {
+    final child = getChild(childId);
+    final reward = _rewards.firstWhere((r) => r.id == rewardId);
+    if (child == null) return false;
+
+    // Vérifier que l'enfant a assez de points
+    if (child.points < reward.cost) return false;
+
+    // Déduire les points
+    child.points -= reward.cost;
+    _markPending(child.id);
+    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+    if (_firestore.isConnected) await _firestore.saveChild(child);
+
+    // Enregistrer l'achat
+    final purchaseData = {
+      'rewardId': reward.id,
+      'childId': childId,
+      'childName': child.name,
+      'title': reward.title,
+      'icon': reward.icon,
+      'cost': reward.cost,
+      'status': 'pending', // pending → approved / rejected
+      'date': DateTime.now().toIso8601String(),
+    };
+    await _purchasesBox.put('purch_${_uuid.v4()}', jsonEncode(purchaseData));
+    if (_firestore.isConnected) {
+      await _firestore.savePurchase(purchaseData);
+    }
+
+    // Ajouter à l'historique
+    final entry = HistoryEntry(
+      id: _uuid.v4(),
+      childId: childId,
+      points: reward.cost,
+      reason: '🛒 Achat boutique : ${reward.title}',
+      category: 'boutique',
+      isBonus: false,
+      actionBy: child.name,
+    );
+    _markPending(entry.id);
+    _history.insert(0, entry);
+    await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
+    if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
+
+    notifyListeners();
+    return true;
+  }
+
+  /// Achète des lignes d'immunité depuis la boutique (ne convertit pas, crée).
+  Future<bool> purchaseImmunityLines(String childId, int linesToBuy, int cost) async {
+    final child = getChild(childId);
+    if (child == null) return false;
+    if (child.points < cost) return false;
+
+    // Déduire les points
+    child.points -= cost;
+    _markPending(child.id);
+    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+    if (_firestore.isConnected) await _firestore.saveChild(child);
+
+    // Créer l'immunité achetée
+    final im = ImmunityLines(
+      id: _uuid.v4(),
+      childId: childId,
+      reason: '🛒 Achat boutique ($linesToBuy lignes)',
+      lines: linesToBuy,
+    );
+    _markPending(im.id);
+    _immunities.add(im);
+    await _immunitiesBox.put(im.id, jsonEncode(im.toMap()));
+    if (_firestore.isConnected) await _firestore.saveImmunity(im);
+
+    // Historique
+    final entry = HistoryEntry(
+      id: _uuid.v4(),
+      childId: childId,
+      points: cost,
+      reason: '🛒 Achat boutique : $linesToBuy lignes d\'immunité',
+      category: 'boutique',
+      isBonus: false,
+      actionBy: child.name,
+    );
+    _markPending(entry.id);
+    _history.insert(0, entry);
+    await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
+    if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
+
+    notifyListeners();
+    return true;
   }
 }
 

@@ -62,3 +62,9 @@ temp_actions.txt
 fix_*.ps1
 sks-deploy.ps1
 yes/
+
+# Téléchargements temporaires
+ffmpeg_extracted/
+ffmpeg.zip
+assets/videos/frames/
+*.gif

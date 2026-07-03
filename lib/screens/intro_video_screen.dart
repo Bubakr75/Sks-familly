@@ -8,7 +8,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class IntroVideoScreen extends StatefulWidget {
   final VoidCallback onFinished;
@@ -19,7 +18,7 @@ class IntroVideoScreen extends StatefulWidget {
 }
 
 class _IntroVideoScreenState extends State<IntroVideoScreen> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
   bool _initialized = false;
   bool _finished = false;
 
@@ -28,41 +27,37 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
     super.initState();
     // Mode immersif plein écran pendant l'intro
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    _initVideo();
+  }
 
-    _controller = VideoPlayerController.asset('assets/videos/intro.mp4');
-
-    _controller.initialize().then((_) {
+  Future<void> _initVideo() async {
+    try {
+      final controller = VideoPlayerController.asset('assets/videos/intro.mp4');
+      _controller = controller;
+      await controller.initialize().timeout(const Duration(seconds: 10));
       if (!mounted) return;
-      // 🔧 FIX Android : se positionner à la 1ère frame pour forcer l'affichage
-      _controller.seekTo(Duration.zero);
+      controller.setVolume(1.0);
+      controller.setLooping(false);
       setState(() => _initialized = true);
-      // 🔊 Son actif : volume max + s'assurer qu'il n'est pas mute
-      _controller.setVolume(1.0);
-      _controller.setLooping(false);
-      // Lancer la lecture après un court délai pour laisser l'UI peindre la 1ère frame
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (!mounted) return;
-        _controller.play();
-        // Re-forcer le volume après play (Android peut le reset)
-        _controller.setVolume(1.0);
-      });
+      // Petit délai pour laisser l'UI peindre la 1ère frame
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      await controller.play();
+      controller.setVolume(1.0);
 
       // À la fin de la vidéo → bascule vers l'app
-      _controller.addListener(() {
-        if (_controller.value.position >= _controller.value.duration &&
+      controller.addListener(() {
+        final value = controller.value;
+        if (value.position >= value.duration &&
             !_finished &&
-            _controller.value.duration > Duration.zero) {
+            value.duration > Duration.zero) {
           _goNext();
         }
-        // Si la vidéo joue mais est mute, forcer le volume
-        if (_controller.value.isPlaying && _controller.value.volume == 0) {
-          _controller.setVolume(1.0);
-        }
       });
-    }).catchError((e) {
-      // Si la vidéo ne charge pas (rare), on passe directement
+    } catch (e) {
+      // Si la vidéo ne charge pas, on passe directement à l'app
       _goNext();
-    });
+    }
   }
 
   void _goNext() {
@@ -70,48 +65,36 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
     _finished = true;
     // Restaurer l'UI système normale
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    // Marquer l'intro comme vue (pour ne pas la rejouer à chaque fois)
-    _markIntroSeen();
     if (mounted) widget.onFinished();
-  }
-
-  Future<void> _markIntroSeen() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('intro_seen_version', '1');
-    } catch (_) {}
   }
 
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = _controller;
+    final isReady = _initialized && controller != null && controller.value.isInitialized;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Vidéo plein écran (seulement si initialisée, sinon fond noir pur)
-          if (_initialized)
-            // 🔧 FIX Android : SizedBox.expand + Center + BoxFit.cover
-            // (plus fiable que FittedBox qui peut casser le rendu vidéo sur Android)
-            SizedBox.expand(
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: _controller.value.aspectRatio,
-                  child: VideoPlayer(_controller),
-                ),
+          // Vidéo plein écran via FittedBox + Center (compatible Android + Web)
+          if (isReady)
+            Center(
+              child: AspectRatio(
+                aspectRatio: controller!.value.aspectRatio,
+                child: VideoPlayer(controller),
               ),
             )
-          // Fond NOIR PUR pendant le court instant de chargement de la vidéo
-          // (pas de spinner, pas de logo, pas de gris)
           else
-            const SizedBox.shrink(),
+            const SizedBox.shrink(), // fond noir pur pendant chargement
 
           // Bouton "Passer" (en bas à droite)
           Positioned(

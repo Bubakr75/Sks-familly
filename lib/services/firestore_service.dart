@@ -792,6 +792,34 @@ class FirestoreService {
     }
   }
 
+  // ─── BOUTIQUE : Récompenses ──────────────────────────────────
+  Future<void> saveReward(Map<String, dynamic> data, String id) async {
+    if (_familyId == null) return;
+    try {
+      await _db.collection('families').doc(_familyId).collection('rewards').doc(id).set(data);
+    } catch (e) {
+      if (kDebugMode) debugPrint('saveReward error: $e');
+    }
+  }
+
+  Future<void> deleteReward(String id) async {
+    if (_familyId == null) return;
+    try {
+      await _db.collection('families').doc(_familyId).collection('rewards').doc(id).delete();
+    } catch (e) {
+      if (kDebugMode) debugPrint('deleteReward error: $e');
+    }
+  }
+
+  Future<void> savePurchase(Map<String, dynamic> data) async {
+    if (_familyId == null) return;
+    try {
+      await _db.collection('families').doc(_familyId).collection('purchases').add(data);
+    } catch (e) {
+      if (kDebugMode) debugPrint('savePurchase error: $e');
+    }
+  }
+
   // â”€â”€â”€ WRITE : Screen Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> saveScreenTimeValue(String key, dynamic value) async {
     if (_familyId == null) return;
