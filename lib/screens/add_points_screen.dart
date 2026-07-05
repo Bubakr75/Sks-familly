@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
@@ -1193,61 +1194,87 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     );
   }
 
-  /// Action rapide : ouvre un dialogue de sélection d'enfant puis applique
-  /// le bonus ou la pénalité avec calcul automatique du montant.
+  /// Action rapide : ouvre un dialogue de sélection MULTI-ENFANTS, puis
+  /// applique le bonus ou la pénalité avec calcul automatique du montant.
+  /// En mode enfant, crée une demande (createRequest) au lieu d'appliquer direct.
   Future<void> _quickAction(
     BuildContext context,
     List<ChildModel> children, {
     required bool isBonus,
   }) async {
     final fp = context.read<FamilyProvider>();
+    final isParent = context.read<PinProvider>().isParentMode;
+    final accentColor = isBonus ? const Color(0xFF00E676) : const Color(0xFFEF4444);
 
     // Si un seul enfant, on applique direct
     if (children.length == 1) {
-      await _applyQuick(context, fp, children.first.id, isBonus);
+      if (isParent) {
+        await _applyQuick(context, fp, children.first.id, isBonus);
+      } else {
+        await _createQuickRequest(context, fp, children.first, isBonus);
+      }
       return;
     }
 
-    // Sinon, on ouvre un bottom sheet de sélection
-    String? selectedId;
-    final id = await showModalBottomSheet<String>(
+    // Bottom sheet de SÉLECTION MULTIPLE
+    final selectedIds = await showModalBottomSheet<Set<String>>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F2620),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-            Text(
-              isBonus ? '🎁 Quick Bonus pour qui ?' : '⚠️ Quick Pénalité pour qui ?',
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 14),
-            ...children.map((c) => ListTile(
-              leading: CircleAvatar(
-                backgroundColor: (isBonus ? const Color(0xFF00E676) : const Color(0xFFEF4444)).withValues(alpha: 0.2),
-                child: Text(c.avatar.isNotEmpty ? c.avatar : '👤'),
-              ),
-              title: Text(c.name, style: const TextStyle(color: Colors.white)),
-              trailing: Text('${c.points} pts', style: TextStyle(color: isBonus ? const Color(0xFF00E676) : const Color(0xFFEF4444), fontWeight: FontWeight.w700)),
-              onTap: () => Navigator.pop(ctx, c.id),
-            )),
-          ],
-        ),
+      isScrollControlled: true,
+      builder: (ctx) => _MultiChildPicker(
+        children: children,
+        isBonus: isBonus,
+        accentColor: accentColor,
       ),
     );
 
-    if (id != null && context.mounted) {
-      await _applyQuick(context, fp, id, isBonus);
+    if (selectedIds == null || selectedIds.isEmpty || !context.mounted) return;
+
+    // Appliquer à chaque enfant sélectionné
+    final messenger = ScaffoldMessenger.of(context);
+    int totalApplied = 0;
+    for (final id in selectedIds) {
+      final child = fp.getChild(id);
+      if (child == null) continue;
+      if (isParent) {
+        if (isBonus) {
+          totalApplied += await fp.addQuickBonus(id, isBonus ? '🎁 Bonne action' : '⚠️ Mauvaise action');
+        } else {
+          totalApplied += await fp.addQuickPenalty(id, isBonus ? '🎁 Bonne action' : '⚠️ Mauvaise action');
+        }
+      } else {
+        await _createQuickRequest(context, fp, child, isBonus);
+      }
+    }
+
+    if (isParent) {
+      final label = isBonus ? '+$totalApplied pts' : '-$totalApplied pts';
+      messenger.showSnackBar(SnackBar(
+        content: Text('✅ ${selectedIds.length} enfant(s) mis à jour ($label)'),
+        backgroundColor: accentColor,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } else {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Demande envoyée pour ${selectedIds.length} enfant(s) ✅'),
+        backgroundColor: const Color(0xFF7C4DFF),
+        behavior: SnackBarBehavior.floating,
+      ));
     }
   }
 
+  /// Crée une demande (createRequest) pour validation parent (mode enfant).
+  Future<void> _createQuickRequest(BuildContext context, FamilyProvider fp, ChildModel child, bool isBonus) async {
+    await fp.createRequest(
+      type: 'bonus',
+      childId: child.id,
+      requestedBy: child.name,
+      text: isBonus ? '🎁 Demande de bonus' : '⚠️ Demande de pénalité',
+      amount: isBonus ? 10 : 5,
+    );
+  }
+
+  /// Applique un quick bonus/pénalité à un seul enfant (mode parent).
   Future<void> _applyQuick(BuildContext context, FamilyProvider fp, String childId, bool isBonus) async {
     final messenger = ScaffoldMessenger.of(context);
     final child = fp.getChild(childId);
@@ -1281,6 +1308,144 @@ class _AddPointsScreenState extends State<AddPointsScreen>
         ));
       }
     }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// SÉLECTEUR MULTI-ENFANTS (Bottom Sheet)
+// ════════════════════════════════════════════════════════════════
+class _MultiChildPicker extends StatefulWidget {
+  final List<ChildModel> children;
+  final bool isBonus;
+  final Color accentColor;
+
+  const _MultiChildPicker({
+    required this.children,
+    required this.isBonus,
+    required this.accentColor,
+  });
+
+  @override
+  State<_MultiChildPicker> createState() => _MultiChildPickerState();
+}
+
+class _MultiChildPickerState extends State<_MultiChildPicker> {
+  final Set<String> _selected = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F2620),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Poignée
+          Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+
+          // Titre
+          Text(
+            widget.isBonus ? '🎁 Quick Bonus pour qui ?' : '⚠️ Quick Pénalité pour qui ?',
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text('${_selected.length} sélectionné(s)', style: TextStyle(color: widget.accentColor, fontSize: 13, fontWeight: FontWeight.w600)),
+
+          const SizedBox(height: 16),
+
+          // Bouton "Tout le monde"
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: widget.accentColor.withValues(alpha: 0.2),
+                foregroundColor: widget.accentColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: Icon(
+                _selected.length == widget.children.length ? Icons.deselect_rounded : Icons.select_all_rounded,
+                size: 18,
+              ),
+              label: Text(_selected.length == widget.children.length ? 'Tout désélectionner' : 'Tout le monde'),
+              onPressed: () {
+                setState(() {
+                  if (_selected.length == widget.children.length) {
+                    _selected.clear();
+                  } else {
+                    _selected.addAll(widget.children.map((c) => c.id));
+                  }
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Liste des enfants avec cases à cocher
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: widget.children.length,
+              itemBuilder: (ctx, i) {
+                final c = widget.children[i];
+                final isSelected = _selected.contains(c.id);
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: widget.accentColor.withValues(alpha: 0.15),
+                    child: Text(c.avatar.isNotEmpty ? c.avatar : '👤'),
+                  ),
+                  title: Text(c.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  subtitle: Text('${c.points} pts', style: TextStyle(color: widget.accentColor, fontSize: 12)),
+                  trailing: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected ? widget.accentColor : Colors.transparent,
+                      border: Border.all(color: isSelected ? widget.accentColor : Colors.white24, width: 2),
+                    ),
+                    child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
+                  ),
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selected.remove(c.id);
+                      } else {
+                        _selected.add(c.id);
+                      }
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Bouton Valider
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: widget.accentColor,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: _selected.isEmpty ? null : () => Navigator.pop(context, _selected),
+              child: Text(
+                'Valider (${_selected.length})',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

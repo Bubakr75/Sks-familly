@@ -20,6 +20,7 @@ import 'screens/profile_selection_screen.dart';
 import 'screens/intro_video_screen.dart';
 import 'services/notification_service.dart';
 import 'services/update_service.dart';
+import 'widgets/mode_indicator.dart';
 
 void main() {
   // ⚠️ On lance runApp() LE PLUS VITE POSSIBLE, puis on initialise les
@@ -281,7 +282,9 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
             },
             child: FocusTraversalGroup(
               policy: ReadingOrderTraversalPolicy(),
-              child: child ?? const SizedBox(),
+              child: ModeIndicatorOverlay(
+                child: child ?? const SizedBox(),
+              ),
             ),
           );
         },
