@@ -382,7 +382,8 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   late AnimationController _toggleCtrl;
   late Animation<Color?> _bgColorAnim;
 
-  static const _bonusReasons = [
+  // Raisons (mutables pour permettre la personnalisation des points)
+  static List<Map<String, dynamic>> _bonusReasons = [
     {'emoji': '🧹', 'label': 'Ménage',            'points': 3},
     {'emoji': '📚', 'label': 'Devoirs',            'points': 2},
     {'emoji': '🤝', 'label': 'Entraide',           'points': 2},
@@ -393,13 +394,13 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     {'emoji': '😊', 'label': 'Bonne attitude',     'points': 1},
   ];
 
-  static const _penaltyReasons = [
+  static List<Map<String, dynamic>> _penaltyReasons = [
     {'emoji': '😠', 'label': 'Insolence',          'points': 2},
     {'emoji': '🤜', 'label': 'Bagarre',             'points': 3},
     {'emoji': '📵', 'label': 'Écran interdit',      'points': 2},
     {'emoji': '🙉', 'label': 'Désobéissance',       'points': 1},
     {'emoji': '🗣️', 'label': 'Gros mot',            'points': 1},
-    {'emoji': '😈', 'label': 'Bêtise',              'points': 2},
+    {'emoji': '😈', 'label': 'Bêtise',             'points': 2},
     {'emoji': '🤥', 'label': 'Mensonge',            'points': 2},
     {'emoji': '🏚️', 'label': 'Désordre',            'points': 1},
   ];
@@ -466,6 +467,124 @@ class _AddPointsScreenState extends State<AddPointsScreen>
         ));
       }
     }
+  }
+
+  /// Ouvre un dialogue pour régler les points par défaut d'une tâche.
+  void _showPointEditor(BuildContext context, int index, Map<String, dynamic> reason) {
+    int newPoints = reason['points'] as int;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF0F2620),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Text(reason['emoji'] as String, style: const TextStyle(fontSize: 28)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Points pour "${reason['label']}"',
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Maintiens appuyé sur une étiquette pour changer ses points',
+                style: TextStyle(color: Colors.white54, fontSize: 11),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Bouton -
+                  GestureDetector(
+                    onTap: () => setDialogState(() {
+                      if (newPoints > 1) newPoints--;
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.remove, color: Colors.redAccent, size: 24),
+                    ),
+                  ),
+                  // Valeur
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFD4AF37), Color(0xFFB8860B)]),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      '$newPoints',
+                      style: const TextStyle(
+                        color: Color(0xFF051410),
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  // Bouton +
+                  GestureDetector(
+                    onTap: () => setDialogState(() {
+                      if (newPoints < 100) newPoints++;
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add, color: Colors.green, size: 24),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD4AF37),
+                foregroundColor: const Color(0xFF051410),
+              ),
+              onPressed: () {
+                setState(() {
+                  reason['points'] = newPoints;
+                  // Si l'étiquette est sélectionnée, on met à jour les points
+                  if (_reason == reason['label']) {
+                    _points = newPoints;
+                  }
+                });
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('✅ "${reason['label']}" = $newPoints pts'),
+                    backgroundColor: const Color(0xFFD4AF37),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Text('Enregistrer', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -816,9 +935,11 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: _currentReasons.map((r) {
+                              children: _currentReasons.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final r = entry.value;
                                 final isSelected = _reason == r['label'];
-                                return TvFocusWrapper(
+                                return GestureDetector(
                                   onTap: () => setState(() {
                                     if (isSelected) {
                                       _reason = '';
@@ -828,6 +949,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                       _reasonCtrl.clear();
                                     }
                                   }),
+                                  onLongPress: () => _showPointEditor(context, index, r),
                                   child: AnimatedContainer(
                                     duration:
                                         const Duration(milliseconds: 200),

@@ -1031,7 +1031,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         style: TextStyle(
                             color: frame, fontWeight: FontWeight.bold,
                             fontSize: 13)),
-                    Text('${child.points} pts',
+                    Text('${child.points} pts bonus',
                         style: const TextStyle(
                             color: Colors.white54, fontSize: 12)),
                   ],
