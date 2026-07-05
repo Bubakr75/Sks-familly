@@ -16,6 +16,7 @@ import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
+import 'shop_screen.dart';
 
 // â”€â”€─ Arc screen-time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
 class _ScreenTimePainter extends CustomPainter {
@@ -643,7 +644,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               Tab(icon: Icon(Icons.person),      text: 'Profil'),
               Tab(icon: Icon(Icons.tv),           text: 'Écran'),
               Tab(icon: Icon(Icons.history),      text: 'Historique'),
-              Tab(icon: Icon(Icons.emoji_events), text: 'Badges'),
+              Tab(icon: Icon(Icons.shopping_bag_rounded), text: 'Boutique'),
             ],
           ),
         ),
@@ -1747,198 +1748,208 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   //  TAB BADGES
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
-  // ✅ CORRIGÉ : fp.badges → BadgeModel.defaultBadges + fp.customBadges
-  final allBadges = [...BadgeModel.defaultBadges, ...fp.customBadges];
+    // 🛒 NOUVEAU : on remplace les badges par "Mes Récompenses" (boutique)
+    final myPurchases = fp.purchases.where((p) => p['childId'] == child.id).toList();
 
-  final earned = allBadges
-      .where((b) =>
-          child.badgeIds.contains(b.id) &&
-          !_hiddenDefaultBadgeIds.contains(b.id))
-      .toList();
-  final locked = allBadges
-      .where((b) =>
-          !child.badgeIds.contains(b.id) &&
-          !_hiddenDefaultBadgeIds.contains(b.id))
-      .toList();
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // ─── Solde actuel ───
+        Container(
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFD4AF37), Color(0xFFB8860B)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: const Color(0xFFD4AF37).withValues(alpha: 0.3), blurRadius: 16),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.stars_rounded, color: Color(0xFF051410), size: 28),
+                  SizedBox(width: 8),
+                  Text('Mes points', style: TextStyle(color: Color(0xFF051410), fontSize: 16, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              Text(
+                '${child.points}',
+                style: const TextStyle(
+                  color: Color(0xFF051410),
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
 
-  return SingleChildScrollView(
-    padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // ─── Bouton vers la boutique ───
+        GestureDetector(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const ShopScreen(),
+            ));
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  color.withValues(alpha: 0.15),
+                  Colors.transparent,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('🛒', style: TextStyle(fontSize: 24)),
+                SizedBox(width: 10),
+                Text('Aller à la Boutique', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+                SizedBox(width: 8),
+                Icon(Icons.chevron_right_rounded, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
 
-      // â”€â”€ Badges personnalisés â”€â”€
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // ─── Mes achats ───
+        Text('📦 Mes achats (${myPurchases.length})',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 10),
+
+        if (myPurchases.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            child: const Column(
+              children: [
+                Text('🛍️', style: TextStyle(fontSize: 48)),
+                SizedBox(height: 12),
+                Text('Aucun achat pour l\'instant',
+                    style: TextStyle(color: Colors.white38, fontSize: 14)),
+                SizedBox(height: 4),
+                Text('Va à la boutique pour dépenser tes points !',
+                    style: TextStyle(color: Colors.white24, fontSize: 12)),
+              ],
+            ),
+          )
+        else
+          ...myPurchases.map((p) => _buildPurchaseCard(p, color)),
+      ]),
+    );
+  }
+
+  Widget _buildPurchaseCard(Map<String, dynamic> purchase, Color color) {
+    final title = purchase['title'] ?? '';
+    final icon = purchase['icon'] ?? '🎁';
+    final cost = purchase['cost'] ?? 0;
+    final status = purchase['status'] ?? 'pending';
+    final dateStr = purchase['date'] ?? '';
+
+    // Formater la date
+    String formattedDate = '';
+    try {
+      final dt = DateTime.parse(dateStr);
+      formattedDate = '${dt.day}/${dt.month} à ${dt.hour}h${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {}
+
+    // Couleur selon le statut
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+    switch (status) {
+      case 'approved':
+        statusColor = const Color(0xFF00E676);
+        statusText = 'Validé';
+        statusIcon = Icons.check_circle_rounded;
+        break;
+      case 'rejected':
+        statusColor = const Color(0xFFEF4444);
+        statusText = 'Refusé';
+        statusIcon = Icons.cancel_rounded;
+        break;
+      default:
+        statusColor = const Color(0xFFF59E0B);
+        statusText = 'En attente';
+        statusIcon = Icons.hourglass_top_rounded;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F2620),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 3)),
+        ],
+      ),
+      child: Row(
         children: [
-          Text('⭐ Badges personnalisés',
-              style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.deepPurpleAccent),
-            onPressed: () => _addCustomBadge(child.id),
+          // Icône
+          Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(child: Text(icon, style: const TextStyle(fontSize: 24))),
+          ),
+          const SizedBox(width: 12),
+          // Infos
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Icon(statusIcon, size: 14, color: statusColor),
+                    const SizedBox(width: 4),
+                    Text(statusText, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 8),
+                    Text(formattedDate, style: const TextStyle(color: Colors.white24, fontSize: 10)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Coût
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.stars_rounded, size: 14, color: Color(0xFFD4AF37)),
+                SizedBox(width: 3),
+              ],
+            ),
           ),
         ],
       ),
-      if (_customLocalBadges.isEmpty)
-        const Padding(
-          padding: EdgeInsets.only(bottom: 12),
-          child: Text('Aucun badge personnalisé. Appuie sur + pour en ajouter.',
-              style: TextStyle(color: Colors.white38, fontSize: 12)),
-        )
-      else
-        Wrap(
-          spacing: 8, runSpacing: 8,
-          children: List.generate(_customLocalBadges.length, (i) {
-            final b = _customLocalBadges[i];
-            return GestureDetector(
-              onLongPress: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    backgroundColor: const Color(0xFF1A1A2E),
-                    title: const Text('Supprimer ce badge ?',
-                        style: TextStyle(color: Colors.white)),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Annuler')),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent),
-                        onPressed: () {
-                          _removeCustomBadge(i, child.id);
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Supprimer'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color:        Colors.deepPurple.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: Colors.deepPurpleAccent.withOpacity(0.5)),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(b.emoji, style: const TextStyle(fontSize: 18)),
-                  const SizedBox(width: 6),
-                  Text(b.label,
-                      style: const TextStyle(color: Colors.white, fontSize: 12)),
-                ]),
-              ),
-            );
-          }),
-        ),
-
-      const SizedBox(height: 16),
-      const Divider(color: Colors.white12),
-      const SizedBox(height: 8),
-
-      // â”€â”€ Badges obtenus â”€â”€
-      Text('🏆 Badges obtenus (${earned.length})',
-          style: TextStyle(
-              color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-      const SizedBox(height: 8),
-      if (earned.isEmpty)
-        const Text("Aucun badge obtenu pour l'instant.",
-            style: TextStyle(color: Colors.white38, fontSize: 12))
-      else
-        Wrap(
-          spacing: 8, runSpacing: 8,
-          children: earned.map((b) => GestureDetector(
-            onLongPress: () {
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  backgroundColor: const Color(0xFF1A1A2E),
-                  title: const Text('Masquer ce badge ?',
-                      style: TextStyle(color: Colors.white)),
-                  content: Text('Masquer « ${b.name} » de la vue ?',
-                      style: const TextStyle(color: Colors.white70)),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Annuler')),
-                    ElevatedButton(
-                      onPressed: () {
-                        _hideDefaultBadge(b.id, child.id);
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Masquer'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color:        Colors.amber.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.amber.withOpacity(0.4)),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(b.icon, style: const TextStyle(fontSize: 18)),
-                const SizedBox(width: 6),
-                Text(b.name,
-                    style: const TextStyle(color: Colors.white, fontSize: 12)),
-              ]),
-            ),
-          )).toList(),
-        ),
-
-      if (_hiddenDefaultBadgeIds.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () => _resetHiddenBadges(child.id),
-          icon:  const Icon(Icons.visibility, size: 16, color: Colors.white38),
-          label: Text(
-              'Afficher les ${_hiddenDefaultBadgeIds.length} badge(s) masqué(s)',
-              style: const TextStyle(color: Colors.white38, fontSize: 12)),
-        ),
-      ],
-
-      const SizedBox(height: 16),
-      const Divider(color: Colors.white12),
-      const SizedBox(height: 8),
-
-      // â”€â”€ Badges verrouillés â”€â”€
-      Text('🔒 Badges à débloquer (${locked.length})',
-          style: const TextStyle(
-              color: Colors.white54, fontWeight: FontWeight.bold,
-              fontSize: 14)),
-      const SizedBox(height: 8),
-      if (locked.isEmpty)
-        const Text('Tous les badges ont été débloqués ! 🎉',
-            style: TextStyle(color: Colors.white38, fontSize: 12))
-      else
-        Wrap(
-          spacing: 8, runSpacing: 8,
-          children: locked.map((b) => Opacity(
-            opacity: 0.4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color:        Colors.white10,
-                borderRadius: BorderRadius.circular(20),
-                border:       Border.all(color: Colors.white24),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('🔒', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 6),
-                Text(b.name,
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 12)),
-              ]),
-            ),
-          )).toList(),
-        ),
-    ]),
-  );
-}
+    );
+  }
 
 }
 

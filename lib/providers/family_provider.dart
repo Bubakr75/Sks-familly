@@ -54,6 +54,7 @@ class FamilyProvider extends ChangeNotifier {
   List<TradeModel>      _trades        = [];
   List<PendingRequest>  _pendingRequests = [];
   List<RewardModel>     _rewards = [];
+  List<Map<String, dynamic>> _purchases = [];
 
   // ─── État de synchronisation (feedback UI) ──────────────────
   bool _isReconnecting = false;
@@ -121,6 +122,7 @@ class FamilyProvider extends ChangeNotifier {
   List<TradeModel>      get trades            => _trades;
   List<PendingRequest>  get pendingRequests   => _pendingRequests;
   List<RewardModel>     get rewards            => _rewards;
+  List<Map<String, dynamic>> get purchases     => _purchases;
   List<ParentProfile>   get parentProfiles    => _parentProfiles;
   String?               get familyCode        => _familyCode;
   String?               get familyId          => _familyCode;
@@ -226,6 +228,11 @@ class FamilyProvider extends ChangeNotifier {
         .map((v) => TradeModel.fromMap(
             Map<String, dynamic>.from(jsonDecode(v as String))))
         .toList();
+    // Chargement des achats boutique
+    _purchases = _purchasesBox.values
+        .map((v) => Map<String, dynamic>.from(jsonDecode(v as String)))
+        .toList();
+    _purchases.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
     // 🔧 FIX : charger les profils parents depuis le local (sinon disparus au redémarrage)
     _parentProfiles = _parentProfilesBox.values
         .map((v) => ParentProfile.fromMap(
@@ -1847,6 +1854,7 @@ class FamilyProvider extends ChangeNotifier {
       'status': 'pending', // pending → approved / rejected
       'date': DateTime.now().toIso8601String(),
     };
+    _purchases.insert(0, purchaseData);
     await _purchasesBox.put('purch_${_uuid.v4()}', jsonEncode(purchaseData));
     if (_firestore.isConnected) {
       await _firestore.savePurchase(purchaseData);

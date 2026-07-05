@@ -50,92 +50,102 @@ class ShopAdminScreen extends StatelessWidget {
     final titleCtrl = TextEditingController(text: existing?.title ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     final costCtrl = TextEditingController(text: existing?.cost.toString() ?? '50');
-    String selectedIcon = existing?.icon ?? '🎁';
+    final allEmojis = ['🎁', '🎮', '🌙', '🍕', '🃏', '🍫', '🎬', '⚽', '🎨', '📚', '🎲', '🍦', '🍔', '🚗', '✈️', '🎪', '🛌', '🎸', '📱', '💵', '🏆', '⭐', '🎈', '🍿', '🚲', '🏊', '🎯', '🧩', '🔌', '🎧'];
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: EmeraldPalette.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          existing == null ? 'Nouvelle récompense' : 'Modifier',
-          style: const TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Sélecteur d'emoji
-              Wrap(
-                spacing: 8,
-                children: ['🎁', '🎮', '🌙', '🍕', '🃏', '🍫', '🎬', '⚽', '🎨', '📚', '🎲', '🍦'].map((e) {
-                  return GestureDetector(
-                    onTap: () => selectedIcon = e,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: selectedIcon == e ? EmeraldPalette.gold.withValues(alpha: 0.2) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: selectedIcon == e ? EmeraldPalette.gold : Colors.transparent),
-                      ),
-                      child: Text(e, style: const TextStyle(fontSize: 24)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          String selectedIcon = existing?.icon ?? '🎁';
+          return AlertDialog(
+            backgroundColor: EmeraldPalette.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: Text(
+              existing == null ? 'Nouvelle récompense' : 'Modifier',
+              style: const TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Sélecteur d'emoji (corrigé avec setDialogState)
+                  SizedBox(
+                    height: 90,
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 6, mainAxisSpacing: 4, crossAxisSpacing: 4),
+                      itemCount: allEmojis.length,
+                      itemBuilder: (context, index) {
+                        final e = allEmojis[index];
+                        return GestureDetector(
+                          onTap: () => setDialogState(() => selectedIcon = e),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: selectedIcon == e ? EmeraldPalette.gold.withValues(alpha: 0.2) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: selectedIcon == e ? EmeraldPalette.gold : Colors.transparent),
+                            ),
+                            child: Text(e, style: const TextStyle(fontSize: 24)),
+                          ),
+                        );
+                      },
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: titleCtrl,
+                    style: const TextStyle(color: EmeraldPalette.textPrimary),
+                    decoration: _inputDecoration('Titre', 'Ex: 15 min de console'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descCtrl,
+                    style: const TextStyle(color: EmeraldPalette.textPrimary),
+                    maxLines: 2,
+                    decoration: _inputDecoration('Description', 'Ex: 15 minutes supplémentaires'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: costCtrl,
+                    style: const TextStyle(color: EmeraldPalette.textPrimary),
+                    keyboardType: TextInputType.number,
+                    decoration: _inputDecoration('Coût (points)', 'Ex: 50'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Annuler', style: TextStyle(color: EmeraldPalette.textSecondary)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EmeraldPalette.emerald,
+                  foregroundColor: const Color(0xFF051410),
+                ),
+                onPressed: () async {
+                  final title = titleCtrl.text.trim();
+                  final cost = int.tryParse(costCtrl.text.trim()) ?? 50;
+                  if (title.isEmpty) return;
+
+                  if (existing != null) {
+                    await fp.deleteReward(existing.id);
+                  }
+                  await fp.addReward(
+                    title: title,
+                    cost: cost,
+                    icon: selectedIcon,
+                    description: descCtrl.text.trim(),
                   );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: titleCtrl,
-                style: const TextStyle(color: EmeraldPalette.textPrimary),
-                decoration: _inputDecoration('Titre', 'Ex: 15 min de console'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descCtrl,
-                style: const TextStyle(color: EmeraldPalette.textPrimary),
-                maxLines: 2,
-                decoration: _inputDecoration('Description', 'Ex: 15 minutes supplémentaires'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: costCtrl,
-                style: const TextStyle(color: EmeraldPalette.textPrimary),
-                keyboardType: TextInputType.number,
-                decoration: _inputDecoration('Coût (points)', 'Ex: 50'),
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('Enregistrer', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler', style: TextStyle(color: EmeraldPalette.textSecondary)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: EmeraldPalette.emerald,
-              foregroundColor: const Color(0xFF051410),
-            ),
-            onPressed: () async {
-              final title = titleCtrl.text.trim();
-              final cost = int.tryParse(costCtrl.text.trim()) ?? 50;
-              if (title.isEmpty) return;
-
-              if (existing != null) {
-                // Modification : supprimer + recréer (simple)
-                await fp.deleteReward(existing.id);
-              }
-              await fp.addReward(
-                title: title,
-                cost: cost,
-                icon: selectedIcon,
-                description: descCtrl.text.trim(),
-              );
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Enregistrer', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
