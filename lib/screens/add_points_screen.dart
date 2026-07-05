@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -609,6 +610,62 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                     ),
                     const SizedBox(height: 16),
 
+                    // ─── ACCÈS RAPIDE (Bonus/Pénalité cumulatif auto) ───
+                    if (children.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildQuickButton(
+                              isBonus: true,
+                              icon: Icons.add_circle_rounded,
+                              label: 'Quick Bonus',
+                              color: const Color(0xFF00E676),
+                              onTap: () => _quickAction(context, children, isBonus: true),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildQuickButton(
+                              isBonus: false,
+                              icon: Icons.remove_circle_rounded,
+                              label: 'Quick Pénalité',
+                              color: const Color(0xFFEF4444),
+                              onTap: () => _quickAction(context, children, isBonus: false),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Row(
+                            children: [
+                              Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.amberAccent.withValues(alpha: 0.8)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Le montant est calculé automatiquement : plus il y a de bonus dans la journée, plus ça rapporte !',
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Diviseur
+                      Row(children: [
+                        const Expanded(child: Divider(color: Colors.white12)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('OU choix détaillé', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
+                        ),
+                        const Expanded(child: Divider(color: Colors.white12)),
+                      ]),
+                      const SizedBox(height: 16),
+                    ],
+
                     // ─── Sélection enfant ───────────────────
                     if (children.isEmpty)
                       GlassCard(
@@ -1089,6 +1146,141 @@ class _AddPointsScreenState extends State<AddPointsScreen>
         );
       },
     );
+  }
+
+  // ─── Bouton d'accès rapide (Bonus/Pénalité cumulatif) ────
+  Widget _buildQuickButton({
+    required bool isBonus,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withValues(alpha: 0.25),
+              color.withValues(alpha: 0.08),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 12),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Action rapide : ouvre un dialogue de sélection d'enfant puis applique
+  /// le bonus ou la pénalité avec calcul automatique du montant.
+  Future<void> _quickAction(
+    BuildContext context,
+    List<ChildModel> children, {
+    required bool isBonus,
+  }) async {
+    final fp = context.read<FamilyProvider>();
+
+    // Si un seul enfant, on applique direct
+    if (children.length == 1) {
+      await _applyQuick(context, fp, children.first.id, isBonus);
+      return;
+    }
+
+    // Sinon, on ouvre un bottom sheet de sélection
+    String? selectedId;
+    final id = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F2620),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            Text(
+              isBonus ? '🎁 Quick Bonus pour qui ?' : '⚠️ Quick Pénalité pour qui ?',
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 14),
+            ...children.map((c) => ListTile(
+              leading: CircleAvatar(
+                backgroundColor: (isBonus ? const Color(0xFF00E676) : const Color(0xFFEF4444)).withValues(alpha: 0.2),
+                child: Text(c.avatar.isNotEmpty ? c.avatar : '👤'),
+              ),
+              title: Text(c.name, style: const TextStyle(color: Colors.white)),
+              trailing: Text('${c.points} pts', style: TextStyle(color: isBonus ? const Color(0xFF00E676) : const Color(0xFFEF4444), fontWeight: FontWeight.w700)),
+              onTap: () => Navigator.pop(ctx, c.id),
+            )),
+          ],
+        ),
+      ),
+    );
+
+    if (id != null && context.mounted) {
+      await _applyQuick(context, fp, id, isBonus);
+    }
+  }
+
+  Future<void> _applyQuick(BuildContext context, FamilyProvider fp, String childId, bool isBonus) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final child = fp.getChild(childId);
+    if (child == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('Erreur : enfant introuvable')));
+      return;
+    }
+
+    final reason = isBonus ? '🎁 Bonne action' : '⚠️ Mauvaise action';
+
+    if (isBonus) {
+      final amount = await fp.addQuickBonus(childId, reason);
+      messenger.showSnackBar(SnackBar(
+        content: Text('🎉 +$amount pts pour ${child.name} !'),
+        backgroundColor: const Color(0xFF00E676),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } else {
+      final amount = await fp.addQuickPenalty(childId, reason);
+      if (amount == 0) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('❌ ${child.name} est déjà à 0 point.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ));
+      } else {
+        messenger.showSnackBar(SnackBar(
+          content: Text('⚠️ -$amount pts pour ${child.name}'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
   }
 }
 

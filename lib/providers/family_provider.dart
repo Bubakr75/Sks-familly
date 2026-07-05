@@ -628,6 +628,72 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── BONUS/PÉNALITÉ CUMULATIF (auto-calcul) ────────────────
+  // Le montant augmente automatiquement selon le nombre d'actions du jour.
+
+  /// Calcule le montant d'un bonus selon le nombre de bonus déjà donnés aujourd'hui.
+  /// 1er = 10, 2e = 15, 3e = 20, 4e+ = 25.
+  int _calculateBonusAmount(String childId) {
+    final count = _getTodayActionsCount(childId, isBonus: true);
+    if (count == 0) return 10;
+    if (count == 1) return 15;
+    if (count == 2) return 20;
+    return 25; // plafond
+  }
+
+  /// Calcule le montant d'une pénalité selon le nombre de pénalités déjà données aujourd'hui.
+  /// 1ère = 5, 2e = 10, 3e = 15, 4e+ = 20.
+  int _calculatePenaltyAmount(String childId) {
+    final count = _getTodayActionsCount(childId, isBonus: false);
+    if (count == 0) return 5;
+    if (count == 1) return 10;
+    if (count == 2) return 15;
+    return 20; // plafond
+  }
+
+  /// Compte le nombre de bonus ou pénalités donnés aujourd'hui.
+  int _getTodayActionsCount(String childId, {required bool isBonus}) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    return _history.where((h) {
+      if (h.childId != childId) return false;
+      if (h.isBonus != isBonus) return false;
+      // Exclure les catégories spéciales (temps écran, notes école, boutique)
+      if (h.category == 'school_note' ||
+          h.category == 'screen_time_bonus' ||
+          h.category == 'saturday_rating' ||
+          h.category == 'boutique' ||
+          h.category == 'punition' ||
+          h.category == 'immunité' ||
+          h.category == 'tribunal_vote' ||
+          h.category == 'tribunal_verdict') return false;
+      return h.date.isAfter(todayStart);
+    }).length;
+  }
+
+  /// Ajoute un bonus cumulatif (auto-calcul du montant).
+  /// Retourne le montant accordé pour l'afficher à l'utilisateur.
+  Future<int> addQuickBonus(String childId, String reason) async {
+    final amount = _calculateBonusAmount(childId);
+    await addPoints(childId, amount, reason,
+        category: 'Bonus', isBonus: true);
+    return amount;
+  }
+
+  /// Ajoute une pénalité cumulative (auto-calcul, jamais en dessous de 0).
+  /// Retourne le montant retiré pour l'afficher.
+  Future<int> addQuickPenalty(String childId, String reason) async {
+    final child = getChild(childId);
+    if (child == null) return 0;
+    final amount = _calculatePenaltyAmount(childId);
+    // Ne jamais descendre en dessous de 0
+    final actualAmount = amount > child.points ? child.points : amount;
+    if (actualAmount <= 0) return 0;
+    await addPoints(childId, actualAmount, reason,
+        category: 'Pénalité', isBonus: false);
+    return actualAmount;
+  }
+
   // ─── Points & Historique ───────────────────────────────────
   Future<void> addPoints(
     String childId,
