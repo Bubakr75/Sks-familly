@@ -380,6 +380,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               badgeCount: child.badgeIds.length,
               streakDays: child.streakDays,
               avatar: _buildChildAvatar(child, 32),
+              bannerPhotoBase64: child.photoBase64.isNotEmpty ? child.photoBase64 : null,
               onTap: () => Navigator.push(
                 context,
                 ZoomPageRoute(
@@ -874,7 +875,7 @@ class _ChildTileState extends State<_ChildTile> {
                               fontWeight: FontWeight.w600)),
                     ),
                     const SizedBox(width: 6),
-                    Text('${c.points} pts',
+                    Text('${c.points} pts bonus',
                         style: EmeraldTypography.caption.copyWith(
                             fontSize: 11)),
                   ]),

@@ -1832,6 +1832,10 @@ class FamilyProvider extends ChangeNotifier {
         await addPoints(r.childId, r.amount, r.text,
             category: 'Bonus', isBonus: true);
         break;
+      case 'penalty':
+        await addPoints(r.childId, r.amount, r.text,
+            category: 'Pénalité', isBonus: false);
+        break;
       case 'tribunal':
         await fileTribunalCase(
           title: r.text,

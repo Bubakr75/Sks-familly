@@ -428,7 +428,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             leading:  _buildAvatar(c, 22, showFrame: false),
             title:    Text(c.name,
                 style: const TextStyle(color: Colors.white)),
-            subtitle: Text('${c.points} pts',
+            subtitle: Text('${c.points} pts bonus',
                 style: const TextStyle(color: Colors.white54)),
             trailing: c.id == _selectedChildId
                 ? const Icon(Icons.check_circle, color: Colors.greenAccent)
@@ -591,8 +591,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 label: const Text('Changer',
                     style: TextStyle(color: Colors.white70)),
               ),
-            // Menu réinitialisation (parent uniquement)
-            if (context.read<PinProvider>().isParentMode)
+            // Menu réinitialisation (parent uniquement) — watch pour réagir au changement de mode
+            if (context.watch<PinProvider>().isParentMode)
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: Colors.white70),
                 color: const Color(0xFF1A1A2E),
@@ -1702,7 +1702,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           fontSize: 13),
                       overflow: TextOverflow.ellipsis),
                 ),
-                Text('$sign$pts pts',
+                Text('$sign$pts pts bonus',
                     style: TextStyle(
                         color:      pts >= 0 ? Colors.greenAccent : Colors.redAccent,
                         fontWeight: FontWeight.bold,

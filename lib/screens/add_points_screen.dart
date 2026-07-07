@@ -1388,7 +1388,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   /// Crée une demande (createRequest) pour validation parent (mode enfant).
   Future<void> _createQuickRequest(BuildContext context, FamilyProvider fp, ChildModel child, bool isBonus) async {
     await fp.createRequest(
-      type: 'bonus',
+      type: isBonus ? 'bonus' : 'penalty',
       childId: child.id,
       requestedBy: child.name,
       text: isBonus ? '🎁 Demande de bonus' : '⚠️ Demande de pénalité',

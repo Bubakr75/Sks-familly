@@ -252,6 +252,18 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
                     style: EmeraldTypography.caption.copyWith(fontSize: 16),
                   ),
                 ),
+                // Bouton "Mot de passe oublié" pour réinitialiser le PIN
+                TextButton(
+                  onPressed: () => _showResetPinDialog(context),
+                  child: Text(
+                    'Réinitialiser le PIN',
+                    style: EmeraldTypography.caption.copyWith(
+                      fontSize: 13,
+                      color: EmeraldPalette.textMuted,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 16),
               ],
             ),
@@ -286,6 +298,46 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
           }).toList(),
         );
       }).toList(),
+    );
+  }
+
+  /// Dialogue de réinitialisation du PIN (en cas d'oubli).
+  void _showResetPinDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: EmeraldPalette.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_reset_rounded, color: EmeraldPalette.warning),
+            SizedBox(width: 10),
+            Text('Réinitialiser le PIN', style: TextStyle(color: EmeraldPalette.textPrimary)),
+          ],
+        ),
+        content: const Text(
+          'Vous avez oublié votre PIN ? Il sera supprimé et vous pourrez en créer un nouveau.',
+          style: TextStyle(color: EmeraldPalette.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: EmeraldPalette.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: EmeraldPalette.warning,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              await context.read<PinProvider>().removePin();
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) Navigator.pop(context, false);
+            },
+            child: const Text('Réinitialiser'),
+          ),
+        ],
+      ),
     );
   }
 }

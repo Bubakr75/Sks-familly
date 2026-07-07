@@ -356,9 +356,14 @@ exports.onRequestCreated = functions.firestore
         notifType = "request_tribunal";
         break;
       case "bonus":
-        title = "⭐ Demande de points";
-        body = (r.requestedBy || "Un enfant") + " demande " + r.amount + " points : \"" + (r.text || "") + "\"";
+        title = "⭐ Demande de bonus";
+        body = (r.requestedBy || "Un enfant") + " demande " + r.amount + " points bonus : \"" + (r.text || "") + "\"";
         notifType = "request_bonus";
+        break;
+      case "penalty":
+        title = "⚠️ Demande de pénalité";
+        body = (r.requestedBy || "Un enfant") + " demande une pénalité de " + r.amount + " points : \"" + (r.text || "") + "\"";
+        notifType = "request_penalty";
         break;
     }
 

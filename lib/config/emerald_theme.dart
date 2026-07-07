@@ -8,6 +8,8 @@
 // Palette : Vert profond + crème + doré + accent émeraude vif
 // =============================================================================
 
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 /// Palette de couleurs Emerald
@@ -535,7 +537,7 @@ class _EmeraldPodiumRowState extends State<EmeraldPodiumRow>
                 ),
               ),
               Text(
-                'pts',
+                'pts bonus',
                 style: EmeraldTypography.caption.copyWith(fontSize: 10),
               ),
             ],
@@ -928,6 +930,8 @@ class EmeraldChildCard extends StatefulWidget {
   final int badgeCount;
   final int? streakDays;
   final Widget avatar; // Widget avatar (photo ou initiale)
+  final String? bannerPhotoBase64; // Photo pour la bannière (pleine largeur)
+  final String? avatarEmoji; // Emoji si pas de photo
   final VoidCallback? onTap;
 
   const EmeraldChildCard({
@@ -938,6 +942,8 @@ class EmeraldChildCard extends StatefulWidget {
     required this.points,
     required this.pointsToday,
     required this.badgeCount,
+    this.bannerPhotoBase64,
+    this.avatarEmoji,
     this.streakDays,
     required this.avatar,
     this.onTap,
@@ -951,6 +957,34 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnim;
+
+  /// Décode le base64 en Uint8List pour Image.memory
+  static Uint8List _decodeBase64(String b64) {
+    final clean = b64.contains(',') ? b64.split(',').last : b64;
+    return base64Decode(clean);
+  }
+
+  /// Bannière dégradée (quand pas de photo)
+  static Widget _gradientBanner(Color accent) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.4),
+            accent.withValues(alpha: 0.15),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          '👤',
+          style: TextStyle(fontSize: 40, color: Colors.white.withValues(alpha: 0.3)),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -981,7 +1015,6 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
         onTap: widget.onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: EmeraldPalette.surface,
             borderRadius: BorderRadius.circular(18),
@@ -997,170 +1030,155 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
               ),
             ],
           ),
-          child: Column(
-            children: [
-              // ─── Avatar avec halo coloré + shimmer ───
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Halo
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          accent.withValues(alpha: 0.3),
-                          accent.withValues(alpha: 0.0),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Avatar (clipé en cercle)
-                  ClipOval(
-                    child: SizedBox(
-                      width: 64,
-                      height: 64,
-                      child: widget.avatar,
-                    ),
-                  ),
-                  // Bordure colorée
-                  Container(
-                    width: 66,
-                    height: 66,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: accent.withValues(alpha: 0.6),
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  // Shimmer subtil
-                  AnimatedBuilder(
-                    animation: _shimmerAnim,
-                    builder: (context, _) {
-                      return ClipOval(
-                        child: SizedBox(
-                          width: 64,
-                          height: 64,
-                          child: ShaderMask(
-                            shaderCallback: (bounds) {
-                              return LinearGradient(
-                                begin: Alignment(
-                                    _shimmerAnim.value - 0.5, 0),
-                                end: Alignment(
-                                    _shimmerAnim.value + 0.5, 0),
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.white.withValues(alpha: 0.15),
-                                  Colors.transparent,
-                                ],
-                              ).createShader(bounds);
-                            },
-                            blendMode: BlendMode.srcOver,
-                            child: Container(color: Colors.transparent),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Column(
+              children: [
+              // ─── BANNIÈRE PHOTO PLEINE LARGEUR (style carte de visite) ───
+              SizedBox(
+                height: 110,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Photo de la bannière (alignée en haut = visage) ou dégradé
+                    if (widget.bannerPhotoBase64 != null && widget.bannerPhotoBase64!.isNotEmpty)
+                      ClipRect(
+                        child: FittedBox(
+                          fit: BoxFit.fitWidth,
+                          alignment: Alignment.topCenter, // Montre le HAUT (visage)
+                          child: Image.memory(
+                            _decodeBase64(widget.bannerPhotoBase64!),
+                            errorBuilder: (_, __, ___) => _gradientBanner(accent),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // ─── Nom + niveau ───
-              Text(
-                widget.name,
-                style: EmeraldTypography.heading.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  widget.levelTitle,
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // ─── Barre de progression vers niveau suivant ───
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: SizedBox(
-                  height: 4,
-                  child: Stack(
-                    children: [
-                      Container(
+                      )
+                    else
+                      _gradientBanner(accent),
+                    // Dégradé sombre en bas pour la lisibilité du nom
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        height: 60,
                         decoration: BoxDecoration(
-                          color: EmeraldPalette.surfaceHigh,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor:
-                            widget.levelProgress.clamp(0.0, 1.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                accent,
-                                accent.withValues(alpha: 0.7),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: accent.withValues(alpha: 0.5),
-                                blurRadius: 6,
-                              ),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              EmeraldPalette.surface.withValues(alpha: 0.95),
                             ],
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    // Nom par-dessus
+                    Positioned(
+                      bottom: 6,
+                      left: 12,
+                      right: 12,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.name,
+                            style: EmeraldTypography.heading.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: accent.withValues(alpha: 0.4)),
+                            ),
+                            child: Text(
+                              widget.levelTitle,
+                              style: TextStyle(
+                                color: accent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${(widget.levelProgress * 100).round()}%',
-                    style: EmeraldTypography.caption.copyWith(
-                      fontSize: 9,
-                      color: EmeraldPalette.textMuted,
+              // ─── Corps de la carte (stats) ───
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    // ─── Barre de progression vers niveau suivant ───
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: SizedBox(
+                        height: 4,
+                        child: Stack(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: EmeraldPalette.surfaceHigh,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            FractionallySizedBox(
+                              widthFactor:
+                                  widget.levelProgress.clamp(0.0, 1.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      accent,
+                                      accent.withValues(alpha: 0.7),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(3),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: accent.withValues(alpha: 0.5),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  Text(
-                    '${widget.points} pts',
-                    style: EmeraldTypography.caption.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: accent,
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${(widget.levelProgress * 100).round()}%',
+                          style: EmeraldTypography.caption.copyWith(
+                            fontSize: 9,
+                            color: EmeraldPalette.textMuted,
+                          ),
+                        ),
+                        Text(
+                          '${widget.points} pts bonus',
+                          style: EmeraldTypography.caption.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: accent,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-              // ─── Mini stats : Badges + Streak ───
+                    // ─── Mini stats : Série + Aujourd'hui + Total ───
               Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 8),
@@ -1171,23 +1189,11 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // Badges
-                    _MiniStat(
-                      icon: Icons.emoji_events_rounded,
-                      value: '${widget.badgeCount}',
-                      label: 'badges',
-                      color: EmeraldPalette.gold,
-                    ),
-                    Container(
-                      width: 1,
-                      height: 24,
-                      color: EmeraldPalette.glassBorder,
-                    ),
-                    // Streak
+                    // Série (jours sans pénalité)
                     _MiniStat(
                       icon: Icons.local_fire_department_rounded,
                       value: '${widget.streakDays ?? 0}j',
-                      label: 'streak',
+                      label: 'Série',
                       color: EmeraldPalette.warning,
                     ),
                     Container(
@@ -1199,15 +1205,31 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
                     _MiniStat(
                       icon: Icons.bolt_rounded,
                       value: '+${widget.pointsToday}',
-                      label: "aujourd'hui",
+                      label: "Aujourd'hui",
                       color: EmeraldPalette.emerald,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: EmeraldPalette.glassBorder,
+                    ),
+                    // Total points bonus
+                    _MiniStat(
+                      icon: Icons.stars_rounded,
+                      value: '${widget.points}',
+                      label: 'Total',
+                      color: EmeraldPalette.gold,
                     ),
                   ],
                 ),
               ),
-            ],
+            ],  // fin Column enfants
+            ),
+          ),  // fin Padding
+            ],  // fin Column de ClipRRect
           ),
-        ),
+        ),  // fin ClipRRect
+      ),
       ),
     );
   }

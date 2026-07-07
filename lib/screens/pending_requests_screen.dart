@@ -8,7 +8,8 @@ class PendingRequestsScreen extends StatelessWidget {
 
   String _typeLabel(String type) {
     switch (type) {
-      case 'punishment': return 'Pénalité';
+      case 'punishment': return 'Punition';
+      case 'penalty':    return 'Pénalité';
       case 'immunity':   return 'Immunité';
       case 'bonus':      return 'Bonus';
       case 'tribunal':   return 'Tribunal';
@@ -19,6 +20,7 @@ class PendingRequestsScreen extends StatelessWidget {
   IconData _typeIcon(String type) {
     switch (type) {
       case 'punishment': return Icons.gavel;
+      case 'penalty':    return Icons.warning;
       case 'immunity':   return Icons.shield;
       case 'bonus':      return Icons.star;
       case 'tribunal':   return Icons.balance;
@@ -29,6 +31,7 @@ class PendingRequestsScreen extends StatelessWidget {
   Color _typeColor(String type) {
     switch (type) {
       case 'punishment': return Colors.red;
+      case 'penalty':    return Colors.orange;
       case 'immunity':   return Colors.blue;
       case 'bonus':      return Colors.green;
       case 'tribunal':   return Colors.purple;
