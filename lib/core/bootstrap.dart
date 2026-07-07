@@ -36,7 +36,7 @@ Future<void> bootstrap() async {
 
 Future<void> _initializeHive() async {
   await Hive.initFlutter();
-  if (kDebugMode) debugPrint('âœ… Hive initialized');
+  if (kDebugMode) debugPrint('✅ Hive initialized');
 }
 
 Future<void> _initializeNotifications() async {
@@ -44,7 +44,7 @@ Future<void> _initializeNotifications() async {
     await NotificationService.init();
     await NotificationService.scheduleDailyReminder(hour: 19, minute: 0);
     await NotificationService.scheduleMonthlyReminder(hour: 18, minute: 0);
-    if (kDebugMode) debugPrint('âœ… Notifications initialized');
+    if (kDebugMode) debugPrint('✅ Notifications initialized');
   } catch (e) {
     if (kDebugMode) debugPrint('âŒ Notification error: $e');
   }
@@ -56,7 +56,7 @@ Future<void> _initializeFirebase() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     await FcmService().init();
-    if (kDebugMode) debugPrint('âœ… Firebase & FCM initialized');
+    if (kDebugMode) debugPrint('✅ Firebase & FCM initialized');
   } catch (e) {
     if (kDebugMode) debugPrint('âŒ Firebase error: $e');
   }
@@ -73,7 +73,7 @@ Future<void> _initializeProviders() async {
       pinProvider.init(),
       themeProvider.init(),
     ]);
-    if (kDebugMode) debugPrint('âœ… Providers initialized');
+    if (kDebugMode) debugPrint('✅ Providers initialized');
   } catch (e) {
     if (kDebugMode) debugPrint('âŒ Providers init error: $e');
   }

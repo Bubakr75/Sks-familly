@@ -261,7 +261,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                             color: Colors.orangeAccent.withOpacity(0.3)),
                       ),
                       child: Text(
-                        'âš ️ ${selectedChildren.length} punitions de $nbLines lignes seront créées',
+                        '⚠️ ${selectedChildren.length} punitions de $nbLines lignes seront créées',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                             color: Colors.orangeAccent, fontSize: 13),
@@ -666,7 +666,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   _sheetHandle(),
                   const SizedBox(height: 16),
                   const Center(
-                    child: Text('âš”️ Utiliser une immunité',
+                    child: Text('⚔️ Utiliser une immunité',
                         style: TextStyle(
                             color: Colors.tealAccent,
                             fontSize: 18,
@@ -824,7 +824,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                               ScaffoldMessenger.of(context)
                                   .showSnackBar(SnackBar(
                                 content: Text(
-                                    'âš”️ $linesToUse lignes effacées avec l\'immunité'),
+                                    '⚔️ $linesToUse lignes effacées avec l\'immunité'),
                                 backgroundColor: Colors.teal.shade700,
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(
@@ -870,7 +870,7 @@ class _BalanceScreenState extends State<BalanceScreen>
             appBar: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              title: const Text('âš–️ Punitions & Immunités',
+              title: const Text('⚖️ Punitions & Immunités',
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold)),
               actions: [

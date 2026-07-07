@@ -18,7 +18,7 @@ import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
 import 'shop_screen.dart';
 
-// â”€â”€─ Arc screen-time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+// ─── Arc screen-time ─────────────────────────────────────────
 class _ScreenTimePainter extends CustomPainter {
   final double progress;
   final double animValue;
@@ -63,16 +63,16 @@ class _ScreenTimePainter extends CustomPainter {
       old.progress != progress || old.animValue != animValue;
 }
 
-// â”€â”€─ Modèle badge personnalisé local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+// ─── Modèle badge personnalisé local ─────────────────────────
 class _CustomBadgeItem {
   String emoji;
   String label;
   _CustomBadgeItem({required this.emoji, required this.label});
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+// ─────────────────────────────────────────────────────────────
 //  MAIN WIDGET
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+// ─────────────────────────────────────────────────────────────
 class ChildDashboardScreen extends StatefulWidget {
   final String? childId;
   const ChildDashboardScreen({super.key, this.childId});
@@ -163,7 +163,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     super.dispose();
   }
 
-  // â”€â”€─ Prefs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+  // ─── Prefs ───────────────────────────────────────────────
   Future<void> _loadPrefs(String childId) async {
     final prefs  = await SharedPreferences.getInstance();
     final raw    = prefs.getStringList('custom_badges_$childId') ?? [];
@@ -193,7 +193,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await prefs.setStringList('hidden_badges_$childId', _hiddenDefaultBadgeIds);
   }
 
-  // â”€â”€─ Badges perso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Badges perso ────────────────────────────────────────
   Future<void> _addCustomBadge(String childId) async {
     final emojiCtrl = TextEditingController();
     final labelCtrl = TextEditingController();
@@ -285,7 +285,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await _saveHiddenBadges(childId);
   }
 
-  // â”€â”€─ Couleurs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Couleurs ────────────────────────────────────────────
   Color _childColor(ChildModel child) {
     if (child.accentColorHex != null) {
       try {
@@ -326,7 +326,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final cat = e.category.toLowerCase();
     if (cat.contains('punition')) return '📝';
     if (cat.contains('immunité')) return '🛡️';
-    if (cat.contains('tribunal') || cat.contains('verdict')) return 'âš–️';
+    if (cat.contains('tribunal') || cat.contains('verdict')) return '⚖️';
     if (cat.contains('school') || cat.contains('note')) return '📚';
     if (cat.contains('échange') || cat.contains('trade')) return '🔄';
     if (cat.contains('screen')) return '📺';
@@ -334,7 +334,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return '❌';
   }
 
-  // â”€â”€─ Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Avatar ──────────────────────────────────────────────
   Widget _buildAvatar(ChildModel child, double radius,
       {bool showFrame = true}) {
     final color      = _childColor(child);
@@ -407,7 +407,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 color:      color)),
       );
 
-  // â”€â”€─ Sélecteur enfant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Sélecteur enfant ────────────────────────────────────
   void _showChildSwitcher(FamilyProvider fp) {
     showModalBottomSheet(
       context: context,
@@ -444,7 +444,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // â”€â”€─ Edition photo / bannière / slogan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+  // ─── Edition photo / bannière / slogan ───────────────────
   Future<void> _editPhoto(ChildModel child, FamilyProvider fp) async {
     final xfile = await ImagePicker().pickImage(
         source: ImageSource.gallery, imageQuality: 80, maxWidth: 600);
@@ -542,9 +542,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+  // ─────────────────────────────────────────────────────────
   //  BUILD
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+  // ─────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(builder: (context, fp, _) {
@@ -702,6 +702,101 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: const Text('Confirmer', style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── Proposition enfant : Demande de BONUS ───
+  void _showBonusRequestDialog(BuildContext context, FamilyProvider fp, ChildModel child) {
+    final reasonCtrl = TextEditingController();
+    int amount = 10;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF0F2620),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(children: [
+            Text('⭐', style: TextStyle(fontSize: 28)),
+            SizedBox(width: 10),
+            Text('Demander un bonus', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Explique pourquoi tu mérites un bonus :',
+                  style: TextStyle(color: Colors.white54, fontSize: 13)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Ex: J\'ai rangé ma chambre sans qu\'on me le demande',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.06),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 16),
+              const Text('Points demandés :', style: TextStyle(color: Colors.white54, fontSize: 13)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () => setDialogState(() { if (amount > 1) amount--; }),
+                    icon: const Icon(Icons.remove_circle_outline, color: Colors.white54),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                    ),
+                    child: Text('$amount pts', style: const TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.w800)),
+                  ),
+                  IconButton(
+                    onPressed: () => setDialogState(() { if (amount < 50) amount++; }),
+                    icon: const Icon(Icons.add_circle_outline, color: Colors.white54),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+              onPressed: () {
+                final reason = reasonCtrl.text.trim();
+                if (reason.isEmpty) return;
+                fp.createRequest(
+                  type: 'bonus',
+                  childId: child.id,
+                  requestedBy: child.name,
+                  text: '⭐ $reason',
+                  amount: amount,
+                );
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Demande de bonus envoyée ! En attente du parent.'),
+                    backgroundColor: Colors.green,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Text('Envoyer', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -949,7 +1044,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return SingleChildScrollView(
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24),
       child: Column(children: [
-        // ─── Boutons proposition enfant ───
+        // ─── Boutons proposition enfant (Bonus + Pénalité + Immunité) ───
         if (!context.watch<PinProvider>().isParentMode)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -958,15 +1053,27 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () => _showBonusRequestDialog(context, fp, child),
+                    icon: const Icon(Icons.star_rounded, size: 18),
+                    label: const Text('Bonus', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     onPressed: () => _showProposeRequestDialog(context, fp, child, 'punishment'),
                     icon: const Icon(Icons.edit_document, size: 18),
-                    label: const Text('Pénalité', style: TextStyle(fontSize: 13)),
+                    label: const Text('Pénalité', style: TextStyle(fontSize: 12)),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
@@ -975,7 +1082,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     ),
                     onPressed: () => _showProposeRequestDialog(context, fp, child, 'immunity'),
                     icon: const Icon(Icons.shield_rounded, size: 18),
-                    label: const Text('Immunité', style: TextStyle(fontSize: 13)),
+                    label: const Text('Immunité', style: TextStyle(fontSize: 12)),
                   ),
                 ),
               ],
@@ -1574,7 +1681,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return SingleChildScrollView(
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
       child: Column(children: [
-        // â”€â”€ Résumé â”€â”€
+        // ── Résumé ──
         GlassCard(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1591,7 +1698,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 12),
 
-        // â”€â”€ Filtres â”€â”€
+        // ── Filtres ──
         SizedBox(
           height: 36,
           child: ListView.separated(
@@ -1627,7 +1734,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
         const SizedBox(height: 12),
 
-        // â”€â”€ Liste â”€â”€
+        // ── Liste ──
         if (filtered.isEmpty)
           Padding(
             padding: const EdgeInsets.all(32),

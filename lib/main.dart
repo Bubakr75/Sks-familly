@@ -247,12 +247,11 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
       if (kDebugMode) debugPrint('App resumed - reconnecting Firestore...');
       final familyProvider = context.read<FamilyProvider>();
       familyProvider.reconnectFirestore();
-
-      final pin = context.read<PinProvider>();
-      if (pin.isPinSet && pin.isParentMode) {
-        pin.lockParentMode();
-        if (kDebugMode) debugPrint('Parent mode locked on resume');
-      }
+      // 🚫 DÉSACTIVÉ : le mode parent ne bascule plus en mode enfant au retour
+      // final pin = context.read<PinProvider>();
+      // if (pin.isPinSet && pin.isParentMode) {
+      //   pin.lockParentMode();
+      // }
     }
   }
 
@@ -283,9 +282,7 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
             },
             child: FocusTraversalGroup(
               policy: ReadingOrderTraversalPolicy(),
-              child: ModeIndicatorOverlay(
-                child: child ?? const SizedBox(),
-              ),
+              child: child ?? const SizedBox(),
             ),
           );
         },
