@@ -33,6 +33,7 @@ import 'family_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'timeline_screen.dart';
 import 'chores_screen.dart';
+import 'checklist_screen.dart';
 import '../widgets/animated_page_transition.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -1033,9 +1034,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   },
                 ),
                 _drawerItem(
-                  icon: Icons.cleaning_services_rounded,
-                  label: 'Taches menageres',
+                  icon: Icons.checklist_rounded,
+                  label: 'Checklist du jour',
                   color: Colors.purpleAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const ChecklistScreen()),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  icon: Icons.casino_rounded,
+                  label: 'Roue des tâches',
+                  color: Colors.deepPurpleAccent,
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(

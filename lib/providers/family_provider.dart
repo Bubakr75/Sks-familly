@@ -17,6 +17,7 @@ import '../models/trade_model.dart';
 import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
 import '../models/reward_model.dart';
+import '../models/chore_model.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../utils/image_compressor.dart';
@@ -41,6 +42,7 @@ class FamilyProvider extends ChangeNotifier {
   late Box _rewardsBox;
   late Box _requestsBox;
   late Box _purchasesBox;
+  late Box _choresBox;
 
   List<ChildModel>      _children      = [];
   List<HistoryEntry>    _history       = [];
@@ -55,6 +57,7 @@ class FamilyProvider extends ChangeNotifier {
   List<PendingRequest>  _pendingRequests = [];
   List<RewardModel>     _rewards = [];
   List<Map<String, dynamic>> _purchases = [];
+  List<ChoreModel>      _chores = [];
 
   // ─── État de synchronisation (feedback UI) ──────────────────
   bool _isReconnecting = false;
@@ -123,6 +126,7 @@ class FamilyProvider extends ChangeNotifier {
   List<PendingRequest>  get pendingRequests   => _pendingRequests;
   List<RewardModel>     get rewards            => _rewards;
   List<Map<String, dynamic>> get purchases     => _purchases;
+  List<ChoreModel>      get chores             => _chores;
   List<ParentProfile>   get parentProfiles    => _parentProfiles;
   String?               get familyCode        => _familyCode;
   String?               get familyId          => _familyCode;
@@ -156,6 +160,7 @@ class FamilyProvider extends ChangeNotifier {
     _requestsBox    = await Hive.openBox('requests');
     _rewardsBox     = await Hive.openBox('rewards');
     _purchasesBox   = await Hive.openBox('purchases');
+    _choresBox      = await Hive.openBox('chores');
     _loadLocal();
     try {
       await _firestore.init();
@@ -233,6 +238,18 @@ class FamilyProvider extends ChangeNotifier {
         .map((v) => Map<String, dynamic>.from(jsonDecode(v as String)))
         .toList();
     _purchases.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
+    // Charger les tâches personnalisables
+    _chores = _choresBox.values
+        .map((v) => ChoreModel.fromMap(
+            Map<String, dynamic>.from(jsonDecode(v as String))))
+        .toList();
+    if (_chores.isEmpty) {
+      _chores = ChoreModel.defaultChores;
+      for (final c in _chores) {
+        await _choresBox.put(c.id, jsonEncode(c.toMap()));
+      }
+    }
+    _chores.sort((a, b) => a.order.compareTo(b.order));
     // 🔧 FIX : charger les profils parents depuis le local (sinon disparus au redémarrage)
     _parentProfiles = _parentProfilesBox.values
         .map((v) => ParentProfile.fromMap(
@@ -1990,6 +2007,37 @@ class FamilyProvider extends ChangeNotifier {
 
     notifyListeners();
     return true;
+  }
+
+  // ─── CHECKLIST DES TÂCHES ────────────────────────────────────
+
+  Future<void> addChore({required String label, required int points, String emoji = '✅'}) async {
+    final c = ChoreModel(
+      id: 'chore_${_uuid.v4()}',
+      label: label,
+      points: points,
+      emoji: emoji,
+      order: _chores.length,
+    );
+    _chores.add(c);
+    await _choresBox.put(c.id, jsonEncode(c.toMap()));
+    notifyListeners();
+  }
+
+  Future<void> deleteChore(String id) async {
+    _chores.removeWhere((c) => c.id == id);
+    await _choresBox.delete(id);
+    notifyListeners();
+  }
+
+  /// Valide les tâches cochées pour un enfant et ajoute les points d'un coup.
+  Future<int> validateChores(String childId, List<ChoreModel> completed) async {
+    if (completed.isEmpty) return 0;
+    int totalPoints = completed.fold(0, (sum, c) => sum + c.points);
+    final labels = completed.map((c) => '${c.emoji} ${c.label}').join(', ');
+    await addPoints(childId, totalPoints, '✅ Tâches du jour : $labels',
+        category: 'ménage', isBonus: true);
+    return totalPoints;
   }
 }
 
