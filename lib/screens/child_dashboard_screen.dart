@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -450,8 +451,34 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         source: ImageSource.gallery, imageQuality: 80, maxWidth: 600);
     if (xfile == null) return;
     final bytes = await xfile.readAsBytes();
-    await fp.updateChildPhoto(child.id, base64Encode(bytes));
-    if (mounted) setState(() {});
+
+    // Loader pendant l'upload (évite l'écran gris)
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        backgroundColor: Color(0xFF0F2620),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Color(0xFF00E676)),
+            SizedBox(height: 16),
+            Text('Upload en cours...', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      await fp.updateChildPhoto(child.id, base64Encode(bytes));
+    } catch (e) {
+      if (kDebugMode) debugPrint('Edit photo error: $e');
+    }
+    if (mounted) {
+      Navigator.pop(context); // Fermer le loader
+      setState(() {});
+    }
   }
 
   Future<void> _editBanner(ChildModel child, FamilyProvider fp,
@@ -503,8 +530,34 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         source: ImageSource.gallery, imageQuality: 70, maxWidth: 1200);
     if (xfile == null) return;
     final bytes = await xfile.readAsBytes();
-    await fp.updateChildBanner(child.id, base64Encode(bytes));
-    if (mounted) setState(() {});
+
+    // Loader pendant l'upload bannière
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        backgroundColor: Color(0xFF0F2620),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Color(0xFF00E676)),
+            SizedBox(height: 16),
+            Text('Upload bannière...', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      await fp.updateChildBanner(child.id, base64Encode(bytes));
+    } catch (e) {
+      if (kDebugMode) debugPrint('Edit banner error: $e');
+    }
+    if (mounted) {
+      Navigator.pop(context); // Fermer le loader
+      setState(() {});
+    }
   }
 
   Future<void> _editSlogan(ChildModel child, FamilyProvider fp) async {
