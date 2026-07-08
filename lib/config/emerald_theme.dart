@@ -1034,24 +1034,20 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
             borderRadius: BorderRadius.circular(18),
             child: Column(
               children: [
-              // ─── BANNIÈRE PHOTO PLEINE LARGEUR (style carte de visite) ───
+              // ─── BANNIÈRE PHOTO PLEINE LARGEUR (remplit tout le cadre) ───
               SizedBox(
-                height: 110,
+                height: 140,
                 width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Photo de la bannière (alignée en haut = visage) ou dégradé
+                    // Photo : BoxFit.cover remplit TOUT le cadre (haut en bas)
                     if (widget.bannerPhotoBase64 != null && widget.bannerPhotoBase64!.isNotEmpty)
-                      ClipRect(
-                        child: FittedBox(
-                          fit: BoxFit.fitWidth,
-                          alignment: Alignment.topCenter, // Montre le HAUT (visage)
-                          child: Image.memory(
-                            _decodeBase64(widget.bannerPhotoBase64!),
-                            errorBuilder: (_, __, ___) => _gradientBanner(accent),
-                          ),
-                        ),
+                      Image.memory(
+                        _decodeBase64(widget.bannerPhotoBase64!),
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter, // Montre le HAUT (visage)
+                        errorBuilder: (_, __, ___) => _gradientBanner(accent),
                       )
                     else
                       _gradientBanner(accent),
@@ -1112,42 +1108,53 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
                   ],
                 ),
               ),
-              // ─── Corps de la carte (stats) ───
+              // ─── Corps de la carte : POINTS EN GROS AU CENTRE ───
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Column(
                   children: [
-                    // ─── Barre de progression vers niveau suivant ───
+                    // POINTS EN GROS (l'élément principal de la carte)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '${widget.points}',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: accent,
+                            shadows: [Shadow(color: accent.withValues(alpha: 0.4), blurRadius: 12)],
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'pts bonus',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: EmeraldPalette.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Barre de progression niveau
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
                       child: SizedBox(
                         height: 4,
                         child: Stack(
                           children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: EmeraldPalette.surfaceHigh,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
+                            Container(decoration: BoxDecoration(color: EmeraldPalette.surfaceHigh, borderRadius: BorderRadius.circular(3))),
                             FractionallySizedBox(
-                              widthFactor:
-                                  widget.levelProgress.clamp(0.0, 1.0),
+                              widthFactor: widget.levelProgress.clamp(0.0, 1.0),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      accent,
-                                      accent.withValues(alpha: 0.7),
-                                    ],
-                                  ),
+                                  gradient: LinearGradient(colors: [accent, accent.withValues(alpha: 0.7)]),
                                   borderRadius: BorderRadius.circular(3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: accent.withValues(alpha: 0.5),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
+                                  boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.5), blurRadius: 6)],
                                 ),
                               ),
                             ),
@@ -1159,24 +1166,11 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${(widget.levelProgress * 100).round()}%',
-                          style: EmeraldTypography.caption.copyWith(
-                            fontSize: 9,
-                            color: EmeraldPalette.textMuted,
-                          ),
-                        ),
-                        Text(
-                          '${widget.points} pts bonus',
-                          style: EmeraldTypography.caption.copyWith(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: accent,
-                          ),
-                        ),
+                        Text('${(widget.levelProgress * 100).round()}%', style: EmeraldTypography.caption.copyWith(fontSize: 9, color: EmeraldPalette.textMuted)),
+                        Text(widget.levelTitle, style: TextStyle(color: accent, fontSize: 9, fontWeight: FontWeight.w600)),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
 
                     // ─── Mini stats : Série + Aujourd'hui + Total ───
               Container(

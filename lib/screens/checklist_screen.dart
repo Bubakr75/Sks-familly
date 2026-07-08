@@ -158,17 +158,43 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   void _validateChores(BuildContext context, FamilyProvider fp, ChildModel child, List<ChoreModel> allChores) async {
     final completed = allChores.where((c) => _checked.contains(c.id)).toList();
-    final total = await fp.validateChores(child.id, completed);
+    final isParent = context.read<PinProvider>().isParentMode;
+    final messenger = ScaffoldMessenger.of(context);
 
-    if (context.mounted) {
-      HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('🎉 +$total pts bonus pour ${child.name} !'),
-        backgroundColor: EmeraldPalette.emerald,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ));
-      setState(() => _checked.clear());
+    if (isParent) {
+      // Mode parent : appliquer direct
+      final total = await fp.validateChores(child.id, completed);
+      if (context.mounted) {
+        HapticFeedback.heavyImpact();
+        messenger.showSnackBar(SnackBar(
+          content: Text('🎉 +$total pts bonus pour ${child.name} !'),
+          backgroundColor: EmeraldPalette.emerald,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+        setState(() => _checked.clear());
+      }
+    } else {
+      // Mode enfant : créer une demande au parent
+      final total = completed.fold(0, (sum, c) => sum + c.points);
+      final labels = completed.map((c) => '${c.emoji} ${c.label}').join(', ');
+      await fp.createRequest(
+        type: 'bonus',
+        childId: child.id,
+        requestedBy: child.name,
+        text: '✅ Tâches du jour : $labels',
+        amount: total,
+      );
+      if (context.mounted) {
+        HapticFeedback.mediumImpact();
+        messenger.showSnackBar(SnackBar(
+          content: Text('Demande envoyée ! +$total pts en attente du parent.'),
+          backgroundColor: const Color(0xFF7C4DFF),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+        setState(() => _checked.clear());
+      }
     }
   }
 
@@ -176,12 +202,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     final labelCtrl = TextEditingController();
     final pointsCtrl = TextEditingController(text: '5');
     final allEmojis = ['✅', '🛏️', '🛌', '🍽️', '🪥', '📚', '🧸', '🗑️', '🐕', '🧹', '🚗', '👕', '🪴', '🍳', '🧽', '📦'];
+    String selectedEmoji = '✅'; // 🔧 FIX : déclaré AVANT le builder (pas à l'intérieur)
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          String selectedEmoji = '✅';
           return AlertDialog(
             backgroundColor: EmeraldPalette.surface,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
