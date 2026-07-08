@@ -665,16 +665,9 @@ class _AddPointsScreenState extends State<AddPointsScreen>
       builder: (context, provider, _) {
         final children = provider.children;
 
-        return AnimatedBackground(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: AnimatedBuilder(
-              animation: _bgColorAnim,
-              builder: (context, child) => Container(
-                color: _bgColorAnim.value,
-                child: child,
-              ),
-              child: SafeArea(
+        return Scaffold(
+            backgroundColor: const Color(0xFF051410),
+            body: SafeArea(
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
@@ -1263,9 +1256,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                     const SizedBox(height: 32),
                   ],
                 ),
-              ),
             ),
-          ),
         );
       },
     );

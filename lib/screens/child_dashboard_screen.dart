@@ -345,11 +345,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     Widget core;
     if (child.photoBase64.isNotEmpty) {
       if (child.isPhotoUrl) {
-        // URL Firebase Storage
+        // URL Firebase Storage — avec errorBuilder (fallback emoji si erreur)
         core = CircleAvatar(
             radius: radius,
             backgroundColor: color,
-            backgroundImage: NetworkImage(child.photoBase64));
+            child: ClipOval(
+              child: Image.network(
+                child.photoBase64,
+                fit: BoxFit.cover,
+                width: radius * 2,
+                height: radius * 2,
+                errorBuilder: (_, __, ___) => _letterAvatar(child, radius, color),
+              ),
+            ),
+          );
       } else {
         // base64 (ancien format ou offline)
         try {
@@ -1157,13 +1166,27 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: SizedBox(
-                      height: 200,               // â† PLUS GRANDE (100 → 200)
+                      height: 200,
                       width:  double.infinity,
-                      child: Image.memory(
-                        base64Decode(child.bannerBase64!),
-                        fit:       BoxFit.cover,
-                        alignment: Alignment.center, // â† CENTRÉ SUR LE VISAGE
-                      ),
+                      child: child.isBannerUrl
+                        ? Image.network(
+                            child.bannerBase64!,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFF1A2744),
+                              child: const Center(child: Icon(Icons.image, color: Colors.white24, size: 40)),
+                            ),
+                          )
+                        : Image.memory(
+                            base64Decode(child.bannerBase64!),
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFF1A2744),
+                              child: const Center(child: Icon(Icons.image, color: Colors.white24, size: 40)),
+                            ),
+                          ),
                     ),
                   ),
                   const SizedBox(height: 16),

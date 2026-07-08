@@ -511,36 +511,9 @@ class FamilyProvider extends ChangeNotifier {
 
     // 📸 COMPRESSION : réduire la taille avant stockage (3-5Mo → ~200Ko)
     final compressed = await ImageCompressor.compressBase64(base64Photo) ?? base64Photo;
-    child.photoBase64 = compressed; // local immédiat
+    child.photoBase64 = compressed;
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-
-    // Si connecté : uploader vers Storage (évite de stocker un gros base64 dans Firestore)
-    if (_firestore.isConnected && _firestore.familyId != null) {
-      try {
-        final url = await StorageService().uploadPhotoBase64(
-          familyId: _firestore.familyId!,
-          path: 'children/$childId/photo.jpg',
-          base64Data: compressed,
-        );
-        if (url != null) {
-          // On stocke l'URL à la place du base64 pour Firestore (léger)
-          // L'affichage local garde le base64 compressé, mais Firestore a l'URL.
-          final childForFirestore = getChild(childId);
-          if (childForFirestore != null) {
-            childForFirestore.photoBase64 = url;
-            await _firestore.saveChild(childForFirestore);
-            // On garde le base64 compressé en local Hive pour l'offline
-            child.photoBase64 = compressed;
-            await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-          }
-          return;
-        }
-      } catch (e) {
-        if (kDebugMode) debugPrint('updateChildPhoto Storage error: $e');
-      }
-      // Fallback : sauvegarder en base64 dans Firestore
-      await _firestore.saveChild(child);
-    }
+    if (_firestore.isConnected) await _firestore.saveChild(child);
     notifyListeners();
   }
 
@@ -548,34 +521,10 @@ class FamilyProvider extends ChangeNotifier {
     final child = getChild(childId);
     if (child == null) return;
 
-    // 📸 COMPRESSION
     final compressed = await ImageCompressor.compressBase64(base64Banner) ?? base64Banner;
     child.bannerBase64 = compressed;
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-
-    // Si connecté : uploader vers Storage
-    if (_firestore.isConnected && _firestore.familyId != null) {
-      try {
-        final url = await StorageService().uploadPhotoBase64(
-          familyId: _firestore.familyId!,
-          path: 'children/$childId/banner.jpg',
-          base64Data: compressed,
-        );
-        if (url != null) {
-          final childForFirestore = getChild(childId);
-          if (childForFirestore != null) {
-            childForFirestore.bannerBase64 = url;
-            await _firestore.saveChild(childForFirestore);
-            child.bannerBase64 = compressed;
-            await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-          }
-          return;
-        }
-      } catch (e) {
-        if (kDebugMode) debugPrint('updateChildBanner Storage error: $e');
-      }
-      await _firestore.saveChild(child);
-    }
+    if (_firestore.isConnected) await _firestore.saveChild(child);
     notifyListeners();
   }
 

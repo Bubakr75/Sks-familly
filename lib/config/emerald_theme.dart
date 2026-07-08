@@ -1043,12 +1043,19 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
                   children: [
                     // Photo : BoxFit.cover remplit TOUT le cadre (haut en bas)
                     if (widget.bannerPhotoBase64 != null && widget.bannerPhotoBase64!.isNotEmpty)
-                      Image.memory(
-                        _decodeBase64(widget.bannerPhotoBase64!),
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter, // Montre le HAUT (visage)
-                        errorBuilder: (_, __, ___) => _gradientBanner(accent),
-                      )
+                      widget.bannerPhotoBase64!.startsWith('http')
+                        ? Image.network(
+                            widget.bannerPhotoBase64!,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            errorBuilder: (_, __, ___) => _gradientBanner(accent),
+                          )
+                        : Image.memory(
+                            _decodeBase64(widget.bannerPhotoBase64!),
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            errorBuilder: (_, __, ___) => _gradientBanner(accent),
+                          )
                     else
                       _gradientBanner(accent),
                     // Dégradé sombre en bas pour la lisibilité du nom
