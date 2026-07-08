@@ -47,7 +47,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _navBarController;
-  final List<int> _protectedIndices = [1, 4];
+  final List<int> _protectedIndices = [4]; // Seulement Réglages protégé
 
   @override
   void initState() {

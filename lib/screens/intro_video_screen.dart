@@ -1,9 +1,8 @@
 // lib/screens/intro_video_screen.dart
 //
-// Écran d'intro : joue la vidéo assets/videos/intro.mp4 AVEC LE SON,
-// puis bascule vers l'app principale à la fin (ou bouton "Passer").
-//
-// Affiché au tout 1er démarrage (une fois par version, pour ne pas lasser).
+// Écran d'intro vidéo : joue la vidéo AVEC l'image ET le son.
+// Fix définitif de l'écran gris : utilise BoxFit.cover + Alignment.topCenter
+// au lieu de FittedBox qui causait le bug.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,7 +24,6 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
   @override
   void initState() {
     super.initState();
-    // Mode immersif plein écran pendant l'intro
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _initVideo();
   }
@@ -36,26 +34,28 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
       _controller = controller;
       await controller.initialize().timeout(const Duration(seconds: 10));
       if (!mounted) return;
+
       controller.setVolume(1.0);
       controller.setLooping(false);
       setState(() => _initialized = true);
+
       // Petit délai pour laisser l'UI peindre la 1ère frame
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 200));
       if (!mounted) return;
       await controller.play();
       controller.setVolume(1.0);
 
-      // À la fin de la vidéo → bascule vers l'app
+      // À la fin → bascule vers l'app
       controller.addListener(() {
-        final value = controller.value;
-        if (value.position >= value.duration &&
+        final v = controller.value;
+        if (v.position >= v.duration &&
             !_finished &&
-            value.duration > Duration.zero) {
+            v.duration > Duration.zero) {
           _goNext();
         }
       });
     } catch (e) {
-      // Si la vidéo ne charge pas, on passe directement à l'app
+      // Si la vidéo ne charge pas, on passe directement
       _goNext();
     }
   }
@@ -63,7 +63,6 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
   void _goNext() {
     if (_finished) return;
     _finished = true;
-    // Restaurer l'UI système normale
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     if (mounted) widget.onFinished();
   }
@@ -85,18 +84,22 @@ class _IntroVideoScreenState extends State<IntroVideoScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Vidéo plein écran via FittedBox + Center (compatible Android + Web)
+          // 🔧 FIX DÉFINITIF : BoxFit.cover remplit TOUT l'écran avec l'image
           if (isReady)
-            Center(
-              child: AspectRatio(
-                aspectRatio: controller!.value.aspectRatio,
-                child: VideoPlayer(controller),
+            SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: controller!.value.size.width,
+                  height: controller.value.size.height,
+                  child: VideoPlayer(controller),
+                ),
               ),
             )
           else
-            const SizedBox.shrink(), // fond noir pur pendant chargement
+            const SizedBox.shrink(),
 
-          // Bouton "Passer" (en bas à droite)
+          // Bouton "Passer" en bas à droite
           Positioned(
             bottom: 40,
             right: 24,

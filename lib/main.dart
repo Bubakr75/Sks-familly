@@ -49,9 +49,8 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
   @override
   void initState() {
     super.initState();
-    // 🚫 INTRO DÉSACTIVÉE (causait écran gris sur PC/web)
-    // L'app démarre directement, sans vidéo d'intro.
-    _initializeEverything();
+    // L'intro se joue à chaque démarrage
+    setState(() => _showIntro = true);
   }
 
   void _onIntroFinished() {
