@@ -160,6 +160,20 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
       if (kDebugMode) debugPrint('FamilyProvider init error: $e');
     }
 
+    // 🔧 FIX CRITIQUE : Ré-enregistrer le token FCM APRÈS que device_id soit généré
+    // (FamilyProvider.init() → FirestoreService.init() génère le device_id)
+    // Sans ça, au 1er lancement, le token n'est pas sauvé → pas de notifs parent !
+    if (firebaseReady) {
+      try {
+        await FcmService().registerToken().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => debugPrint('FCM re-register timeout'),
+        );
+      } catch (e) {
+        if (kDebugMode) debugPrint('FCM re-register error: $e');
+      }
+    }
+
     // Rappels de notifications (non bloquants, et uniquement hors web)
     if (!kIsWeb) {
       try {

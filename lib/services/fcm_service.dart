@@ -158,7 +158,20 @@ class FcmService {
     }
   }
 
+  /// Recharge le device_id local (appelé après que FirestoreService l'ait généré).
+  Future<void> refreshLocalDeviceId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _localDeviceId = prefs.getString('device_id');
+      if (kDebugMode) debugPrint('FCM: device_id rechargé = $_localDeviceId');
+    } catch (_) {}
+  }
+
   Future<void> registerToken() async {
+    // 🔧 FIX : recharger le device_id avant d'enregistrer le token
+    // (au 1er lancement, device_id n'existait pas pendant init())
+    await refreshLocalDeviceId();
+    await _saveToken();
     await _saveToken();
   }
 
