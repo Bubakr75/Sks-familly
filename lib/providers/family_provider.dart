@@ -363,6 +363,14 @@ class FamilyProvider extends ChangeNotifier {
       _saveBoxFromList(_parentProfilesBox, _parentProfiles, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
+    // 🔧 FIX : synchroniser les tâches (chores) depuis Firestore
+    _firestore.onChoresChanged = (list) {
+      _chores = list.map((d) => ChoreModel.fromMap(d)).toList();
+      _chores.sort((a, b) => a.order.compareTo(b.order));
+      // Sauvegarder en local
+      _saveBoxFromList(_choresBox, _chores, (e) => e.id, (e) => e.toMap());
+      notifyListeners();
+    };
   }
 
   // ───────────────────────────────────────────────────────────
@@ -1798,6 +1806,10 @@ class FamilyProvider extends ChangeNotifier {
         await addPoints(r.childId, r.amount, r.text,
             category: 'Bonus', isBonus: true);
         break;
+      case 'chore_checklist':
+        await addPoints(r.childId, r.amount, r.text,
+            category: 'ménage', isBonus: true);
+        break;
       case 'penalty':
         await addPoints(r.childId, r.amount, r.text,
             category: 'Pénalité', isBonus: false);
@@ -1970,12 +1982,27 @@ class FamilyProvider extends ChangeNotifier {
     );
     _chores.add(c);
     await _choresBox.put(c.id, jsonEncode(c.toMap()));
+    // 🔧 FIX : synchroniser sur Firestore pour que les enfants voient la tâche
+    if (_firestore.isConnected && _firestore.familyId != null) {
+      try {
+        await _firestore.saveChore(c.toMap(), c.id);
+      } catch (e) {
+        if (kDebugMode) debugPrint('addChore Firestore error: $e');
+      }
+    }
     notifyListeners();
   }
 
   Future<void> deleteChore(String id) async {
     _chores.removeWhere((c) => c.id == id);
     await _choresBox.delete(id);
+    if (_firestore.isConnected && _firestore.familyId != null) {
+      try {
+        await _firestore.deleteChore(id);
+      } catch (e) {
+        if (kDebugMode) debugPrint('deleteChore Firestore error: $e');
+      }
+    }
     notifyListeners();
   }
 

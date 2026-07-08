@@ -335,6 +335,13 @@ exports.onRequestCreated = functions.firestore
     const familyId = context.params.familyId;
     const sender = r.lastModifiedBy || "";
 
+    // 🤫 Pas de notification push pour les tâches checklist (évite le spam)
+    // Le parent verra la demande dans le badge cloche sans recevoir de notif
+    if (r.type === "chore_checklist") {
+      console.log("Chore checklist request (no push notification)");
+      return;
+    }
+
     var title = "🔔 Nouvelle demande";
     var body = r.text || "Une demande attend votre validation";
     var notifType = "request";

@@ -43,6 +43,7 @@ class FirestoreService {
   StreamSubscription? _requestsSub;
   StreamSubscription? _screenTimeSub;
   StreamSubscription? _parentProfilesSub;
+  StreamSubscription? _choresSub;
 
   Timer? _keepAliveTimer;
   DateTime _lastDataReceived = DateTime.now();
@@ -59,6 +60,7 @@ class FirestoreService {
   void Function(List<PendingRequest>)? onRequestsChanged;
   void Function(Map<String, dynamic>)? onScreenTimeChanged;
   void Function(List<ParentProfile>)? onParentProfilesChanged;
+  void Function(List<Map<String, dynamic>>)? onChoresChanged;
 
   // ─── Init ────────────────────────────────────────────────────
   Future<void> init() async {
@@ -395,6 +397,17 @@ class FirestoreService {
       list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
       onParentProfilesChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
+    // ─── Chores (tâches checklist) ───
+    _choresSub = fRef.collection('chores').snapshots().listen((s) {
+      _markDataReceived();
+      final list = s.docs.map((doc) {
+        final d = Map<String, dynamic>.from(doc.data());
+        d['id'] = doc.id;
+        return d;
+      }).toList();
+      onChoresChanged?.call(list);
+    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
   }
 
   void _stopListening() {
@@ -410,6 +423,7 @@ class FirestoreService {
     _requestsSub?.cancel();
     _screenTimeSub?.cancel();
     _parentProfilesSub?.cancel();
+    _choresSub?.cancel();
     _childrenSub = null;
     _historySub = null;
     _goalsSub = null;
@@ -817,6 +831,25 @@ class FirestoreService {
       await _db.collection('families').doc(_familyId).collection('purchases').add(data);
     } catch (e) {
       if (kDebugMode) debugPrint('savePurchase error: $e');
+    }
+  }
+
+  // ─── CHORES (tâches checklist) ──────────────────────────────
+  Future<void> saveChore(Map<String, dynamic> data, String id) async {
+    if (_familyId == null) return;
+    try {
+      await _db.collection('families').doc(_familyId).collection('chores').doc(id).set(data);
+    } catch (e) {
+      if (kDebugMode) debugPrint('saveChore error: $e');
+    }
+  }
+
+  Future<void> deleteChore(String id) async {
+    if (_familyId == null) return;
+    try {
+      await _db.collection('families').doc(_familyId).collection('chores').doc(id).delete();
+    } catch (e) {
+      if (kDebugMode) debugPrint('deleteChore error: $e');
     }
   }
 

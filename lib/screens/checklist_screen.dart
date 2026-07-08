@@ -175,11 +175,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         setState(() => _checked.clear());
       }
     } else {
-      // Mode enfant : créer une demande au parent
+      // Mode enfant : créer une demande SILENCIEUSE (pas de notif push)
+      // Le parent verra la demande dans le badge cloche sans recevoir de notification
       final total = completed.fold(0, (sum, c) => sum + c.points);
       final labels = completed.map((c) => '${c.emoji} ${c.label}').join(', ');
       await fp.createRequest(
-        type: 'bonus',
+        type: 'chore_checklist',
         childId: child.id,
         requestedBy: child.name,
         text: '✅ Tâches du jour : $labels',

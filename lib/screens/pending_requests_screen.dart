@@ -12,6 +12,7 @@ class PendingRequestsScreen extends StatelessWidget {
       case 'penalty':    return 'Pénalité';
       case 'immunity':   return 'Immunité';
       case 'bonus':      return 'Bonus';
+      case 'chore_checklist': return 'Tâches du jour';
       case 'tribunal':   return 'Tribunal';
       default:           return type;
     }
@@ -23,6 +24,7 @@ class PendingRequestsScreen extends StatelessWidget {
       case 'penalty':    return Icons.warning;
       case 'immunity':   return Icons.shield;
       case 'bonus':      return Icons.star;
+      case 'chore_checklist': return Icons.checklist_rounded;
       case 'tribunal':   return Icons.balance;
       default:           return Icons.help_outline;
     }
@@ -34,6 +36,7 @@ class PendingRequestsScreen extends StatelessWidget {
       case 'penalty':    return Colors.orange;
       case 'immunity':   return Colors.blue;
       case 'bonus':      return Colors.green;
+      case 'chore_checklist': return Colors.teal;
       case 'tribunal':   return Colors.purple;
       default:           return Colors.grey;
     }
