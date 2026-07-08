@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="SKS Family - Application familiale de points et récompenses">
+  <meta name="description" content="SKS Family - Application familiale de points et rÃ©compenses">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <!-- iOS / Safari meta tags (requis pour Web Push sur iPhone 16.4+) -->
@@ -25,7 +25,7 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
-    /* Fond NOIR PUR pour que la vidéo d'intro démarre sans logo ni écran gris */
+    /* Fond NOIR PUR pour que la vidÃ©o d'intro dÃ©marre sans logo ni Ã©cran gris */
     html, body {
       margin: 0;
       padding: 0;
@@ -34,7 +34,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    /* Splash de chargement : NOIR PUR, sans logo, pour transition invisible vers la vidéo */
+    /* Splash de chargement : NOIR PUR, sans logo, pour transition invisible vers la vidÃ©o */
     #loading {
       position: fixed;
       inset: 0;
@@ -53,7 +53,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Bannière d'installation iOS */
+    /* BanniÃ¨re d'installation iOS */
     #ios-install-banner {
       position: fixed;
       left: 12px; right: 12px;
@@ -86,40 +86,58 @@
   </style>
 </head>
 <body>
-  <!-- Splash : fond NOIR PUR (zéro logo, pour transition invisible vers la vidéo d'intro) -->
+  <div id="intro-overlay" style="position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;">
+    <video id="intro-video" src="videos/intro.mp4" autoplay muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>
+    <button id="intro-skip" style="position:absolute;top:40px;right:20px;background:rgba(0,0,0,0.5);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:15px;cursor:pointer;">Passer</button>
+    <button id="intro-sound" style="position:absolute;bottom:40px;right:20px;background:rgba(0,0,0,0.5);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:15px;cursor:pointer;">Activer le son</button>
+  </div>
+  <script>
+    (function(){
+      var ov = document.getElementById('intro-overlay');
+      var vid = document.getElementById('intro-video');
+      var skip = document.getElementById('intro-skip');
+      var snd = document.getElementById('intro-sound');
+      function hide(){ if(ov){ setTimeout(function(){ ov.style.transition='opacity 0.8s'; ov.style.opacity='0'; setTimeout(function(){ if(ov) ov.remove(); },850); }, 600); } }
+      if(vid){ vid.onended = hide; }
+      if(skip){ skip.onclick = hide; }
+      if(snd){ snd.onclick = function(){ if(vid){ vid.muted=false; vid.play(); snd.style.display='none'; } }; }
+      setTimeout(hide, 20000);
+    })();
+  </script>
+  <!-- Splash : fond NOIR PUR (zÃ©ro logo, pour transition invisible vers la vidÃ©o d'intro) -->
   <div id="loading"></div>
 
-  <!-- Bannière "Ajouter à l'écran d'accueil" pour iOS -->
+  <!-- BanniÃ¨re "Ajouter Ã  l'Ã©cran d'accueil" pour iOS -->
   <div id="ios-install-banner">
-    <span class="emoji">📲</span>
-    <span>Pour les notifications sur iPhone, ajoutez SKS à l'écran d'accueil : <b>Partager</b> <span style="font-size:16px">⎋</span> puis <b>Sur l'écran d'accueil</b></span>
-    <button class="close" id="ios-banner-close">✕</button>
+    <span class="emoji">ðŸ“²</span>
+    <span>Pour les notifications sur iPhone, ajoutez SKS Ã  l'Ã©cran d'accueil : <b>Partager</b> <span style="font-size:16px">âŽ‹</span> puis <b>Sur l'Ã©cran d'accueil</b></span>
+    <button class="close" id="ios-banner-close">âœ•</button>
   </div>
 
-  <!-- Flutter (bootstrap gère le chargement de l'app) -->
+  <!-- Flutter (bootstrap gÃ¨re le chargement de l'app) -->
   <script src="flutter_bootstrap.js" async></script>
 
   <script>
     // ============================================================
     // 1. ENREGISTREMENT DU SERVICE WORKER (firebase-messaging-sw.js)
-    //    Fait AVANT l'init Firebase côté Dart => notifs web fiabilisées
+    //    Fait AVANT l'init Firebase cÃ´tÃ© Dart => notifs web fiabilisÃ©es
     // ============================================================
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('firebase-messaging-sw.js')
           .then(function (reg) {
-            console.log('[SW] Service worker enregistré :', reg.scope);
+            console.log('[SW] Service worker enregistrÃ© :', reg.scope);
           })
           .catch(function (err) {
-            console.warn('[SW] Échec enregistrement service worker :', err);
+            console.warn('[SW] Ã‰chec enregistrement service worker :', err);
           });
       });
     }
 
     // ============================================================
-    // 2. MASQUER LE SPLASH de façon robuste
+    // 2. MASQUER LE SPLASH de faÃ§on robuste
     //    On attend l'apparition du <flutter-view> dans le DOM (polling
-    //    léger). Dès qu'il existe, on masque le splash. Garde-fou 10s.
+    //    lÃ©ger). DÃ¨s qu'il existe, on masque le splash. Garde-fou 10s.
     // ============================================================
     (function () {
       var loading = document.getElementById('loading');
@@ -133,11 +151,11 @@
         }, 600);
       }
 
-      // a) Dès que le flutter-view est présent => on masque
+      // a) DÃ¨s que le flutter-view est prÃ©sent => on masque
       function checkFlutterView() {
         var fv = document.querySelector('flutter-view');
         if (fv || document.querySelector('flt-glass-pane')) {
-          // petit délai pour laisser Flutter peindre sa 1re frame
+          // petit dÃ©lai pour laisser Flutter peindre sa 1re frame
           setTimeout(hideLoading, 300);
         } else {
           setTimeout(checkFlutterView, 250);
@@ -145,15 +163,15 @@
       }
       window.addEventListener('load', function () { checkFlutterView(); });
 
-      // b) Événement officiel Flutter (si dispo)
+      // b) Ã‰vÃ©nement officiel Flutter (si dispo)
       window.addEventListener('flutter-first-frame', hideLoading);
 
-      // c) Garde-fou absolu : masque après 10s quoi qu'il arrive
+      // c) Garde-fou absolu : masque aprÃ¨s 10s quoi qu'il arrive
       setTimeout(hideLoading, 10000);
     })();
 
     // ============================================================
-    // 3. PROMPT PWA + DÉTECTION iOS
+    // 3. PROMPT PWA + DÃ‰TECTION iOS
     // ============================================================
     (function () {
       function isStandalone() {
@@ -199,3 +217,5 @@
   </script>
 </body>
 </html>
+
+

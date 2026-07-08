@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -23,13 +23,13 @@ import 'services/update_service.dart';
 import 'widgets/mode_indicator.dart';
 
 void main() {
-  // ⚠️ On lance runApp() LE PLUS VITE POSSIBLE, puis on initialise les
-  // services en arrière-plan. Ainsi, même si un plugin hang sur web,
-  // l'app s'affiche avec un écran de chargement au lieu d'un écran blanc.
+  // âš ï¸ On lance runApp() LE PLUS VITE POSSIBLE, puis on initialise les
+  // services en arriÃ¨re-plan. Ainsi, mÃªme si un plugin hang sur web,
+  // l'app s'affiche avec un Ã©cran de chargement au lieu d'un Ã©cran blanc.
   runApp(const SKSBootstrap());
 }
 
-/// Widget de démarrage : affiche un splash puis lance l'initialisation
+/// Widget de dÃ©marrage : affiche un splash puis lance l'initialisation
 /// asynchrone des services (Hive, Firebase, providers...) sans bloquer.
 class SKSBootstrap extends StatefulWidget {
   const SKSBootstrap({super.key});
@@ -40,8 +40,8 @@ class SKSBootstrap extends StatefulWidget {
 class _SKSBootstrapState extends State<SKSBootstrap> {
   bool _ready = false;
   bool _showOnboarding = false;
-  bool _showIntro = false; // affiche la vidéo d'intro une fois
-  // Instances initialisées en arrière-plan, réutilisées par MultiProvider
+  bool _showIntro = false; // affiche la vidÃ©o d'intro une fois
+  // Instances initialisÃ©es en arriÃ¨re-plan, rÃ©utilisÃ©es par MultiProvider
   final FamilyProvider _familyProvider = FamilyProvider();
   final PinProvider _pinProvider = PinProvider();
   final ThemeProvider _themeProvider = ThemeProvider();
@@ -49,8 +49,9 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
   @override
   void initState() {
     super.initState();
-    // L'intro se joue à chaque démarrage
-    setState(() => _showIntro = true);
+    // L'intro se joue Ã  chaque dÃ©marrage
+    _showIntro = false; // intro geree en HTML dans index.html
+    _initializeEverything();
   }
 
   void _onIntroFinished() {
@@ -60,7 +61,7 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
   }
 
   Future<void> _initializeEverything() async {
-    // 1. Binding + Hive + intl (rapide et sûr)
+    // 1. Binding + Hive + intl (rapide et sÃ»r)
     try {
       await Hive.initFlutter();
     } catch (e) {
@@ -72,7 +73,7 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
       if (kDebugMode) debugPrint('intl init error: $e');
     }
 
-    // 2. Notifications (court-circuité sur web dans le service)
+    // 2. Notifications (court-circuitÃ© sur web dans le service)
     try {
       await NotificationService.init().timeout(
         const Duration(seconds: 5),
@@ -120,7 +121,7 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
 
     // 4. FCM (avec timeout)
     if (firebaseReady) {
-      // Authentification anonyme — OBLIGATOIRE avant Firestore (règles strictes)
+      // Authentification anonyme â€” OBLIGATOIRE avant Firestore (rÃ¨gles strictes)
       try {
         await AuthService().ensureConnected().timeout(
           const Duration(seconds: 8),
@@ -159,9 +160,9 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
       if (kDebugMode) debugPrint('FamilyProvider init error: $e');
     }
 
-    // 🔧 FIX CRITIQUE : Ré-enregistrer le token FCM APRÈS que device_id soit généré
-    // (FamilyProvider.init() → FirestoreService.init() génère le device_id)
-    // Sans ça, au 1er lancement, le token n'est pas sauvé → pas de notifs parent !
+    // ðŸ”§ FIX CRITIQUE : RÃ©-enregistrer le token FCM APRÃˆS que device_id soit gÃ©nÃ©rÃ©
+    // (FamilyProvider.init() â†’ FirestoreService.init() gÃ©nÃ¨re le device_id)
+    // Sans Ã§a, au 1er lancement, le token n'est pas sauvÃ© â†’ pas de notifs parent !
     if (firebaseReady) {
       try {
         await FcmService().registerToken().timeout(
@@ -201,7 +202,7 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    // Écran d'intro vidéo (1ère fois seulement)
+    // Ã‰cran d'intro vidÃ©o (1Ã¨re fois seulement)
     if (_showIntro) {
       return IntroVideoScreen(onFinished: _onIntroFinished);
     }
@@ -222,8 +223,8 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
   }
 }
 
-/// Splash Flutter : fond NOIR PUR (zéro logo), pour transition invisible
-/// vers la vidéo d'intro. Plus aucun écran gris/blanc/logo au démarrage.
+/// Splash Flutter : fond NOIR PUR (zÃ©ro logo), pour transition invisible
+/// vers la vidÃ©o d'intro. Plus aucun Ã©cran gris/blanc/logo au dÃ©marrage.
 class _SplashScreen extends StatelessWidget {
   const _SplashScreen();
 
@@ -260,7 +261,7 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
       if (kDebugMode) debugPrint('App resumed - reconnecting Firestore...');
       final familyProvider = context.read<FamilyProvider>();
       familyProvider.reconnectFirestore();
-      // 🚫 DÉSACTIVÉ : le mode parent ne bascule plus en mode enfant au retour
+      // ðŸš« DÃ‰SACTIVÃ‰ : le mode parent ne bascule plus en mode enfant au retour
       // final pin = context.read<PinProvider>();
       // if (pin.isPinSet && pin.isParentMode) {
       //   pin.lockParentMode();
@@ -334,3 +335,5 @@ class _StartupRouterState extends State<_StartupRouter> {
     return const ProfileSelectionScreen();
   }
 }
+
+
