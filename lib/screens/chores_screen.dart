@@ -293,9 +293,10 @@ class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMix
   void _confirmWinner(ChildModel winner, String choreName, List<ChildModel> allChildren) {
     final fp = context.read<FamilyProvider>();
     setState(() { _doneTodayMap[winner.id] = choreName; _winnerIndex = null; });
-    fp.addPoints(winner.id, 3, 'Tâche ménagère : $choreName', category: 'ménage', isBonus: true);
+    // Les points sont ajoutés directement (validation automatique)
+    fp.addQuickBonus(winner.id, '🎡 Roue : $choreName');
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('✅ ${winner.name} → $choreName (+3 pts)'),
+      content: Text('✅ ${winner.name} → $choreName (points bonus ajoutés !)'),
       backgroundColor: Colors.green.shade700,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

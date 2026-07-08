@@ -44,6 +44,7 @@ class FirestoreService {
   StreamSubscription? _screenTimeSub;
   StreamSubscription? _parentProfilesSub;
   StreamSubscription? _choresSub;
+  StreamSubscription? _rewardsSub;
 
   Timer? _keepAliveTimer;
   DateTime _lastDataReceived = DateTime.now();
@@ -61,6 +62,7 @@ class FirestoreService {
   void Function(Map<String, dynamic>)? onScreenTimeChanged;
   void Function(List<ParentProfile>)? onParentProfilesChanged;
   void Function(List<Map<String, dynamic>>)? onChoresChanged;
+  void Function(List<Map<String, dynamic>>)? onRewardsChanged;
 
   // ─── Init ────────────────────────────────────────────────────
   Future<void> init() async {
@@ -408,6 +410,17 @@ class FirestoreService {
       }).toList();
       onChoresChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
+    // ─── Récompenses boutique ───
+    _rewardsSub = fRef.collection('rewards').snapshots().listen((s) {
+      _markDataReceived();
+      final list = s.docs.map((doc) {
+        final d = Map<String, dynamic>.from(doc.data());
+        d['id'] = doc.id;
+        return d;
+      }).toList();
+      onRewardsChanged?.call(list);
+    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
   }
 
   void _stopListening() {
@@ -424,6 +437,7 @@ class FirestoreService {
     _screenTimeSub?.cancel();
     _parentProfilesSub?.cancel();
     _choresSub?.cancel();
+    _rewardsSub?.cancel();
     _childrenSub = null;
     _historySub = null;
     _goalsSub = null;

@@ -956,20 +956,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
-                // ─── Accès enfants : Pénalité / Immunité ───
-                // Accessible SANS PIN : en mode enfant, BalanceScreen crée
-                // une demande (createRequest) à valider par le parent.
-                // En mode parent, BalanceScreen applique directement.
-                _drawerItem(
-                  icon: Icons.assignment_late_rounded,
-                  label: 'Pénalité / Immunité',
-                  color: Colors.redAccent,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context,
-                        SlidePageRoute(page: const BalanceScreen()));
-                  },
-                ),
+                // ─── Pénalité / Immunité : PARENT UNIQUEMENT ───
+                if (isParent)
+                  _drawerItem(
+                    icon: Icons.assignment_late_rounded,
+                    label: 'Pénalité / Immunité',
+                    color: Colors.redAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context,
+                          SlidePageRoute(page: const BalanceScreen()));
+                    },
+                  ),
                 _drawerItem(
                   icon: Icons.auto_awesome_rounded,
                   label: 'Gemini AI',

@@ -371,6 +371,12 @@ class FamilyProvider extends ChangeNotifier {
       _saveBoxFromList(_choresBox, _chores, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
+    // 🔧 FIX : synchroniser les récompenses boutique depuis Firestore
+    _firestore.onRewardsChanged = (list) {
+      _rewards = list.map((d) => RewardModel.fromMap(d)).toList();
+      _saveBoxFromList(_rewardsBox, _rewards, (e) => e.id, (e) => e.toMap());
+      notifyListeners();
+    };
   }
 
   // ───────────────────────────────────────────────────────────
@@ -1790,28 +1796,31 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> approveRequest(String requestId) async {
+  Future<void> approveRequest(String requestId, {int? customAmount, String? comment}) async {
     PendingRequest? r;
     try { r = _pendingRequests.firstWhere((x) => x.id == requestId); }
     catch (_) { return; }
 
+    final amount = customAmount ?? r.amount;
+    final reason = comment != null && comment.isNotEmpty ? '${r.text} ($comment)' : r.text;
+
     switch (r.type) {
       case 'punishment':
-        await addPunishment(r.childId, r.text, r.amount);
+        await addPunishment(r.childId, r.text, amount);
         break;
       case 'immunity':
-        await addImmunity(r.childId, r.text, r.amount);
+        await addImmunity(r.childId, r.text, amount);
         break;
       case 'bonus':
-        await addPoints(r.childId, r.amount, r.text,
+        await addPoints(r.childId, amount, reason,
             category: 'Bonus', isBonus: true);
         break;
       case 'chore_checklist':
-        await addPoints(r.childId, r.amount, r.text,
+        await addPoints(r.childId, amount, reason,
             category: 'ménage', isBonus: true);
         break;
       case 'penalty':
-        await addPoints(r.childId, r.amount, r.text,
+        await addPoints(r.childId, amount, reason,
             category: 'Pénalité', isBonus: false);
         break;
       case 'tribunal':
@@ -1831,7 +1840,25 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> rejectRequest(String requestId) async {
+  /// Refuse une demande avec un message optionnel pour l'enfant.
+  Future<void> rejectRequest(String requestId, {String? reason}) async {
+    final r = _pendingRequests.where((x) => x.id == requestId).firstOrNull;
+    if (r != null && reason != null && reason.isNotEmpty) {
+      // Créer une entrée d'historique pour informer l'enfant du refus
+      final entry = HistoryEntry(
+        id: _uuid.v4(),
+        childId: r.childId,
+        points: 0,
+        reason: '❌ Demande refusée : $reason',
+        category: 'refus',
+        isBonus: false,
+        actionBy: _currentParentName,
+      );
+      _markPending(entry.id);
+      _history.insert(0, entry);
+      await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
+      if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
+    }
     _pendingRequests.removeWhere((x) => x.id == requestId);
     _markRequestDeleted(requestId);
     await _requestsBox.delete(requestId);

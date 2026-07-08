@@ -126,30 +126,14 @@ class PendingRequestsScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton.icon(
-                            onPressed: () async {
-                              await fp.rejectRequest(r.id);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Demande refusée')),
-                                );
-                              }
-                            },
+                            onPressed: () => _showRejectDialog(context, fp, r),
                             icon: const Icon(Icons.close, color: Colors.red),
                             label: const Text('Refuser',
                                 style: TextStyle(color: Colors.red)),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton.icon(
-                            onPressed: () async {
-                              await fp.approveRequest(r.id);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Demande approuvée')),
-                                );
-                              }
-                            },
+                            onPressed: () => _showApproveDialog(context, fp, r),
                             icon: const Icon(Icons.check),
                             label: const Text('Approuver'),
                           ),
@@ -162,6 +146,129 @@ class PendingRequestsScreen extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  /// Dialogue d'approbation avec modification des points + commentaire
+  void _showApproveDialog(BuildContext context, FamilyProvider fp, PendingRequest r) {
+    final amountCtrl = TextEditingController(text: r.amount.toString());
+    final commentCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F2620),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Valider la demande', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Enfant : ${fp.getChild(r.childId)?.name ?? "?"}', style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('Points : ', style: TextStyle(color: Colors.white70)),
+                Expanded(
+                  child: TextField(
+                    controller: amountCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.stars_rounded, color: Color(0xFFD4AF37)),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.06),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: commentCtrl,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: 'Commentaire (optionnel)',
+                labelStyle: const TextStyle(color: Colors.white54),
+                hintText: 'Ex: Bravo ! Continue comme ça',
+                hintStyle: const TextStyle(color: Colors.white24),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            onPressed: () async {
+              final amount = int.tryParse(amountCtrl.text.trim()) ?? r.amount;
+              Navigator.pop(ctx);
+              await fp.approveRequest(r.id, customAmount: amount, comment: commentCtrl.text.trim());
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('✅ Validé ! +$amount pts'), backgroundColor: Colors.green),
+                );
+              }
+            },
+            child: const Text('Valider', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Dialogue de refus avec message pour l'enfant
+  void _showRejectDialog(BuildContext context, FamilyProvider fp, PendingRequest r) {
+    final reasonCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F2620),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Refuser la demande', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Un message sera envoyé à ${fp.getChild(r.childId)?.name ?? "l'enfant"}.', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: 'Raison du refus',
+                labelStyle: const TextStyle(color: Colors.white54),
+                hintText: 'Ex: Tu as déjà eu ton bonus aujourd\'hui',
+                hintStyle: const TextStyle(color: Colors.white24),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await fp.rejectRequest(r.id, reason: reasonCtrl.text.trim());
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('❌ Demande refusée, message envoyé.'), backgroundColor: Colors.redAccent),
+                );
+              }
+            },
+            child: const Text('Refuser', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
