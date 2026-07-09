@@ -587,6 +587,46 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     );
   }
 
+  /// Ouvre un dialogue pour taper directement le nombre de points.
+  void _showDirectInput(BuildContext context) {
+    final ctrl = TextEditingController(text: _points.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F2620),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Nombre de points', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.06),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: _accentColor, foregroundColor: Colors.black),
+            onPressed: () {
+              final val = int.tryParse(ctrl.text.trim());
+              if (val != null && val > 0 && val <= 999) {
+                setState(() => _points = val);
+                HapticFeedback.selectionClick();
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (_isSubmitting) return;
 
@@ -1052,17 +1092,23 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                   enabled: _points > 1,
                                 ),
                                 const SizedBox(width: 24),
-                                TweenAnimationBuilder<int>(
-                                  tween: IntTween(
-                                      begin: _points, end: _points),
-                                  duration:
-                                      const Duration(milliseconds: 200),
-                                  builder: (context, val, _) => Text(
-                                    '$val',
-                                    style: TextStyle(
-                                      color: _accentColor,
-                                      fontSize: 48,
-                                      fontWeight: FontWeight.w900,
+                                // 🔧 Le chiffre est cliquable pour taper directement
+                                GestureDetector(
+                                  onTap: () => _showDirectInput(context),
+                                  child: TweenAnimationBuilder<int>(
+                                    tween: IntTween(
+                                        begin: _points, end: _points),
+                                    duration:
+                                        const Duration(milliseconds: 200),
+                                    builder: (context, val, _) => Text(
+                                      '$val',
+                                      style: TextStyle(
+                                        color: _accentColor,
+                                        fontSize: 48,
+                                        fontWeight: FontWeight.w900,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: _accentColor.withValues(alpha: 0.3),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1082,7 +1128,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                             const SizedBox(height: 10),
                             Wrap(
                               spacing: 6,
-                              children: [1, 2, 3, 5, 10, 20].map((val) {
+                              children: [1, 2, 3, 5, 10, 15, 20, 25, 50].map((val) {
                                 final isSelected = _points == val;
                                 return TvFocusWrapper(
                                   onTap: () {
