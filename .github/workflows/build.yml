@@ -30,7 +30,7 @@ jobs:
       - name: Regenerate Android folder
         run: |
           rm -rf android
-          flutter create --platforms android --org com.familyscore --project-name family_score .
+          flutter create --platforms android --org com.bubakr --project-name sks_family .
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
 
