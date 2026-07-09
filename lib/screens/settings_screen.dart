@@ -11,6 +11,7 @@ import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
 import 'family_screen.dart';
 import 'manage_children_screen.dart';
+import 'drawer_order_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key}); // ✅ super.key
@@ -490,9 +491,24 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  // Réorganiser le menu
+                  _animatedSection(
+                    index: 2,
+                    child: GlassCard(
+                      child: TvFocusWrapper(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DrawerOrderScreen())),
+                        child: _settingRow(
+                          icon: Icons.sort_rounded,
+                          iconColor: Colors.deepPurpleAccent,
+                          title: 'Réorganiser le menu',
+                          subtitle: 'Changer l\'ordre des onglets',
+                          trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
-
-                  // ─── Sécurité ────────────────────────────
                   _animatedSection(
                       index: 3,
                       child: _sectionTitle('🔐 Sécurité')),
@@ -693,6 +709,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     required IconData icon,
     required Color    iconColor,
     required String   title,
+    String? subtitle,
     required Widget   trailing,
   }) {
     return Padding(
@@ -710,9 +727,22 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  ),
+                ],
+              ],
             ),
           ),
           trailing,
