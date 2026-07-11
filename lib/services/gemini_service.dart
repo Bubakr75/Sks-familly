@@ -370,4 +370,64 @@ EXPLICATION: [courte explication educative]''';
     try { final response = await http.post(Uri.parse(_baseUrl + '?key=' + _apiKey), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'contents': contents, 'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1000}})).timeout(const Duration(seconds: 30));
     if (response.statusCode == 200) { final data = jsonDecode(response.body); return data['candidates'][0]['content']['parts'][0]['text'] as String; }
     return 'Je ne peux pas repondre pour le moment.'; } catch (e) { return 'Erreur de connexion.'; } }
+
+  // ── Analyse photo pour pénalité ──────────────────────────────
+  /// Analyse une photo et propose une pénalité adaptée.
+  /// Retourne : { 'reason': String, 'points': int, 'description': String }
+  static Future<Map<String, dynamic>> analyzePenaltyPhoto(String base64Image) async {
+    if (!_checkKey()) {
+      return {'reason': 'IA non configurée', 'points': 5, 'description': 'Configure la clé Gemini'};
+    }
+
+    // Nettoyer le préfixe data:image si présent
+    String cleanBase64 = base64Image;
+    if (cleanBase64.contains(',')) {
+      cleanBase64 = cleanBase64.split(',').last;
+    }
+
+    final prompt = '''Tu es un assistant parental bienveillant.
+Analyse cette photo d'une scène domestique où un enfant a mal agi.
+
+Identifie ce qui ne va (ex: chambre en désordre, jouets éparpillés, chose cassée, vetements par terre, vaisselle non rangée, etc.).
+
+Réponds EXACTEMENT dans ce format (une ligne par champ) :
+
+RAISON: [description courte de ce qui ne va, 5-10 mots]
+POINTS: [nombre de points à retirer, entre 3 et 20 selon la gravité]
+DESCRIPTION: [phrase bienveillante expliquant pourquoi c'est une pénalité, adaptée aux enfants]''';
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{
+            'parts': [
+              {'text': prompt},
+              {'inline_data': {'mime_type': 'image/jpeg', 'data': cleanBase64}},
+            ],
+          }],
+          'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 300},
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        final reason = _extract(text, 'RAISON');
+        final pointsStr = _extract(text, 'POINTS');
+        final description = _extract(text, 'DESCRIPTION');
+
+        return {
+          'reason': reason.isNotEmpty ? reason : 'Pénalité',
+          'points': int.tryParse(pointsStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 5,
+          'description': description.isNotEmpty ? description : 'Comportement à améliorer',
+        };
+      }
+      return {'reason': 'Erreur analyse', 'points': 5, 'description': 'Impossible d\'analyser la photo'};
+    } catch (e) {
+      if (kDebugMode) debugPrint('analyzePenaltyPhoto error: $e');
+      return {'reason': 'Erreur de connexion', 'points': 5, 'description': 'Réessaie'};
+    }
+  }
 }

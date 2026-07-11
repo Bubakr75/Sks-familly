@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../services/gemini_service.dart';
 import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
@@ -588,6 +589,63 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   }
 
   /// Ouvre un dialogue pour taper directement le nombre de points.
+  /// Prend une photo, l'envoie à Gemini Vision, et propose une pénalité auto.
+  Future<void> _analyzePenaltyPhoto(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    // 1. Prendre la photo
+    final xfile = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+      maxWidth: 800,
+    );
+    if (xfile == null) return;
+    final bytes = await xfile.readAsBytes();
+    final base64Photo = base64Encode(bytes);
+
+    // 2. Afficher un loader
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        backgroundColor: Color(0xFF0F2620),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Colors.deepPurpleAccent),
+            SizedBox(height: 16),
+            Text('🔍 Analyse de la photo...', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+
+    // 3. Analyser avec Gemini
+    final result = await GeminiService.analyzePenaltyPhoto(base64Photo);
+
+    if (context.mounted) Navigator.pop(context); // Fermer le loader
+
+    if (!context.mounted) return;
+
+    // 4. Pré-remplir les champs avec le résultat
+    setState(() {
+      _reasonCtrl.text = result['reason'] ?? 'Pénalité';
+      _reason = '';
+      _points = result['points'] ?? 5;
+      _photoBase64 = base64Photo;
+    });
+
+    // 5. Afficher le résultat
+    messenger.showSnackBar(SnackBar(
+      content: Text('🤖 IA : ${result['reason']} (${result['points']} pts)\n${result['description']}'),
+      backgroundColor: Colors.deepPurpleAccent,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
+  }
+
   void _showDirectInput(BuildContext context) {
     final ctrl = TextEditingController(text: _points.toString());
     showDialog(
@@ -942,6 +1000,65 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                       ),
                     const SizedBox(height: 16),
+
+                    // ─── Pénalité par photo IA (Gemini Vision) ───
+                    if (!_isBonus && _selectedChildId != null) ...[
+                      GlassCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.camera_alt_rounded, color: Colors.deepPurpleAccent, size: 20),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      'Pénalité par photo IA',
+                                      style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Prends une photo de la scène → l\'IA identifie la pénalité automatiquement',
+                                style: TextStyle(color: Colors.white38, fontSize: 11),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurpleAccent,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                  icon: const Icon(Icons.photo_camera_rounded),
+                                  label: const Text('Analyser avec l\'IA', style: TextStyle(fontWeight: FontWeight.w600)),
+                                  onPressed: () => _analyzePenaltyPhoto(context),
+                                ),
+                              ),
+                              // Aperçu de la photo prise
+                              if (_photoBase64 != null && !_isBonus) ...[
+                                const SizedBox(height: 10),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.memory(
+                                    base64Decode(_photoBase64!),
+                                    height: 120,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // ─── Raisons rapides ────────────────────
                     GlassCard(
