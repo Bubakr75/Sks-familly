@@ -430,4 +430,59 @@ DESCRIPTION: [phrase bienveillante expliquant pourquoi c'est une pénalité, ada
       return {'reason': 'Erreur de connexion', 'points': 5, 'description': 'Réessaie'};
     }
   }
+
+  // ── Saisie en langage naturel ────────────────────────────────
+  /// Analyse une phrase du parent et déduit le type + les points.
+  /// Ex: "Adam a rangé sa chambre" → {type: bonus, points: 10, reason: "Rangé sa chambre"}
+  /// Ex: "Sara a fait une crise" → {type: penalty, points: 8, reason: "Crise"}
+  static Future<Map<String, dynamic>> parseNaturalLanguage(String text) async {
+    if (!_checkKey()) {
+      return {'type': 'error', 'points': 0, 'reason': 'IA non configurée'};
+    }
+
+    final prompt = '''Tu es un assistant pour une application familiale de gestion de points.
+Analyse cette phrase d'un parent et déduis ce qu'il faut faire.
+
+Phrase: "$text"
+
+Réponds EXACTEMENT dans ce format (une ligne par champ):
+
+TYPE: [bonus ou penalty]
+POINTS: [nombre entre 3 et 25 selon la gravité/importance]
+RAISON: [résumé court en français, 3-8 mots, sans le nom de l'enfant]
+
+Règles:
+- Une bonne action, une aide, un effort = bonus (3-20 pts)
+- Une bêtise, une désobéissance, un mensonge = penalty (3-15 pts)
+- Sois cohérent : "ranger sa chambre" = 10pts, "aide spontanée" = 15pts, "insolence" = 8pts''';
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl + '?key=' + _apiKey),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{'parts': [{'text': prompt}]}],
+          'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 150},
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        final type = _extract(text, 'TYPE').toLowerCase();
+        final pointsStr = _extract(text, 'POINTS');
+        final reason = _extract(text, 'RAISON');
+
+        return {
+          'type': type.contains('bonus') ? 'bonus' : 'penalty',
+          'points': int.tryParse(pointsStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 5,
+          'reason': reason.isNotEmpty ? reason : text,
+        };
+      }
+      return {'type': 'error', 'points': 0, 'reason': 'Erreur IA'};
+    } catch (e) {
+      if (kDebugMode) debugPrint('parseNaturalLanguage error: $e');
+      return {'type': 'error', 'points': 0, 'reason': 'Erreur connexion'};
+    }
+  }
 }

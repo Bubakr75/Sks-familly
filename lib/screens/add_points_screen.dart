@@ -590,6 +590,127 @@ class _AddPointsScreenState extends State<AddPointsScreen>
 
   /// Ouvre un dialogue pour taper directement le nombre de points.
   /// Prend une photo, l'envoie à Gemini Vision, et propose une pénalité auto.
+  final TextEditingController _nlCtrl = TextEditingController();
+  bool _nlLoading = false;
+
+  /// Champ de saisie en langage naturel (IA Gemini)
+  Widget _buildNaturalLanguageInput(BuildContext context, List<ChildModel> children) {
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.auto_awesome_rounded, color: Colors.deepPurpleAccent, size: 18),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Saisie rapide IA',
+                    style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (_nlLoading)
+                  const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.deepPurpleAccent)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tape ce qui s\'est passé, l\'IA fait le reste',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _nlCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    enabled: !_nlLoading,
+                    decoration: InputDecoration(
+                      hintText: 'ex: "Adam a rangé sa chambre"',
+                      hintStyle: const TextStyle(color: Colors.white24),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.06),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                    onSubmitted: (_) => _processNaturalLanguage(context, children),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Colors.deepPurpleAccent, Colors.purpleAccent]),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: Colors.deepPurpleAccent.withValues(alpha: 0.3), blurRadius: 8)],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.send_rounded, color: Colors.white),
+                    onPressed: _nlLoading ? null : () => _processNaturalLanguage(context, children),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processNaturalLanguage(BuildContext context, List<ChildModel> children) async {
+    final text = _nlCtrl.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _nlLoading = true);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Analyser avec Gemini
+    final result = await GeminiService.parseNaturalLanguage(text);
+
+    if (!mounted) return;
+    setState(() => _nlLoading = false);
+
+    if (result['type'] == 'error') {
+      messenger.showSnackBar(SnackBar(
+        content: Text('❌ ${result['reason']}'),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
+    // Appliquer le résultat
+    final isBonus = result['type'] == 'bonus';
+    final points = result['points'] as int;
+    final reason = result['reason'] as String;
+
+    // Pré-remplir les champs
+    setState(() {
+      _isBonus = isBonus;
+      _points = points;
+      _reason = reason;
+      _reasonCtrl.text = reason;
+      _nlCtrl.clear();
+    });
+
+    if (isBonus) {
+      _toggleCtrl.reverse();
+    } else {
+      _toggleCtrl.forward();
+    }
+
+    HapticFeedback.selectionClick();
+
+    messenger.showSnackBar(SnackBar(
+      content: Text('🤖 IA : ${isBonus ? "Bonus" : "Pénalité"} de $points pts\n"$reason"'),
+      backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 3),
+    ));
+  }
+
   Future<void> _analyzePenaltyPhoto(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
 
@@ -791,6 +912,11 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+
+                    // ─── Saisie rapide IA (langage naturel) ───
+                    _buildNaturalLanguageInput(context, children),
+
                     const SizedBox(height: 20),
 
                     // ─── Toggle Bonus / Pénalité ────────────
