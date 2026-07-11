@@ -100,7 +100,7 @@ class _QuickShortcutFabState extends State<QuickShortcutFab>
                 boxShadow: [
                   BoxShadow(
                     color: (_isOpen ? Colors.redAccent : Colors.cyanAccent)
-                        .withOpacity(0.45),
+                        .withValues(alpha: 0.45),
                     blurRadius: 16,
                     spreadRadius: 2,
                   ),
@@ -136,12 +136,12 @@ class _QuickPanel extends StatelessWidget {
       width: 260,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1B2E).withOpacity(0.97),
+        color: const Color(0xFF0D1B2E).withValues(alpha: 0.97),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.cyanAccent.withOpacity(0.2)),
+        border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 20,
               offset: const Offset(0, 8)),
         ],
@@ -277,7 +277,7 @@ class _ShortcutTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10)),
             child: Icon(icon, color: color, size: 18),
           ),
@@ -327,8 +327,8 @@ Widget _childSelector(
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: isSel
-                  ? Colors.cyanAccent.withOpacity(0.18)
-                  : Colors.white.withOpacity(0.06),
+                  ? Colors.cyanAccent.withValues(alpha: 0.18)
+                  : Colors.white.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
                   color: isSel ? Colors.cyanAccent : Colors.white24),
@@ -400,8 +400,8 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: isSel
-                              ? Colors.greenAccent.withOpacity(0.18)
-                              : Colors.white.withOpacity(0.06),
+                              ? Colors.greenAccent.withValues(alpha: 0.18)
+                              : Colors.white.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                               color: isSel
@@ -513,8 +513,8 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: isSel
-                              ? Colors.redAccent.withOpacity(0.18)
-                              : Colors.white.withOpacity(0.06),
+                              ? Colors.redAccent.withValues(alpha: 0.18)
+                              : Colors.white.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                               color:
@@ -631,10 +631,10 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
+                      color: Colors.white.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: Colors.purpleAccent.withOpacity(0.4)),
+                          color: Colors.purpleAccent.withValues(alpha: 0.4)),
                     ),
                     child: Row(children: [
                       const Icon(Icons.calendar_today_rounded,
@@ -670,8 +670,8 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: isSel
-                              ? Colors.purpleAccent.withOpacity(0.18)
-                              : Colors.white.withOpacity(0.06),
+                              ? Colors.purpleAccent.withValues(alpha: 0.18)
+                              : Colors.white.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                               color: isSel
@@ -739,8 +739,8 @@ void _showQuickDayNote(BuildContext context, FamilyProvider fp,
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: noteValue == v
-                                ? color.withOpacity(0.2)
-                                : Colors.white.withOpacity(0.05),
+                                ? color.withValues(alpha: 0.2)
+                                : Colors.white.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                                 color: noteValue == v
@@ -844,8 +844,8 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: isSel
-                              ? Colors.orangeAccent.withOpacity(0.18)
-                              : Colors.white.withOpacity(0.06),
+                              ? Colors.orangeAccent.withValues(alpha: 0.18)
+                              : Colors.white.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                               color: isSel
@@ -870,7 +870,7 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                     hintText: 'Ou motif personnalisé...',
                     hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.06),
+                    fillColor: Colors.white.withValues(alpha: 0.06),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none),
@@ -900,8 +900,8 @@ void _showQuickPunishment(BuildContext context, FamilyProvider fp) {
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? Colors.orangeAccent.withOpacity(0.18)
-                                : Colors.white.withOpacity(0.06),
+                                ? Colors.orangeAccent.withValues(alpha: 0.18)
+                                : Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                                 color: isSel
@@ -1005,8 +1005,8 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: isSel
-                              ? Colors.amberAccent.withOpacity(0.18)
-                              : Colors.white.withOpacity(0.06),
+                              ? Colors.amberAccent.withValues(alpha: 0.18)
+                              : Colors.white.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                               color: isSel
@@ -1041,8 +1041,8 @@ void _showQuickImmunity(BuildContext context, FamilyProvider fp) {
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? Colors.amberAccent.withOpacity(0.18)
-                                : Colors.white.withOpacity(0.06),
+                                ? Colors.amberAccent.withValues(alpha: 0.18)
+                                : Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                                 color: isSel
@@ -1135,11 +1135,11 @@ void _showQuickScreenTime(BuildContext context, FamilyProvider fp) {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.lightBlueAccent.withOpacity(0.12),
+                          color: Colors.lightBlueAccent.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                               color:
-                                  Colors.lightBlueAccent.withOpacity(0.4)),
+                                  Colors.lightBlueAccent.withValues(alpha: 0.4)),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1252,7 +1252,7 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.15),
+                                color: color.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
@@ -1337,9 +1337,9 @@ Widget _statChip(String label, Color color) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: color.withOpacity(0.3)),
+      border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
     child: Text(label,
         style: TextStyle(
@@ -1423,7 +1423,7 @@ class _PointStepper extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.white24),
                   ),
@@ -1451,7 +1451,7 @@ class _PointStepper extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.white24),
                   ),

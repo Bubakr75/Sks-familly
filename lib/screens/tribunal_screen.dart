@@ -120,11 +120,11 @@ class _TribunalScreenState extends State<TribunalScreen>
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.gavel,
-              size: 70, color: Colors.white.withOpacity(0.1)),
+              size: 70, color: Colors.white.withValues(alpha: 0.1)),
           const SizedBox(height: 16),
           Text('Aucune affaire en cours',
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   fontSize: 16)),
         ]),
       );
@@ -143,11 +143,11 @@ class _TribunalScreenState extends State<TribunalScreen>
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.archive,
-              size: 70, color: Colors.white.withOpacity(0.1)),
+              size: 70, color: Colors.white.withValues(alpha: 0.1)),
           const SizedBox(height: 16),
           Text('Aucune affaire classee',
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   fontSize: 16)),
         ]),
       );
@@ -179,7 +179,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
+                    color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(statusText,
@@ -334,7 +334,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                 child: Center(
                   child: Text('🔒 Mode parent requis pour agir',
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
+                          color: Colors.white.withValues(alpha: 0.4),
                           fontSize: 13)),
                 ),
               ),
@@ -377,9 +377,9 @@ class _TribunalScreenState extends State<TribunalScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: color.withOpacity(0.4)),
+                border: Border.all(color: color.withValues(alpha: 0.4)),
               ),
               child: Center(
                 child: Text(label,
@@ -423,7 +423,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                   const TextStyle(color: Colors.white70),
               enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(
-                      color: Colors.purple.withOpacity(0.5)),
+                      color: Colors.purple.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(12)),
               focusedBorder: OutlineInputBorder(
                   borderSide:
@@ -449,7 +449,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                   const TextStyle(color: Colors.white70),
               enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(
-                      color: Colors.purple.withOpacity(0.5)),
+                      color: Colors.purple.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(12)),
               focusedBorder: OutlineInputBorder(
                   borderSide:
@@ -530,7 +530,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                     enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
                             color:
-                                Colors.purple.withOpacity(0.5)),
+                                Colors.purple.withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(12)),
                     focusedBorder: OutlineInputBorder(
                         borderSide: const BorderSide(
@@ -550,7 +550,7 @@ class _TribunalScreenState extends State<TribunalScreen>
                     enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
                             color:
-                                Colors.purple.withOpacity(0.5)),
+                                Colors.purple.withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(12)),
                     focusedBorder: OutlineInputBorder(
                         borderSide: const BorderSide(
@@ -582,8 +582,8 @@ class _TribunalScreenState extends State<TribunalScreen>
                                     ? Colors.amber
                                     : Colors.white70)),
                         backgroundColor: selected
-                            ? Colors.amber.withOpacity(0.2)
-                            : Colors.white.withOpacity(0.1),
+                            ? Colors.amber.withValues(alpha: 0.2)
+                            : Colors.white.withValues(alpha: 0.1),
                         side: selected
                             ? const BorderSide(color: Colors.amber)
                             : BorderSide.none,
@@ -613,8 +613,8 @@ class _TribunalScreenState extends State<TribunalScreen>
                                     ? Colors.redAccent
                                     : Colors.white70)),
                         backgroundColor: selected
-                            ? Colors.redAccent.withOpacity(0.2)
-                            : Colors.white.withOpacity(0.1),
+                            ? Colors.redAccent.withValues(alpha: 0.2)
+                            : Colors.white.withValues(alpha: 0.1),
                         side: selected
                             ? const BorderSide(
                                 color: Colors.redAccent)

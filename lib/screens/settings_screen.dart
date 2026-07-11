@@ -315,7 +315,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text('Remettre les scores à zéro ?'),
           ],
         ),
@@ -350,7 +350,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         title: const Row(
           children: [
             Icon(Icons.delete_forever_rounded, color: Colors.redAccent),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text('Effacer tout l\'historique ?'),
           ],
         ),

@@ -77,7 +77,7 @@ class _StatsScreenState extends State<StatsScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('📊', style: TextStyle(fontSize: 60)),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text('Aucun enfant enregistré',
                           style: TextStyle(
                               color: Colors.white54, fontSize: 16)),
@@ -184,7 +184,7 @@ class _StatsScreenState extends State<StatsScreen>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF7C4DFF).withOpacity(0.15),
+                color: const Color(0xFF7C4DFF).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.timeline_rounded,
@@ -212,17 +212,17 @@ class _StatsScreenState extends State<StatsScreen>
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF7C4DFF).withOpacity(0.2),
+                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: const Color(0xFF7C4DFF).withOpacity(0.5)),
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.5)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.open_in_full_rounded,
                         color: Color(0xFF7C4DFF), size: 14),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text('Tout voir',
                         style: TextStyle(
                             color: Color(0xFF7C4DFF),
@@ -257,7 +257,7 @@ class _StatsScreenState extends State<StatsScreen>
                     decoration: BoxDecoration(
                       color: selected
                           ? const Color(0xFF7C4DFF)
-                          : Colors.white.withOpacity(0.07),
+                          : Colors.white.withValues(alpha: 0.07),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: selected
@@ -322,9 +322,9 @@ class _StatsScreenState extends State<StatsScreen>
         Container(
           height: 420,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
+            color: Colors.white.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -335,7 +335,7 @@ class _StatsScreenState extends State<StatsScreen>
                       children: [
                         Icon(Icons.timeline_rounded,
                             color: Colors.white24, size: 48),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Text('Aucun événement',
                             style: TextStyle(
                                 color: Colors.white54, fontSize: 15)),
@@ -355,9 +355,9 @@ class _StatsScreenState extends State<StatsScreen>
       padding:
           const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -370,7 +370,7 @@ class _StatsScreenState extends State<StatsScreen>
           const SizedBox(width: 4),
           Text(label,
               style: TextStyle(
-                  color: color.withOpacity(0.7), fontSize: 11)),
+                  color: color.withValues(alpha: 0.7), fontSize: 11)),
         ],
       ),
     );
@@ -391,7 +391,7 @@ class _StatsScreenState extends State<StatsScreen>
           children: [
             const Row(children: [
               Text('🏅', style: TextStyle(fontSize: 20)),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text('Comparaison des scores',
                   style: TextStyle(
                       color: Colors.white,
@@ -461,7 +461,7 @@ class _StatsScreenState extends State<StatsScreen>
                                 height: 14,
                                 decoration: BoxDecoration(
                                     color:
-                                        Colors.white.withOpacity(0.1),
+                                        Colors.white.withValues(alpha: 0.1),
                                     borderRadius:
                                         BorderRadius.circular(6))),
                             FractionallySizedBox(
@@ -473,14 +473,14 @@ class _StatsScreenState extends State<StatsScreen>
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(colors: [
                                     color,
-                                    color.withOpacity(0.6)
+                                    color.withValues(alpha: 0.6)
                                   ]),
                                   borderRadius:
                                       BorderRadius.circular(6),
                                   boxShadow: [
                                     BoxShadow(
                                         color:
-                                            color.withOpacity(0.4),
+                                            color.withValues(alpha: 0.4),
                                         blurRadius: 6)
                                   ],
                                 ),
@@ -564,9 +564,9 @@ class _StatsScreenState extends State<StatsScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
+                      color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: color.withOpacity(0.4)),
+                      border: Border.all(color: color.withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -629,9 +629,9 @@ class _StatsScreenState extends State<StatsScreen>
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,
                                 colors: isPositive
-                                    ? [color.withOpacity(0.4), color]
+                                    ? [color.withValues(alpha: 0.4), color]
                                     : [
-                                        Colors.red.withOpacity(0.4),
+                                        Colors.red.withValues(alpha: 0.4),
                                         Colors.red
                                       ],
                               ),
@@ -641,7 +641,7 @@ class _StatsScreenState extends State<StatsScreen>
                                     color: (isPositive
                                             ? color
                                             : Colors.red)
-                                        .withOpacity(0.3),
+                                        .withValues(alpha: 0.3),
                                     blurRadius: 4)
                               ],
                             ),
@@ -712,10 +712,10 @@ class _StatsScreenState extends State<StatsScreen>
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: card.color.withOpacity(0.15),
+                            color: card.color.withValues(alpha: 0.15),
                             boxShadow: [
                               BoxShadow(
-                                  color: card.color.withOpacity(0.3),
+                                  color: card.color.withValues(alpha: 0.3),
                                   blurRadius: 8)
                             ]),
                         child: Icon(card.icon,

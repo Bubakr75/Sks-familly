@@ -49,7 +49,7 @@ class UpdateService {
           title: const Row(
             children: [
               Icon(Icons.system_update, color: Color(0xFF7C4DFF)),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Text('Mise a jour', style: TextStyle(color: Colors.white)),
             ],
           ),
@@ -96,7 +96,7 @@ class UpdateService {
         content: Row(
           children: [
             SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Text('Telechargement en cours...'),
           ],
         ),

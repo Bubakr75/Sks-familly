@@ -119,7 +119,7 @@ class _ConfettiPainter extends CustomPainter {
       final opacity = t > 0.7 ? (1.0 - (t - 0.7) / 0.3) : 1.0;
       if (opacity <= 0) continue;
 
-      final paint = Paint()..color = p.color.withOpacity(opacity.clamp(0.0, 1.0));
+      final paint = Paint()..color = p.color.withValues(alpha: opacity.clamp(0.0, 1.0));
 
       canvas.save();
       canvas.translate(px, py);

@@ -91,7 +91,7 @@ class _OrbitLoadingPainter extends CustomPainter {
 
     // Draw orbit ring
     final ringPaint = Paint()
-      ..color = color.withOpacity(0.15)
+      ..color = color.withValues(alpha: 0.15)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     canvas.drawCircle(center, radius, ringPaint);
@@ -108,23 +108,23 @@ class _OrbitLoadingPainter extends CustomPainter {
       final opacity = (1.0 - i * 0.25).clamp(0.3, 1.0);
 
       final dotPaint = Paint()
-        ..color = color.withOpacity(opacity)
+        ..color = color.withValues(alpha: opacity)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, dotSize * 0.5);
       canvas.drawCircle(Offset(dotX, dotY), dotSize, dotPaint);
 
       // Bright core
-      final corePaint = Paint()..color = Colors.white.withOpacity(opacity * 0.8);
+      final corePaint = Paint()..color = Colors.white.withValues(alpha: opacity * 0.8);
       canvas.drawCircle(Offset(dotX, dotY), dotSize * 0.4, corePaint);
     }
 
     // Center glow
     final centerGlow = Paint()
-      ..color = color.withOpacity(0.1 + 0.1 * math.sin(progress * 12.5664))
+      ..color = color.withValues(alpha: 0.1 + 0.1 * math.sin(progress * 12.5664))
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     canvas.drawCircle(center, 6, centerGlow);
 
     final centerCore = Paint()
-      ..color = color.withOpacity(0.5);
+      ..color = color.withValues(alpha: 0.5);
     canvas.drawCircle(center, 3, centerCore);
   }
 
@@ -182,9 +182,9 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
               begin: Alignment(-1.5 + 3 * _controller.value, 0),
               end: Alignment(-0.5 + 3 * _controller.value, 0),
               colors: [
-                Colors.white.withOpacity(0.04),
-                Colors.white.withOpacity(0.1),
-                Colors.white.withOpacity(0.04),
+                Colors.white.withValues(alpha: 0.04),
+                Colors.white.withValues(alpha: 0.1),
+                Colors.white.withValues(alpha: 0.04),
               ],
             ),
           ),

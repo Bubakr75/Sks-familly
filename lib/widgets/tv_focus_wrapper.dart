@@ -96,7 +96,7 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
                   border: _isFocused
                       ? Border.all(
                           color: widget.focusBorderColor
-                              .withOpacity(_glowAnim.value),
+                              .withValues(alpha: _glowAnim.value),
                           width: widget.focusBorderWidth,
                         )
                       : Border.all(
@@ -108,14 +108,14 @@ class _TvFocusWrapperState extends State<TvFocusWrapper>
                           // Inner glow
                           BoxShadow(
                             color: widget.focusBorderColor
-                                .withOpacity(0.2 * _glowAnim.value),
+                                .withValues(alpha: 0.2 * _glowAnim.value),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
                           // Outer glow
                           BoxShadow(
                             color: widget.focusBorderColor
-                                .withOpacity(0.15 * _glowAnim.value),
+                                .withValues(alpha: 0.15 * _glowAnim.value),
                             blurRadius: 20,
                             spreadRadius: 2,
                           ),

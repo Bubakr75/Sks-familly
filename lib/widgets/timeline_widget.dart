@@ -130,7 +130,7 @@ class TimelineWidget extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.timeline_rounded, color: Colors.white24, size: 64),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Aucun événement',
               style: TextStyle(
@@ -138,7 +138,7 @@ class TimelineWidget extends StatelessWidget {
                   fontSize: 18,
                   fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'L\'historique apparaîtra ici.',
               style: TextStyle(color: Colors.white30, fontSize: 13),
@@ -182,7 +182,7 @@ class TimelineWidget extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.18),
+                    color: color.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                     border: Border.all(color: color, width: 1.5),
                   ),
@@ -212,7 +212,7 @@ class TimelineWidget extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.2),
+                            color: color.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(

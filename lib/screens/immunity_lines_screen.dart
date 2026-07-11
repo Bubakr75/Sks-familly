@@ -120,7 +120,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                   labelStyle: const TextStyle(color: Colors.white70),
                   enabledBorder: OutlineInputBorder(
                       borderSide: BorderSide(
-                          color: Colors.greenAccent.withOpacity(0.5)),
+                          color: Colors.greenAccent.withValues(alpha: 0.5)),
                       borderRadius: BorderRadius.circular(12)),
                   focusedBorder: OutlineInputBorder(
                       borderSide:
@@ -148,7 +148,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                   ],
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: Colors.greenAccent.withOpacity(0.2),
+                    fillColor: Colors.greenAccent.withValues(alpha: 0.2),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none),
@@ -166,7 +166,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                       label: Text('$n',
                           style: const TextStyle(
                               color: Colors.white70)),
-                      backgroundColor: Colors.white.withOpacity(0.1),
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
                     ),
                   );
                 }).toList(),
@@ -190,7 +190,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     border: Border.all(
-                        color: Colors.greenAccent.withOpacity(0.5)),
+                        color: Colors.greenAccent.withValues(alpha: 0.5)),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(children: [
@@ -365,10 +365,10 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                       padding:
                           const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade900.withOpacity(0.5),
+                        color: Colors.red.shade900.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                            color: Colors.redAccent.withOpacity(0.5)),
+                            color: Colors.redAccent.withValues(alpha: 0.5)),
                       ),
                       child: const Center(
                         child: Text('🗑️ Supprimer',
@@ -434,7 +434,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12)),
                         child: const Icon(Icons.arrow_back,
                             color: Colors.white),
@@ -468,11 +468,11 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
                             color: const Color(0xFF7C4DFF)
-                                .withOpacity(0.2),
+                                .withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                                 color: const Color(0xFF7C4DFF)
-                                    .withOpacity(0.5)),
+                                    .withValues(alpha: 0.5)),
                           ),
                           child: const Icon(Icons.timeline_rounded,
                               color: Color(0xFF7C4DFF), size: 20),
@@ -494,7 +494,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.add, color: Colors.white, size: 20),
-                            SizedBox(width: 4),
+                            const SizedBox(width: 4),
                             Text('Ajouter',
                                 style: TextStyle(
                                     color: Colors.white,
@@ -531,8 +531,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                               decoration: BoxDecoration(
                                 color: selected
                                     ? Colors.greenAccent
-                                        .withOpacity(0.3)
-                                    : Colors.white.withOpacity(0.1),
+                                        .withValues(alpha: 0.3)
+                                    : Colors.white.withValues(alpha: 0.1),
                                 borderRadius:
                                     BorderRadius.circular(20),
                                 border: selected
@@ -609,8 +609,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                             decoration: BoxDecoration(
                               color: _tabIndex == 0
                                   ? Colors.greenAccent
-                                      .withOpacity(0.2)
-                                  : Colors.white.withOpacity(0.05),
+                                      .withValues(alpha: 0.2)
+                                  : Colors.white.withValues(alpha: 0.05),
                               borderRadius:
                                   BorderRadius.circular(12),
                               border: Border.all(
@@ -656,8 +656,8 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                             decoration: BoxDecoration(
                               color: _tabIndex == 1
                                   ? const Color(0xFF7C4DFF)
-                                      .withOpacity(0.2)
-                                  : Colors.white.withOpacity(0.05),
+                                      .withValues(alpha: 0.2)
+                                  : Colors.white.withValues(alpha: 0.05),
                               borderRadius:
                                   BorderRadius.circular(12),
                               border: Border.all(
@@ -769,7 +769,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                       Container(
                         width: 48, height: 48,
                         decoration: BoxDecoration(
-                          color: _statusColor(imm).withOpacity(0.2),
+                          color: _statusColor(imm).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Icon(_statusIcon(imm),
@@ -806,7 +806,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.greenAccent.withOpacity(0.2),
+                            color: Colors.greenAccent.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text('Utilisable',
@@ -877,18 +877,18 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7C4DFF).withOpacity(0.2),
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                           color:
-                              const Color(0xFF7C4DFF).withOpacity(0.5)),
+                              const Color(0xFF7C4DFF).withValues(alpha: 0.5)),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.open_in_full_rounded,
                             color: Color(0xFF7C4DFF), size: 14),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Text('Tout voir',
                             style: TextStyle(
                                 color: Color(0xFF7C4DFF),
@@ -910,7 +910,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
                     children: [
                       Icon(Icons.timeline_rounded,
                           color: Colors.white24, size: 56),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text('Aucun historique lié aux immunités',
                           style: TextStyle(
                               color: Colors.white54, fontSize: 15)),
@@ -941,9 +941,9 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -956,7 +956,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
           const SizedBox(width: 4),
           Text(label,
               style: TextStyle(
-                  color: color.withOpacity(0.7), fontSize: 11)),
+                  color: color.withValues(alpha: 0.7), fontSize: 11)),
         ],
       ),
     );

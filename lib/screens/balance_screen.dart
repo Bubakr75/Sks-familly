@@ -152,8 +152,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? Colors.orangeAccent.withOpacity(0.18)
-                                : Colors.white.withOpacity(0.06),
+                                ? Colors.orangeAccent.withValues(alpha: 0.18)
+                                : Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                                 color: isSel
@@ -178,7 +178,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                       hintText: 'Ou motif personnalisé...',
                       hintStyle: const TextStyle(color: Colors.white38),
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.06),
+                      fillColor: Colors.white.withValues(alpha: 0.06),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide.none),
@@ -208,8 +208,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                               horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? Colors.orangeAccent.withOpacity(0.18)
-                                : Colors.white.withOpacity(0.06),
+                                ? Colors.orangeAccent.withValues(alpha: 0.18)
+                                : Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                                 color: isSel
@@ -255,10 +255,10 @@ class _BalanceScreenState extends State<BalanceScreen>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.orangeAccent.withOpacity(0.08),
+                        color: Colors.orangeAccent.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: Colors.orangeAccent.withOpacity(0.3)),
+                            color: Colors.orangeAccent.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         '⚠️ ${selectedChildren.length} punitions de $nbLines lignes seront créées',
@@ -410,8 +410,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? Colors.amberAccent.withOpacity(0.18)
-                                : Colors.white.withOpacity(0.06),
+                                ? Colors.amberAccent.withValues(alpha: 0.18)
+                                : Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                                 color: isSel
@@ -445,8 +445,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                               horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? Colors.amberAccent.withOpacity(0.18)
-                                : Colors.white.withOpacity(0.06),
+                                ? Colors.amberAccent.withValues(alpha: 0.18)
+                                : Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                                 color: isSel
@@ -515,7 +515,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.06),
+                        color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                             color: expiresAt != null
@@ -554,10 +554,10 @@ class _BalanceScreenState extends State<BalanceScreen>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.amberAccent.withOpacity(0.08),
+                        color: Colors.amberAccent.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: Colors.amberAccent.withOpacity(0.3)),
+                            color: Colors.amberAccent.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         ' ${selectedChildren.length} immunités de $nbLines lignes seront créées',
@@ -687,8 +687,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isSel
-                              ? Colors.redAccent.withOpacity(0.15)
-                              : Colors.white.withOpacity(0.05),
+                              ? Colors.redAccent.withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                               color:
@@ -736,8 +736,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isSel
-                              ? Colors.amberAccent.withOpacity(0.15)
-                              : Colors.white.withOpacity(0.05),
+                              ? Colors.amberAccent.withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                               color: isSel
@@ -912,13 +912,13 @@ class _BalanceScreenState extends State<BalanceScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF0D1B2E).withOpacity(0.97),
+          color: const Color(0xFF0D1B2E).withValues(alpha: 0.97),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           border: Border(
-              top: BorderSide(color: Colors.cyanAccent.withOpacity(0.2))),
+              top: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.2))),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 blurRadius: 16,
                 offset: const Offset(0, -4)),
           ],
@@ -1015,16 +1015,16 @@ class _BalanceScreenState extends State<BalanceScreen>
           border: Border.all(
             color: isSelected
                 ? Colors.cyanAccent
-                : Colors.white.withOpacity(0.08),
+                : Colors.white.withValues(alpha: 0.08),
             width: isSelected ? 2 : 1,
           ),
           color: isSelected
-              ? Colors.cyanAccent.withOpacity(0.07)
-              : Colors.white.withOpacity(0.04),
+              ? Colors.cyanAccent.withValues(alpha: 0.07)
+              : Colors.white.withValues(alpha: 0.04),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                      color: Colors.cyanAccent.withOpacity(0.15),
+                      color: Colors.cyanAccent.withValues(alpha: 0.15),
                       blurRadius: 12,
                       spreadRadius: 1)
                 ]
@@ -1061,7 +1061,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   ),
                   CircleAvatar(
                     radius: 22,
-                    backgroundColor: Colors.cyanAccent.withOpacity(0.2),
+                    backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
                     backgroundImage: child.hasPhoto
                         ? MemoryImage(base64Decode(child.photoBase64!))
                         : null,
@@ -1095,10 +1095,10 @@ class _BalanceScreenState extends State<BalanceScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.amberAccent.withOpacity(0.15),
+                        color: Colors.amberAccent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: Colors.amberAccent.withOpacity(0.4)),
+                            color: Colors.amberAccent.withValues(alpha: 0.4)),
                       ),
                       child: Text(' $usableImmunity',
                           style: const TextStyle(
@@ -1120,7 +1120,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                           ? Colors.white24
                           : Colors.redAccent),
                   _statBadge('✅ $completedCount terminées',
-                      Colors.greenAccent.withOpacity(0.5)),
+                      Colors.greenAccent.withValues(alpha: 0.5)),
                   _statBadge(
                       ' ${immunities.length} immunités',
                       immunities.isEmpty
@@ -1159,7 +1159,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                           child: LinearProgressIndicator(
                             value: progress,
                             minHeight: 5,
-                            backgroundColor: Colors.white.withOpacity(0.08),
+                            backgroundColor: Colors.white.withValues(alpha: 0.08),
                             valueColor: AlwaysStoppedAnimation(
                               progress >= 0.75
                                   ? Colors.greenAccent
@@ -1228,7 +1228,7 @@ class _BalanceScreenState extends State<BalanceScreen>
       children: [
         CircleAvatar(
           radius: 16,
-          backgroundColor: Colors.cyanAccent.withOpacity(0.2),
+          backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
           backgroundImage: child.hasPhoto
               ? MemoryImage(base64Decode(child.photoBase64!))
               : null,
@@ -1251,9 +1251,9 @@ class _BalanceScreenState extends State<BalanceScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(label,
           style: TextStyle(

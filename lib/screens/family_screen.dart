@@ -110,7 +110,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text('Se déconnecter ?'),
           ],
         ),
@@ -157,7 +157,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         title: const Row(
           children: [
             Icon(Icons.edit_rounded, color: Colors.blue),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text('Modifier le code famille'),
           ],
         ),
@@ -242,7 +242,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         title: const Row(
           children: [
             Icon(Icons.error_rounded, color: Color(0xFFFF1744)),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text('Erreur de connexion'),
           ],
         ),

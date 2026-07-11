@@ -52,7 +52,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text('📭', style: TextStyle(fontSize: 48)),
-                              SizedBox(height: 12),
+                              const SizedBox(height: 12),
                               Text('Aucune entrée',
                                   style: TextStyle(
                                       color: Colors.white54, fontSize: 16)),
@@ -132,8 +132,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             height: 42,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withOpacity(0.15),
-              border: Border.all(color: color.withOpacity(0.4)),
+              color: color.withValues(alpha: 0.15),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
             ),
             child: Center(
               child: Text(
@@ -187,9 +187,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: color.withOpacity(0.4)),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
             ),
             child: Text(
               '$sign${entry.points} pts',

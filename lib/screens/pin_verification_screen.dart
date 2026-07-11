@@ -311,7 +311,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen>
         title: const Row(
           children: [
             Icon(Icons.lock_reset_rounded, color: EmeraldPalette.warning),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text('Réinitialiser le PIN', style: TextStyle(color: EmeraldPalette.textPrimary)),
           ],
         ),

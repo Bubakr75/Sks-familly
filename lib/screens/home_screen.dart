@@ -174,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 CircleAvatar(
                                   radius: 22,
                                   backgroundColor:
-                                      Colors.cyanAccent.withOpacity(0.2),
+                                      Colors.cyanAccent.withValues(alpha: 0.2),
                                   child: Text(
                                     child.name.isNotEmpty
                                         ? child.name[0].toUpperCase()
@@ -288,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         color: (isPositive
                                                 ? Colors.green
                                                 : Colors.red)
-                                            .withOpacity(0.15),
+                                            .withValues(alpha: 0.15),
                                         borderRadius:
                                             BorderRadius.circular(12),
                                       ),
@@ -332,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
                                           color: Colors.cyanAccent
-                                              .withOpacity(0.15),
+                                              .withValues(alpha: 0.15),
                                           borderRadius:
                                               BorderRadius.circular(8),
                                         ),
@@ -439,8 +439,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: isSel
-                                      ? Colors.cyanAccent.withOpacity(0.2)
-                                      : Colors.white.withOpacity(0.06),
+                                      ? Colors.cyanAccent.withValues(alpha: 0.2)
+                                      : Colors.white.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                       color: isSel
@@ -494,7 +494,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         decoration: BoxDecoration(
                                             shape: BoxShape.circle,
                                             color:
-                                                color.withOpacity(0.15)),
+                                                color.withValues(alpha: 0.15)),
                                         child: Icon(icon,
                                             color: color, size: 20),
                                       ),
@@ -603,7 +603,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
                                             color: Colors.red
-                                                .withOpacity(0.1),
+                                                .withValues(alpha: 0.1),
                                           ),
                                           child: const Icon(
                                               Icons.delete_outline,
@@ -728,10 +728,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             parent: _navBarController, curve: Curves.easeOutCubic)),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF0D1B2E).withOpacity(0.95),
+            color: const Color(0xFF0D1B2E).withValues(alpha: 0.95),
             border: Border(
                 top: BorderSide(
-                    color: Colors.cyanAccent.withOpacity(0.15), width: 0.5)),
+                    color: Colors.cyanAccent.withValues(alpha: 0.15), width: 0.5)),
           ),
           child: SafeArea(
             top: false,
@@ -823,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  accentColor.withOpacity(0.15),
+                  accentColor.withValues(alpha: 0.15),
                   Colors.transparent,
                 ],
               ),
@@ -836,13 +836,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   height: 56,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
-                      accentColor.withOpacity(0.3),
-                      accentColor.withOpacity(0.1),
+                      accentColor.withValues(alpha: 0.3),
+                      accentColor.withValues(alpha: 0.1),
                     ]),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                          color: accentColor.withOpacity(0.2),
+                          color: accentColor.withValues(alpha: 0.2),
                           blurRadius: 12)
                     ],
                   ),
@@ -860,12 +860,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Text(
                   isParent ? widget.parentName : '👦 Mode Enfant',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.6), fontSize: 14),
+                      color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
                 ),
               ],
             ),
           ),
-          Divider(color: Colors.white.withOpacity(0.08), height: 1),
+          Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1085,7 +1085,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             padding: const EdgeInsets.all(16),
             child: Text('v5.0.0',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.2), fontSize: 12)),
+                    color: Colors.white.withValues(alpha: 0.2), fontSize: 12)),
           ),
         ]),
       ),
@@ -1111,7 +1111,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10)),
               alignment: Alignment.center,
               child: Icon(icon, color: color, size: 20),
@@ -1125,7 +1125,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       fontWeight: FontWeight.w500)),
             ),
             Icon(Icons.chevron_right_rounded,
-                color: Colors.white.withOpacity(0.2), size: 20),
+                color: Colors.white.withValues(alpha: 0.2), size: 20),
           ]),
         ),
       ),

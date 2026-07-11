@@ -113,25 +113,25 @@ class _GlassCardState extends State<GlassCard>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.white.withOpacity(0.12),
-                          Colors.white.withOpacity(0.05),
-                          Colors.white.withOpacity(0.02),
+                          Colors.white.withValues(alpha: 0.12),
+                          Colors.white.withValues(alpha: 0.05),
+                          Colors.white.withValues(alpha: 0.02),
                         ],
                       ),
                       border: Border.all(
                         color: widget.borderColor ??
-                            (widget.glowColor ?? Colors.cyan).withOpacity(0.12),
+                            (widget.glowColor ?? Colors.cyan).withValues(alpha: 0.12),
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
                         BoxShadow(
                           color: (widget.glowColor ?? Colors.cyan)
-                              .withOpacity(0.05),
+                              .withValues(alpha: 0.05),
                           blurRadius: 20,
                           spreadRadius: -2,
                         ),
@@ -178,9 +178,9 @@ class _ShimmerPainter extends CustomPainter {
       ..shader = LinearGradient(
         colors: [
           Colors.transparent,
-          glowColor.withOpacity(0.06),
-          Colors.white.withOpacity(0.1),
-          glowColor.withOpacity(0.06),
+          glowColor.withValues(alpha: 0.06),
+          Colors.white.withValues(alpha: 0.1),
+          glowColor.withValues(alpha: 0.06),
           Colors.transparent,
         ],
         stops: const [0.0, 0.3, 0.5, 0.7, 1.0],
@@ -203,9 +203,9 @@ class _ShimmerPainter extends CustomPainter {
         startAngle: progress * 6.2832,
         colors: [
           Colors.transparent,
-          glowColor.withOpacity(0.15),
+          glowColor.withValues(alpha: 0.15),
           Colors.transparent,
-          glowColor.withOpacity(0.08),
+          glowColor.withValues(alpha: 0.08),
           Colors.transparent,
         ],
         stops: const [0.0, 0.25, 0.5, 0.75, 1.0],

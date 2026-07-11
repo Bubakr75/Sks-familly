@@ -178,7 +178,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
           const SizedBox(height: 8),
           Text('Je connais toutes les donnees de ta famille.\nPose-moi n importe quelle question !',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14)),
           const SizedBox(height: 32),
           const Align(alignment: Alignment.centerLeft,
             child: Text('Suggestions :', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold))),
@@ -194,9 +194,9 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.cyanAccent.withOpacity(0.3)),
+                  border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
                   const Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 16),
@@ -237,7 +237,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
                 gradient: isUser
                   ? const LinearGradient(colors: [Colors.purple, Colors.deepPurple])
                   : null,
-                color: isUser ? null : Colors.white.withOpacity(0.08),
+                color: isUser ? null : Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(content, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
@@ -264,7 +264,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
           ),
           child: const Text('...', style: TextStyle(color: Colors.cyanAccent, fontSize: 18, letterSpacing: 4)),
@@ -277,8 +277,8 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+        color: Colors.black.withValues(alpha: 0.3),
+        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
       ),
       child: Row(
         children: [
@@ -288,16 +288,16 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Pose ta question...',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
+                fillColor: Colors.white.withValues(alpha: 0.05),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
+                  borderSide: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
+                  borderSide: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),

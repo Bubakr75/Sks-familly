@@ -414,7 +414,7 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                       content: Row(children: [
                         Icon(Icons.check_circle_rounded,
                             color: Colors.white, size: 18),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(isEdit ? 'Profil modifie !' : 'Profil cree !'),
                       ]),
                       backgroundColor: EmeraldPalette.emerald,

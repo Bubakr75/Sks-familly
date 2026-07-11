@@ -60,7 +60,7 @@ class _RotatingTrophyState extends State<_RotatingTrophy>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                  color: Colors.amber.withOpacity(glowOpacity * 0.4),
+                  color: Colors.amber.withValues(alpha: glowOpacity * 0.4),
                   blurRadius: 15,
                   spreadRadius: 2),
             ],
@@ -163,7 +163,7 @@ class _BadgeUnlockedAnimationState extends State<_BadgeUnlockedAnimation>
           // Fond légèrement teinté
           Container(
               color:
-                  Colors.amber.withOpacity(0.05 * (1 - _mainCtrl.value))),
+                  Colors.amber.withValues(alpha: 0.05 * (1 - _mainCtrl.value))),
           // Étincelles
           CustomPaint(
               size: Size.infinite,
@@ -176,14 +176,12 @@ class _BadgeUnlockedAnimationState extends State<_BadgeUnlockedAnimation>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(colors: [
-                Colors.amber.withOpacity(
-                    0.2 * _emojiScale.value.clamp(0.0, 1.0)),
-                Colors.amber.withOpacity(0.0),
+                Colors.amber.withValues(alpha: 0.2 * _emojiScale.value.clamp(0.0, 1.0)),
+                Colors.amber.withValues(alpha: 0.0),
               ]),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.amber.withOpacity(
-                        0.2 * _emojiScale.value.clamp(0.0, 1.0)),
+                    color: Colors.amber.withValues(alpha: 0.2 * _emojiScale.value.clamp(0.0, 1.0)),
                     blurRadius: 40,
                     spreadRadius: 10),
               ],
@@ -257,7 +255,7 @@ class _SparkPainter extends CustomPainter {
         Offset(dx, dy),
         s.size,
         Paint()
-          ..color = s.color.withOpacity(opacity * 0.7)
+          ..color = s.color.withValues(alpha: opacity * 0.7)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, s.size),
       );
     }
@@ -374,7 +372,7 @@ class BadgesScreen extends StatelessWidget {
                                 children: [
                                 Text('👶',
                                     style: TextStyle(fontSize: 48)),
-                                SizedBox(height: 12),
+                                const SizedBox(height: 12),
                                 Text('Ajoutez des enfants pour commencer',
                                     style:
                                         TextStyle(color: Colors.white60)),
@@ -540,8 +538,7 @@ class BadgesScreen extends StatelessWidget {
                                                     Text('${val.round()}%',
                                                         style: TextStyle(
                                                             color: Colors.amber
-                                                                .withOpacity(
-                                                                    0.8),
+                                                                .withValues(alpha: 0.8),
                                                             fontWeight:
                                                                 FontWeight.bold,
                                                             fontSize: 14)),
@@ -557,7 +554,7 @@ class BadgesScreen extends StatelessWidget {
                                                 Text('Prochain: ',
                                                     style: TextStyle(
                                                         color: Colors.white
-                                                            .withOpacity(0.4),
+                                                            .withValues(alpha: 0.4),
                                                         fontSize: 11)),
                                                 Text(nextBadge.powerEmoji,
                                                     style: const TextStyle(
@@ -568,8 +565,7 @@ class BadgesScreen extends StatelessWidget {
                                                         '${nextBadge.name} (${nextBadge.requiredPoints} pts)',
                                                         style: TextStyle(
                                                             color: Colors.white
-                                                                .withOpacity(
-                                                                    0.5),
+                                                                .withValues(alpha: 0.5),
                                                             fontSize: 11),
                                                         overflow: TextOverflow
                                                             .ellipsis)),
@@ -616,11 +612,9 @@ class BadgesScreen extends StatelessWidget {
                                                             BoxDecoration(
                                                           color: unlocked
                                                               ? Colors.green
-                                                                  .withOpacity(
-                                                                      0.2)
+                                                                  .withValues(alpha: 0.2)
                                                               : Colors.white
-                                                                  .withOpacity(
-                                                                      0.05),
+                                                                  .withValues(alpha: 0.05),
                                                           borderRadius:
                                                               BorderRadius
                                                                   .circular(12),
@@ -628,8 +622,7 @@ class BadgesScreen extends StatelessWidget {
                                                               color: unlocked
                                                                   ? Colors
                                                                       .greenAccent
-                                                                      .withOpacity(
-                                                                          0.5)
+                                                                      .withValues(alpha: 0.5)
                                                                   : Colors
                                                                       .white12),
                                                         ),
@@ -812,8 +805,8 @@ class BadgesScreen extends StatelessWidget {
                             horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: selected
-                              ? Colors.white.withOpacity(0.15)
-                              : Colors.white.withOpacity(0.05),
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                           border: selected
                               ? Border.all(
@@ -839,7 +832,7 @@ class BadgesScreen extends StatelessWidget {
                     labelText: 'Nom du pouvoir',
                     labelStyle: const TextStyle(color: Colors.white60),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.1),
+                    fillColor: Colors.white.withValues(alpha: 0.1),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none))),
@@ -851,7 +844,7 @@ class BadgesScreen extends StatelessWidget {
                     labelText: 'Description',
                     labelStyle: const TextStyle(color: Colors.white60),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.1),
+                    fillColor: Colors.white.withValues(alpha: 0.1),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none))),
@@ -864,7 +857,7 @@ class BadgesScreen extends StatelessWidget {
                     labelText: 'Points requis (min. 1)',
                     labelStyle: const TextStyle(color: Colors.white60),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.1),
+                    fillColor: Colors.white.withValues(alpha: 0.1),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none))),

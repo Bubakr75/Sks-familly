@@ -118,8 +118,7 @@ class _FlipCounterState extends State<FlipCounter>
           child: Text(
             '$displayVal',
             style: style.copyWith(
-              color: style.color?.withOpacity(
-                  showNew ? progress * 2 - 1 : 1 - progress * 2),
+              color: style.color?.withValues(alpha: showNew ? progress * 2 - 1 : 1 - progress * 2),
             ),
           ),
         );
@@ -160,12 +159,12 @@ class AnimatedPoints extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withOpacity(0.3)),
+                border: Border.all(color: color.withValues(alpha: 0.3)),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.2),
                     blurRadius: 8,
                   ),
                 ],

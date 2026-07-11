@@ -44,7 +44,7 @@ class PinGuard {
         content: const Row(
           children: [
             Icon(Icons.lock, color: Colors.white, size: 20),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text('Action protegee - Entrez le code parental'),
           ],
         ),

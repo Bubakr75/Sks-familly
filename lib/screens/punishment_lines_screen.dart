@@ -239,7 +239,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text('🎉', style: TextStyle(fontSize: 48)),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text('Aucune punition en cours !', style: TextStyle(color: Colors.white54, fontSize: 16)),
           ],
         ),
@@ -392,9 +392,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text('🛡️', style: TextStyle(fontSize: 48)),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text('Aucune immunite disponible', style: TextStyle(color: Colors.white54, fontSize: 16)),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text('Gagnez des immunites en reussissant les quiz !',
                 style: TextStyle(color: Colors.white38, fontSize: 12), textAlign: TextAlign.center),
           ],
@@ -486,7 +486,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.edit_document, color: Colors.redAccent, size: 16),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text('Appliquer sur une punition',
                             style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600)),
                       ],

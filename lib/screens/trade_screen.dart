@@ -88,7 +88,7 @@ class _HandshakeAnimationState extends State<_HandshakeAnimation>
       animation: Listenable.merge([_mainCtrl, _sparkCtrl]),
       builder: (context, _) {
         return Stack(alignment: Alignment.center, children: [
-          Container(color: Colors.amber.withOpacity(0.04 * (1 - _mainCtrl.value))),
+          Container(color: Colors.amber.withValues(alpha: 0.04 * (1 - _mainCtrl.value))),
           if (_sparkCtrl.isAnimating || _sparkCtrl.isCompleted)
             CustomPaint(
                 size: Size.infinite,
@@ -144,7 +144,7 @@ class _SparkDotPainter extends CustomPainter {
       final opacity = (1.0 - t).clamp(0.0, 1.0);
       canvas.drawCircle(Offset(dx, dy), s.size,
           Paint()
-            ..color = s.color.withOpacity(opacity * 0.8)
+            ..color = s.color.withValues(alpha: opacity * 0.8)
             ..maskFilter = MaskFilter.blur(BlurStyle.normal, s.size));
     }
   }
@@ -213,14 +213,14 @@ class _TradeCelebrationState extends State<_TradeCelebration>
                       curve: const Interval(0.15, 0.45, curve: Curves.elasticOut))),
               child: const Column(mainAxisSize: MainAxisSize.min, children: [
                 Text('🎉', style: TextStyle(fontSize: 52)),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text('VENTE VALIDÉE !',
                     style: TextStyle(
                         color: Colors.greenAccent,
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 3)),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text('Immunités transférées',
                     style: TextStyle(color: Colors.white70, fontSize: 14)),
               ]),
@@ -256,7 +256,7 @@ class _ConfettiRectPainter extends CustomPainter {
         RRect.fromRectAndRadius(
             Rect.fromCenter(center: Offset.zero, width: c.size, height: c.size * 0.5),
             const Radius.circular(1)),
-        Paint()..color = c.color.withOpacity(opacity),
+        Paint()..color = c.color.withValues(alpha: opacity),
       );
       canvas.restore();
     }
@@ -428,17 +428,17 @@ class _TradeScreenState extends State<TradeScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [
-          const Color(0xFF00E676).withOpacity(0.12),
-          const Color(0xFF00E676).withOpacity(0.04)
+          const Color(0xFF00E676).withValues(alpha: 0.12),
+          const Color(0xFF00E676).withValues(alpha: 0.04)
         ]),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF00E676).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-              color: const Color(0xFF00E676).withOpacity(0.15),
+              color: const Color(0xFF00E676).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12)),
           child: const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 24),
         ),
@@ -465,13 +465,13 @@ class _TradeScreenState extends State<TradeScreen>
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
                 color: available > 0
-                    ? const Color(0xFF00E676).withOpacity(0.2)
-                    : Colors.white.withOpacity(0.05),
+                    ? const Color(0xFF00E676).withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color: available > 0
-                        ? const Color(0xFF00E676).withOpacity(0.5)
-                        : Colors.white.withOpacity(0.1))),
+                        ? const Color(0xFF00E676).withValues(alpha: 0.5)
+                        : Colors.white.withValues(alpha: 0.1))),
             child: Text('${val.round()}',
                 style: TextStyle(
                     color: available > 0 ? const Color(0xFF00E676) : Colors.white38,
@@ -491,14 +491,14 @@ class _TradeScreenState extends State<TradeScreen>
     if (pendingForMe.isEmpty && myPendingSales.isEmpty) {
       return Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.storefront_rounded, size: 70, color: Colors.white.withOpacity(0.1)),
+        Icon(Icons.storefront_rounded, size: 70, color: Colors.white.withValues(alpha: 0.1)),
         const SizedBox(height: 16),
         Text('Aucune offre en cours',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
         const SizedBox(height: 8),
         if (available > 0)
           Text('Appuyez sur "Vendre" pour proposer une vente',
-              style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 13)),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 13)),
       ]));
     }
     return ListView(padding: const EdgeInsets.all(16), children: [
@@ -528,19 +528,19 @@ class _TradeScreenState extends State<TradeScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
             color: isReceived
-                ? Colors.amber.withOpacity(0.3)
-                : const Color(0xFF00E676).withOpacity(0.3)),
+                ? Colors.amber.withValues(alpha: 0.3)
+                : const Color(0xFF00E676).withValues(alpha: 0.3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.15),
+                color: Colors.amber.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10)),
             child: Center(
                 child: Text(
@@ -564,9 +564,9 @@ class _TradeScreenState extends State<TradeScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.15),
+                color: Colors.amber.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.amber.withOpacity(0.4))),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.4))),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.shield_rounded, color: Colors.amber, size: 16),
               const SizedBox(width: 4),
@@ -581,11 +581,11 @@ class _TradeScreenState extends State<TradeScreen>
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
+              color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(10)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('💼 Service demandé :',
-                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
             const SizedBox(height: 4),
             Text(trade.serviceDescription,
                 style: const TextStyle(color: Colors.white, fontSize: 14)),
@@ -602,9 +602,9 @@ class _TradeScreenState extends State<TradeScreen>
                   icon: const Icon(Icons.close_rounded, size: 18),
                   label: const Text('Refuser'),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.withOpacity(0.2),
+                      backgroundColor: Colors.red.withValues(alpha: 0.2),
                       foregroundColor: Colors.red,
-                      side: BorderSide(color: Colors.red.withOpacity(0.4)),
+                      side: BorderSide(color: Colors.red.withValues(alpha: 0.4)),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)))),
             )),
@@ -623,9 +623,9 @@ class _TradeScreenState extends State<TradeScreen>
                 icon: const Icon(Icons.check_rounded, size: 18),
                 label: const Text('Accepter'),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00E676).withOpacity(0.2),
+                    backgroundColor: const Color(0xFF00E676).withValues(alpha: 0.2),
                     foregroundColor: const Color(0xFF00E676),
-                    side: BorderSide(color: const Color(0xFF00E676).withOpacity(0.4)),
+                    side: BorderSide(color: const Color(0xFF00E676).withValues(alpha: 0.4)),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12))),
               ),
@@ -642,9 +642,9 @@ class _TradeScreenState extends State<TradeScreen>
                     icon: const Icon(Icons.cancel_outlined, size: 18),
                     label: const Text('Annuler la vente'),
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.withOpacity(0.15),
+                        backgroundColor: Colors.red.withValues(alpha: 0.15),
                         foregroundColor: Colors.red,
-                        side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                        side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)))),
               )),
@@ -660,10 +660,10 @@ class _TradeScreenState extends State<TradeScreen>
       return Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.hourglass_empty_rounded,
-            size: 70, color: Colors.white.withOpacity(0.1)),
+            size: 70, color: Colors.white.withValues(alpha: 0.1)),
         const SizedBox(height: 16),
         Text('Aucune vente en cours',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
       ]));
     }
     return ListView(
@@ -693,14 +693,14 @@ class _TradeScreenState extends State<TradeScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: statusColor.withOpacity(0.3))),
+          border: Border.all(color: statusColor.withValues(alpha: 0.3))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.12),
+              color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(statusIcon, color: statusColor, size: 14),
@@ -725,10 +725,10 @@ class _TradeScreenState extends State<TradeScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-                color: const Color(0xFF00E676).withOpacity(0.15),
+                color: const Color(0xFF00E676).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
                 border:
-                    Border.all(color: const Color(0xFF00E676).withOpacity(0.4))),
+                    Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.4))),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 16),
               const SizedBox(width: 4),
@@ -745,7 +745,7 @@ class _TradeScreenState extends State<TradeScreen>
           width: double.infinity,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
+              color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(10)),
           child: Text('💼 ${trade.serviceDescription}',
               style: const TextStyle(color: Colors.white70, fontSize: 13)),
@@ -767,10 +767,10 @@ class _TradeScreenState extends State<TradeScreen>
                   icon: const Icon(Icons.check_circle_rounded, size: 18),
                   label: const Text('J\'ai rendu le service'),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00E676).withOpacity(0.2),
+                      backgroundColor: const Color(0xFF00E676).withValues(alpha: 0.2),
                       foregroundColor: const Color(0xFF00E676),
                       side: BorderSide(
-                          color: const Color(0xFF00E676).withOpacity(0.4)),
+                          color: const Color(0xFF00E676).withValues(alpha: 0.4)),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(vertical: 12)),
@@ -788,10 +788,10 @@ class _TradeScreenState extends State<TradeScreen>
                   icon: const Icon(Icons.gavel_rounded, size: 18),
                   label: const Text('Validation parent'),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C4DFF).withOpacity(0.2),
+                      backgroundColor: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
                       foregroundColor: const Color(0xFF7C4DFF),
                       side: BorderSide(
-                          color: const Color(0xFF7C4DFF).withOpacity(0.4)),
+                          color: const Color(0xFF7C4DFF).withValues(alpha: 0.4)),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(vertical: 12)),
@@ -813,10 +813,10 @@ class _TradeScreenState extends State<TradeScreen>
     if (trades.isEmpty) {
       return Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.history_rounded, size: 70, color: Colors.white.withOpacity(0.1)),
+        Icon(Icons.history_rounded, size: 70, color: Colors.white.withValues(alpha: 0.1)),
         const SizedBox(height: 16),
         Text('Aucune vente terminée',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
       ]));
     }
     return ListView(
@@ -838,14 +838,14 @@ class _TradeScreenState extends State<TradeScreen>
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
+                color: Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: statusColor.withOpacity(0.2))),
+                border: Border.all(color: statusColor.withValues(alpha: 0.2))),
             child: Row(children: [
               Container(
                   width: 40, height: 40,
                   decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
+                      color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10)),
                   child: Center(
                       child: Text(trade.statusEmoji,
@@ -863,18 +863,18 @@ class _TradeScreenState extends State<TradeScreen>
                 Text(
                     '${trade.immunityLines} ligne${trade.immunityLines > 1 ? 's' : ''} • ${trade.serviceDescription}',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.5), fontSize: 12),
+                        color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 Text(dateStr,
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.3), fontSize: 11)),
+                        color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
               ])),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
+                    color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8)),
                 child: Text(trade.statusLabel,
                     style: TextStyle(
@@ -957,8 +957,8 @@ class _TradeScreenState extends State<TradeScreen>
                                     horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
                                     color: isSelected
-                                        ? const Color(0xFF00E676).withOpacity(0.2)
-                                        : Colors.white.withOpacity(0.06),
+                                        ? const Color(0xFF00E676).withValues(alpha: 0.2)
+                                        : Colors.white.withValues(alpha: 0.06),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                         color: isSelected
@@ -1001,7 +1001,7 @@ class _TradeScreenState extends State<TradeScreen>
                           onChanged: (_) => setDialogState(() {}),
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
+                            fillColor: Colors.white.withValues(alpha: 0.1),
                             border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none),
@@ -1012,7 +1012,7 @@ class _TradeScreenState extends State<TradeScreen>
                     Center(
                         child: Text('max: $maxLines',
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 fontSize: 11))),
                     const SizedBox(height: 8),
                     Center(
@@ -1028,7 +1028,7 @@ class _TradeScreenState extends State<TradeScreen>
                                         style: const TextStyle(
                                             color: Colors.white70)),
                                     backgroundColor:
-                                        Colors.white.withOpacity(0.1),
+                                        Colors.white.withValues(alpha: 0.1),
                                   ),
                                 ))
                             .toList(),
@@ -1047,7 +1047,7 @@ class _TradeScreenState extends State<TradeScreen>
                           hintText: 'Ex: Ranger ma chambre, faire la vaisselle...',
                           hintStyle: const TextStyle(color: Colors.white30),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.08),
+                          fillColor: Colors.white.withValues(alpha: 0.08),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none)),
@@ -1099,7 +1099,7 @@ class _TradeScreenState extends State<TradeScreen>
                     style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF00E676),
                         foregroundColor: Colors.black,
-                        disabledBackgroundColor: Colors.grey.withOpacity(0.2),
+                        disabledBackgroundColor: Colors.grey.withValues(alpha: 0.2),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12))),
                   ),
@@ -1126,7 +1126,7 @@ class _TradeScreenState extends State<TradeScreen>
                 borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [
               Icon(Icons.gavel_rounded, color: Color(0xFF7C4DFF), size: 22),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text('Validation parent',
                   style: TextStyle(color: Color(0xFF7C4DFF), fontSize: 18)),
             ]),
@@ -1138,7 +1138,7 @@ class _TradeScreenState extends State<TradeScreen>
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.06),
+                        color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(12)),
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1169,7 +1169,7 @@ class _TradeScreenState extends State<TradeScreen>
                         hintText: 'Ex: Service bien rendu !',
                         hintStyle: const TextStyle(color: Colors.white30),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.08),
+                        fillColor: Colors.white.withValues(alpha: 0.08),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none)),

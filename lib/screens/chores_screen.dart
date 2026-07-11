@@ -267,9 +267,9 @@ class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMix
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.cyanAccent.withOpacity(0.15),
+                color: Colors.cyanAccent.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.cyanAccent.withOpacity(0.4)),
+                border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4)),
               ),
               child: Text(choreName, style: const TextStyle(color: Colors.cyanAccent, fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
             ),
@@ -380,7 +380,7 @@ class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMix
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.cyanAccent.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+                    color: isSelected ? Colors.cyanAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: isSelected ? Colors.cyanAccent : Colors.white24),
                   ),
@@ -512,14 +512,14 @@ class _ChoresScreenState extends State<ChoresScreen> with TickerProviderStateMix
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: excluded ? Colors.red.withOpacity(0.08) : done ? Colors.green.withOpacity(0.12) : Colors.white.withOpacity(0.05),
+                color: excluded ? Colors.red.withValues(alpha: 0.08) : done ? Colors.green.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: excluded ? Colors.redAccent.withOpacity(0.4) : done ? Colors.greenAccent.withOpacity(0.4) : Colors.white12),
+                border: Border.all(color: excluded ? Colors.redAccent.withValues(alpha: 0.4) : done ? Colors.greenAccent.withValues(alpha: 0.4) : Colors.white12),
               ),
               child: Row(children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundColor: excluded ? Colors.red.withOpacity(0.2) : done ? Colors.green.withOpacity(0.2) : Colors.white10,
+                  backgroundColor: excluded ? Colors.red.withValues(alpha: 0.2) : done ? Colors.green.withValues(alpha: 0.2) : Colors.white10,
                   child: Text(
                     child.avatar.isNotEmpty ? child.avatar : child.name[0].toUpperCase(),
                     style: TextStyle(fontSize: child.avatar.isNotEmpty ? 16 : 13, color: excluded ? Colors.redAccent : done ? Colors.greenAccent : Colors.white54),

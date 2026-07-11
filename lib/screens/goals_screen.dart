@@ -21,7 +21,7 @@ class GoalsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-                color: primary.withOpacity(0.3), blurRadius: 16)
+                color: primary.withValues(alpha: 0.3), blurRadius: 16)
           ],
         ),
         child: FloatingActionButton.extended(
@@ -49,9 +49,9 @@ class GoalsScreen extends StatelessWidget {
                           height: 40,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            color: Colors.white.withOpacity(0.06),
+                            color: Colors.white.withValues(alpha: 0.06),
                             border: Border.all(
-                                color: Colors.white.withOpacity(0.08)),
+                                color: Colors.white.withValues(alpha: 0.08)),
                           ),
                           child: const Icon(Icons.arrow_back_rounded,
                               color: Colors.white70, size: 20),
@@ -167,14 +167,14 @@ class GoalsScreen extends StatelessWidget {
                                               decoration: BoxDecoration(
                                                 shape: BoxShape.circle,
                                                 color: goalColor
-                                                    .withOpacity(0.12),
+                                                    .withValues(alpha: 0.12),
                                                 border: Border.all(
                                                     color: goalColor
-                                                        .withOpacity(0.3)),
+                                                        .withValues(alpha: 0.3)),
                                                 boxShadow: [
                                                   BoxShadow(
                                                       color: goalColor
-                                                          .withOpacity(0.15),
+                                                          .withValues(alpha: 0.15),
                                                       blurRadius: 8)
                                                 ],
                                               ),
@@ -229,8 +229,7 @@ class GoalsScreen extends StatelessWidget {
                                                         minHeight: 6,
                                                         backgroundColor:
                                                             Colors.white
-                                                                .withOpacity(
-                                                                    0.06),
+                                                                .withValues(alpha: 0.06),
                                                         valueColor:
                                                             AlwaysStoppedAnimation(
                                                                 goalColor),
@@ -376,10 +375,10 @@ class GoalsScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: primary.withOpacity(0.12),
+                    color: primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                     border:
-                        Border.all(color: primary.withOpacity(0.2)),
+                        Border.all(color: primary.withValues(alpha: 0.2)),
                   ),
                   child: NeonText(
                       text: '$targetPoints',

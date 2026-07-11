@@ -94,7 +94,7 @@ class _ParticlesBackgroundState extends State<ParticlesBackground>
               center: const Alignment(-0.5, -0.8),
               radius: 1.5,
               colors: [
-                const Color(0xFF00E676).withOpacity(0.05),
+                const Color(0xFF00E676).withValues(alpha: 0.05),
                 Colors.transparent,
               ],
             ),
@@ -106,7 +106,7 @@ class _ParticlesBackgroundState extends State<ParticlesBackground>
               center: const Alignment(0.7, 0.6),
               radius: 1.2,
               colors: [
-                const Color(0xFF00BCD4).withOpacity(0.04),
+                const Color(0xFF00BCD4).withValues(alpha: 0.04),
                 Colors.transparent,
               ],
             ),
@@ -146,8 +146,7 @@ class _ParticlesPainter extends CustomPainter {
       final y = ((p.y + p.speedY * progress) % 1.0) * size.height;
 
       final paint = Paint()
-        ..color = p.color.withOpacity(
-            p.opacity * (0.5 + 0.5 * sin(progress * pi * 2 + p.x * 10)))
+        ..color = p.color.withValues(alpha: p.opacity * (0.5 + 0.5 * sin(progress * pi * 2 + p.x * 10)))
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, p.size * 2);
 
       canvas.drawCircle(Offset(x, y), p.size, paint);
@@ -185,10 +184,10 @@ class NeonText extends StatelessWidget {
         color: color,
         shadows: [
           Shadow(
-              color: color.withOpacity(glowIntensity),
+              color: color.withValues(alpha: glowIntensity),
               blurRadius: 12),
           Shadow(
-              color: color.withOpacity(glowIntensity * 0.5),
+              color: color.withValues(alpha: glowIntensity * 0.5),
               blurRadius: 24),
         ],
       ),
@@ -248,14 +247,13 @@ class _GlowRingState extends State<GlowRing>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: widget.color.withOpacity(glowIntensity),
+                color: widget.color.withValues(alpha: glowIntensity),
                 blurRadius: 16,
                 spreadRadius: 2,
               ),
             ],
             border: Border.all(
-              color: widget.color.withOpacity(
-                  0.6 + 0.4 * sin(_controller.value * pi * 2)),
+              color: widget.color.withValues(alpha: 0.6 + 0.4 * sin(_controller.value * pi * 2)),
               width: widget.strokeWidth,
             ),
           ),
@@ -287,7 +285,7 @@ class GlowProgressBar extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(height / 2),
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
       ),
       child: FractionallySizedBox(
         alignment: Alignment.centerLeft,
@@ -299,7 +297,7 @@ class GlowProgressBar extends StatelessWidget {
                 colors: [startColor, endColor]),
             boxShadow: [
               BoxShadow(
-                color: endColor.withOpacity(0.5),
+                color: endColor.withValues(alpha: 0.5),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -332,8 +330,8 @@ class GlowIcon extends StatelessWidget {
       size: size,
       color: c,
       shadows: [
-        Shadow(color: c.withOpacity(0.6), blurRadius: 12),
-        Shadow(color: c.withOpacity(0.3), blurRadius: 24),
+        Shadow(color: c.withValues(alpha: 0.6), blurRadius: 12),
+        Shadow(color: c.withValues(alpha: 0.3), blurRadius: 24),
       ],
     );
   }

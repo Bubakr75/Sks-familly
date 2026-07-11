@@ -45,9 +45,9 @@ class _NotesScreenState extends State<NotesScreen> {
                         height: 40,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          color: Colors.white.withOpacity(0.06),
+                          color: Colors.white.withValues(alpha: 0.06),
                           border: Border.all(
-                              color: Colors.white.withOpacity(0.08)),
+                              color: Colors.white.withValues(alpha: 0.08)),
                         ),
                         child: const Icon(Icons.arrow_back_rounded,
                             color: Colors.white70, size: 20),
@@ -100,21 +100,21 @@ class _NotesScreenState extends State<NotesScreen> {
                               size: 20,
                               color: primary),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.04),
+                          fillColor: Colors.white.withValues(alpha: 0.04),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide(
-                                color: Colors.white.withOpacity(0.08)),
+                                color: Colors.white.withValues(alpha: 0.08)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide(
-                                color: Colors.white.withOpacity(0.08)),
+                                color: Colors.white.withValues(alpha: 0.08)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide:
-                                BorderSide(color: primary.withOpacity(0.5)),
+                                BorderSide(color: primary.withValues(alpha: 0.5)),
                           ),
                         ),
                       ),
@@ -127,11 +127,11 @@ class _NotesScreenState extends State<NotesScreen> {
                         height: 48,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                              colors: [primary, primary.withOpacity(0.7)]),
+                              colors: [primary, primary.withValues(alpha: 0.7)]),
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
-                                color: primary.withOpacity(0.3),
+                                color: primary.withValues(alpha: 0.3),
                                 blurRadius: 12)
                           ],
                         ),
@@ -211,7 +211,7 @@ class _NotesScreenState extends State<NotesScreen> {
         padding: const EdgeInsets.only(right: 20),
         margin: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFFFF1744).withOpacity(0.15),
+          color: const Color(0xFFFF1744).withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Icon(Icons.delete_rounded, color: Color(0xFFFF1744)),
@@ -226,7 +226,7 @@ class _NotesScreenState extends State<NotesScreen> {
             title: const Row(
               children: [
                 Icon(Icons.warning_amber_rounded, color: Color(0xFFFF1744)),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text('Supprimer ?',
                     style: TextStyle(color: Colors.white)),
               ],
@@ -253,7 +253,7 @@ class _NotesScreenState extends State<NotesScreen> {
         padding: const EdgeInsets.all(14),
         borderRadius: 16,
         borderColor: note.isPinned
-            ? const Color(0xFFFFD740).withOpacity(0.3)
+            ? const Color(0xFFFFD740).withValues(alpha: 0.3)
             : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,7 +271,7 @@ class _NotesScreenState extends State<NotesScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: primary.withOpacity(0.8),
+                      color: primary.withValues(alpha: 0.8),
                     ),
                   ),
                 ),
@@ -306,7 +306,7 @@ class _NotesScreenState extends State<NotesScreen> {
                         children: [
                           Icon(Icons.edit_rounded,
                               size: 18, color: Colors.white70),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text('Modifier',
                               style: TextStyle(color: Colors.white)),
                         ],
@@ -318,7 +318,7 @@ class _NotesScreenState extends State<NotesScreen> {
                         children: [
                           Icon(Icons.delete_rounded,
                               size: 18, color: Color(0xFFFF1744)),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text('Supprimer',
                               style:
                                   TextStyle(color: Color(0xFFFF1744))),

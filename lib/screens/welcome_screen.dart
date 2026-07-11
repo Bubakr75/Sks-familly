@@ -119,7 +119,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Row(children: [
             Icon(Icons.lock_rounded, color: Colors.amber),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text('Code Parental', style: TextStyle(color: Colors.white)),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -178,7 +178,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Row(children: [
           Icon(Icons.error_rounded, color: Colors.white),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Text('Code PIN incorrect'),
         ]),
         backgroundColor: Colors.red.shade700,
@@ -216,7 +216,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           ...parents.map((name) => ListTile(
                 leading: CircleAvatar(
                   backgroundColor:
-                      const Color(0xFF00E5FF).withOpacity(0.15),
+                      const Color(0xFF00E5FF).withValues(alpha: 0.15),
                   child: const Icon(Icons.person_rounded,
                       color: Color(0xFF00E5FF)),
                 ),
@@ -355,10 +355,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
                             tileColor: const Color(0xFF7C4DFF)
-                                .withOpacity(0.08),
+                                .withValues(alpha: 0.08),
                             leading: CircleAvatar(
                               backgroundColor:
-                                  const Color(0xFF7C4DFF).withOpacity(0.15),
+                                  const Color(0xFF7C4DFF).withValues(alpha: 0.15),
                               radius: 24,
                               child: child.hasPhoto
                                   ? ClipOval(
@@ -426,26 +426,26 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 Text('👨‍👩‍👧‍👦 Mode Parent',
                     style: TextStyle(
                         color: Colors.cyan, fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text('• Gère les points, tâches, punitions et récompenses',
                     style: TextStyle(color: Colors.white70)),
                 Text('• Crée des objectifs et suit les progrès',
                     style: TextStyle(color: Colors.white70)),
                 Text('• Accède au tribunal familial',
                     style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text('🧒 Mode Enfant',
                     style: TextStyle(
                         color: Color(0xFF7C4DFF),
                         fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text('• Voit ses points et ses badges',
                     style: TextStyle(color: Colors.white70)),
                 Text('• Suit ses objectifs et punitions',
                     style: TextStyle(color: Colors.white70)),
                 Text('• Peut faire des échanges avec les autres enfants',
                     style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Text('💡 Le mode Parent est protégé par un code PIN.',
                     style: TextStyle(
                         color: Colors.amber,
@@ -471,7 +471,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         backgroundColor: Colors.transparent,
         floatingActionButton: FloatingActionButton.small(
           onPressed: _showInteractiveHelp,
-          backgroundColor: Colors.cyan.withOpacity(0.85),
+          backgroundColor: Colors.cyan.withValues(alpha: 0.85),
           child: const Icon(Icons.help_outline_rounded, color: Colors.white),
         ),
         body: SafeArea(
@@ -516,7 +516,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(0xFF00E5FF)
-                                      .withOpacity(_pulseAnim.value * 0.5),
+                                      .withValues(alpha: _pulseAnim.value * 0.5),
                                   blurRadius: 30,
                                   spreadRadius: 5,
                                 ),
@@ -585,10 +585,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 decoration: BoxDecoration(
                                   borderRadius:
                                       BorderRadius.circular(20),
-                                  color: Colors.white.withOpacity(0.04),
+                                  color: Colors.white.withValues(alpha: 0.04),
                                   border: Border.all(
                                       color:
-                                          Colors.white.withOpacity(0.08)),
+                                          Colors.white.withValues(alpha: 0.08)),
                                 ),
                                 child: Column(children: [
                                   const Text('🏠',
@@ -687,7 +687,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(0xFF00E5FF)
-                                      .withOpacity(0.35),
+                                      .withValues(alpha: 0.35),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -698,7 +698,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               children: [
                                 Icon(Icons.shield_rounded,
                                     color: Colors.black, size: 26),
-                                SizedBox(width: 12),
+                                const SizedBox(width: 12),
                                 Text(
                                   'Mode Parent',
                                   style: TextStyle(
@@ -734,13 +734,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: const Color(0xFF7C4DFF)
-                                    .withOpacity(0.6),
+                                    .withValues(alpha: 0.6),
                                 width: 2,
                               ),
                               gradient: LinearGradient(
                                 colors: [
-                                  const Color(0xFF7C4DFF).withOpacity(0.15),
-                                  const Color(0xFF7C4DFF).withOpacity(0.05),
+                                  const Color(0xFF7C4DFF).withValues(alpha: 0.15),
+                                  const Color(0xFF7C4DFF).withValues(alpha: 0.05),
                                 ],
                               ),
                             ),
@@ -748,7 +748,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text('🧒', style: TextStyle(fontSize: 26)),
-                                SizedBox(width: 12),
+                                const SizedBox(width: 12),
                                 Text(
                                   'Mode Enfant',
                                   style: TextStyle(
@@ -790,10 +790,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   vertical: 14, horizontal: 16),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(18),
-                                color: Colors.white.withOpacity(0.04),
+                                color: Colors.white.withValues(alpha: 0.04),
                                 border: Border.all(
                                     color:
-                                        Colors.white.withOpacity(0.07)),
+                                        Colors.white.withValues(alpha: 0.07)),
                               ),
                               child: Row(
                                 mainAxisAlignment:
@@ -808,7 +808,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       width: 1,
                                       height: 36,
                                       color: Colors.white
-                                          .withOpacity(0.1)),
+                                          .withValues(alpha: 0.1)),
                                   _StatBubble(
                                     icon: '🏅',
                                     value: '$totalBadges',
@@ -818,7 +818,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       width: 1,
                                       height: 36,
                                       color: Colors.white
-                                          .withOpacity(0.1)),
+                                          .withValues(alpha: 0.1)),
                                   _StatBubble(
                                     icon: '👑',
                                     value: topChild?.name
@@ -922,15 +922,15 @@ class _ChildStatCardState extends State<_ChildStatCard>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              _rankColor.withOpacity(0.12),
-              _rankColor.withOpacity(0.04),
+              _rankColor.withValues(alpha: 0.12),
+              _rankColor.withValues(alpha: 0.04),
             ],
           ),
           border:
-              Border.all(color: _rankColor.withOpacity(0.3), width: 1.5),
+              Border.all(color: _rankColor.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
-                color: _rankColor.withOpacity(0.1),
+                color: _rankColor.withValues(alpha: 0.1),
                 blurRadius: 12,
                 spreadRadius: 1),
           ],
@@ -946,9 +946,9 @@ class _ChildStatCardState extends State<_ChildStatCard>
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _rankColor.withOpacity(0.15),
+                    color: _rankColor.withValues(alpha: 0.15),
                     border: Border.all(
-                        color: _rankColor.withOpacity(0.4), width: 2),
+                        color: _rankColor.withValues(alpha: 0.4), width: 2),
                   ),
                   child: c.hasPhoto
                       ? ClipOval(
@@ -991,7 +991,7 @@ class _ChildStatCardState extends State<_ChildStatCard>
               child: LinearProgressIndicator(
                 value: c.levelProgress.clamp(0.0, 1.0),
                 minHeight: 4,
-                backgroundColor: Colors.white.withOpacity(0.08),
+                backgroundColor: Colors.white.withValues(alpha: 0.08),
                 valueColor: AlwaysStoppedAnimation<Color>(_rankColor),
               ),
             ),
@@ -1053,7 +1053,7 @@ class _WelcomeParticlePainter extends CustomPainter {
       {required this.particles, required this.time});
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.15);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.15);
     for (var p in particles) {
       final yPos = (p.y + time * p.speed * 50) % (size.height + 50);
       canvas.drawCircle(Offset(p.x, yPos), p.size, paint);

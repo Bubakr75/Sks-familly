@@ -248,7 +248,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
         decoration: BoxDecoration(
           color: selected
               ? const Color(0xFF7C4DFF)
-              : Colors.white.withOpacity(0.08),
+              : Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? Colors.transparent : Colors.white24,
@@ -313,8 +313,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: isActive
-                    ? color.withOpacity(0.25)
-                    : Colors.white.withOpacity(0.05),
+                    ? color.withValues(alpha: 0.25)
+                    : Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isActive ? color : Colors.white12,
@@ -406,7 +406,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.18),
+                        color: color.withValues(alpha: 0.18),
                         shape: BoxShape.circle,
                         border: Border.all(color: color, width: 1.5),
                       ),
@@ -436,7 +436,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.2),
+                                color: color.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(

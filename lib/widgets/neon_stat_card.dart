@@ -76,18 +76,18 @@ class _NeonStatCardState extends State<NeonStatCard>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  widget.color.withOpacity(0.08),
-                  widget.color.withOpacity(0.03),
+                  widget.color.withValues(alpha: 0.08),
+                  widget.color.withValues(alpha: 0.03),
                 ],
               ),
               border: Border.all(
-                color: widget.color.withOpacity(0.15 + 0.1 * _pulseAnim.value),
+                color: widget.color.withValues(alpha: 0.15 + 0.1 * _pulseAnim.value),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
                   color:
-                      widget.color.withOpacity(0.1 * _pulseAnim.value),
+                      widget.color.withValues(alpha: 0.1 * _pulseAnim.value),
                   blurRadius: 16,
                   spreadRadius: 2,
                 ),
@@ -101,11 +101,11 @@ class _NeonStatCardState extends State<NeonStatCard>
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: widget.color.withOpacity(0.1),
+                    color: widget.color.withValues(alpha: 0.1),
                     boxShadow: [
                       BoxShadow(
                         color: widget.color
-                            .withOpacity(0.2 * _pulseAnim.value),
+                            .withValues(alpha: 0.2 * _pulseAnim.value),
                         blurRadius: 12,
                         spreadRadius: 1,
                       ),
@@ -164,7 +164,7 @@ class _NeonStatCardState extends State<NeonStatCard>
                             Container(
                               height: 6,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
+                                color: Colors.white.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
@@ -175,7 +175,7 @@ class _NeonStatCardState extends State<NeonStatCard>
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      widget.color.withOpacity(0.7),
+                                      widget.color.withValues(alpha: 0.7),
                                       widget.color,
                                     ],
                                   ),
@@ -183,7 +183,7 @@ class _NeonStatCardState extends State<NeonStatCard>
                                   boxShadow: [
                                     BoxShadow(
                                       color: widget.color
-                                          .withOpacity(0.4),
+                                          .withValues(alpha: 0.4),
                                       blurRadius: 4,
                                     ),
                                   ],

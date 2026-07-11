@@ -149,7 +149,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
               Container(
                 margin: const EdgeInsets.only(right: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: _accent.withOpacity(0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: _accent.withOpacity(0.5))),
+                decoration: BoxDecoration(color: _accent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: _accent.withValues(alpha: 0.5))),
                 child: Text('Étape ${_step}/3', style: const TextStyle(color: _accentLight, fontSize: 12, fontWeight: FontWeight.bold)),
               ),
           ],
@@ -179,7 +179,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
             const SizedBox(height: 4),
             Text(
               _selectedIds.isEmpty ? 'Sélectionnez au moins un enfant' : '${_selectedIds.length} enfant(s) sélectionné(s)',
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
             ),
           ]),
         ),
@@ -199,18 +199,18 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: selected ? color.withOpacity(0.15) : _cardBg,
+                    color: selected ? color.withValues(alpha: 0.15) : _cardBg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: selected ? color : Colors.white.withOpacity(0.08), width: selected ? 2 : 1),
-                    boxShadow: selected ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] : [],
+                    border: Border.all(color: selected ? color : Colors.white.withValues(alpha: 0.08), width: selected ? 2 : 1),
+                    boxShadow: selected ? [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))] : [],
                   ),
                   child: Row(children: [
                     Container(
                       width: 48, height: 48,
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
+                        color: color.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
-                        border: Border.all(color: color.withOpacity(0.5)),
+                        border: Border.all(color: color.withValues(alpha: 0.5)),
                       ),
                       child: Center(child: Text(
                         child.avatar.isNotEmpty ? child.avatar : child.name[0],
@@ -220,7 +220,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                     const SizedBox(width: 14),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('${child.points} pts • Niveau ${child.level}', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                      Text('${child.points} pts • Niveau ${child.level}', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
                     ])),
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
@@ -248,7 +248,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: _selectedIds.isNotEmpty ? 8 : 0,
-                shadowColor: _accent.withOpacity(0.5),
+                shadowColor: _accent.withValues(alpha: 0.5),
               ),
               onPressed: _selectedIds.isNotEmpty ? _startEvaluation : null,
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -284,7 +284,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: progress,
-                backgroundColor: Colors.white.withOpacity(0.1),
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
                 valueColor: const AlwaysStoppedAnimation<Color>(_accent),
                 minHeight: 6,
               ),
@@ -299,9 +299,9 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: _accent.withOpacity(0.15),
+                  color: _accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _accent.withOpacity(0.3)),
+                  border: Border.all(color: _accent.withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
                   Container(
@@ -323,17 +323,17 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                   decoration: BoxDecoration(
                     color: _cardBg,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: selectedAnswer != null ? color.withOpacity(0.4) : Colors.white.withOpacity(0.08)),
+                    border: Border.all(color: selectedAnswer != null ? color.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08)),
                   ),
                   child: Column(children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
+                        color: color.withValues(alpha: 0.1),
                         borderRadius: const BorderRadius.only(topLeft: Radius.circular(18), topRight: Radius.circular(18)),
                       ),
                       child: Row(children: [
-                        CircleAvatar(radius: 14, backgroundColor: color.withOpacity(0.3), child: Text(child.name[0], style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold))),
+                        CircleAvatar(radius: 14, backgroundColor: color.withValues(alpha: 0.3), child: Text(child.name[0], style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold))),
                         const SizedBox(width: 8),
                         Text(child.name, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
                         if (selectedAnswer != null) ...[
@@ -354,10 +354,10 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                               duration: const Duration(milliseconds: 180),
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
-                                color: isSelected ? color : Colors.white.withOpacity(0.05),
+                                color: isSelected ? color : Colors.white.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(color: isSelected ? color : Colors.white24),
-                                boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8)] : [],
+                                boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8)] : [],
                               ),
                               child: Text(ae.value, style: TextStyle(color: isSelected ? Colors.white : Colors.white60, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, fontSize: 13)),
                             ),
@@ -396,7 +396,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: _currentQuestionAnswered ? 6 : 0,
-                  shadowColor: _accent.withOpacity(0.5),
+                  shadowColor: _accent.withValues(alpha: 0.5),
                 ),
                 onPressed: _currentQuestionAnswered ? () {
                   if (_currentQuestion < _questions.length - 1) {
@@ -427,7 +427,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Notes parentales', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text('Donnez une note individuelle à chaque enfant', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+            Text('Donnez une note individuelle à chaque enfant', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
           ]),
         ),
         Expanded(
@@ -444,20 +444,20 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                 decoration: BoxDecoration(
                   color: _cardBg,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: color.withOpacity(0.2)),
+                  border: Border.all(color: color.withValues(alpha: 0.2)),
                 ),
                 child: Column(children: [
                   Row(children: [
                     CircleAvatar(
                       radius: 22,
-                      backgroundColor: color.withOpacity(0.2),
+                      backgroundColor: color.withValues(alpha: 0.2),
                       child: Text(child.avatar.isNotEmpty ? child.avatar : child.name[0], style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: child.avatar.isNotEmpty ? 18 : 16)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(child: Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(color: noteColor.withOpacity(0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: noteColor.withOpacity(0.4))),
+                      decoration: BoxDecoration(color: noteColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: noteColor.withValues(alpha: 0.4))),
                       child: Text('${note.round()}/20', style: TextStyle(color: noteColor, fontWeight: FontWeight.bold, fontSize: 20)),
                     ),
                   ]),
@@ -465,9 +465,9 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       activeTrackColor: color,
-                      inactiveTrackColor: color.withOpacity(0.15),
+                      inactiveTrackColor: color.withValues(alpha: 0.15),
                       thumbColor: color,
-                      overlayColor: color.withOpacity(0.2),
+                      overlayColor: color.withValues(alpha: 0.2),
                     ),
                     child: Slider(value: note, min: 0, max: 20, divisions: 20, onChanged: (v) => setState(() => _parentNotes[child.id] = v)),
                   ),
@@ -484,18 +484,18 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accent, foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 8, shadowColor: _accent.withOpacity(0.5),
+                elevation: 8, shadowColor: _accent.withValues(alpha: 0.5),
               ),
               onPressed: _evaluating ? null : _submitEvaluation,
               child: _evaluating
                   ? const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
-                      SizedBox(width: 12),
+                      const SizedBox(width: 12),
                       Text('Analyse IA en cours...', style: TextStyle(fontWeight: FontWeight.bold)),
                     ])
                   : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Icon(Icons.auto_awesome, size: 20),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text('Générer les bulletins IA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ]),
             ),
@@ -515,7 +515,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
           child: Row(children: [
             const Text('Bulletins', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
             const Spacer(),
-            Text('${children.length} enfant(s)', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+            Text('${children.length} enfant(s)', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
           ]),
         ),
         Expanded(
@@ -533,29 +533,29 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                 decoration: BoxDecoration(
                   color: _cardBg,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: color.withOpacity(0.2)),
-                  boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 16, offset: const Offset(0, 4))],
+                  border: Border.all(color: color.withValues(alpha: 0.2)),
+                  boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 4))],
                 ),
                 child: Column(children: [
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [color.withOpacity(0.3), color.withOpacity(0.1)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      gradient: LinearGradient(colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                       borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
                     ),
                     child: Row(children: [
                       CircleAvatar(
-                        radius: 24, backgroundColor: color.withOpacity(0.3),
+                        radius: 24, backgroundColor: color.withValues(alpha: 0.3),
                         child: Text(child.avatar.isNotEmpty ? child.avatar : child.name[0], style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: child.avatar.isNotEmpty ? 20 : 18)),
                       ),
                       const SizedBox(width: 14),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(child.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                        Text('${child.points} pts • Niveau ${child.level}', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                        Text('${child.points} pts • Niveau ${child.level}', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
                       ])),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(color: noteColor.withOpacity(0.2), borderRadius: BorderRadius.circular(14), border: Border.all(color: noteColor.withOpacity(0.5))),
+                        decoration: BoxDecoration(color: noteColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(14), border: Border.all(color: noteColor.withValues(alpha: 0.5))),
                         child: Text('$moyenne/20', style: TextStyle(color: noteColor, fontWeight: FontWeight.bold, fontSize: 26)),
                       ),
                     ]),
@@ -588,7 +588,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF43E97B), foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 8, shadowColor: const Color(0xFF43E97B).withOpacity(0.5),
+                elevation: 8, shadowColor: const Color(0xFF43E97B).withValues(alpha: 0.5),
               ),
               icon: const Icon(Icons.save_rounded, size: 22),
               label: const Text('Enregistrer tous les bulletins', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -603,9 +603,9 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
   Widget _noteBox(String label, dynamic note, Color color) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withOpacity(0.2))),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withValues(alpha: 0.2))),
       child: Column(children: [
-        Text(label, style: TextStyle(color: color.withOpacity(0.8), fontWeight: FontWeight.bold, fontSize: 11)),
+        Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontWeight: FontWeight.bold, fontSize: 11)),
         const SizedBox(height: 6),
         Text(note is int ? '$note/20' : '$note', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 22)),
       ]),
@@ -617,7 +617,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: color.withOpacity(0.05), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withOpacity(0.15))),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withValues(alpha: 0.15))),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(emoji, style: const TextStyle(fontSize: 18)),
         const SizedBox(width: 10),

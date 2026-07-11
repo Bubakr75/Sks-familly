@@ -112,17 +112,17 @@ class _TvTextFieldState extends State<TvTextField>
     final defaultDecoration = InputDecoration(
       labelText: widget.labelText,
       hintText: widget.hintText,
-      labelStyle: TextStyle(color: widget.accentColor.withOpacity(0.7)),
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
+      labelStyle: TextStyle(color: widget.accentColor.withValues(alpha: 0.7)),
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25)),
       counterText: '',
       filled: true,
       fillColor: _isFocused
-          ? Colors.white.withOpacity(0.12)
-          : Colors.white.withOpacity(0.06),
+          ? Colors.white.withValues(alpha: 0.12)
+          : Colors.white.withValues(alpha: 0.06),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(
-          color: widget.accentColor.withOpacity(0.3),
+          color: widget.accentColor.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -147,7 +147,7 @@ class _TvTextFieldState extends State<TvTextField>
                 ? [
                     BoxShadow(
                       color: widget.accentColor
-                          .withOpacity(_glowAnim.value * 0.25),
+                          .withValues(alpha: _glowAnim.value * 0.25),
                       blurRadius: 16,
                       spreadRadius: 2,
                     ),

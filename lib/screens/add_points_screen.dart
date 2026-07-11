@@ -828,7 +828,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                             children: const [
                               Icon(Icons.person_off_rounded,
                                   color: Colors.white38, size: 40),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
                                 'Aucun enfant enregistré.\nAjoutez des enfants dans les Réglages.',
                                 textAlign: TextAlign.center,

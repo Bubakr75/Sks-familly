@@ -33,7 +33,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: primary.withOpacity(0.3), blurRadius: 16)
+            BoxShadow(color: primary.withValues(alpha: 0.3), blurRadius: 16)
           ],
         ),
         child: FloatingActionButton.extended(
@@ -56,7 +56,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: Colors.white.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.arrow_back_ios_new,
@@ -79,13 +79,13 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: pin.isParentMode
-                            ? const Color(0xFF00E676).withOpacity(0.12)
-                            : Colors.orange.withOpacity(0.12),
+                            ? const Color(0xFF00E676).withValues(alpha: 0.12)
+                            : Colors.orange.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: pin.isParentMode
-                              ? const Color(0xFF00E676).withOpacity(0.3)
-                              : Colors.orange.withOpacity(0.3),
+                              ? const Color(0xFF00E676).withValues(alpha: 0.3)
+                              : Colors.orange.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -148,9 +148,9 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                               height: 50,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(14),
-                                color: primary.withOpacity(0.12),
+                                color: primary.withValues(alpha: 0.12),
                                 border: Border.all(
-                                    color: primary.withOpacity(0.3)),
+                                    color: primary.withValues(alpha: 0.3)),
                               ),
                               child: child.photoBase64 != null &&
                                       child.photoBase64!.isNotEmpty
@@ -208,7 +208,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                           horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
                                         color:
-                                            primary.withOpacity(0.12),
+                                            primary.withValues(alpha: 0.12),
                                         borderRadius:
                                             BorderRadius.circular(6),
                                       ),
@@ -267,7 +267,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                     Icon(Icons.edit,
                                         size: 18,
                                         color: Colors.white70),
-                                    SizedBox(width: 8),
+                                    const SizedBox(width: 8),
                                     Text('Modifier',
                                         style: TextStyle(
                                             color: Colors.white)),
@@ -279,7 +279,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                     Icon(Icons.camera_alt,
                                         size: 18,
                                         color: Colors.white70),
-                                    SizedBox(width: 8),
+                                    const SizedBox(width: 8),
                                     Text('Photo',
                                         style: TextStyle(
                                             color: Colors.white)),
@@ -291,7 +291,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                     Icon(Icons.delete,
                                         size: 18,
                                         color: Color(0xFFFF1744)),
-                                    SizedBox(width: 8),
+                                    const SizedBox(width: 8),
                                     Text('Supprimer',
                                         style: TextStyle(
                                             color: Color(0xFFFF1744))),
@@ -326,7 +326,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
               borderRadius: BorderRadius.circular(24)),
           title: const Row(children: [
             Icon(Icons.person_add_rounded, color: Color(0xFF00E5FF)),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text('Ajouter un enfant',
                 style: TextStyle(color: Colors.white, fontSize: 18)),
           ]),
@@ -351,9 +351,9 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF00E5FF).withOpacity(0.1),
+                    color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
                     border: Border.all(
-                        color: const Color(0xFF00E5FF).withOpacity(0.3)),
+                        color: const Color(0xFF00E5FF).withValues(alpha: 0.3)),
                   ),
                   child: photoBase64 != null
                       ? ClipOval(
@@ -408,12 +408,12 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         color: isSelected
-                            ? const Color(0xFF00E5FF).withOpacity(0.15)
-                            : Colors.white.withOpacity(0.04),
+                            ? const Color(0xFF00E5FF).withValues(alpha: 0.15)
+                            : Colors.white.withValues(alpha: 0.04),
                         border: Border.all(
                             color: isSelected
-                                ? const Color(0xFF00E5FF).withOpacity(0.5)
-                                : Colors.white.withOpacity(0.08)),
+                                ? const Color(0xFF00E5FF).withValues(alpha: 0.5)
+                                : Colors.white.withValues(alpha: 0.08)),
                       ),
                       child: Center(
                           child: Text(a,
@@ -465,7 +465,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
               borderRadius: BorderRadius.circular(24)),
           title: const Row(children: [
             Icon(Icons.edit_rounded, color: Color(0xFF00E5FF)),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text('Modifier',
                 style: TextStyle(color: Colors.white, fontSize: 18)),
           ]),
@@ -496,12 +496,12 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         color: isSelected
-                            ? const Color(0xFF00E5FF).withOpacity(0.15)
-                            : Colors.white.withOpacity(0.04),
+                            ? const Color(0xFF00E5FF).withValues(alpha: 0.15)
+                            : Colors.white.withValues(alpha: 0.04),
                         border: Border.all(
                             color: isSelected
-                                ? const Color(0xFF00E5FF).withOpacity(0.5)
-                                : Colors.white.withOpacity(0.08)),
+                                ? const Color(0xFF00E5FF).withValues(alpha: 0.5)
+                                : Colors.white.withValues(alpha: 0.08)),
                       ),
                       child: Center(
                           child: Text(a,
@@ -617,9 +617,9 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Icon(icon, color: color, size: 28),
         ),
@@ -640,7 +640,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Row(children: [
           Icon(Icons.warning_amber_rounded, color: Color(0xFFFF1744)),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Text('Supprimer ?',
               style: TextStyle(color: Colors.white, fontSize: 16)),
         ]),

@@ -83,7 +83,7 @@ class _SetupPinScreenState extends State<SetupPinScreen> with SingleTickerProvid
           content: const Row(
             children: [
               Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text('Code parental defini avec succes !'),
             ],
           ),

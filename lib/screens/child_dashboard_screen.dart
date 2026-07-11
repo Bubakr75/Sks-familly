@@ -56,7 +56,7 @@ class _ScreenTimePainter extends CustomPainter {
       center.dy + radius * sin(angle),
     );
     canvas.drawCircle(dotPos, 6,  Paint()..color = color);
-    canvas.drawCircle(dotPos, 10, Paint()..color = color.withOpacity(0.3));
+    canvas.drawCircle(dotPos, 10, Paint()..color = color.withValues(alpha: 0.3));
   }
 
   @override
@@ -384,13 +384,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           gradient: highLevel
               ? SweepGradient(colors: [
                   frameColor, Colors.white, frameColor,
-                  frameColor.withOpacity(0.5), frameColor,
+                  frameColor.withValues(alpha: 0.5), frameColor,
                 ])
               : null,
           color: highLevel ? null : frameColor,
           boxShadow: [
             BoxShadow(
-              color:        frameColor.withOpacity(0.4 + 0.3 * _glowAnim.value),
+              color:        frameColor.withValues(alpha: 0.4 + 0.3 * _glowAnim.value),
               blurRadius:   12 + 8 * _glowAnim.value,
               spreadRadius: 2  + 2 * _glowAnim.value,
             ),
@@ -409,7 +409,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Widget _letterAvatar(ChildModel child, double radius, Color color) =>
       CircleAvatar(
         radius: radius,
-        backgroundColor: color.withOpacity(0.3),
+        backgroundColor: color.withValues(alpha: 0.3),
         child: Text(child.name.isEmpty ? '?' : child.name[0].toUpperCase(),
             style: TextStyle(
                 fontSize:   radius * 0.9,
@@ -472,7 +472,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(color: Color(0xFF00E676)),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text('Upload en cours...', style: TextStyle(color: Colors.white)),
           ],
         ),
@@ -551,7 +551,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(color: Color(0xFF00E676)),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text('Upload bannière...', style: TextStyle(color: Colors.white)),
           ],
         ),
@@ -682,7 +682,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     value: 'reset_points',
                     child: Row(children: [
                       Icon(Icons.refresh, color: Colors.amber, size: 20),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Text('Réinitialiser les points', style: TextStyle(color: Colors.white)),
                     ]),
                   ),
@@ -690,7 +690,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     value: 'reset_all',
                     child: Row(children: [
                       Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Text('Tout réinitialiser', style: TextStyle(color: Colors.redAccent)),
                     ]),
                   ),
@@ -781,7 +781,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
             Text('⭐', style: TextStyle(fontSize: 28)),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text('Demander un bonus', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           ]),
           content: Column(
@@ -888,9 +888,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 end: Alignment.bottomRight,
                 colors: [Color(0xFF1E1E3F), Color(0xFF15152B)],
               ),
-              border: Border.all(color: mainColor.withOpacity(0.4), width: 1.5),
+              border: Border.all(color: mainColor.withValues(alpha: 0.4), width: 1.5),
               boxShadow: [
-                BoxShadow(color: mainColor.withOpacity(0.25), blurRadius: 30, spreadRadius: 2),
+                BoxShadow(color: mainColor.withValues(alpha: 0.25), blurRadius: 30, spreadRadius: 2),
               ],
             ),
             child: SingleChildScrollView(
@@ -905,7 +905,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: mainColor.withOpacity(0.2),
+                          color: mainColor.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -937,7 +937,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
+                      color: Colors.white.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: Colors.white12),
                     ),
@@ -970,8 +970,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             width: 70, height: 60,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(14),
-                              gradient: sel ? LinearGradient(colors: [mainColor, mainColor.withOpacity(0.7)]) : null,
-                              color: sel ? null : Colors.white.withOpacity(0.06),
+                              gradient: sel ? LinearGradient(colors: [mainColor, mainColor.withValues(alpha: 0.7)]) : null,
+                              color: sel ? null : Colors.white.withValues(alpha: 0.06),
                               border: Border.all(color: sel ? mainColor : Colors.white12, width: 1.5),
                             ),
                             child: Center(
@@ -993,8 +993,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           width: 70, height: 60,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
-                            gradient: isCustom ? LinearGradient(colors: [mainColor, mainColor.withOpacity(0.7)]) : null,
-                            color: isCustom ? null : Colors.white.withOpacity(0.06),
+                            gradient: isCustom ? LinearGradient(colors: [mainColor, mainColor.withValues(alpha: 0.7)]) : null,
+                            color: isCustom ? null : Colors.white.withValues(alpha: 0.06),
                             border: Border.all(color: isCustom ? mainColor : Colors.white12, width: 1.5),
                           ),
                           child: Center(
@@ -1015,9 +1015,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     const SizedBox(height: 14),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.06),
+                        color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: mainColor.withOpacity(0.5)),
+                        border: Border.all(color: mainColor.withValues(alpha: 0.5)),
                       ),
                       child: TextField(
                         controller: customCtrl,
@@ -1223,7 +1223,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: frame.withOpacity(0.5)),
+                    border: Border.all(color: frame.withValues(alpha: 0.5)),
                     color: Colors.white10,
                   ),
                   child: ClipRRect(
@@ -1257,7 +1257,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: color,
-                  side: BorderSide(color: color.withOpacity(0.5)),
+                  side: BorderSide(color: color.withValues(alpha: 0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -1272,7 +1272,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: frame,
-                  side: BorderSide(color: frame.withOpacity(0.5)),
+                  side: BorderSide(color: frame.withValues(alpha: 0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -1458,7 +1458,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           margin:  const EdgeInsets.symmetric(horizontal: 2),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel ? color.withOpacity(0.25) : Colors.white10,
+                            color: sel ? color.withValues(alpha: 0.25) : Colors.white10,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: sel ? color : Colors.white24,
@@ -1510,7 +1510,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             padding: const EdgeInsets.only(bottom: 8),
             child: Text('📅 Jour pour le temps d\'écran',
                 style: TextStyle(
-                    color: color.withOpacity(0.8),
+                    color: color.withValues(alpha: 0.8),
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
           ),
@@ -1529,7 +1529,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: selected ? color.withOpacity(0.25) : Colors.white10,
+                    color: selected ? color.withValues(alpha: 0.25) : Colors.white10,
                     borderRadius: BorderRadius.circular(10),
                     border: selected ? Border.all(color: color) : null,
                   ),
@@ -1584,7 +1584,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color:  isActive ? color.withOpacity(0.2) : Colors.white10,
+          color:  isActive ? color.withValues(alpha: 0.2) : Colors.white10,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: isActive ? color : Colors.white24),
         ),
@@ -1654,7 +1654,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: color.withOpacity(0.2),
+                  backgroundColor: color.withValues(alpha: 0.2),
                   foregroundColor: color,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
@@ -1791,7 +1791,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: sel ? color.withOpacity(0.25) : Colors.white10,
+                    color: sel ? color.withValues(alpha: 0.25) : Colors.white10,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                         color: sel ? color : Colors.white24,
@@ -1866,9 +1866,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       padding: const EdgeInsets.only(bottom: 8),
       child: Container(
         decoration: BoxDecoration(
-          color:        cat.withOpacity(0.07),
+          color:        cat.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(12),
-          border:       Border.all(color: cat.withOpacity(0.35), width: 1),
+          border:       Border.all(color: cat.withValues(alpha: 0.35), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1958,7 +1958,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               const Row(
                 children: [
                   Icon(Icons.stars_rounded, color: Color(0xFF051410), size: 28),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text('Mes points', style: TextStyle(color: Color(0xFF051410), fontSize: 16, fontWeight: FontWeight.w600)),
                 ],
               ),
@@ -2001,9 +2001,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text('🛒', style: TextStyle(fontSize: 24)),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text('Aller à la Boutique', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Icon(Icons.chevron_right_rounded, color: Colors.white70),
               ],
             ),
@@ -2021,10 +2021,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: const Column(
               children: [
                 Text('🛍️', style: TextStyle(fontSize: 48)),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text('Aucun achat pour l\'instant',
                     style: TextStyle(color: Colors.white38, fontSize: 14)),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text('Va à la boutique pour dépenser tes points !',
                     style: TextStyle(color: Colors.white24, fontSize: 12)),
               ],
@@ -2125,7 +2125,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.stars_rounded, size: 14, color: Color(0xFFD4AF37)),
-                SizedBox(width: 3),
+                const SizedBox(width: 3),
               ],
             ),
           ),

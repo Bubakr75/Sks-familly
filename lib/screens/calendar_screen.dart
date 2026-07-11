@@ -202,7 +202,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                             outsideTextStyle:
                                 const TextStyle(color: Colors.white24),
                             todayDecoration: BoxDecoration(
-                              color: Colors.cyan.withOpacity(0.3),
+                              color: Colors.cyan.withValues(alpha: 0.3),
                               shape: BoxShape.circle,
                               border: Border.all(
                                   color: Colors.cyan, width: 1.5),
@@ -216,7 +216,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.amber.withOpacity(0.5),
+                                  color: Colors.amber.withValues(alpha: 0.5),
                                   blurRadius: 4,
                                 ),
                               ],
@@ -273,13 +273,13 @@ class _CalendarScreenState extends State<CalendarScreen>
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                Colors.cyan.withOpacity(0.2),
-                                Colors.blue.withOpacity(0.2),
+                                Colors.cyan.withValues(alpha: 0.2),
+                                Colors.blue.withValues(alpha: 0.2),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: Colors.cyan.withOpacity(0.3)),
+                                color: Colors.cyan.withValues(alpha: 0.3)),
                           ),
                           child: Text(
                             '${_selectedDay!.day.toString().padLeft(2, '0')}/${_selectedDay!.month.toString().padLeft(2, '0')}/${_selectedDay!.year} — ${selectedEvents.length} activité${selectedEvents.length > 1 ? 's' : ''}',
@@ -351,7 +351,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: (isPositive ? Colors.green : Colors.red).withOpacity(0.3),
+                                                  color: (isPositive ? Colors.green : Colors.red).withValues(alpha: 0.3),
                                                   blurRadius: 6,
                                                 ),
                                               ],
@@ -384,7 +384,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                                                       Container(
                                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                                         decoration: BoxDecoration(
-                                                          color: Colors.cyan.withOpacity(0.1),
+                                                          color: Colors.cyan.withValues(alpha: 0.1),
                                                           borderRadius: BorderRadius.circular(6),
                                                         ),
                                                         child: Text(
@@ -445,7 +445,7 @@ class _CalendarScreenState extends State<CalendarScreen>
               color: const Color(0xFF1A1A2E),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               boxShadow: [
-                BoxShadow(color: Colors.cyan.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5)),
+                BoxShadow(color: Colors.cyan.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5)),
               ],
             ),
             padding: const EdgeInsets.all(24),

@@ -164,7 +164,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
               radius: 1.2,
               colors: [
                 Colors.transparent,
-                Colors.black.withOpacity(0.3),
+                Colors.black.withValues(alpha: 0.3),
               ],
             ),
           ),
@@ -190,11 +190,11 @@ class _Particle {
     opacity = 0.1 + rng.nextDouble() * 0.4;
     phase = rng.nextDouble() * 6.2832;
     final colors = [
-      Colors.cyan.withOpacity(0.6),
-      Colors.blue.withOpacity(0.5),
-      Colors.purple.withOpacity(0.4),
-      Colors.white.withOpacity(0.3),
-      Colors.teal.withOpacity(0.4),
+      Colors.cyan.withValues(alpha: 0.6),
+      Colors.blue.withValues(alpha: 0.5),
+      Colors.purple.withValues(alpha: 0.4),
+      Colors.white.withValues(alpha: 0.3),
+      Colors.teal.withValues(alpha: 0.4),
     ];
     color = colors[rng.nextInt(colors.length)];
   }
@@ -219,14 +219,14 @@ class _ParticlePainter extends CustomPainter {
       final currentOpacity = (p.opacity * twinkle).clamp(0.0, 1.0);
 
       final paint = Paint()
-        ..color = p.color.withOpacity(currentOpacity)
+        ..color = p.color.withValues(alpha: currentOpacity)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, p.size * 0.8);
 
       canvas.drawCircle(Offset(px, py), p.size, paint);
 
       // Small bright core
       final corePaint = Paint()
-        ..color = Colors.white.withOpacity(currentOpacity * 0.6);
+        ..color = Colors.white.withValues(alpha: currentOpacity * 0.6);
       canvas.drawCircle(Offset(px, py), p.size * 0.3, corePaint);
     }
   }
@@ -264,19 +264,19 @@ class _StarsPainter extends CustomPainter {
 
       // Star glow
       final glowPaint = Paint()
-        ..color = Colors.white.withOpacity(twinkle * 0.15)
+        ..color = Colors.white.withValues(alpha: twinkle * 0.15)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, s.size * 3);
       canvas.drawCircle(Offset(px, py), s.size * 2, glowPaint);
 
       // Star core
       final corePaint = Paint()
-        ..color = Colors.white.withOpacity(twinkle * 0.8);
+        ..color = Colors.white.withValues(alpha: twinkle * 0.8);
       canvas.drawCircle(Offset(px, py), s.size, corePaint);
 
       // Cross sparkle for bright stars
       if (s.size > 1.0 && twinkle > 0.7) {
         final sparklePaint = Paint()
-          ..color = Colors.white.withOpacity((twinkle - 0.7) * 2)
+          ..color = Colors.white.withValues(alpha: (twinkle - 0.7) * 2)
           ..strokeWidth = 0.5;
         final len = s.size * 3 * twinkle;
         canvas.drawLine(
@@ -307,7 +307,7 @@ class _NebulaPainter extends CustomPainter {
         size.height * (0.3 + 0.1 * math.cos(progress * 6.2832)),
       ),
       size.width * 0.35,
-      Colors.cyan.withOpacity(0.03),
+      Colors.cyan.withValues(alpha: 0.03),
     );
 
     // Blob 2 - purple
@@ -318,7 +318,7 @@ class _NebulaPainter extends CustomPainter {
         size.height * (0.6 + 0.15 * math.sin(progress * 6.2832 + 2)),
       ),
       size.width * 0.4,
-      Colors.purple.withOpacity(0.025),
+      Colors.purple.withValues(alpha: 0.025),
     );
 
     // Blob 3 - blue
@@ -329,7 +329,7 @@ class _NebulaPainter extends CustomPainter {
         size.height * (0.15 + 0.1 * math.cos(progress * 6.2832 + 1)),
       ),
       size.width * 0.3,
-      Colors.blue.withOpacity(0.02),
+      Colors.blue.withValues(alpha: 0.02),
     );
   }
 

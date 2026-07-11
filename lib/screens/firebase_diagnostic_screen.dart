@@ -179,7 +179,7 @@ class _FirebaseDiagnosticScreenState extends State<FirebaseDiagnosticScreen> {
                 child: Row(
                   children: [
                     Icon(Icons.info_outline, color: Colors.blue),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Ce diagnostic teste la connexion Firebase etape par etape. Faites une capture d\'ecran du resultat.',

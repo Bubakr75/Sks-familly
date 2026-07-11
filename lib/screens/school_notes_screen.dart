@@ -330,7 +330,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
             decoration: BoxDecoration(
               color: const Color(0xFF16213E),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withOpacity(0.4)),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,7 +341,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
+                        color: color.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: color),
                       ),
@@ -703,7 +703,7 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF16213E),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.4)),
+                    border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.4)),
                   ),
                   child: Text(
                     choice,
@@ -882,7 +882,7 @@ class _AiResultSheet extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 24, vertical: 12),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.15),
+                            color: color.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: color),
                           ),
@@ -975,7 +975,7 @@ class _AiResultSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF16213E),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

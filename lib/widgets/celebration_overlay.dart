@@ -78,12 +78,12 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 32, vertical: 20),
                     decoration: BoxDecoration(
-                      color: (widget.color ?? Colors.amber).withOpacity(0.9),
+                      color: (widget.color ?? Colors.amber).withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
                           color:
-                              (widget.color ?? Colors.amber).withOpacity(0.5),
+                              (widget.color ?? Colors.amber).withValues(alpha: 0.5),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
@@ -139,7 +139,7 @@ class _ConfettiPainter extends CustomPainter {
       canvas.save();
       canvas.translate(dx, dy);
       canvas.rotate(p.rotSpeed * pt);
-      final paint = Paint()..color = p.color.withOpacity(opacity);
+      final paint = Paint()..color = p.color.withValues(alpha: opacity);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -215,8 +215,8 @@ class _FlyingPointsOverlayState extends State<FlyingPointsOverlay>
                     fontSize: 48,
                     fontWeight: FontWeight.w900,
                     shadows: [
-                      Shadow(color: color.withOpacity(0.6), blurRadius: 20),
-                      Shadow(color: color.withOpacity(0.3), blurRadius: 40),
+                      Shadow(color: color.withValues(alpha: 0.6), blurRadius: 20),
+                      Shadow(color: color.withValues(alpha: 0.3), blurRadius: 40),
                     ],
                   ),
                 ),
@@ -296,7 +296,7 @@ class _NeonRingPainter extends CustomPainter {
     final opacity = (0.2 + 0.3 * sin(progress * 2 * pi)).clamp(0.0, 1.0);
 
     final paint = Paint()
-      ..color = color.withOpacity(opacity)
+      ..color = color.withValues(alpha: opacity)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, 6 + 4 * sin(progress * 2 * pi));
@@ -305,7 +305,7 @@ class _NeonRingPainter extends CustomPainter {
 
     // Second ring plus léger
     final paint2 = Paint()
-      ..color = color.withOpacity(opacity * 0.4)
+      ..color = color.withValues(alpha: opacity * 0.4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, 10);

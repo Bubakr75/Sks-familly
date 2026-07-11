@@ -58,7 +58,7 @@ class PendingRequestsScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.check_circle_outline,
                       size: 64, color: Colors.green),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text('Aucune demande en attente',
                       style: TextStyle(fontSize: 16)),
                 ],
