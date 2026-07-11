@@ -177,7 +177,7 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
     // Rappels de notifications (non bloquants, et uniquement hors web)
     if (!kIsWeb) {
       try {
-        await NotificationService.scheduleDailyReminder(hour: 19, minute: 0)
+        await NotificationService.scheduleDailyReminder(hour: 20, minute: 15)
             .timeout(const Duration(seconds: 3));
       } catch (e) {
         if (kDebugMode) debugPrint('Schedule reminder error: $e');

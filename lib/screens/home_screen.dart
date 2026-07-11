@@ -34,6 +34,7 @@ import 'child_dashboard_screen.dart';
 import 'timeline_screen.dart';
 import 'chores_screen.dart';
 import 'checklist_screen.dart';
+import 'evening_summary_screen.dart';
 import '../widgets/animated_page_transition.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -1031,6 +1032,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
+                // Bilan du soir (parent uniquement)
+                if (isParent)
+                  _drawerItem(
+                    icon: Icons.nights_stay_rounded,
+                    label: 'Bilan du soir',
+                    color: Colors.indigoAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        SlidePageRoute(page: const EveningSummaryScreen()),
+                      );
+                    },
+                  ),
                 _drawerItem(
                   icon: Icons.checklist_rounded,
                   label: 'Checklist du jour',

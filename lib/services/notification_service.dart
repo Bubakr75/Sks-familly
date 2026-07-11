@@ -70,8 +70,8 @@ class NotificationService {
 
     await _localNotifications.zonedSchedule(
       1001,
-      '\u{1F4CB} Rappel du soir',
-      'N\'oubliez pas de noter la journee de vos enfants !',
+      '🌙 Bilan du soir',
+      'C\'est l\'heure du bilan ! Ouvrez l\'app pour voir la journée de vos enfants et ajuster les points.',
       _nextInstanceOfTime(hour, minute),
       const NotificationDetails(
         android: AndroidNotificationDetails(
