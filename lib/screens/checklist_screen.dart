@@ -283,7 +283,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     final pointsCtrl = TextEditingController(text: '5');
     final allEmojis = ['✅', '🛏️', '🛌', '🍽️', '🪥', '📚', '🧸', '🗑️', '🐕', '🧹', '🚗', '👕', '🪴', '🍳', '🧽', '📦'];
     String selectedEmoji = '✅';
-    bool isIndividual = true; // Par défaut : tâche individuelle
+    bool isIndividual = true;
+    final timeSlots = <String>['matin', 'midi', 'soir']; // Tous cochés par défaut
 
     showDialog(
       context: context,
@@ -388,6 +389,21 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  // Moments de la journée
+                  const Text('Moments :', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  StatefulBuilder(
+                    builder: (ctx, setSlots) => Row(
+                      children: [
+                        _TimeSlotChip(label: '🌅 Matin', value: 'matin', slots: timeSlots, onTap: setSlots),
+                        const SizedBox(width: 6),
+                        _TimeSlotChip(label: '☀️ Midi', value: 'midi', slots: timeSlots, onTap: setSlots),
+                        const SizedBox(width: 6),
+                        _TimeSlotChip(label: '🌙 Soir', value: 'soir', slots: timeSlots, onTap: setSlots),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -395,11 +411,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: EmeraldPalette.emerald, foregroundColor: const Color(0xFF051410)),
-                onPressed: () {
+                onPressed: timeSlots.isEmpty ? null : () {
                   final label = labelCtrl.text.trim();
                   final points = int.tryParse(pointsCtrl.text.trim()) ?? 5;
                   if (label.isEmpty) return;
-                  fp.addChore(label: label, points: points, emoji: selectedEmoji, isIndividual: isIndividual);
+                  fp.addChore(label: label, points: points, emoji: selectedEmoji, isIndividual: isIndividual, timeSlots: timeSlots);
                   Navigator.pop(ctx);
                 },
                 child: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -543,6 +559,46 @@ class _ChoreTile extends StatelessWidget {
           ],
         ),
         onTap: onToggle,
+      ),
+    );
+  }
+}
+
+class _TimeSlotChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final List<String> slots;
+  final void Function(void Function()) onTap;
+
+  const _TimeSlotChip({required this.label, required this.value, required this.slots, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = slots.contains(value);
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(() {
+          if (isSelected) {
+            slots.remove(value);
+          } else {
+            slots.add(value);
+          }
+        }),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? EmeraldPalette.emerald.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: isSelected ? EmeraldPalette.emerald : Colors.white12),
+          ),
+          child: Center(
+            child: Text(label, style: TextStyle(
+              color: isSelected ? EmeraldPalette.emeraldLight : Colors.white54,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            )),
+          ),
+        ),
       ),
     );
   }

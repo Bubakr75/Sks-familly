@@ -2024,7 +2024,7 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── CHECKLIST DES TÂCHES ────────────────────────────────────
 
-  Future<void> addChore({required String label, required int points, String emoji = '✅', bool isIndividual = true}) async {
+  Future<void> addChore({required String label, required int points, String emoji = '✅', bool isIndividual = true, List<String>? timeSlots}) async {
     final c = ChoreModel(
       id: 'chore_${_uuid.v4()}',
       label: label,
@@ -2032,6 +2032,7 @@ class FamilyProvider extends ChangeNotifier {
       emoji: emoji,
       order: _chores.length,
       isIndividual: isIndividual,
+      timeSlots: timeSlots ?? const ['matin', 'midi', 'soir'],
     );
     _chores.add(c);
     await _choresBox.put(c.id, jsonEncode(c.toMap()));
