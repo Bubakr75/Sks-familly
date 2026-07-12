@@ -1,9 +1,7 @@
 // lib/widgets/ai_floating_button.dart
 //
-// Bouton flottant IA 🤖 avec :
-// 📸 Photo IA (analyse + modification + choix enfant)
-// 🎤 Conversation vocale (parle → Gemini répond → applique)
-// ⌨️ Conversation texte (tape → Gemini répond → applique)
+// Bouton IA flottant 🤖 — version simple et fiable.
+// 4 fonctions : Photo / Voix / Texte / Chat
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,107 +14,90 @@ import '../models/child_model.dart';
 import '../services/gemini_service.dart';
 import '../screens/add_points_screen.dart';
 import '../screens/gemini_chat_screen.dart';
-import '../config/emerald_theme.dart';
 
-class AIFloatingButton extends StatefulWidget {
+class AIFloatingButton extends StatelessWidget {
   const AIFloatingButton({super.key});
 
   @override
-  State<AIFloatingButton> createState() => _AIFloatingButtonState();
-}
-
-class _AIFloatingButtonState extends State<AIFloatingButton>
-    with SingleTickerProviderStateMixin {
-  bool _isOpen = false;
-  late AnimationController _animController;
-  late Animation<double> _anim;
-  final SpeechToText _speech = SpeechToText();
-  bool _isListening = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _anim = CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic);
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    _speech.stop();
-    super.dispose();
-  }
-
-  void _toggle() {
-    setState(() => _isOpen = !_isOpen);
-    if (_isOpen) {
-      _animController.forward();
-      HapticFeedback.lightImpact();
-    } else {
-      _animController.reverse();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final fp = context.watch<FamilyProvider>();
-    if (fp.children.isEmpty) return const SizedBox.shrink();
+    return FloatingActionButton(
+      heroTag: 'ai_fab',
+      backgroundColor: Colors.deepPurpleAccent,
+      child: const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+      onPressed: () => _showMenu(context),
+    );
+  }
 
-    return Stack(
-      children: [
-        if (_isOpen)
-          GestureDetector(
-            onTap: _toggle,
-            child: Container(color: Colors.black.withValues(alpha: 0.5)),
-          ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (_isOpen) ...[
-                _MenuItem(animation: _anim, icon: Icons.photo_camera_rounded, label: 'Photo IA', color: Colors.deepPurpleAccent, delay: 0, onTap: () { _toggle(); _photoIA(fp); }),
-                const SizedBox(height: 8),
-                _MenuItem(animation: _anim, icon: Icons.mic_rounded, label: 'Parler à l\'IA', color: Colors.redAccent, delay: 0.1, onTap: () { _toggle(); _converserVocal(fp); }),
-                const SizedBox(height: 8),
-                _MenuItem(animation: _anim, icon: Icons.keyboard_rounded, label: 'Texte IA', color: Colors.cyanAccent, delay: 0.15, onTap: () { _toggle(); _converserTexte(fp); }),
-                const SizedBox(height: 8),
-                _MenuItem(animation: _anim, icon: Icons.chat_rounded, label: 'Chat IA', color: Colors.amberAccent, delay: 0.2, onTap: () { _toggle(); Navigator.push(context, MaterialPageRoute(builder: (_) => const GeminiChatScreen())); }),
-                const SizedBox(height: 12),
-              ],
-              GestureDetector(
-                onTap: _toggle,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 60, height: 60,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: _isOpen ? [Colors.redAccent, Colors.orangeAccent] : [Colors.deepPurpleAccent, Colors.purpleAccent]),
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: (_isOpen ? Colors.redAccent : Colors.deepPurpleAccent).withValues(alpha: 0.4), blurRadius: 16, spreadRadius: 2)],
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: _isOpen
-                        ? const Icon(Icons.close_rounded, color: Colors.white, size: 30, key: ValueKey('close'))
-                        : const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 30, key: ValueKey('open')),
-                  ),
-                ),
-              ),
-            ],
-          ),
+  void _showMenu(BuildContext context) {
+    HapticFeedback.lightImpact();
+    final fp = context.read<FamilyProvider>();
+    if (fp.children.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ajoute d\'abord un enfant !')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F2620),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const Text('Assistant IA', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+
+            // 📸 Photo IA
+            _MenuTile(
+              icon: Icons.photo_camera_rounded,
+              label: 'Photo IA',
+              subtitle: 'Prends une photo → l\'IA détecte bonus/pénalité',
+              color: Colors.deepPurpleAccent,
+              onTap: () { Navigator.pop(ctx); _photoIA(context, fp); },
+            ),
+
+            // 🎤 Parler
+            _MenuTile(
+              icon: Icons.mic_rounded,
+              label: 'Parler à l\'IA',
+              subtitle: 'Dis ce qui s\'est passé → l\'IA applique',
+              color: Colors.redAccent,
+              onTap: () { Navigator.pop(ctx); _voiceIA(context, fp); },
+            ),
+
+            // ⌨️ Texte
+            _MenuTile(
+              icon: Icons.keyboard_rounded,
+              label: 'Saisie texte IA',
+              subtitle: 'Tape une phrase → l\'IA remplit',
+              color: Colors.cyanAccent,
+              onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => const AddPointsScreen())); },
+            ),
+
+            // 💬 Chat
+            _MenuTile(
+              icon: Icons.chat_rounded,
+              label: 'Chat IA',
+              subtitle: 'Pose tes questions à Gemini',
+              color: Colors.amberAccent,
+              onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => const GeminiChatScreen())); },
+            ),
+
+            const SizedBox(height: 20),
+          ],
         ),
-      ],
+      ),
     );
   }
 
   // ════════════════════════════════════════════════════════════
-  // 📸 PHOTO IA : analyse + modification + choix enfant
+  // 📸 PHOTO IA
   // ════════════════════════════════════════════════════════════
-  Future<void> _photoIA(FamilyProvider fp) async {
+  Future<void> _photoIA(BuildContext context, FamilyProvider fp) async {
     final children = fp.children;
     final messenger = ScaffoldMessenger.of(context);
 
@@ -125,7 +106,7 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
     final bytes = await xfile.readAsBytes();
     final base64Photo = base64Encode(bytes);
 
-    if (!mounted) return;
+    if (!context.mounted) return;
     showDialog(context: context, barrierDismissible: false,
       builder: (ctx) => const AlertDialog(backgroundColor: Color(0xFF0F2620),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -137,8 +118,8 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
     );
 
     final result = await GeminiService.analyzePhoto(base64Photo);
-    if (mounted) Navigator.pop(context);
-    if (!mounted) return;
+    if (context.mounted) Navigator.pop(context);
+    if (!context.mounted) return;
 
     bool isBonus = result['type'] == 'bonus';
     int points = result['points'] as int;
@@ -147,6 +128,7 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
 
     HapticFeedback.mediumImpact();
 
+    if (!context.mounted) return;
     await showDialog(context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) => AlertDialog(
@@ -157,44 +139,30 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.memory(bytes, height: 100, width: double.infinity, fit: BoxFit.cover)),
               const SizedBox(height: 14),
-
-              // Toggle Bonus/Pénalité (modifiable)
               Row(children: [
-                Expanded(child: GestureDetector(
-                  onTap: () => setDialog(() => isBonus = true),
+                Expanded(child: GestureDetector(onTap: () => setDialog(() => isBonus = true),
                   child: Container(padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: isBonus ? Colors.green.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(10), border: Border.all(color: isBonus ? Colors.green : Colors.white12)),
-                    child: Center(child: Text('✅ Bonus', style: TextStyle(color: isBonus ? Colors.green : Colors.white54, fontWeight: FontWeight.w600))),
-                  ),
-                )),
+                    child: Center(child: Text('✅ Bonus', style: TextStyle(color: isBonus ? Colors.green : Colors.white54, fontWeight: FontWeight.w600)))))),
                 const SizedBox(width: 8),
-                Expanded(child: GestureDetector(
-                  onTap: () => setDialog(() => isBonus = false),
+                Expanded(child: GestureDetector(onTap: () => setDialog(() => isBonus = false),
                   child: Container(padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: !isBonus ? Colors.redAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(10), border: Border.all(color: !isBonus ? Colors.redAccent : Colors.white12)),
-                    child: Center(child: Text('⚠️ Pénalité', style: TextStyle(color: !isBonus ? Colors.redAccent : Colors.white54, fontWeight: FontWeight.w600))),
-                  ),
-                )),
+                    child: Center(child: Text('⚠️ Pénalité', style: TextStyle(color: !isBonus ? Colors.redAccent : Colors.white54, fontWeight: FontWeight.w600)))))),
               ]),
-
               const SizedBox(height: 12),
-
-              // Points modifiables
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 IconButton(onPressed: () => setDialog(() { if (points > 1) points--; }), icon: const Icon(Icons.remove_circle_outline, color: Colors.white54)),
                 Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), decoration: BoxDecoration(color: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
                   child: Text('${isBonus ? "+" : "-"}$points pts', style: TextStyle(color: isBonus ? Colors.green : Colors.redAccent, fontSize: 20, fontWeight: FontWeight.w800))),
                 IconButton(onPressed: () => setDialog(() { if (points < 50) points++; }), icon: const Icon(Icons.add_circle_outline, color: Colors.white54)),
               ]),
-
               const SizedBox(height: 8),
               Text('"$reason"', style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic)),
               const SizedBox(height: 16),
-
               const Text('Pour quel enfant ?', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               ...children.map((c) {
                 final isSelected = selectedChildId == c.id;
-                return GestureDetector(
-                  onTap: () => setDialog(() => selectedChildId = c.id),
+                return GestureDetector(onTap: () => setDialog(() => selectedChildId = c.id),
                   child: Container(margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(color: isSelected ? (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected ? (isBonus ? Colors.green : Colors.redAccent) : Colors.white12, width: isSelected ? 1.5 : 1)),
                     child: Row(children: [
@@ -202,16 +170,13 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
                       const SizedBox(width: 10),
                       Expanded(child: Text(c.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
                       if (isSelected) Icon(Icons.check_circle_rounded, color: isBonus ? Colors.green : Colors.redAccent, size: 20),
-                    ]),
-                  ),
-                );
-              }).toList(),
+                    ])));
+              }),
             ]),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: isBonus ? Colors.green : Colors.redAccent, foregroundColor: Colors.white),
+            ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: isBonus ? Colors.green : Colors.redAccent, foregroundColor: Colors.white),
               onPressed: selectedChildId == null ? null : () async {
                 Navigator.pop(ctx);
                 if (isBonus) { await fp.addQuickBonus(selectedChildId!, reason); }
@@ -220,13 +185,10 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
                   HapticFeedback.heavyImpact();
                   messenger.showSnackBar(SnackBar(
                     content: Text('${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} pour ${fp.getChild(selectedChildId!)?.name}\n$points pts : "$reason"'),
-                    backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
-                    behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4),
-                  ));
+                    backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700, behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4)));
                 }
               },
-              child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
+              child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
         ),
       ),
@@ -234,117 +196,70 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
   }
 
   // ════════════════════════════════════════════════════════════
-  // 🎤 CONVERSATION VOCALE : parle → Gemini détecte → applique
+  // 🎤 VOIX IA
   // ════════════════════════════════════════════════════════════
-  Future<void> _converserVocal(FamilyProvider fp) async {
+  Future<void> _voiceIA(BuildContext context, FamilyProvider fp) async {
     final children = fp.children;
     final messenger = ScaffoldMessenger.of(context);
-    String lastText = '';
+    final speech = SpeechToText();
+    String heard = '';
+    bool isListening = false;
 
+    if (!context.mounted) return;
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) {
-          void startListening() async {
-            final available = await _speech.initialize(
-              onStatus: (status) {
-                if (status == 'done' || status == 'notListening') {
-                  setDialog(() => _isListening = false);
-                  if (lastText.isNotEmpty) {
-                    // Traiter la phrase
-                    _processVoiceCommand(fp, children, lastText, messenger, setDialog);
+          Future<void> toggle() async {
+            if (isListening) {
+              await speech.stop();
+              setDialog(() => isListening = false);
+              if (heard.isNotEmpty) {
+                Navigator.pop(ctx);
+                _processCommand(context, fp, children, heard, messenger);
+              }
+            } else {
+              final ok = await speech.initialize(
+                onStatus: (s) {
+                  if (s == 'done' || s == 'notListening') {
+                    setDialog(() => isListening = false);
+                    if (heard.isNotEmpty) {
+                      Navigator.pop(ctx);
+                      _processCommand(context, fp, children, heard, messenger);
+                    }
                   }
-                }
-              },
-              onError: (_) => setDialog(() => _isListening = false),
-            );
-            if (available) {
-              setDialog(() => _isListening = true);
-              _speech.listen(
-                onResult: (result) {
-                  lastText = result.recognizedWords;
-                  setDialog(() {});
                 },
-                localeId: 'fr_FR',
+                onError: (_) => setDialog(() => isListening = false),
               );
+              if (ok) {
+                setDialog(() => isListening = true);
+                speech.listen(onResult: (r) { heard = r.recognizedWords; setDialog(() {}); }, localeId: 'fr_FR');
+              }
             }
           }
 
           return AlertDialog(
             backgroundColor: const Color(0xFF0F2620),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(children: [
-              Icon(Icons.mic_rounded, color: Colors.redAccent),
-              SizedBox(width: 8),
-              Text('Assistant vocal IA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ]),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Statut
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _isListening ? Colors.redAccent.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _isListening ? Colors.redAccent : Colors.white12),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        _isListening ? Icons.graphic_eq_rounded : Icons.mic_none_rounded,
-                        color: _isListening ? Colors.redAccent : Colors.white54,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _isListening ? 'Je t\'écoute...' : 'Clique pour parler',
-                        style: TextStyle(color: _isListening ? Colors.redAccent : Colors.white54, fontSize: 14),
-                      ),
-                      if (lastText.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
-                          child: Text('"$lastText"', style: const TextStyle(color: Colors.white, fontSize: 14, fontStyle: FontStyle.italic)),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Bouton micro
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isListening ? Colors.redAccent : Colors.deepPurpleAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    icon: Icon(_isListening ? Icons.stop_rounded : Icons.mic_rounded),
-                    label: Text(_isListening ? 'Arrêter' : 'Parler'),
-                    onPressed: () {
-                      if (_isListening) {
-                        _speech.stop();
-                        setDialog(() => _isListening = false);
-                        if (lastText.isNotEmpty) {
-                          _processVoiceCommand(fp, children, lastText, messenger, setDialog);
-                        }
-                      } else {
-                        startListening();
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('Ex: "Adam a rangé sa chambre" ou "Sara a menti"',
-                  style: TextStyle(color: Colors.white38, fontSize: 11), textAlign: TextAlign.center),
+            title: const Text('🎤 Assistant vocal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(isListening ? Icons.graphic_eq_rounded : Icons.mic_none_rounded, color: isListening ? Colors.redAccent : Colors.white54, size: 56),
+              const SizedBox(height: 12),
+              Text(isListening ? 'Je t\'écoute...' : 'Clique pour parler', style: TextStyle(color: isListening ? Colors.redAccent : Colors.white54, fontSize: 14)),
+              if (heard.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
+                  child: Text('"$heard"', style: const TextStyle(color: Colors.white, fontSize: 14))),
               ],
-            ),
+            ]),
             actions: [
-              TextButton(onPressed: () { _speech.stop(); Navigator.pop(ctx); }, child: const Text('Fermer', style: TextStyle(color: Colors.white54))),
+              TextButton(onPressed: () { speech.stop(); Navigator.pop(ctx); }, child: const Text('Fermer', style: TextStyle(color: Colors.white54))),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: isListening ? Colors.redAccent : Colors.deepPurpleAccent, foregroundColor: Colors.white),
+                icon: Icon(isListening ? Icons.stop_rounded : Icons.mic_rounded),
+                label: Text(isListening ? 'Arrêter' : 'Parler'),
+                onPressed: toggle,
+              ),
             ],
           );
         },
@@ -352,9 +267,20 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
     );
   }
 
-  Future<void> _processVoiceCommand(FamilyProvider fp, List<ChildModel> children, String text, ScaffoldMessengerState messenger, StateSetter setDialog) async {
-    setDialog(() {});
+  Future<void> _processCommand(BuildContext context, FamilyProvider fp, List<ChildModel> children, String text, ScaffoldMessengerState messenger) async {
+    showDialog(context: context, barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(backgroundColor: Color(0xFF0F2620),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          CircularProgressIndicator(color: Colors.deepPurpleAccent),
+          SizedBox(height: 16),
+          Text('🤖 Analyse...', style: TextStyle(color: Colors.white)),
+        ]),
+      ),
+    );
+
     final result = await GeminiService.parseNaturalLanguage(text, childNames: children.map((c) => c.name).toList());
+    if (context.mounted) Navigator.pop(context);
+    if (!context.mounted) return;
 
     if (result['type'] == 'error') {
       messenger.showSnackBar(SnackBar(content: Text('❌ ${result['reason']}'), backgroundColor: Colors.redAccent));
@@ -371,32 +297,28 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
       target = children.where((c) => c.name.toLowerCase() == childName.toLowerCase()).firstOrNull;
     }
 
-    // Si enfant détecté → appliquer direct
     if (target != null) {
       if (isBonus) { await fp.addQuickBonus(target.id, reason); }
       else { await fp.addQuickPenalty(target.id, reason); }
       HapticFeedback.heavyImpact();
       messenger.showSnackBar(SnackBar(
         content: Text('🤖 ${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} pour ${target.name}\n$points pts : "$reason"'),
-        backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
-        behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4),
-      ));
-      if (mounted) Navigator.pop(context);
+        backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700, behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4)));
     } else {
-      // Pas d'enfant détecté → proposer le choix
+      // Sélecteur d'enfant
       String? selectedId;
+      if (!context.mounted) return;
       await showDialog(context: context,
         builder: (ctx) => StatefulBuilder(
           builder: (ctx, setInner) => AlertDialog(
             backgroundColor: const Color(0xFF0F2620),
-            title: const Text('🤖 Pour quel enfant ?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            title: const Text('Pour quel enfant ?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
               Text('${isBonus ? "Bonus" : "Pénalité"} de $points pts\n"$reason"', style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center),
               const SizedBox(height: 12),
               ...children.map((c) {
                 final isSelected = selectedId == c.id;
-                return GestureDetector(
-                  onTap: () => setInner(() => selectedId = c.id),
+                return GestureDetector(onTap: () => setInner(() => selectedId = c.id),
                   child: Container(margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(color: isSelected ? Colors.deepPurpleAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected ? Colors.deepPurpleAccent : Colors.white12)),
                     child: Row(children: [
@@ -404,9 +326,7 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
                       const SizedBox(width: 10),
                       Expanded(child: Text(c.name, style: const TextStyle(color: Colors.white))),
                       if (isSelected) const Icon(Icons.check_circle_rounded, color: Colors.deepPurpleAccent),
-                    ]),
-                  ),
-                );
+                    ])));
               }),
             ]),
             actions: [
@@ -419,58 +339,50 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
                   else { await fp.addQuickPenalty(selectedId!, reason); }
                   messenger.showSnackBar(SnackBar(content: Text('✅ Appliqué à ${fp.getChild(selectedId!)?.name}'), backgroundColor: Colors.deepPurpleAccent));
                 },
-                child: const Text('Confirmer'),
-              ),
+                child: const Text('Confirmer')),
             ],
           ),
         ),
       );
     }
   }
-
-  // ════════════════════════════════════════════════════════════
-  // ⌨️ CONVERSATION TEXTE : tape → Gemini détecte → applique
-  // ════════════════════════════════════════════════════════════
-  Future<void> _converserTexte(FamilyProvider fp) async {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const AddPointsScreen()));
-  }
 }
 
-class _MenuItem extends StatelessWidget {
-  final Animation<double> animation;
+// ─── Tuile du menu ───────────────────────────────────────────
+class _MenuTile extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String subtitle;
   final Color color;
-  final double delay;
   final VoidCallback onTap;
 
-  const _MenuItem({required this.animation, required this.icon, required this.label, required this.color, required this.delay, required this.onTap});
+  const _MenuTile({required this.icon, required this.label, required this.subtitle, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) {
-        final value = ((animation.value - delay) / (1 - delay)).clamp(0.0, 1.0);
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 20 * (1 - value)),
-            child: GestureDetector(
-              onTap: onTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(color: EmeraldPalette.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: 0.4)), boxShadow: [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8)]),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(icon, color: color, size: 22),
-                  const SizedBox(width: 8),
-                  Text(label, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                ]),
-              ),
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(children: [
+          Container(width: 44, height: 44, decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color, size: 22)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
+          ]),
           ),
-        );
-      },
+          Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.5), size: 22),
+        ]),
+      ),
     );
   }
 }
