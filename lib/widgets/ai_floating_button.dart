@@ -13,6 +13,8 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../services/gemini_service.dart';
 import '../models/child_model.dart';
+import '../screens/add_points_screen.dart';
+import '../screens/gemini_chat_screen.dart';
 import '../config/emerald_theme.dart';
 
 class AIFloatingButton extends StatefulWidget {
@@ -116,7 +118,7 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
                   delay: 0.2,
                   onTap: () {
                     _toggle();
-                    widget.onOpenChat?.call();
+                    _chatIA();
                   },
                 ),
                 const SizedBox(height: 12),
@@ -303,17 +305,19 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
     );
   }
 
-  // 🎤 Voix IA
+  // 🎤 Voix/Texte IA → ouvre l'écran Points directement
   Future<void> _voiceIA(FamilyProvider fp) async {
-    // Rediriger vers l'écran Points
-    Navigator.pushNamed(context, '/points');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🎤 Parle maintenant ! Tape ta phrase ou utilise le micro'),
-        backgroundColor: Colors.deepPurpleAccent,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 3),
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddPointsScreen()),
+    );
+  }
+
+  // 💬 Chat IA → ouvre l'écran Gemini
+  Future<void> _chatIA() async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const GeminiChatScreen()),
     );
   }
 }
