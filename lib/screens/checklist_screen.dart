@@ -191,15 +191,50 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       final completed = allChores.where((c) => _checked.contains(c.id)).toList();
       final total = await fp.validateChores(child.id, completed);
 
-      // ⚠️ Tâches NON cochées = pénalité (la moitié des points de la tâche)
-      final notCompleted = allChores.where((c) => !_checked.contains(c.id)).toList();
-      int totalPenalty = 0;
-      for (final chore in notCompleted) {
-        final penalty = (chore.points ~/ 2).clamp(1, 10); // moitié des points, min 1, max 10
-        totalPenalty += penalty;
+      // ⚠️ Pénalités intelligentes :
+      // - Tâches individuelles non cochées → pénalité (brossage de dents, lit, etc.)
+      // - Tâches partagées non cochées → pénalité SEULEMENT si PERSONNE dans la famille ne l'a faite aujourd'hui
+      
+      // 1. Récupérer toutes les tâches ménagères faites aujourd'hui par TOUTE la famille
+      final today = DateTime.now();
+      final todayStart = DateTime(today.year, today.month, today.day);
+      final allFamilyChoresToday = fp.history
+          .where((h) => h.date.isAfter(todayStart) && h.category == 'ménage')
+          .toList();
+      
+      // 2. Vérifier quelles tâches partagées ont déjà été faites par quelqu'un
+      final sharedChoresDoneByAnyone = <String>{};
+      for (final entry in allFamilyChoresToday) {
+        for (final chore in allChores.where((c) => !c.isIndividual)) {
+          if (entry.reason.contains(chore.label)) {
+            sharedChoresDoneByAnyone.add(chore.id);
+          }
+        }
       }
+
+      // 3. Pénaliser uniquement ce qui mérite l'être
+      int totalPenalty = 0;
+      final penaltyLabels = <String>[];
+
+      for (final chore in allChores) {
+        if (_checked.contains(chore.id)) continue; // Tâche faite = pas de pénalité
+
+        if (chore.isIndividual) {
+          // Tâche individuelle non faite → toujours pénalité
+          final penalty = (chore.points ~/ 2).clamp(1, 10);
+          totalPenalty += penalty;
+          penaltyLabels.add('${chore.emoji} ${chore.label}');
+        } else if (!sharedChoresDoneByAnyone.contains(chore.id)) {
+          // Tâche partagée non faite ET personne dans la famille ne l'a faite → pénalité
+          final penalty = (chore.points ~/ 2).clamp(1, 10);
+          totalPenalty += penalty;
+          penaltyLabels.add('${chore.emoji} ${chore.label}');
+        }
+        // Si tâche partagée déjà faite par quelqu'un → PAS de pénalité (logique !)
+      }
+
       if (totalPenalty > 0) {
-        final labels = notCompleted.map((c) => '${c.emoji} ${c.label}').join(', ');
+        final labels = penaltyLabels.join(', ');
         await fp.addPoints(child.id, totalPenalty, '⚠️ Tâches non faites : $labels',
             category: 'ménage', isBonus: false);
       }
@@ -247,7 +282,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     final labelCtrl = TextEditingController();
     final pointsCtrl = TextEditingController(text: '5');
     final allEmojis = ['✅', '🛏️', '🛌', '🍽️', '🪥', '📚', '🧸', '🗑️', '🐕', '🧹', '🚗', '👕', '🪴', '🍳', '🧽', '📦'];
-    String selectedEmoji = '✅'; // 🔧 FIX : déclaré AVANT le builder (pas à l'intérieur)
+    String selectedEmoji = '✅';
+    bool isIndividual = true; // Par défaut : tâche individuelle
 
     showDialog(
       context: context,
@@ -301,6 +337,57 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  // Toggle Individuel / Partagé
+                  StatefulBuilder(
+                    builder: (ctx, setInner) => Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setInner(() => isIndividual = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isIndividual ? Colors.blue.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: isIndividual ? Colors.blue : Colors.white12),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Text('🔵', style: TextStyle(fontSize: 18)),
+                                  const SizedBox(height: 2),
+                                  const Text('Individuel', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                  const Text('Pénalité si pas fait', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setInner(() => isIndividual = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: !isIndividual ? Colors.amber.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: !isIndividual ? Colors.amber : Colors.white12),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Text('🟡', style: TextStyle(fontSize: 18)),
+                                  const SizedBox(height: 2),
+                                  const Text('Partagée', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                  const Text('Pas de pénalité si un autre l\'a fait', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -312,7 +399,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                   final label = labelCtrl.text.trim();
                   final points = int.tryParse(pointsCtrl.text.trim()) ?? 5;
                   if (label.isEmpty) return;
-                  fp.addChore(label: label, points: points, emoji: selectedEmoji);
+                  fp.addChore(label: label, points: points, emoji: selectedEmoji, isIndividual: isIndividual);
                   Navigator.pop(ctx);
                 },
                 child: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.bold)),

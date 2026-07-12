@@ -1999,13 +1999,14 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── CHECKLIST DES TÂCHES ────────────────────────────────────
 
-  Future<void> addChore({required String label, required int points, String emoji = '✅'}) async {
+  Future<void> addChore({required String label, required int points, String emoji = '✅', bool isIndividual = true}) async {
     final c = ChoreModel(
       id: 'chore_${_uuid.v4()}',
       label: label,
       points: points,
       emoji: emoji,
       order: _chores.length,
+      isIndividual: isIndividual,
     );
     _chores.add(c);
     await _choresBox.put(c.id, jsonEncode(c.toMap()));
