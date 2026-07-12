@@ -194,41 +194,113 @@ class _AIFloatingButtonState extends State<AIFloatingButton>
     final result = await GeminiService.analyzePhoto(base64Photo);
     if (mounted) Navigator.pop(context);
 
-    final type = result['type'] as String;
+    final isBonus = result['type'] == 'bonus';
     final points = result['points'] as int;
     final reason = result['reason'] as String;
-    final childName = result['childName'] as String? ?? '';
-    final isBonus = type == 'bonus';
 
-    // Détection de l'enfant
-    ChildModel? target;
-    if (childName.isNotEmpty) {
-      target = children.where((c) => c.name.toLowerCase() == childName.toLowerCase()).firstOrNull;
-    }
-    target ??= children.length == 1 ? children.first : null;
+    HapticFeedback.mediumImpact();
 
-    if (target == null) {
-      messenger.showSnackBar(SnackBar(
-        content: Text('🤖 IA: ${isBonus ? "Bonus" : "Pénalité"} $points pts - "$reason"\nSélectionne un enfant'),
-        backgroundColor: Colors.deepPurpleAccent,
-        behavior: SnackBarBehavior.floating,
-      ));
-      return;
-    }
-
-    if (isBonus) {
-      await fp.addQuickBonus(target.id, reason);
-    } else {
-      await fp.addQuickPenalty(target.id, reason);
-    }
-
-    HapticFeedback.heavyImpact();
-    messenger.showSnackBar(SnackBar(
-      content: Text('🤖 ${isBonus ? "✅" : "⚠️"} ${target.name}: $points pts\n"$reason"'),
-      backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 4),
-    ));
+    // Dialogue avec sélecteur d'enfant
+    String? selectedChildId;
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          backgroundColor: const Color(0xFF0F2620),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('🤖 Résultat IA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(bytes, height: 100, width: double.infinity, fit: BoxFit.cover),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(isBonus ? Icons.check_circle_rounded : Icons.warning_rounded,
+                          color: isBonus ? Colors.green : Colors.redAccent, size: 20),
+                      const SizedBox(width: 6),
+                      Text(isBonus ? 'BONUS' : 'PÉNALITÉ',
+                        style: TextStyle(color: isBonus ? Colors.green : Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w800)),
+                      const Spacer(),
+                      Text('${isBonus ? "+" : "-"}$points pts',
+                        style: TextStyle(color: isBonus ? Colors.green : Colors.redAccent, fontSize: 20, fontWeight: FontWeight.w900)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text('"$reason"', style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic)),
+                const SizedBox(height: 16),
+                const Text('Pour quel enfant ?', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                ...children.map((c) {
+                  final isSelected = selectedChildId == c.id;
+                  return GestureDetector(
+                    onTap: () => setDialog(() => selectedChildId = c.id),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.15)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? (isBonus ? Colors.green : Colors.redAccent) : Colors.white12,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(children: [
+                        Text(c.avatar.isNotEmpty ? c.avatar : '👤', style: const TextStyle(fontSize: 20)),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(c.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+                        if (isSelected)
+                          Icon(Icons.check_circle_rounded, color: isBonus ? Colors.green : Colors.redAccent, size: 20),
+                      ]),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: isBonus ? Colors.green : Colors.redAccent, foregroundColor: Colors.white),
+              onPressed: selectedChildId == null ? null : () async {
+                Navigator.pop(ctx);
+                if (isBonus) {
+                  await fp.addQuickBonus(selectedChildId!, reason);
+                } else {
+                  await fp.addQuickPenalty(selectedChildId!, reason);
+                }
+                if (context.mounted) {
+                  HapticFeedback.heavyImpact();
+                  messenger.showSnackBar(SnackBar(
+                    content: Text('${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} pour ${fp.getChild(selectedChildId!)?.name}\n$points pts : "$reason"'),
+                    backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 4),
+                  ));
+                }
+              },
+              child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // 🎤 Voix IA

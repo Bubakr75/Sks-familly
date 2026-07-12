@@ -866,7 +866,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     final bytes = await xfile.readAsBytes();
     final base64Photo = base64Encode(bytes);
 
-    // 2. Afficher un loader
+    // 2. Loader pendant l'analyse
     if (!context.mounted) return;
     showDialog(
       context: context,
@@ -878,15 +878,14 @@ class _AddPointsScreenState extends State<AddPointsScreen>
           children: [
             CircularProgressIndicator(color: Colors.deepPurpleAccent),
             SizedBox(height: 16),
-            Text('🔍 Analyse de la photo...', style: TextStyle(color: Colors.white)),
+            Text('🔍 Analyse IA en cours...', style: TextStyle(color: Colors.white)),
           ],
         ),
       ),
     );
 
-    // 3. Analyser avec Gemini (détecte bonus OU pénalité)
+    // 3. Analyser avec Gemini
     final result = await GeminiService.analyzePhoto(base64Photo);
-
     if (context.mounted) Navigator.pop(context); // Fermer le loader
     if (!context.mounted) return;
 
@@ -894,31 +893,158 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     final points = result['points'] as int;
     final reason = result['reason'] as String;
 
-    // 4. Pré-remplir les champs + adapter le mode (bonus/pénalité)
-    setState(() {
-      _isBonus = isBonus;
-      _reasonCtrl.text = reason;
-      _reason = '';
-      _points = points;
-      _photoBase64 = base64Photo;
-    });
-
-    if (isBonus) {
-      _toggleCtrl.reverse();
-    } else {
-      _toggleCtrl.forward();
-    }
-
     HapticFeedback.mediumImpact();
 
-    // 5. Afficher le résultat
-    messenger.showSnackBar(SnackBar(
-      content: Text('🤖 IA : ${isBonus ? "Bonus" : "Pénalité"} de $points pts\n"$reason"\n${result['description']}'),
-      backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 5),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ));
+    // 4. Dialogue de confirmation avec SÉLECTEUR D'ENFANT
+    final fp = context.read<FamilyProvider>();
+    final children = fp.children;
+    String? selectedChildId;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          backgroundColor: const Color(0xFF0F2620),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(children: [
+            Text('🤖', style: TextStyle(fontSize: 28)),
+            SizedBox(width: 8),
+            Text('Résultat IA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ]),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Aperçu de la photo
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    bytes,
+                    height: 100,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Résultat de l'IA
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(isBonus ? Icons.check_circle_rounded : Icons.warning_rounded,
+                              color: isBonus ? Colors.green : Colors.redAccent, size: 20),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${isBonus ? "BONUS" : "PÉNALITÉ"}',
+                            style: TextStyle(
+                              color: isBonus ? Colors.green : Colors.redAccent,
+                              fontSize: 14, fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${isBonus ? "+" : "-"}$points pts',
+                            style: TextStyle(
+                              color: isBonus ? Colors.green : Colors.redAccent,
+                              fontSize: 20, fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text('"$reason"',
+                        style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Sélecteur d'enfant
+                const Text('Pour quel enfant ?', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                ...children.map((c) {
+                  final isSelected = selectedChildId == c.id;
+                  return GestureDetector(
+                    onTap: () => setDialog(() => selectedChildId = c.id),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.15)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? (isBonus ? Colors.green : Colors.redAccent)
+                              : Colors.white12,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(c.avatar.isNotEmpty ? c.avatar : '👤', style: const TextStyle(fontSize: 20)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(c.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          ),
+                          if (isSelected)
+                            Icon(Icons.check_circle_rounded,
+                                color: isBonus ? Colors.green : Colors.redAccent, size: 20),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isBonus ? Colors.green : Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: selectedChildId == null ? null : () async {
+                Navigator.pop(ctx);
+                // Appliquer les points
+                if (isBonus) {
+                  await fp.addQuickBonus(selectedChildId!, reason);
+                } else {
+                  await fp.addQuickPenalty(selectedChildId!, reason);
+                }
+                if (context.mounted) {
+                  HapticFeedback.heavyImpact();
+                  messenger.showSnackBar(SnackBar(
+                    content: Text('${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} appliqué à ${fp.getChild(selectedChildId!)?.name}\n$points pts : "$reason"'),
+                    backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 4),
+                  ));
+                }
+              },
+              child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showDirectInput(BuildContext context) {
