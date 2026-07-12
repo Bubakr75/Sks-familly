@@ -100,6 +100,30 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     ),
                   ),
 
+                // Avertissement pénalité
+                if (chores.isNotEmpty && _checked.length < chores.length && _selectedChildId != null)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_rounded, color: Colors.redAccent, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${chores.length - _checked.length} tâche(s) non faite(s) = -${chores.where((c) => !_checked.contains(c.id)).fold(0, (sum, c) => sum + (c.points ~/ 2).clamp(1, 10))} pts',
+                            style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 // Liste des tâches (cases à cocher)
                 Expanded(
                   child: chores.isEmpty
@@ -163,14 +187,34 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
     if (isParent) {
       // Mode parent : appliquer direct
+      // ✅ Tâches cochées = bonus
+      final completed = allChores.where((c) => _checked.contains(c.id)).toList();
       final total = await fp.validateChores(child.id, completed);
+
+      // ⚠️ Tâches NON cochées = pénalité (la moitié des points de la tâche)
+      final notCompleted = allChores.where((c) => !_checked.contains(c.id)).toList();
+      int totalPenalty = 0;
+      for (final chore in notCompleted) {
+        final penalty = (chore.points ~/ 2).clamp(1, 10); // moitié des points, min 1, max 10
+        totalPenalty += penalty;
+      }
+      if (totalPenalty > 0) {
+        final labels = notCompleted.map((c) => '${c.emoji} ${c.label}').join(', ');
+        await fp.addPoints(child.id, totalPenalty, '⚠️ Tâches non faites : $labels',
+            category: 'ménage', isBonus: false);
+      }
+
       if (context.mounted) {
         HapticFeedback.heavyImpact();
+        final net = total - totalPenalty;
         messenger.showSnackBar(SnackBar(
-          content: Text('🎉 +$total pts bonus pour ${child.name} !'),
-          backgroundColor: EmeraldPalette.emerald,
+          content: Text(net >= 0
+              ? '🎉 ${child.name} : +$total bonus, -$totalPenalty pénalité = +$net pts'
+              : '⚠️ ${child.name} : +$total bonus, -$totalPenalty pénalité = $net pts'),
+          backgroundColor: net >= 0 ? EmeraldPalette.emerald : Colors.redAccent,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 4),
         ));
         setState(() => _checked.clear());
       }

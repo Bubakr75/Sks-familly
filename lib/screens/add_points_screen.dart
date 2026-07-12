@@ -827,7 +827,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     ));
   }
 
-  Future<void> _analyzePenaltyPhoto(BuildContext context) async {
+  Future<void> _analyzePhoto(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
 
     // 1. Prendre la photo
@@ -858,25 +858,37 @@ class _AddPointsScreenState extends State<AddPointsScreen>
       ),
     );
 
-    // 3. Analyser avec Gemini
-    final result = await GeminiService.analyzePenaltyPhoto(base64Photo);
+    // 3. Analyser avec Gemini (détecte bonus OU pénalité)
+    final result = await GeminiService.analyzePhoto(base64Photo);
 
     if (context.mounted) Navigator.pop(context); // Fermer le loader
-
     if (!context.mounted) return;
 
-    // 4. Pré-remplir les champs avec le résultat
+    final isBonus = result['type'] == 'bonus';
+    final points = result['points'] as int;
+    final reason = result['reason'] as String;
+
+    // 4. Pré-remplir les champs + adapter le mode (bonus/pénalité)
     setState(() {
-      _reasonCtrl.text = result['reason'] ?? 'Pénalité';
+      _isBonus = isBonus;
+      _reasonCtrl.text = reason;
       _reason = '';
-      _points = result['points'] ?? 5;
+      _points = points;
       _photoBase64 = base64Photo;
     });
 
+    if (isBonus) {
+      _toggleCtrl.reverse();
+    } else {
+      _toggleCtrl.forward();
+    }
+
+    HapticFeedback.mediumImpact();
+
     // 5. Afficher le résultat
     messenger.showSnackBar(SnackBar(
-      content: Text('🤖 IA : ${result['reason']} (${result['points']} pts)\n${result['description']}'),
-      backgroundColor: Colors.deepPurpleAccent,
+      content: Text('🤖 IA : ${isBonus ? "Bonus" : "Pénalité"} de $points pts\n"$reason"\n${result['description']}'),
+      backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
       behavior: SnackBarBehavior.floating,
       duration: const Duration(seconds: 5),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1243,8 +1255,8 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                       ),
                     const SizedBox(height: 16),
 
-                    // ─── Pénalité par photo IA (Gemini Vision) ───
-                    if (!_isBonus && _selectedChildId != null) ...[
+                    // ─── Photo IA (bonus ET pénalité automatiques) ───
+                    if (_selectedChildId != null) ...[
                       GlassCard(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -1256,16 +1268,27 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                   const SizedBox(width: 8),
                                   const Expanded(
                                     child: Text(
-                                      'Pénalité par photo IA',
+                                      'Analyse photo IA',
                                       style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Prends une photo de la scène → l\'IA identifie la pénalité automatiquement',
-                                style: TextStyle(color: Colors.white38, fontSize: 11),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Container(width: 20, height: 20, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurpleAccent.withValues(alpha: 0.3)), child: const Center(child: Text('1', style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 11, fontWeight: FontWeight.w800)))),
+                                  const SizedBox(width: 8),
+                                  const Text('Prends une photo de la scène', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(width: 20, height: 20, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurpleAccent.withValues(alpha: 0.3)), child: const Center(child: Text('2', style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 11, fontWeight: FontWeight.w800)))),
+                                  const SizedBox(width: 8),
+                                  const Text('L\'IA détecte bonus/pénalité + points auto', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                ],
                               ),
                               const SizedBox(height: 12),
                               SizedBox(
@@ -1278,12 +1301,12 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                   ),
                                   icon: const Icon(Icons.photo_camera_rounded),
-                                  label: const Text('Analyser avec l\'IA', style: TextStyle(fontWeight: FontWeight.w600)),
-                                  onPressed: () => _analyzePenaltyPhoto(context),
+                                  label: const Text('Prendre une photo', style: TextStyle(fontWeight: FontWeight.w600)),
+                                  onPressed: () => _analyzePhoto(context),
                                 ),
                               ),
                               // Aperçu de la photo prise
-                              if (_photoBase64 != null && !_isBonus) ...[
+                              if (_photoBase64 != null) ...[
                                 const SizedBox(height: 10),
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),

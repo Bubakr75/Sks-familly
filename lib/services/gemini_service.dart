@@ -374,9 +374,11 @@ EXPLICATION: [courte explication educative]''';
   // ── Analyse photo pour pénalité ──────────────────────────────
   /// Analyse une photo et propose une pénalité adaptée.
   /// Retourne : { 'reason': String, 'points': int, 'description': String }
-  static Future<Map<String, dynamic>> analyzePenaltyPhoto(String base64Image) async {
+  /// Analyse une photo et détecte AUTOMATIQUEMENT si c'est un bonus ou une pénalité.
+  /// Retourne : { 'type': 'bonus'/'penalty', 'reason': String, 'points': int, 'description': String }
+  static Future<Map<String, dynamic>> analyzePhoto(String base64Image) async {
     if (!_checkKey()) {
-      return {'reason': 'IA non configurée', 'points': 5, 'description': 'Configure la clé Gemini'};
+      return {'type': 'penalty', 'reason': 'IA non configurée', 'points': 5, 'description': 'Configure la clé Gemini'};
     }
 
     // Nettoyer le préfixe data:image si présent
@@ -386,15 +388,19 @@ EXPLICATION: [courte explication educative]''';
     }
 
     final prompt = '''Tu es un assistant parental bienveillant.
-Analyse cette photo d'une scène domestique où un enfant a mal agi.
+Analyse cette photo d'une scène domestique concernant un enfant.
 
-Identifie ce qui ne va (ex: chambre en désordre, jouets éparpillés, chose cassée, vetements par terre, vaisselle non rangée, etc.).
+Détermine si c'est une BONNE action (bonus) ou une MAUVAISE action (pénalité) :
+- Chambre rangée, devoirs faits, table débarrassée, lit fait = BONUS
+- Désordre, jouets éparpillés, chose cassée, vêtements par terre = PÉNALITÉ
+- Si tu ne peux pas déterminer, dis "bonus" avec peu de points
 
 Réponds EXACTEMENT dans ce format (une ligne par champ) :
 
-RAISON: [description courte de ce qui ne va, 5-10 mots]
-POINTS: [nombre de points à retirer, entre 3 et 20 selon la gravité]
-DESCRIPTION: [phrase bienveillante expliquant pourquoi c'est une pénalité, adaptée aux enfants]''';
+TYPE: [bonus ou penalty]
+RAISON: [description courte, 5-10 mots]
+POINTS: [nombre entre 3 et 20]
+DESCRIPTION: [phrase bienveillante adaptée aux enfants]''';
 
     try {
       final response = await http.post(
@@ -414,20 +420,22 @@ DESCRIPTION: [phrase bienveillante expliquant pourquoi c'est une pénalité, ada
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        final type = _extract(text, 'TYPE').toLowerCase();
         final reason = _extract(text, 'RAISON');
         final pointsStr = _extract(text, 'POINTS');
         final description = _extract(text, 'DESCRIPTION');
 
         return {
-          'reason': reason.isNotEmpty ? reason : 'Pénalité',
+          'type': type.contains('bonus') ? 'bonus' : 'penalty',
+          'reason': reason.isNotEmpty ? reason : 'Action',
           'points': int.tryParse(pointsStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 5,
-          'description': description.isNotEmpty ? description : 'Comportement à améliorer',
+          'description': description.isNotEmpty ? description : '',
         };
       }
-      return {'reason': 'Erreur analyse', 'points': 5, 'description': 'Impossible d\'analyser la photo'};
+      return {'type': 'penalty', 'reason': 'Erreur analyse', 'points': 5, 'description': 'Impossible d\'analyser la photo'};
     } catch (e) {
-      if (kDebugMode) debugPrint('analyzePenaltyPhoto error: $e');
-      return {'reason': 'Erreur de connexion', 'points': 5, 'description': 'Réessaie'};
+      if (kDebugMode) debugPrint('analyzePhoto error: $e');
+      return {'type': 'penalty', 'reason': 'Erreur de connexion', 'points': 5, 'description': 'Réessaie'};
     }
   }
 
