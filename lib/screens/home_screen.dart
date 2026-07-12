@@ -648,16 +648,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.transparent,
       extendBody: true,
       drawer: _buildDrawer(context, isParent),
-      floatingActionButton: Stack(
-        children: [
-          // Bouton IA flottant 🤖
-          const Align(
-            alignment: Alignment.bottomRight,
-            child: AIFloatingButton(),
-          ),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: AnimatedBackground(
         child: Column(
           children: [
@@ -730,6 +720,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
       ),
+      // Bouton IA flottant 🤖 (overlay sur tout l'écran)
+      floatingActionButton: const AIFloatingButton(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0, 1),
