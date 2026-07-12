@@ -249,6 +249,20 @@ class FamilyProvider extends ChangeNotifier {
         await _choresBox.put(c.id, jsonEncode(c.toMap()));
       }
     }
+    // 🔧 MIGRATION : les anciennes tâches n'ont pas isIndividual → on les met à jour
+    // Les tâches partagées par défaut : vaisselle, poubelles, animaux
+    const sharedLabels = ['Débarrasser la table', 'Sortir les poubelles', 'Nourrir les animaux', 'Vaisselle', 'Poubelle'];
+    bool choresUpdated = false;
+    for (final chore in _chores) {
+      if (sharedLabels.any((s) => chore.label.toLowerCase().contains(s.toLowerCase()))) {
+        if (chore.isIndividual) { chore.isIndividual = false; choresUpdated = true; }
+      }
+    }
+    if (choresUpdated) {
+      for (final c in _chores) {
+        await _choresBox.put(c.id, jsonEncode(c.toMap()));
+      }
+    }
     _chores.sort((a, b) => a.order.compareTo(b.order));
     // 🔧 FIX : charger les profils parents depuis le local (sinon disparus au redémarrage)
     _parentProfiles = _parentProfilesBox.values

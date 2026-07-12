@@ -481,14 +481,40 @@ class _ChoreTile extends StatelessWidget {
             Text(chore.emoji, style: const TextStyle(fontSize: 20)),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                chore.label,
-                style: TextStyle(
-                  color: isChecked ? EmeraldPalette.emeraldLight : EmeraldPalette.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  decoration: isChecked ? TextDecoration.lineThrough : null,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    chore.label,
+                    style: TextStyle(
+                      color: isChecked ? EmeraldPalette.emeraldLight : EmeraldPalette.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      decoration: isChecked ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  // Indicateur individuuel/partagé
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: (chore.isIndividual ? Colors.blue : Colors.amber).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          chore.isIndividual ? '🔵 Individuel' : '🟡 Partagée',
+                          style: TextStyle(
+                            color: chore.isIndividual ? Colors.blue.shade300 : Colors.amber.shade300,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
