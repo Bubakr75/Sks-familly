@@ -604,26 +604,45 @@ class _AddPointsScreenState extends State<AddPointsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ─── Titre avec étapes ───
             Row(
               children: [
-                const Icon(Icons.auto_awesome_rounded, color: Colors.deepPurpleAccent, size: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Colors.deepPurpleAccent, Colors.purpleAccent]),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text('IA', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                ),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
-                    'Saisie rapide IA',
-                    style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
+                    'Saisie rapide par IA',
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
                 if (_nlLoading)
                   const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.deepPurpleAccent)),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Tape ce qui s\'est passé, l\'IA fait le reste',
-              style: TextStyle(color: Colors.white38, fontSize: 11),
-            ),
             const SizedBox(height: 10),
+
+            // ─── Étape 1 ───
+            Row(
+              children: [
+                Container(
+                  width: 20, height: 20,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurpleAccent.withValues(alpha: 0.3)),
+                  child: const Center(child: Text('1', style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 11, fontWeight: FontWeight.w800))),
+                ),
+                const SizedBox(width: 8),
+                const Text('Décris ce qu\'a fait l\'enfant (ou parle 🎤)', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // ─── Champ texte + boutons ───
             Row(
               children: [
                 Expanded(
@@ -643,7 +662,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Bouton Micro (saisie vocale)
+                // Bouton Micro
                 Container(
                   decoration: BoxDecoration(
                     color: _isListening
@@ -676,6 +695,49 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+
+            // ─── Étape 2 + exemples cliquables ───
+            Row(
+              children: [
+                Container(
+                  width: 20, height: 20,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurpleAccent.withValues(alpha: 0.3)),
+                  child: const Center(child: Text('2', style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 11, fontWeight: FontWeight.w800))),
+                ),
+                const SizedBox(width: 8),
+                const Text('L\'IA remplit tout seul → tu valides en bas', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Exemples cliquables
+            Wrap(
+              spacing: 6, runSpacing: 4,
+              children: [
+                'Rangé sa chambre',
+                'Aide à la cuisine',
+                'A eu un 18/20',
+                'A menti',
+                'A disputé son frère',
+              ].map((example) {
+                return GestureDetector(
+                  onTap: _nlLoading ? null : () {
+                    _nlCtrl.text = example;
+                    _processNaturalLanguage(context, children);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurpleAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.deepPurpleAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(example, style: const TextStyle(color: Colors.deepPurpleAccent, fontSize: 11)),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),

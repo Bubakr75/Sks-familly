@@ -135,7 +135,7 @@ CONSEIL: [1 conseil pratique et motivant pour la semaine prochaine]''';
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [{'parts': [{'text': prompt}]}],
-          'generationConfig': {'temperature': 0.75, 'maxOutputTokens': 600},
+          'generationConfig': {'temperature': 0.75, 'maxOutputTokens': 800},
         }),
       ).timeout(const Duration(seconds: 30));
 
@@ -293,7 +293,7 @@ CONSEIL: [1 conseil pour les deux parties pour eviter ce genre de conflit]''';
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [{'parts': [{'text': prompt}], 'role': 'user'}],
-          'generationConfig': {'temperature': 0.6, 'maxOutputTokens': 500},
+          'generationConfig': {'temperature': 0.6, 'maxOutputTokens': 800},
         }),
       ).timeout(const Duration(seconds: 20));
 
@@ -342,7 +342,7 @@ EXPLICATION: [courte explication educative]''';
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [{'parts': [{'text': prompt}], 'role': 'user'}],
-          'generationConfig': {'temperature': 0.9, 'maxOutputTokens': 400},
+          'generationConfig': {'temperature': 0.9, 'maxOutputTokens': 800},
         }),
       ).timeout(const Duration(seconds: 20));
 
@@ -367,7 +367,7 @@ EXPLICATION: [courte explication educative]''';
     final contents = <Map<String, dynamic>>[{'parts': [{'text': systemPrompt}], 'role': 'user'}, {'parts': [{'text': 'Bonjour!'}], 'role': 'model'}];
     for (final h in history) { contents.add({'parts': [{'text': h['content'] ?? ''}], 'role': h['role'] == 'user' ? 'user' : 'model'}); }
     contents.add({'parts': [{'text': message}], 'role': 'user'});
-    try { final response = await http.post(Uri.parse(_baseUrl + '?key=' + _apiKey), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'contents': contents, 'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1000}})).timeout(const Duration(seconds: 30));
+    try { final response = await http.post(Uri.parse(_baseUrl + '?key=' + _apiKey), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'contents': contents, 'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 800}})).timeout(const Duration(seconds: 30));
     if (response.statusCode == 200) { final data = jsonDecode(response.body); return data['candidates'][0]['content']['parts'][0]['text'] as String; }
     return 'Je ne peux pas repondre pour le moment.'; } catch (e) { return 'Erreur de connexion.'; } }
 
@@ -407,7 +407,7 @@ DESCRIPTION: [phrase bienveillante expliquant pourquoi c'est une pénalité, ada
               {'inline_data': {'mime_type': 'image/jpeg', 'data': cleanBase64}},
             ],
           }],
-          'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 300},
+          'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 800},
         }),
       ).timeout(const Duration(seconds: 15));
 
@@ -462,7 +462,7 @@ Règles:
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [{'parts': [{'text': prompt}]}],
-          'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 150},
+          'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 800},
         }),
       ).timeout(const Duration(seconds: 10));
 
