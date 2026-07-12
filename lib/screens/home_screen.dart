@@ -10,6 +10,7 @@ import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/quick_shortcut_panel.dart';
+import '../widgets/ai_floating_button.dart';
 import '../services/fcm_service.dart';
 import 'pending_requests_screen.dart';
 import 'pin_verification_screen.dart';
@@ -647,7 +648,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.transparent,
       extendBody: true,
       drawer: _buildDrawer(context, isParent),
-      floatingActionButton: const QuickShortcutFab(),
+      floatingActionButton: Stack(
+        children: [
+          // Bouton IA flottant 🤖
+          const Align(
+            alignment: Alignment.bottomRight,
+            child: AIFloatingButton(),
+          ),
+        ],
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: AnimatedBackground(
         child: Column(

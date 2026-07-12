@@ -1282,7 +1282,7 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                     const SizedBox(height: 16),
 
                     // ─── Photo IA (bonus ET pénalité automatiques) ───
-                    if (_selectedChildId != null) ...[
+                    if (children.isNotEmpty) ...[
                       GlassCard(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
