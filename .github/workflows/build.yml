@@ -73,14 +73,20 @@ jobs:
       - name: Inject Gemini API Key
         run: |
           python3 - << 'PYEOF'
-          import os
+          import os, re
           api_key = os.environ.get('GEMINI_API_KEY', '').replace('\n', '').replace('\r', '').strip()
           with open('lib/services/gemini_service.dart', 'r') as f:
               content = f.read()
-          content = content.replace("String.fromEnvironment('GEMINI_API_KEY')", "'" + api_key + "'")
+          # Remplacer la clé sur 1 ou 2 lignes
+          content = re.sub(
+              r"String\.fromEnvironment\('GEMINI_API_KEY',\s*\n?\s*defaultValue: ''\)",
+              "'" + api_key + "'",
+              content
+          )
           with open('lib/services/gemini_service.dart', 'w') as f:
               f.write(content)
           print("OK longueur: " + str(len(api_key)))
+          PYEOF
           PYEOF
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
