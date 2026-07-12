@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../services/gemini_service.dart';
@@ -592,6 +593,8 @@ class _AddPointsScreenState extends State<AddPointsScreen>
   /// Prend une photo, l'envoie à Gemini Vision, et propose une pénalité auto.
   final TextEditingController _nlCtrl = TextEditingController();
   bool _nlLoading = false;
+  final SpeechToText _speech = SpeechToText();
+  bool _isListening = false;
 
   /// Champ de saisie en langage naturel (IA Gemini)
   Widget _buildNaturalLanguageInput(BuildContext context, List<ChildModel> children) {
@@ -640,6 +643,27 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Bouton Micro (saisie vocale)
+                Container(
+                  decoration: BoxDecoration(
+                    color: _isListening
+                        ? Colors.redAccent.withValues(alpha: 0.3)
+                        : Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: _isListening
+                        ? Border.all(color: Colors.redAccent, width: 2)
+                        : null,
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                      color: _isListening ? Colors.redAccent : Colors.white70,
+                    ),
+                    onPressed: _nlLoading ? null : () => _toggleSpeech(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Bouton Envoyer
                 Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(colors: [Colors.deepPurpleAccent, Colors.purpleAccent]),
@@ -657,6 +681,36 @@ class _AddPointsScreenState extends State<AddPointsScreen>
         ),
       ),
     );
+  }
+
+  /// Active/désactive la saisie vocale
+  Future<void> _toggleSpeech() async {
+    if (_isListening) {
+      _speech.stop();
+      setState(() => _isListening = false);
+      return;
+    }
+
+    final available = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (_) => setState(() => _isListening = false),
+    );
+
+    if (available) {
+      setState(() => _isListening = true);
+      _speech.listen(
+        onResult: (result) {
+          setState(() {
+            _nlCtrl.text = result.recognizedWords;
+          });
+        },
+        localeId: 'fr_FR',
+      );
+    }
   }
 
   Future<void> _processNaturalLanguage(BuildContext context, List<ChildModel> children) async {

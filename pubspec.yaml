@@ -44,6 +44,9 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   timezone: ^0.10.0
 
+  # Saisie vocale
+  speech_to_text: ^7.0.0
+
   # Auto update
   package_info_plus: ^8.0.0
   open_filex: ^4.5.0
