@@ -371,9 +371,20 @@ class FamilyProvider extends ChangeNotifier {
       _saveBoxFromList(_choresBox, _chores, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
-    // 🔧 FIX : synchroniser les récompenses boutique depuis Firestore
+    // 🔧 FIX : synchroniser les récompenses boutique depuis Firestore (avec merge)
     _firestore.onRewardsChanged = (list) {
-      _rewards = list.map((d) => RewardModel.fromMap(d)).toList();
+      if (list.isNotEmpty) {
+        final remoteRewards = list.map((d) => RewardModel.fromMap(d)).toList();
+        final localIds = _rewards.map((r) => r.id).toSet();
+        for (final remote in remoteRewards) {
+          if (!localIds.contains(remote.id)) {
+            _rewards.add(remote);
+          } else {
+            final idx = _rewards.indexWhere((r) => r.id == remote.id);
+            if (idx >= 0) _rewards[idx] = remote;
+          }
+        }
+      }
       _saveBoxFromList(_rewardsBox, _rewards, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
