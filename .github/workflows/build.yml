@@ -72,17 +72,10 @@ jobs:
 
       - name: Inject Gemini API Key
         run: |
-          python3 -c "
-          import os, re
-          api_key = os.environ.get('GEMINI_API_KEY', '').replace('\n', '').replace('\r', '').strip()
-          with open('lib/services/gemini_service.dart', 'r') as f:
-              content = f.read()
-          content = re.sub(r\"String\\.fromEnvironment\\('GEMINI_API_KEY',\\s*\\n?\\s*defaultValue: ''\\)\", '\\'' + api_key + '\\'', content)
-          with open('lib/services/gemini_service.dart', 'w') as f:
-              f.write(content)
-          print('OK longueur: ' + str(len(api_key)))
-          "
-          PYEOF
+          sed -i "s|String.fromEnvironment('GEMINI_API_KEY',|String.fromEnvironment('GEMINI_API_KEY_REPLACED',|g" lib/services/gemini_service.dart
+          sed -i "s|String.fromEnvironment('GEMINI_API_KEY_REPLACED',\s*\n\?\s*defaultValue: '')|'${{ secrets.GEMINI_API_KEY }}'|g" lib/services/gemini_service.dart
+          sed -i "/GEMINI_API_KEY_REPLACED/{N;s|String.fromEnvironment('GEMINI_API_KEY_REPLACED',\n*.*defaultValue: '')|'${{ secrets.GEMINI_API_KEY }}'|}" lib/services/gemini_service.dart
+          echo "Gemini key injected"
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
