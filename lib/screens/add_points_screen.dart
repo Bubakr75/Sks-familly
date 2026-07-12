@@ -781,9 +781,10 @@ class _AddPointsScreenState extends State<AddPointsScreen>
 
     setState(() => _nlLoading = true);
     final messenger = ScaffoldMessenger.of(context);
+    final fp = context.read<FamilyProvider>();
 
-    // Analyser avec Gemini
-    final result = await GeminiService.parseNaturalLanguage(text);
+    // Analyser avec Gemini (avec la liste des enfants pour la détection)
+    final result = await GeminiService.parseNaturalLanguage(text, childNames: children.map((c) => c.name).toList());
 
     if (!mounted) return;
     setState(() => _nlLoading = false);
@@ -797,33 +798,58 @@ class _AddPointsScreenState extends State<AddPointsScreen>
       return;
     }
 
-    // Appliquer le résultat
     final isBonus = result['type'] == 'bonus';
     final points = result['points'] as int;
     final reason = result['reason'] as String;
+    final childName = result['childName'] as String;
 
-    // Pré-remplir les champs
-    setState(() {
-      _isBonus = isBonus;
-      _points = points;
-      _reason = reason;
-      _reasonCtrl.text = reason;
-      _nlCtrl.clear();
-    });
+    // Détecter l'enfant automatiquement
+    ChildModel? targetChild;
+    if (childName.isNotEmpty) {
+      targetChild = children.where((c) => c.name.toLowerCase() == childName.toLowerCase()).firstOrNull;
+      // Si pas de match exact, chercher par proximité (première lettre)
+      if (targetChild == null) {
+        targetChild = children.where((c) => c.name.toLowerCase().startsWith(childName.toLowerCase().substring(0, 1))).firstOrNull;
+      }
+    }
+    // Si pas détecté, utiliser l'enfant sélectionné
+    targetChild ??= _selectedChildId != null ? children.where((c) => c.id == _selectedChildId).firstOrNull : null;
+    if (targetChild == null && children.length == 1) targetChild = children.first;
 
-    if (isBonus) {
-      _toggleCtrl.reverse();
-    } else {
-      _toggleCtrl.forward();
+    if (targetChild == null) {
+      // Pré-remplir les champs pour validation manuelle
+      setState(() {
+        _isBonus = isBonus;
+        _points = points;
+        _reason = reason;
+        _reasonCtrl.text = reason;
+        _nlCtrl.clear();
+      });
+      if (isBonus) { _toggleCtrl.reverse(); } else { _toggleCtrl.forward(); }
+      messenger.showSnackBar(SnackBar(
+        content: Text('🤖 IA détecté : ${isBonus ? "Bonus" : "Pénalité"} $points pts\nSélectionne un enfant pour valider'),
+        backgroundColor: Colors.deepPurpleAccent,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
     }
 
-    HapticFeedback.selectionClick();
+    // ✅ APPLIQUER DIRECTEMENT (sans validation manuelle)
+    if (isBonus) {
+      await fp.addQuickBonus(targetChild.id, reason);
+    } else {
+      await fp.addQuickPenalty(targetChild.id, reason);
+    }
 
+    setState(() => _nlCtrl.clear());
+
+    HapticFeedback.heavyImpact();
     messenger.showSnackBar(SnackBar(
-      content: Text('🤖 IA : ${isBonus ? "Bonus" : "Pénalité"} de $points pts\n"$reason"'),
+      content: Text('🤖 ${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} pour ${targetChild.name}\n$points pts : "$reason"'),
       backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
   }
 

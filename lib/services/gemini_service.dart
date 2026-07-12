@@ -443,12 +443,18 @@ DESCRIPTION: [phrase bienveillante adaptée aux enfants]''';
   /// Analyse une phrase du parent et déduit le type + les points.
   /// Ex: "Adam a rangé sa chambre" → {type: bonus, points: 10, reason: "Rangé sa chambre"}
   /// Ex: "Sara a fait une crise" → {type: penalty, points: 8, reason: "Crise"}
-  static Future<Map<String, dynamic>> parseNaturalLanguage(String text) async {
+  static Future<Map<String, dynamic>> parseNaturalLanguage(String text, {List<String>? childNames}) async {
     if (!_checkKey()) {
-      return {'type': 'error', 'points': 0, 'reason': 'IA non configurée'};
+      return {'type': 'error', 'points': 0, 'reason': 'IA non configurée', 'childName': ''};
     }
 
+    final namesList = childNames != null && childNames.isNotEmpty
+        ? 'Enfants connus: ${childNames.join(', ')}'
+        : '';
+
     final prompt = '''Tu es un assistant pour une application familiale de gestion de points.
+$namesList
+
 Analyse cette phrase d'un parent et déduis ce qu'il faut faire.
 
 Phrase: "$text"
@@ -458,6 +464,7 @@ Réponds EXACTEMENT dans ce format (une ligne par champ):
 TYPE: [bonus ou penalty]
 POINTS: [nombre entre 3 et 25 selon la gravité/importance]
 RAISON: [résumé court en français, 3-8 mots, sans le nom de l'enfant]
+ENFANT: [le prénom de l'enfant concerné exactement comme écrit dans la liste, ou vide si non précisé]
 
 Règles:
 - Une bonne action, une aide, un effort = bonus (3-20 pts)
@@ -480,17 +487,19 @@ Règles:
         final type = _extract(text, 'TYPE').toLowerCase();
         final pointsStr = _extract(text, 'POINTS');
         final reason = _extract(text, 'RAISON');
+        final childName = _extract(text, 'ENFANT');
 
         return {
           'type': type.contains('bonus') ? 'bonus' : 'penalty',
           'points': int.tryParse(pointsStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 5,
           'reason': reason.isNotEmpty ? reason : text,
+          'childName': childName,
         };
       }
-      return {'type': 'error', 'points': 0, 'reason': 'Erreur IA'};
+      return {'type': 'error', 'points': 0, 'reason': 'Erreur IA', 'childName': ''};
     } catch (e) {
       if (kDebugMode) debugPrint('parseNaturalLanguage error: $e');
-      return {'type': 'error', 'points': 0, 'reason': 'Erreur connexion'};
+      return {'type': 'error', 'points': 0, 'reason': 'Erreur connexion', 'childName': ''};
     }
   }
 }
