@@ -18,6 +18,7 @@ import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
 import '../models/reward_model.dart';
 import '../models/chore_model.dart';
+import '../models/screen_time_account.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../utils/image_compressor.dart';
@@ -58,6 +59,7 @@ class FamilyProvider extends ChangeNotifier {
   List<RewardModel>     _rewards = [];
   List<Map<String, dynamic>> _purchases = [];
   List<ChoreModel>      _chores = [];
+  final Map<String, ScreenTimeAccount> _screenTimeAccounts = {};
 
   // ─── État de synchronisation (feedback UI) ──────────────────
   bool _isReconnecting = false;
@@ -127,6 +129,11 @@ class FamilyProvider extends ChangeNotifier {
   List<RewardModel>     get rewards            => _rewards;
   List<Map<String, dynamic>> get purchases     => _purchases;
   List<ChoreModel>      get chores             => _chores;
+
+  /// Récupère le compte de temps d'écran d'un enfant
+  ScreenTimeAccount getScreenTimeAccount(String childId) {
+    return _screenTimeAccounts[childId] ?? ScreenTimeAccount(childId: childId);
+  }
   List<ParentProfile>   get parentProfiles    => _parentProfiles;
   String?               get familyCode        => _familyCode;
   String?               get familyId          => _familyCode;
@@ -1943,6 +1950,17 @@ class FamilyProvider extends ChangeNotifier {
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) await _firestore.saveChild(child);
 
+    // 📺 Si la récompense est du temps d'écran, ajouter les minutes au compte
+    if (reward.title.toLowerCase().contains('écran') ||
+        reward.title.toLowerCase().contains('ecran') ||
+        reward.title.toLowerCase().contains('min') ||
+        reward.icon == '🎮') {
+      // Extraire le nombre de minutes du titre
+      final match = RegExp(r'(\d+)').firstMatch(reward.title);
+      final minutes = match != null ? int.tryParse(match.group(1)!) ?? 15 : 15;
+      await addScreenTimeMinutes(childId, minutes, '🛒 Achat boutique : ${reward.title}');
+    }
+
     // Enregistrer l'achat
     final purchaseData = {
       'rewardId': reward.id,
@@ -2068,6 +2086,95 @@ class FamilyProvider extends ChangeNotifier {
     await addPoints(childId, totalPoints, '✅ Tâches du jour : $labels',
         category: 'ménage', isBonus: true);
     return totalPoints;
+  }
+
+  // ─── TEMPS D'ÉCRAN (compte de minutes + chrono) ─────────────
+
+  /// Ajoute des minutes au compte d'un enfant (achat boutique ou bonus parent)
+  Future<void> addScreenTimeMinutes(String childId, int minutes, String reason) async {
+    final account = getScreenTimeAccount(childId);
+    account.balanceMinutes += minutes;
+    account.totalEarned += minutes;
+    account.history.insert(0, ScreenTimeTransaction(
+      minutes: minutes, type: 'earned', reason: reason, date: DateTime.now(),
+    ));
+    _screenTimeAccounts[childId] = account;
+    if (_firestore.isConnected) {
+      try { await _firestore.saveScreenTimeAccount(childId, account.toMap()); } catch (_) {}
+    }
+    notifyListeners();
+  }
+
+  /// Démarre une session de temps d'écran
+  Future<void> startScreenTimeSession(String childId, int minutes) async {
+    final account = getScreenTimeAccount(childId);
+    if (account.isRunning) return;
+    if (account.balanceMinutes < minutes) minutes = account.balanceMinutes;
+    if (minutes <= 0) return;
+
+    account.sessionStart = DateTime.now();
+    account.sessionMinutes = minutes;
+    account.balanceMinutes -= minutes;
+    _screenTimeAccounts[childId] = account;
+    if (_firestore.isConnected) {
+      try { await _firestore.saveScreenTimeAccount(childId, account.toMap()); } catch (_) {}
+    }
+    notifyListeners();
+  }
+
+  /// Arrête la session en cours (si temps restant, on le rend au solde)
+  Future<void> stopScreenTimeSession(String childId) async {
+    final account = getScreenTimeAccount(childId);
+    if (!account.isRunning) return;
+
+    final remaining = account.sessionRemaining;
+    final used = account.sessionMinutes - remaining;
+    account.totalUsed += used;
+    if (remaining > 0) {
+      account.balanceMinutes += remaining;
+    }
+    account.history.insert(0, ScreenTimeTransaction(
+      minutes: used, type: 'used', reason: 'Session terminée', date: DateTime.now(),
+    ));
+    account.sessionStart = null;
+    account.sessionMinutes = 0;
+    _screenTimeAccounts[childId] = account;
+    if (_firestore.isConnected) {
+      try { await _firestore.saveScreenTimeAccount(childId, account.toMap()); } catch (_) {}
+    }
+    notifyListeners();
+  }
+
+  /// Prolongation (parent)
+  Future<void> extendScreenTime(String childId, int minutes) async {
+    final account = getScreenTimeAccount(childId);
+    if (account.isRunning) {
+      account.sessionMinutes += minutes;
+      account.totalEarned += minutes;
+    } else {
+      account.balanceMinutes += minutes;
+      account.totalEarned += minutes;
+    }
+    account.history.insert(0, ScreenTimeTransaction(
+      minutes: minutes, type: 'earned', reason: 'Prolongation parent', date: DateTime.now(),
+    ));
+    _screenTimeAccounts[childId] = account;
+    if (_firestore.isConnected) {
+      try { await _firestore.saveScreenTimeAccount(childId, account.toMap()); } catch (_) {}
+    }
+    notifyListeners();
+  }
+
+  /// Charge les comptes de temps d'écran depuis Firestore
+  Future<void> loadScreenTimeAccounts() async {
+    if (!_firestore.isConnected) return;
+    try {
+      final list = await _firestore.loadScreenTimeAccounts();
+      for (final data in list) {
+        final account = ScreenTimeAccount.fromMap(data);
+        _screenTimeAccounts[account.childId] = account;
+      }
+    } catch (_) {}
   }
 }
 

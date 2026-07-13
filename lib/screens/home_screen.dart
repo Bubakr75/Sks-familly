@@ -36,6 +36,7 @@ import 'timeline_screen.dart';
 import 'chores_screen.dart';
 import 'checklist_screen.dart';
 import 'evening_summary_screen.dart';
+import 'screen_time_new_screen.dart';
 import '../widgets/animated_page_transition.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -1069,6 +1070,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Navigator.push(
                       context,
                       SlidePageRoute(page: const ChoresScreen()),
+                    );
+                  },
+                ),
+                // Temps d'écran
+                _drawerItem(
+                  icon: Icons.tv_rounded,
+                  label: 'Temps d\'écran',
+                  color: Colors.tealAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const ScreenTimeNewScreen()),
                     );
                   },
                 ),

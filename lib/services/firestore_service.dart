@@ -867,6 +867,31 @@ class FirestoreService {
     }
   }
 
+  // ─── SCREEN TIME ACCOUNTS ───────────────────────────────────
+  Future<void> saveScreenTimeAccount(String childId, Map<String, dynamic> data) async {
+    if (_familyId == null) return;
+    try {
+      await _db.collection('families').doc(_familyId).collection('screen_time_accounts').doc(childId).set(data);
+    } catch (e) {
+      if (kDebugMode) debugPrint('saveScreenTimeAccount error: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> loadScreenTimeAccounts() async {
+    if (_familyId == null) return [];
+    try {
+      final snap = await _db.collection('families').doc(_familyId).collection('screen_time_accounts').get();
+      return snap.docs.map((doc) {
+        final d = Map<String, dynamic>.from(doc.data());
+        d['childId'] = doc.id;
+        return d;
+      }).toList();
+    } catch (e) {
+      if (kDebugMode) debugPrint('loadScreenTimeAccounts error: $e');
+      return [];
+    }
+  }
+
   // ─── WRITE : Screen Time ─────────────────────────────────────
   Future<void> saveScreenTimeValue(String key, dynamic value) async {
     if (_familyId == null) return;
