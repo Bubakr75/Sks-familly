@@ -182,80 +182,119 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   void _validateChores(BuildContext context, FamilyProvider fp, ChildModel child, List<ChoreModel> allChores) async {
     final completed = allChores.where((c) => _checked.contains(c.id)).toList();
+    final notCompleted = allChores.where((c) => !_checked.contains(c.id)).toList();
     final isParent = context.read<PinProvider>().isParentMode;
     final messenger = ScaffoldMessenger.of(context);
 
     if (isParent) {
-      // Mode parent : appliquer direct
-      // ✅ Tâches cochées = bonus
-      final completed = allChores.where((c) => _checked.contains(c.id)).toList();
-      final total = await fp.validateChores(child.id, completed);
-
-      // ⚠️ Pénalités intelligentes :
-      // - Tâches individuelles non cochées → pénalité (brossage de dents, lit, etc.)
-      // - Tâches partagées non cochées → pénalité SEULEMENT si PERSONNE dans la famille ne l'a faite aujourd'hui
-      
-      // 1. Récupérer toutes les tâches ménagères faites aujourd'hui par TOUTE la famille
-      final today = DateTime.now();
-      final todayStart = DateTime(today.year, today.month, today.day);
-      final allFamilyChoresToday = fp.history
-          .where((h) => h.date.isAfter(todayStart) && h.category == 'ménage')
-          .toList();
-      
-      // 2. Vérifier quelles tâches partagées ont déjà été faites par quelqu'un
-      final sharedChoresDoneByAnyone = <String>{};
-      for (final entry in allFamilyChoresToday) {
-        for (final chore in allChores.where((c) => !c.isIndividual)) {
-          if (entry.reason.contains(chore.label)) {
-            sharedChoresDoneByAnyone.add(chore.id);
-          }
-        }
+      // ✅ D'abord : appliquer les bonus des tâches cochées
+      int totalBonus = 0;
+      if (completed.isNotEmpty) {
+        totalBonus = await fp.validateChores(child.id, completed);
       }
 
-      // 3. Pénaliser uniquement ce qui mérite l'être
+      // ⚠️ Ensuite : si des tâches ne sont pas cochées, demander au parent
       int totalPenalty = 0;
-      final penaltyLabels = <String>[];
 
-      for (final chore in allChores) {
-        if (_checked.contains(chore.id)) continue; // Tâche faite = pas de pénalité
-
-        if (chore.isIndividual) {
-          // Tâche individuelle non faite → toujours pénalité
-          final penalty = (chore.points ~/ 2).clamp(1, 10);
-          totalPenalty += penalty;
-          penaltyLabels.add('${chore.emoji} ${chore.label}');
-        } else if (!sharedChoresDoneByAnyone.contains(chore.id)) {
-          // Tâche partagée non faite ET personne dans la famille ne l'a faite → pénalité
-          final penalty = (chore.points ~/ 2).clamp(1, 10);
-          totalPenalty += penalty;
-          penaltyLabels.add('${chore.emoji} ${chore.label}');
+      if (notCompleted.isNotEmpty) {
+        // Pré-remplir : pénalité pour les individuelles, ignorer pour les partagées
+        final penaltyChores = <String, bool>{};
+        for (final c in notCompleted) {
+          penaltyChores[c.id] = c.isIndividual; // true = pénalité par défaut si individuel
         }
-        // Si tâche partagée déjà faite par quelqu'un → PAS de pénalité (logique !)
-      }
 
-      if (totalPenalty > 0) {
-        final labels = penaltyLabels.join(', ');
-        await fp.addPoints(child.id, totalPenalty, '⚠️ Tâches non faites : $labels',
-            category: 'ménage', isBonus: false);
-      }
-
-      if (context.mounted) {
-        HapticFeedback.heavyImpact();
-        final net = total - totalPenalty;
-        messenger.showSnackBar(SnackBar(
-          content: Text(net >= 0
-              ? '🎉 ${child.name} : +$total bonus, -$totalPenalty pénalité = +$net pts'
-              : '⚠️ ${child.name} : +$total bonus, -$totalPenalty pénalité = $net pts'),
-          backgroundColor: net >= 0 ? EmeraldPalette.emerald : Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 4),
-        ));
-        setState(() => _checked.clear());
+        await showDialog(
+          context: context,
+          builder: (ctx) => StatefulBuilder(
+            builder: (ctx, setDialog) => AlertDialog(
+              backgroundColor: const Color(0xFF0F2620),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text('Tâches de ${child.name}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Coche les tâches à pénaliser :', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    const Text('(Décoche si pas sa faute)', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                    const SizedBox(height: 12),
+                    ...notCompleted.map((c) {
+                      final isPenalty = penaltyChores[c.id] ?? false;
+                      return CheckboxListTile(
+                        value: isPenalty,
+                        onChanged: (v) => setDialog(() => penaltyChores[c.id] = v ?? false),
+                        activeColor: Colors.redAccent,
+                        checkColor: Colors.white,
+                        title: Row(children: [
+                          Text(c.emoji, style: const TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(c.label, style: const TextStyle(color: Colors.white, fontSize: 14))),
+                        ]),
+                        subtitle: Text(
+                          '-${(c.points ~/ 2).clamp(1, 10)} pts',
+                          style: TextStyle(color: isPenalty ? Colors.redAccent : Colors.white24, fontSize: 11),
+                        ),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: EmeraldPalette.emerald, foregroundColor: const Color(0xFF051410)),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    // Appliquer les pénalités cochées
+                    final labels = <String>[];
+                    for (final c in notCompleted) {
+                      if (penaltyChores[c.id] == true) {
+                        final penalty = (c.points ~/ 2).clamp(1, 10);
+                        totalPenalty += penalty;
+                        labels.add('${c.emoji} ${c.label}');
+                      }
+                    }
+                    if (totalPenalty > 0) {
+                      await fp.addPoints(child.id, totalPenalty, '⚠️ Tâches non faites : ${labels.join(', ')}',
+                          category: 'ménage', isBonus: false);
+                    }
+                    if (context.mounted) {
+                      HapticFeedback.heavyImpact();
+                      final net = totalBonus - totalPenalty;
+                      messenger.showSnackBar(SnackBar(
+                        content: Text(net >= 0
+                            ? '🎉 ${child.name} : +$totalBonus bonus, -$totalPenalty pénalité = +$net pts'
+                            : '⚠️ ${child.name} : +$totalBonus bonus, -$totalPenalty pénalité = $net pts'),
+                        backgroundColor: net >= 0 ? EmeraldPalette.emerald : Colors.redAccent,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 4),
+                      ));
+                      setState(() => _checked.clear());
+                    }
+                  },
+                  child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        // Toutes les tâches sont cochées → juste les bonus
+        if (context.mounted) {
+          HapticFeedback.heavyImpact();
+          messenger.showSnackBar(SnackBar(
+            content: Text('🎉 ${child.name} : +$totalBonus pts bonus !'),
+            backgroundColor: EmeraldPalette.emerald,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ));
+          setState(() => _checked.clear());
+        }
       }
     } else {
-      // Mode enfant : créer une demande SILENCIEUSE (pas de notif push)
-      // Le parent verra la demande dans le badge cloche sans recevoir de notification
+      // Mode enfant : créer une demande SILENCIEUSE
       final total = completed.fold(0, (sum, c) => sum + c.points);
       final labels = completed.map((c) => '${c.emoji} ${c.label}').join(', ');
       await fp.createRequest(
