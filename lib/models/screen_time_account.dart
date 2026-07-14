@@ -25,6 +25,21 @@ class ScreenTimeAccount {
 
   bool get isRunning => sessionStart != null;
 
+  /// True si le temps est écoulé mais que le parent n'a pas encore confirmé l'arrêt.
+  /// Dans ce mode, l'enfant perd 10 pts toutes les 5 minutes.
+  bool get isOvertime => isRunning && sessionRemaining <= 0;
+
+  /// Nombre de minutes d'overtime écoulées depuis la fin du chrono
+  int get overtimeMinutes {
+    if (!isOvertime) return 0;
+    // Calculer depuis quand le chrono est à 0
+    final sessionEnd = sessionStart!.add(Duration(minutes: sessionMinutes));
+    return DateTime.now().difference(sessionEnd).inMinutes;
+  }
+
+  /// Points de pénalité accumulés en overtime (10 pts par tranche de 5 min)
+  int get overtimePenalty => (overtimeMinutes ~/ 5) * 10;
+
   /// Minutes restantes dans la session en cours
   int get sessionRemaining {
     if (sessionStart == null) return 0;

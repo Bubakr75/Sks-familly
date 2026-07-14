@@ -1,5 +1,6 @@
 // lib/providers/family_provider.dart
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -21,6 +22,7 @@ import '../models/chore_model.dart';
 import '../models/screen_time_account.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../services/notification_service.dart';
 import '../utils/image_compressor.dart';
 import '../services/voice_service.dart';
 
@@ -60,6 +62,8 @@ class FamilyProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _purchases = [];
   List<ChoreModel>      _chores = [];
   final Map<String, ScreenTimeAccount> _screenTimeAccounts = {};
+  Timer? _overtimeTimer;
+  int _lastOvertimePenaltyCount = 0; // Pour suivre combien de tranches de -10 pts déjà appliquées
 
   // ─── État de synchronisation (feedback UI) ──────────────────
   bool _isReconnecting = false;
@@ -2115,14 +2119,17 @@ class FamilyProvider extends ChangeNotifier {
     account.sessionStart = DateTime.now();
     account.sessionMinutes = minutes;
     account.balanceMinutes -= minutes;
+    _lastOvertimePenaltyCount = 0;
     _screenTimeAccounts[childId] = account;
+    _startOvertimeChecker();
     if (_firestore.isConnected) {
       try { await _firestore.saveScreenTimeAccount(childId, account.toMap()); } catch (_) {}
     }
     notifyListeners();
   }
 
-  /// Arrête la session en cours (si temps restant, on le rend au solde)
+  /// Arrête la session en cours (bouton STOP du parent)
+  /// Si l'enfant est en overtime, les pénalités déjà appliquées restent.
   Future<void> stopScreenTimeSession(String childId) async {
     final account = getScreenTimeAccount(childId);
     if (!account.isRunning) return;
@@ -2133,16 +2140,61 @@ class FamilyProvider extends ChangeNotifier {
     if (remaining > 0) {
       account.balanceMinutes += remaining;
     }
+
+    // Si overtime, appliquer les pénalités restantes avant de stopper
+    if (account.isOvertime) {
+      final overdue = account.overtimePenalty;
+      if (overdue > 0) {
+        await addPoints(childId, overdue,
+          '⚠️ Overtime temps d\'écran : ${account.overtimeMinutes} min de retard',
+          category: 'overtime', isBonus: false);
+      }
+    }
+
     account.history.insert(0, ScreenTimeTransaction(
       minutes: used, type: 'used', reason: 'Session terminée', date: DateTime.now(),
     ));
     account.sessionStart = null;
     account.sessionMinutes = 0;
+    _lastOvertimePenaltyCount = 0;
     _screenTimeAccounts[childId] = account;
+    _stopOvertimeChecker();
     if (_firestore.isConnected) {
       try { await _firestore.saveScreenTimeAccount(childId, account.toMap()); } catch (_) {}
     }
     notifyListeners();
+  }
+
+  /// Timer qui vérifie l'overtime toutes les 5 minutes
+  void _startOvertimeChecker() {
+    _stopOvertimeChecker();
+    _overtimeTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      bool anyOvertime = false;
+      for (final entry in _screenTimeAccounts.entries) {
+        final account = entry.value;
+        if (account.isOvertime) {
+          anyOvertime = true;
+          final currentTranches = account.overtimeMinutes ~/ 5;
+          // Appliquer -10 pts pour chaque nouvelle tranche de 5 min
+          while (_lastOvertimePenaltyCount < currentTranches) {
+            _lastOvertimePenaltyCount++;
+            // Appliquer la pénalité
+            addPoints(entry.key, 10,
+              '⚠️ Overtime : +5 min de retard sur le temps d\'écran',
+              category: 'overtime', isBonus: false);
+            // Notifier
+            NotificationService.notifySyncUpdate(
+              '${entry.key} est en overtéme sur le temps d\'écran ! (-10 pts)');
+          }
+        }
+      }
+      if (anyOvertime) notifyListeners();
+    });
+  }
+
+  void _stopOvertimeChecker() {
+    _overtimeTimer?.cancel();
+    _overtimeTimer = null;
   }
 
   /// Prolongation (parent)

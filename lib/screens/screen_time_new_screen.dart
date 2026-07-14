@@ -58,13 +58,13 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen> {
         if (mounted) setState(() {});
         // Auto-stop si temps écoulé
         if (account.sessionRemaining <= 0) {
-          _timer?.cancel();
-          _timer = null;
-          fp.stopScreenTimeSession(child.id);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('⏰ Temps écoulé pour ${child.name} !'),
-              backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
-          );
+          // NE PAS auto-stop : laisser l'overtime commencer
+          if (!account.isOvertime) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('⏰ Temps écoulé pour ${child.name} ! Viens voir le parent !'),
+                backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 5)),
+            );
+          }
         }
       });
     } else if (!account.isRunning && _timer != null) {
@@ -108,8 +108,15 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen> {
               child: Column(
                 children: [
                   // ─── CHRONO / SOLDE ───
-                  if (account.isRunning) ...[
-                    // Chrono en cours
+                  if (account.isOvertime) ...[
+                    // ⚠️ OVERTIME : temps écoulé, pénalités en cours
+                    _OvertimeCard(
+                      overtimeMinutes: account.overtimeMinutes,
+                      penalty: account.overtimePenalty,
+                      onStop: () => fp.stopScreenTimeSession(child.id),
+                    ),
+                  ] else if (account.isRunning) ...[
+                    // Chrono en cours (temps restant)
                     _ChronoCard(
                       remaining: account.sessionRemaining,
                       total: account.sessionMinutes,
@@ -219,6 +226,80 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen> {
                   ],
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Carte OVERTIME (temps écoulé, pénalités en cours) ──────
+class _OvertimeCard extends StatelessWidget {
+  final int overtimeMinutes;
+  final int penalty;
+  final VoidCallback onStop;
+
+  const _OvertimeCard({required this.overtimeMinutes, required this.penalty, required this.onStop});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.redAccent.withValues(alpha: 0.3), Colors.red.withValues(alpha: 0.1)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.redAccent, width: 2),
+        boxShadow: [BoxShadow(color: Colors.redAccent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 2)],
+      ),
+      child: Column(
+        children: [
+          // Animation pulsation
+          const Icon(Icons.warning_rounded, color: Colors.redAccent, size: 56,
+            shadows: [Shadow(color: Colors.redAccent, blurRadius: 20)]),
+          const SizedBox(height: 12),
+          const Text('TEMPS ÉCOULÉ !', style: TextStyle(color: Colors.redAccent, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1)),
+          const SizedBox(height: 8),
+          Text('${overtimeMinutes} min de retard', style: const TextStyle(color: Colors.white70, fontSize: 16)),
+          const SizedBox(height: 16),
+          // Pénalité
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.redAccent.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+            ),
+            child: Column(
+              children: [
+                const Text('Pénalité en cours', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                const SizedBox(height: 4),
+                Text('-$penalty pts', style: const TextStyle(color: Colors.redAccent, fontSize: 32, fontWeight: FontWeight.w900)),
+                const Text('(-10 pts / 5 min)', style: TextStyle(color: Colors.white38, fontSize: 11)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('L\'enfant doit venir te voir pour arrêter !',
+            style: TextStyle(color: Colors.white54, fontSize: 13), textAlign: TextAlign.center),
+          const SizedBox(height: 20),
+          // Bouton STOP (parent)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.stop_circle_rounded, size: 28),
+              label: const Text('ARRÊTER MAINTENANT', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              onPressed: () { HapticFeedback.heavyImpact(); onStop(); },
             ),
           ),
         ],
