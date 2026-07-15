@@ -1,7 +1,10 @@
 // lib/screens/checklist_screen.dart
 //
-// Checklist du jour : l'enfant coche ses tâches ménagères et valide d'un coup.
-// Le parent peut ajouter/modifier/supprimer des tâches.
+// Checklist du jour — refonte v2 :
+// • Sélection multiple d'enfants (clique les avatars)
+// • Chaque tâche a 3 boutons : ✅ Fait · ➖ Non noté · ❌ Pas fait
+// • "Non noté" = aucune pénalité, aucun bonus (peut-être fait par un autre)
+// • Un seul bouton "Valider" pour tous les enfants sélectionnés
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,9 +22,39 @@ class ChecklistScreen extends StatefulWidget {
   State<ChecklistScreen> createState() => _ChecklistScreenState();
 }
 
+/// État d'une tâche pour la session en cours.
+enum _ChoreState { pending, done, skipped, missed }
+
 class _ChecklistScreenState extends State<ChecklistScreen> {
-  final Set<String> _checked = {};
-  String? _selectedChildId;
+  /// Enfants sélectionnés pour la notation (multiples)
+  final Set<String> _selectedChildIds = {};
+
+  /// Enfant actuellement affiché (celui dont on voit les tâches)
+  String? _focusedChildId;
+
+  /// (childId, choreId) -> état
+  /// Clé combinée pour gérer plusieurs enfants indépendamment
+  final Map<String, _ChoreState> _states = {};
+
+  /// childId -> validé aujourd'hui
+  final Set<String> _validatedToday = {};
+
+  String _key(String childId, String choreId) => '$childId|$choreId';
+
+  _ChoreState _getState(String childId, String choreId) {
+    return _states[_key(childId, choreId)] ?? _ChoreState.pending;
+  }
+
+  void _setState(String childId, String choreId, _ChoreState s) {
+    final k = _key(childId, choreId);
+    // Toggle : re-cliquer sur le même état → revient à pending
+    if (_states[k] == s) {
+      _states[k] = _ChoreState.pending;
+    } else {
+      _states[k] = s;
+    }
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,299 +64,558 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     final children = fp.children;
     final chores = fp.chores.where((c) => c.isActive).toList();
 
-    final selectedChild = _selectedChildId != null
-        ? fp.getChild(_selectedChildId!)
-        : (children.isNotEmpty ? children.first : null);
+    chores.sort((a, b) => (a.order ?? 0).compareTo(b.order ?? 0));
+
+    // Initialise les sélections
+    if (children.isNotEmpty) {
+      _selectedChildIds.removeWhere((id) => !children.any((c) => c.id == id));
+      if (_selectedChildIds.isEmpty) {
+        _selectedChildIds.add(children.first.id);
+      }
+      if (_focusedChildId == null ||
+          !children.any((c) => c.id == _focusedChildId)) {
+        _focusedChildId = children.first.id;
+      }
+    }
+
+    final focusedChild = fp.getChild(_focusedChildId ?? '');
 
     return Scaffold(
       backgroundColor: EmeraldPalette.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('Checklist du jour', style: TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Checklist du jour',
+            style: TextStyle(
+                color: EmeraldPalette.textPrimary,
+                fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: EmeraldPalette.textPrimary),
         actions: [
           if (isParent)
             IconButton(
-              icon: const Icon(Icons.add_circle_rounded, color: EmeraldPalette.emerald, size: 28),
+              icon: const Icon(Icons.add_circle_rounded,
+                  color: EmeraldPalette.emerald, size: 28),
               onPressed: () => _showAddChoreDialog(context, fp),
             ),
         ],
       ),
       body: children.isEmpty
-          ? const Center(child: Text('Aucun enfant enregistré', style: TextStyle(color: Colors.white54)))
+          ? const Center(
+              child: Text('Aucun enfant enregistré',
+                  style: TextStyle(color: Colors.white54)))
           : Column(
               children: [
-                // Sélecteur d'enfant
-                if (children.length > 1)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedChildId ?? children.first.id,
-                      dropdownColor: EmeraldPalette.surface,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: EmeraldPalette.surfaceLow,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                      ),
-                      items: children.map((c) => DropdownMenuItem(
-                        value: c.id,
-                        child: Row(children: [
-                          Text(c.avatar.isNotEmpty ? c.avatar : '👤', style: const TextStyle(fontSize: 18)),
-                          const SizedBox(width: 8),
-                          Text(c.name, style: const TextStyle(color: Colors.white)),
-                          const Spacer(),
-                          Text('${c.points} pts', style: const TextStyle(color: EmeraldPalette.emeraldLight, fontSize: 12)),
-                        ]),
-                      )).toList(),
-                      onChanged: (v) => setState(() { _selectedChildId = v; _checked.clear(); }),
+                // ── Sélecteur d'enfants (avatars, sélection multiple) ──
+                if (children.length >= 1)
+                  SizedBox(
+                    height: 84,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      itemCount: children.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (_, i) {
+                        final c = children[i];
+                        final isSel = _selectedChildIds.contains(c.id);
+                        final isFocused = c.id == _focusedChildId;
+                        return GestureDetector(
+                          // Tap court = sélectionner ce enfant (multi)
+                          onTap: () {
+                            setState(() {
+                              if (_selectedChildIds.contains(c.id)) {
+                                if (_selectedChildIds.length > 1) {
+                                  _selectedChildIds.remove(c.id);
+                                }
+                              } else {
+                                _selectedChildIds.add(c.id);
+                              }
+                              _focusedChildId = c.id;
+                            });
+                          },
+                          // Long press = focus seul cet enfant
+                          onLongPress: () {
+                            setState(() {
+                              _selectedChildIds
+                                ..clear()
+                                ..add(c.id);
+                              _focusedChildId = c.id;
+                              HapticFeedback.selectionClick();
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isFocused
+                                  ? EmeraldPalette.emerald
+                                      .withValues(alpha: 0.22)
+                                  : isSel
+                                      ? EmeraldPalette.emerald
+                                          .withValues(alpha: 0.10)
+                                      : Colors.white.withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isFocused
+                                    ? EmeraldPalette.emerald
+                                    : isSel
+                                        ? EmeraldPalette.emerald
+                                            .withValues(alpha: 0.5)
+                                        : Colors.white12,
+                                width: isFocused ? 2.5 : (isSel ? 1.5 : 1),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Text(
+                                      c.avatar.isNotEmpty ? c.avatar : '👤',
+                                      style: const TextStyle(fontSize: 24),
+                                    ),
+                                    if (isSel)
+                                      Positioned(
+                                        right: -4,
+                                        top: -4,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: EmeraldPalette.emerald,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.check,
+                                              color: Color(0xFF051410),
+                                              size: 10),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(c.name,
+                                    style: TextStyle(
+                                      color: isSel
+                                          ? EmeraldPalette.emeraldLight
+                                          : Colors.white70,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    )),
+                                Text('${c.points} pts',
+                                    style: const TextStyle(
+                                        color: EmeraldPalette.gold,
+                                        fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
 
-                // Compteur de points potentiels
-                if (selectedChild != null)
+                // ── Bandeau info sélection ──
+                if (_selectedChildIds.length > 1)
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFD4AF37), Color(0xFFB8860B)]),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Points à gagner', style: TextStyle(color: Color(0xFF051410), fontWeight: FontWeight.w600)),
-                        Text(
-                          '+${chores.where((c) => _checked.contains(c.id)).fold(0, (sum, c) => sum + c.points)} pts',
-                          style: const TextStyle(color: Color(0xFF051410), fontSize: 20, fontWeight: FontWeight.w900),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // Avertissement pénalité
-                if (chores.isNotEmpty && _checked.length < chores.length && _selectedChildId != null)
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withValues(alpha: 0.1),
+                      color: EmeraldPalette.emerald.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_rounded, color: Colors.redAccent, size: 16),
+                        const Icon(Icons.group_rounded,
+                            color: EmeraldPalette.emeraldLight, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '${chores.length - _checked.length} tâche(s) non faite(s) = -${chores.where((c) => !_checked.contains(c.id)).fold(0, (sum, c) => sum + (c.points ~/ 2).clamp(1, 10))} pts',
-                            style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600),
+                            '${_selectedChildIds.length} enfants sélectionnés — notation groupée',
+                            style: const TextStyle(
+                                color: EmeraldPalette.emeraldLight,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
                           ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() {
+                            final names = children
+                                .where((c) => _selectedChildIds.contains(c.id))
+                                .toList();
+                            if (names.isNotEmpty) {
+                              _selectedChildIds.clear();
+                              _selectedChildIds.addAll(names.map((c) => c.id));
+                            }
+                          }),
+                          child: const Text('Tous',
+                              style: TextStyle(
+                                  color: EmeraldPalette.emerald,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
                   ),
 
-                // Liste des tâches (cases à cocher)
+                // ── Compteur résumé (enfant focus) ──
+                if (focusedChild != null)
+                  _buildSummary(focusedChild, chores),
+
+                // ── Liste des tâches ──
                 Expanded(
                   child: chores.isEmpty
-                      ? const Center(child: Text('Aucune tâche. Le parent peut en ajouter avec le bouton +', style: TextStyle(color: Colors.white38, fontSize: 13), textAlign: TextAlign.center))
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: chores.length,
-                          itemBuilder: (context, index) {
-                            final chore = chores[index];
-                            final isChecked = _checked.contains(chore.id);
-                            return _ChoreTile(
-                              chore: chore,
-                              isChecked: isChecked,
-                              isParent: isParent,
-                              onToggle: () => setState(() {
-                                if (isChecked) {
-                                  _checked.remove(chore.id);
-                                } else {
-                                  _checked.add(chore.id);
-                                }
-                                HapticFeedback.selectionClick();
-                              }),
-                              onDelete: isParent ? () => _confirmDeleteChore(context, fp, chore) : null,
-                            );
-                          },
-                        ),
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'Aucune tâche. Le parent peut en ajouter avec le bouton +',
+                              style: TextStyle(
+                                  color: Colors.white38, fontSize: 13),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      : _buildChoreGroups(
+                          focusedChild!, chores, isParent, fp),
                 ),
 
-                // Bouton Valider
-                if (_checked.isNotEmpty && selectedChild != null)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: EmeraldPalette.emerald,
-                          foregroundColor: const Color(0xFF051410),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 6,
-                        ),
-                        onPressed: () => _validateChores(context, fp, selectedChild, chores),
-                        icon: const Icon(Icons.check_circle_rounded, size: 24),
-                        label: Text(
-                          'Valider (${_checked.length} tâche${_checked.length > 1 ? 's' : ''})',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ),
-                  ),
+                // ── Bouton Valider ──
+                if (_anyDecision() && !_allValidated())
+                  _buildValidateButton(children, chores),
+                if (_allValidated() && _selectedChildIds.isNotEmpty)
+                  _buildValidatedBanner(),
               ],
             ),
     );
   }
 
-  void _validateChores(BuildContext context, FamilyProvider fp, ChildModel child, List<ChoreModel> allChores) async {
-    final completed = allChores.where((c) => _checked.contains(c.id)).toList();
-    final notCompleted = allChores.where((c) => !_checked.contains(c.id)).toList();
+  bool _anyDecision() {
+    return _selectedChildIds.any((cid) => _states.entries
+        .where((e) => e.key.startsWith('$cid|'))
+        .any((e) => e.value != _ChoreState.pending));
+  }
+
+  bool _allValidated() {
+    if (_selectedChildIds.isEmpty) return false;
+    return _selectedChildIds.every((cid) => _validatedToday.contains(cid));
+  }
+
+  // ─── Carte résumé ──────────────────────────────────────────────
+  Widget _buildSummary(ChildModel child, List<ChoreModel> chores) {
+    int donePts = 0, missedPts = 0;
+    int doneCount = 0, missedCount = 0, skippedCount = 0;
+    for (final c in chores) {
+      final s = _getState(child.id, c.id);
+      switch (s) {
+        case _ChoreState.done:
+          donePts += c.points;
+          doneCount++;
+          break;
+        case _ChoreState.missed:
+          missedPts += (c.points ~/ 2).clamp(1, 10);
+          missedCount++;
+          break;
+        case _ChoreState.skipped:
+          skippedCount++;
+          break;
+        case _ChoreState.pending:
+          break;
+      }
+    }
+    final net = donePts - missedPts;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [
+          net >= 0
+              ? const Color(0xFFD4AF37)
+              : Colors.redAccent.withValues(alpha: 0.6),
+          net >= 0
+              ? const Color(0xFFB8860B)
+              : Colors.redAccent.withValues(alpha: 0.3),
+        ]),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _summaryChip('✅', '$doneCount', '+$donePts', Colors.green.shade900),
+          Container(width: 1, height: 26, color: Colors.black26),
+          _summaryChip('➖', '$skippedCount', 'skip', Colors.black54),
+          Container(width: 1, height: 26, color: Colors.black26),
+          _summaryChip(
+              '❌', '$missedCount', '-$missedPts', Colors.red.shade900),
+          Container(width: 1, height: 26, color: Colors.black26),
+          _summaryChip(
+              '⚖️', '', '${net >= 0 ? '+' : ''}$net', Colors.black87),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryChip(String emoji, String count, String value, Color c) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 16)),
+        const SizedBox(height: 2),
+        if (count.isNotEmpty)
+          Text(count,
+              style: TextStyle(
+                  color: c.withValues(alpha: 0.7), fontSize: 10)),
+        Text(value,
+            style:
+                TextStyle(color: c, fontSize: 14, fontWeight: FontWeight.w900)),
+      ],
+    );
+  }
+
+  // ─── Tâches regroupées par moment ──────────────────────────────
+  Widget _buildChoreGroups(
+      ChildModel child, List<ChoreModel> chores, bool isParent, FamilyProvider fp) {
+    final groups = <String, List<ChoreModel>>{};
+    for (final c in chores) {
+      final slots = c.timeSlots ?? ['matin', 'midi', 'soir'];
+      for (final s in slots) {
+        groups.putIfAbsent(s, () => []).add(c);
+      }
+    }
+    const order = ['matin', 'midi', 'soir'];
+    final keys = groups.keys.toList()
+      ..sort((a, b) => order.indexOf(a).compareTo(order.indexOf(b)));
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      children: [
+        for (final slot in keys) ...[
+          _buildSlotHeader(slot),
+          const SizedBox(height: 6),
+          for (final chore in groups[slot]!)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _ChoreDecisionCard(
+                chore: chore,
+                state: _getState(child.id, chore.id),
+                isParent: isParent,
+                onDone: () {
+                  HapticFeedback.selectionClick();
+                  _setState(child.id, chore.id, _ChoreState.done);
+                  // En multi : propage à tous les enfants sélectionnés
+                  _propagate(child.id, chore.id, _ChoreState.done);
+                },
+                onSkipped: () {
+                  HapticFeedback.selectionClick();
+                  _setState(child.id, chore.id, _ChoreState.skipped);
+                  _propagate(child.id, chore.id, _ChoreState.skipped);
+                },
+                onMissed: () {
+                  HapticFeedback.selectionClick();
+                  _setState(child.id, chore.id, _ChoreState.missed);
+                  _propagate(child.id, chore.id, _ChoreState.missed);
+                },
+                onDelete: isParent
+                    ? () => _confirmDeleteChore(context, fp, chore)
+                    : null,
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+
+  /// Propage l'état aux autres enfants sélectionnés (notation groupée).
+  void _propagate(String focusChildId, String choreId, _ChoreState s) {
+    if (_selectedChildIds.length <= 1) return;
+    for (final cid in _selectedChildIds) {
+      if (cid == focusChildId) continue;
+      _states[_key(cid, choreId)] = s;
+    }
+    setState(() {});
+  }
+
+  Widget _buildSlotHeader(String slot) {
+    final map = {
+      'matin': ('🌅', 'Matin', Colors.orange.shade300),
+      'midi': ('☀️', 'Midi', Colors.amber.shade300),
+      'soir': ('🌙', 'Soir', Colors.indigo.shade300),
+    };
+    final e = map[slot] ?? ('📋', slot, Colors.white70);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 2),
+      child: Row(children: [
+        Text(e.$1, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 8),
+        Text(e.$2,
+            style: TextStyle(
+                color: e.$3,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5)),
+        const SizedBox(width: 8),
+        Expanded(
+            child: Container(
+                height: 1, color: Colors.white.withValues(alpha: 0.08))),
+      ]),
+    );
+  }
+
+  // ─── Bouton Valider (tous les enfants sélectionnés) ────────────
+  Widget _buildValidateButton(List<ChildModel> children, List<ChoreModel> chores) {
+    int totalDone = 0, totalMissed = 0;
+    for (final cid in _selectedChildIds) {
+      for (final c in chores) {
+        final s = _getState(cid, c.id);
+        if (s == _ChoreState.done) totalDone++;
+        if (s == _ChoreState.missed) totalMissed++;
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: EmeraldPalette.emerald,
+            foregroundColor: const Color(0xFF051410),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            elevation: 6,
+          ),
+          onPressed: () => _validateAll(children, chores),
+          icon: const Icon(Icons.check_circle_rounded, size: 24),
+          label: Text(
+            'Valider '
+            '($totalDone ✅'
+            '${totalMissed > 0 ? ', $totalMissed ❌' : ''}'
+            '${_selectedChildIds.length > 1 ? ', ${_selectedChildIds.length} enfants' : ''})',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildValidatedBanner() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: EmeraldPalette.emerald.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: EmeraldPalette.emerald.withValues(alpha: 0.4), width: 1.5),
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle, color: EmeraldPalette.emerald, size: 22),
+          SizedBox(width: 8),
+          Text("Checklist validée pour aujourd'hui ✓",
+              style: TextStyle(
+                  color: EmeraldPalette.emeraldLight,
+                  fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  // ─── Validation pour tous les enfants sélectionnés ─────────────
+  Future<void> _validateAll(
+      List<ChildModel> children, List<ChoreModel> chores) async {
+    final fp = context.read<FamilyProvider>();
     final isParent = context.read<PinProvider>().isParentMode;
     final messenger = ScaffoldMessenger.of(context);
 
-    if (isParent) {
-      // ✅ D'abord : appliquer les bonus des tâches cochées
-      int totalBonus = 0;
-      if (completed.isNotEmpty) {
-        totalBonus = await fp.validateChores(child.id, completed);
-      }
+    final selectedChildren =
+        children.where((c) => _selectedChildIds.contains(c.id)).toList();
 
-      // ⚠️ Ensuite : si des tâches ne sont pas cochées, demander au parent
-      int totalPenalty = 0;
+    int grandBonus = 0;
+    int grandPenalty = 0;
 
-      if (notCompleted.isNotEmpty) {
-        // Pré-remplir : pénalité pour les individuelles, ignorer pour les partagées
-        final penaltyChores = <String, bool>{};
-        for (final c in notCompleted) {
-          penaltyChores[c.id] = c.isIndividual; // true = pénalité par défaut si individuel
+    for (final child in selectedChildren) {
+      final done = chores
+          .where((c) => _getState(child.id, c.id) == _ChoreState.done)
+          .toList();
+      final missed = chores
+          .where((c) => _getState(child.id, c.id) == _ChoreState.missed)
+          .toList();
+      // skipped = ignoré (pas de bonus, pas de pénalité)
+
+      if (isParent) {
+        if (done.isNotEmpty) {
+          grandBonus += await fp.validateChores(child.id, done);
         }
-
-        await showDialog(
-          context: context,
-          builder: (ctx) => StatefulBuilder(
-            builder: (ctx, setDialog) => AlertDialog(
-              backgroundColor: const Color(0xFF0F2620),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Text('Tâches de ${child.name}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Coche les tâches à pénaliser :', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                    const Text('(Décoche si pas sa faute)', style: TextStyle(color: Colors.white38, fontSize: 11)),
-                    const SizedBox(height: 12),
-                    ...notCompleted.map((c) {
-                      final isPenalty = penaltyChores[c.id] ?? false;
-                      return CheckboxListTile(
-                        value: isPenalty,
-                        onChanged: (v) => setDialog(() => penaltyChores[c.id] = v ?? false),
-                        activeColor: Colors.redAccent,
-                        checkColor: Colors.white,
-                        title: Row(children: [
-                          Text(c.emoji, style: const TextStyle(fontSize: 18)),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(c.label, style: const TextStyle(color: Colors.white, fontSize: 14))),
-                        ]),
-                        subtitle: Text(
-                          '-${(c.points ~/ 2).clamp(1, 10)} pts',
-                          style: TextStyle(color: isPenalty ? Colors.redAccent : Colors.white24, fontSize: 11),
-                        ),
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                      );
-                    }),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: EmeraldPalette.emerald, foregroundColor: const Color(0xFF051410)),
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    // Appliquer les pénalités cochées
-                    final labels = <String>[];
-                    for (final c in notCompleted) {
-                      if (penaltyChores[c.id] == true) {
-                        final penalty = (c.points ~/ 2).clamp(1, 10);
-                        totalPenalty += penalty;
-                        labels.add('${c.emoji} ${c.label}');
-                      }
-                    }
-                    if (totalPenalty > 0) {
-                      await fp.addPoints(child.id, totalPenalty, '⚠️ Tâches non faites : ${labels.join(', ')}',
-                          category: 'ménage', isBonus: false);
-                    }
-                    if (context.mounted) {
-                      HapticFeedback.heavyImpact();
-                      final net = totalBonus - totalPenalty;
-                      messenger.showSnackBar(SnackBar(
-                        content: Text(net >= 0
-                            ? '🎉 ${child.name} : +$totalBonus bonus, -$totalPenalty pénalité = +$net pts'
-                            : '⚠️ ${child.name} : +$totalBonus bonus, -$totalPenalty pénalité = $net pts'),
-                        backgroundColor: net >= 0 ? EmeraldPalette.emerald : Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 4),
-                      ));
-                      setState(() => _checked.clear());
-                    }
-                  },
-                  child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          ),
-        );
+        if (missed.isNotEmpty) {
+          final labels = <String>[];
+          int pen = 0;
+          for (final c in missed) {
+            final p = (c.points ~/ 2).clamp(1, 10);
+            pen += p;
+            labels.add('${c.emoji} ${c.label}');
+          }
+          if (pen > 0) {
+            await fp.addPoints(child.id, pen,
+                '⚠️ Tâches non faites : ${labels.join(', ')}',
+                category: 'ménage', isBonus: false);
+            grandPenalty += pen;
+          }
+        }
       } else {
-        // Toutes les tâches sont cochées → juste les bonus
-        if (context.mounted) {
-          HapticFeedback.heavyImpact();
-          messenger.showSnackBar(SnackBar(
-            content: Text('🎉 ${child.name} : +$totalBonus pts bonus !'),
-            backgroundColor: EmeraldPalette.emerald,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
-          ));
-          setState(() => _checked.clear());
+        // Mode enfant : demande silencieuse
+        final total = done.fold(0, (sum, c) => sum + c.points);
+        final labels = done.map((c) => '${c.emoji} ${c.label}').join(', ');
+        if (done.isNotEmpty) {
+          await fp.createRequest(
+            type: 'chore_checklist',
+            childId: child.id,
+            requestedBy: child.name,
+            text: '✅ Tâches du jour : $labels',
+            amount: total,
+          );
         }
       }
-    } else {
-      // Mode enfant : créer une demande SILENCIEUSE
-      final total = completed.fold(0, (sum, c) => sum + c.points);
-      final labels = completed.map((c) => '${c.emoji} ${c.label}').join(', ');
-      await fp.createRequest(
-        type: 'chore_checklist',
-        childId: child.id,
-        requestedBy: child.name,
-        text: '✅ Tâches du jour : $labels',
-        amount: total,
-      );
-      if (context.mounted) {
-        HapticFeedback.mediumImpact();
-        messenger.showSnackBar(SnackBar(
-          content: Text('Demande envoyée ! +$total pts en attente du parent.'),
-          backgroundColor: const Color(0xFF7C4DFF),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ));
-        setState(() => _checked.clear());
-      }
+
+      _validatedToday.add(child.id);
+      // Nettoie les états de cet enfant
+      _states.removeWhere((k, _) => k.startsWith('${child.id}|'));
     }
+
+    HapticFeedback.heavyImpact();
+    final net = grandBonus - grandPenalty;
+    messenger.showSnackBar(SnackBar(
+      content: Text(selectedChildren.length == 1
+          ? (net >= 0
+              ? '🎉 ${selectedChildren.first.name} : +$grandBonus'
+                  '${grandPenalty > 0 ? ', -$grandPenalty' : ''}'
+                  ' = +$net pts'
+              : '⚠️ ${selectedChildren.first.name} : +$grandBonus, -$grandPenalty = $net pts')
+          : '🎉 ${selectedChildren.length} enfants notés : '
+              '+$grandBonus bonus${grandPenalty > 0 ? ', -$grandPenalty pénalité' : ''}'),
+      backgroundColor: net >= 0 ? EmeraldPalette.emerald : Colors.redAccent,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 4),
+    ));
+
+    setState(() {});
   }
 
+  // ─── Ajout de tâche (parent) ───────────────────────────────────
   void _showAddChoreDialog(BuildContext context, FamilyProvider fp) {
     final labelCtrl = TextEditingController();
     final pointsCtrl = TextEditingController(text: '5');
-    final allEmojis = ['✅', '🛏️', '🛌', '🍽️', '🪥', '📚', '🧸', '🗑️', '🐕', '🧹', '🚗', '👕', '🪴', '🍳', '🧽', '📦'];
+    final allEmojis = [
+      '✅', '🛏️', '🛌', '🍽️', '🪥', '📚', '🧸', '🗑️',
+      '🐕', '🧹', '🚗', '👕', '🪴', '🍳', '🧽', '📦'
+    ];
     String selectedEmoji = '✅';
     bool isIndividual = true;
-    final timeSlots = <String>['matin', 'midi', 'soir']; // Tous cochés par défaut
+    final timeSlots = <String>['matin', 'midi', 'soir'];
 
     showDialog(
       context: context,
@@ -331,26 +623,40 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         builder: (ctx, setDialogState) {
           return AlertDialog(
             backgroundColor: EmeraldPalette.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            title: const Text('Nouvelle tâche', style: TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24)),
+            title: const Text('Nouvelle tâche',
+                style: TextStyle(
+                    color: EmeraldPalette.textPrimary,
+                    fontWeight: FontWeight.bold)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Wrap(
                     spacing: 6,
-                    children: allEmojis.map((e) => GestureDetector(
-                      onTap: () => setDialogState(() => selectedEmoji = e),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: selectedEmoji == e ? EmeraldPalette.emerald.withValues(alpha: 0.2) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: selectedEmoji == e ? EmeraldPalette.emerald : Colors.transparent),
-                        ),
-                        child: Text(e, style: const TextStyle(fontSize: 22)),
-                      ),
-                    )).toList(),
+                    children: allEmojis
+                        .map((e) => GestureDetector(
+                              onTap: () => setDialogState(
+                                  () => selectedEmoji = e),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: selectedEmoji == e
+                                      ? EmeraldPalette.emerald
+                                          .withValues(alpha: 0.2)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: selectedEmoji == e
+                                          ? EmeraldPalette.emerald
+                                          : Colors.transparent),
+                                ),
+                                child: Text(e,
+                                    style: const TextStyle(fontSize: 22)),
+                              ),
+                            ))
+                        .toList(),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -358,10 +664,13 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     style: const TextStyle(color: EmeraldPalette.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Nom de la tâche',
-                      labelStyle: const TextStyle(color: EmeraldPalette.textSecondary),
+                      labelStyle: const TextStyle(
+                          color: EmeraldPalette.textSecondary),
                       filled: true,
                       fillColor: EmeraldPalette.surfaceLow,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -371,57 +680,81 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Points',
-                      labelStyle: const TextStyle(color: EmeraldPalette.textSecondary),
+                      labelStyle: const TextStyle(
+                          color: EmeraldPalette.textSecondary),
                       filled: true,
                       fillColor: EmeraldPalette.surfaceLow,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Toggle Individuel / Partagé
                   StatefulBuilder(
                     builder: (ctx, setInner) => Row(
                       children: [
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setInner(() => isIndividual = true),
+                            onTap: () =>
+                                setInner(() => isIndividual = true),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 10),
                               decoration: BoxDecoration(
-                                color: isIndividual ? Colors.blue.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                                color: isIndividual
+                                    ? Colors.blue.withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: isIndividual ? Colors.blue : Colors.white12),
+                                border: Border.all(
+                                    color: isIndividual
+                                        ? Colors.blue
+                                        : Colors.white12),
                               ),
-                              child: Column(
-                                children: [
-                                  const Text('🔵', style: TextStyle(fontSize: 18)),
-                                  const SizedBox(height: 2),
-                                  const Text('Individuel', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                                  const Text('Pénalité si pas fait', style: TextStyle(color: Colors.white38, fontSize: 9)),
-                                ],
-                              ),
+                              child: const Column(children: [
+                                Text('🔵', style: TextStyle(fontSize: 18)),
+                                SizedBox(height: 2),
+                                Text('Individuel',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600)),
+                                Text('Pénalité si pas fait',
+                                    style: TextStyle(
+                                        color: Colors.white38, fontSize: 9)),
+                              ]),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setInner(() => isIndividual = false),
+                            onTap: () =>
+                                setInner(() => isIndividual = false),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 10),
                               decoration: BoxDecoration(
-                                color: !isIndividual ? Colors.amber.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                                color: !isIndividual
+                                    ? Colors.amber.withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: !isIndividual ? Colors.amber : Colors.white12),
+                                border: Border.all(
+                                    color: !isIndividual
+                                        ? Colors.amber
+                                        : Colors.white12),
                               ),
-                              child: Column(
-                                children: [
-                                  const Text('🟡', style: TextStyle(fontSize: 18)),
-                                  const SizedBox(height: 2),
-                                  const Text('Partagée', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                                  const Text('Pas de pénalité si un autre l\'a fait', style: TextStyle(color: Colors.white38, fontSize: 9)),
-                                ],
-                              ),
+                              child: const Column(children: [
+                                Text('🟡', style: TextStyle(fontSize: 18)),
+                                SizedBox(height: 2),
+                                Text('Partagée',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600)),
+                                Text("Pas de pénalité si un autre l'a fait",
+                                    style: TextStyle(
+                                        color: Colors.white38, fontSize: 9)),
+                              ]),
                             ),
                           ),
                         ),
@@ -429,17 +762,32 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Moments de la journée
-                  const Text('Moments :', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const Text('Moments :',
+                      style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   StatefulBuilder(
                     builder: (ctx, setSlots) => Row(
                       children: [
-                        _TimeSlotChip(label: '🌅 Matin', value: 'matin', slots: timeSlots, onTap: setSlots),
+                        _TimeSlotChip(
+                            label: '🌅 Matin',
+                            value: 'matin',
+                            slots: timeSlots,
+                            onTap: setSlots),
                         const SizedBox(width: 6),
-                        _TimeSlotChip(label: '☀️ Midi', value: 'midi', slots: timeSlots, onTap: setSlots),
+                        _TimeSlotChip(
+                            label: '☀️ Midi',
+                            value: 'midi',
+                            slots: timeSlots,
+                            onTap: setSlots),
                         const SizedBox(width: 6),
-                        _TimeSlotChip(label: '🌙 Soir', value: 'soir', slots: timeSlots, onTap: setSlots),
+                        _TimeSlotChip(
+                            label: '🌙 Soir',
+                            value: 'soir',
+                            slots: timeSlots,
+                            onTap: setSlots),
                       ],
                     ),
                   ),
@@ -447,17 +795,31 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Annuler',
+                      style: TextStyle(color: Colors.white54))),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: EmeraldPalette.emerald, foregroundColor: const Color(0xFF051410)),
-                onPressed: timeSlots.isEmpty ? null : () {
-                  final label = labelCtrl.text.trim();
-                  final points = int.tryParse(pointsCtrl.text.trim()) ?? 5;
-                  if (label.isEmpty) return;
-                  fp.addChore(label: label, points: points, emoji: selectedEmoji, isIndividual: isIndividual, timeSlots: timeSlots);
-                  Navigator.pop(ctx);
-                },
-                child: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: EmeraldPalette.emerald,
+                    foregroundColor: const Color(0xFF051410)),
+                onPressed: timeSlots.isEmpty
+                    ? null
+                    : () {
+                        final label = labelCtrl.text.trim();
+                        final points =
+                            int.tryParse(pointsCtrl.text.trim()) ?? 5;
+                        if (label.isEmpty) return;
+                        fp.addChore(
+                            label: label,
+                            points: points,
+                            emoji: selectedEmoji,
+                            isIndividual: isIndividual,
+                            timeSlots: timeSlots);
+                        Navigator.pop(ctx);
+                      },
+                child: const Text('Ajouter',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           );
@@ -466,19 +828,31 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
-  void _confirmDeleteChore(BuildContext context, FamilyProvider fp, ChoreModel chore) {
+  void _confirmDeleteChore(
+      BuildContext context, FamilyProvider fp, ChoreModel chore) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: EmeraldPalette.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Supprimer ?', style: TextStyle(color: EmeraldPalette.textPrimary)),
-        content: Text('Supprimer "${chore.label}" ?', style: const TextStyle(color: EmeraldPalette.textSecondary)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Supprimer ?',
+            style: TextStyle(color: EmeraldPalette.textPrimary)),
+        content: Text('Supprimer "${chore.label}" ?',
+            style: const TextStyle(color: EmeraldPalette.textSecondary)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white54))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
-            onPressed: () { Navigator.pop(ctx); fp.deleteChore(chore.id); },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.pop(ctx);
+              fp.deleteChore(chore.id);
+            },
             child: const Text('Supprimer'),
           ),
         ],
@@ -487,54 +861,60 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 }
 
-class _ChoreTile extends StatelessWidget {
+// ─── Carte tâche avec 3 décisions : ✅ ➖ ❌ ──────────────────────
+class _ChoreDecisionCard extends StatelessWidget {
   final ChoreModel chore;
-  final bool isChecked;
+  final _ChoreState state;
   final bool isParent;
-  final VoidCallback onToggle;
+  final VoidCallback onDone;
+  final VoidCallback onSkipped;
+  final VoidCallback onMissed;
   final VoidCallback? onDelete;
 
-  const _ChoreTile({
+  const _ChoreDecisionCard({
     required this.chore,
-    required this.isChecked,
+    required this.state,
     required this.isParent,
-    required this.onToggle,
+    required this.onDone,
+    required this.onSkipped,
+    required this.onMissed,
     this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDone = state == _ChoreState.done;
+    final isSkipped = state == _ChoreState.skipped;
+    final isMissed = state == _ChoreState.missed;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isChecked
+        color: isDone
             ? EmeraldPalette.emerald.withValues(alpha: 0.12)
-            : EmeraldPalette.surface,
+            : isMissed
+                ? Colors.redAccent.withValues(alpha: 0.10)
+                : isSkipped
+                    ? Colors.grey.withValues(alpha: 0.08)
+                    : EmeraldPalette.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isChecked ? EmeraldPalette.emerald.withValues(alpha: 0.4) : EmeraldPalette.glassBorder,
-          width: isChecked ? 1.5 : 1,
+          color: isDone
+              ? EmeraldPalette.emerald.withValues(alpha: 0.5)
+              : isMissed
+                  ? Colors.redAccent.withValues(alpha: 0.4)
+                  : isSkipped
+                      ? Colors.white24
+                      : EmeraldPalette.glassBorder,
+          width: (isDone || isMissed) ? 1.5 : 1,
         ),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: GestureDetector(
-          onTap: onToggle,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 28, height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isChecked ? EmeraldPalette.emerald : Colors.transparent,
-              border: Border.all(color: isChecked ? EmeraldPalette.emerald : Colors.white24, width: 2),
-            ),
-            child: isChecked ? const Icon(Icons.check, color: Color(0xFF051410), size: 18) : null,
-          ),
-        ),
-        title: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
           children: [
-            Text(chore.emoji, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 8),
+            // Emoji + label + badges
+            Text(chore.emoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,61 +923,141 @@ class _ChoreTile extends StatelessWidget {
                   Text(
                     chore.label,
                     style: TextStyle(
-                      color: isChecked ? EmeraldPalette.emeraldLight : EmeraldPalette.textPrimary,
+                      color: isDone
+                          ? EmeraldPalette.emeraldLight
+                          : isMissed
+                              ? Colors.redAccent
+                              : isSkipped
+                                  ? Colors.white38
+                                  : EmeraldPalette.textPrimary,
                       fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      decoration: isChecked ? TextDecoration.lineThrough : null,
+                      fontWeight: FontWeight.w700,
+                      decoration: isMissed
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
                   ),
-                  // Indicateur individuuel/partagé
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: (chore.isIndividual ? Colors.blue : Colors.amber).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          chore.isIndividual ? '🔵 Individuel' : '🟡 Partagée',
-                          style: TextStyle(
-                            color: chore.isIndividual ? Colors.blue.shade300 : Colors.amber.shade300,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  const SizedBox(height: 3),
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: (chore.isIndividual
+                                ? Colors.blue
+                                : Colors.amber)
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        chore.isIndividual ? '🔵 Individuel' : '🟡 Partagée',
+                        style: TextStyle(
+                          color: chore.isIndividual
+                              ? Colors.blue.shade300
+                              : Colors.amber.shade300,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text('+${chore.points} pts',
+                        style: const TextStyle(
+                            color: EmeraldPalette.gold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                    if (isParent && onDelete != null) ...[
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: onDelete,
+                        child: const Icon(Icons.close,
+                            color: Colors.white24, size: 14),
+                      ),
                     ],
-                  ),
+                  ]),
                 ],
               ),
             ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: EmeraldPalette.gold.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: EmeraldPalette.gold.withValues(alpha: 0.3)),
-              ),
-              child: Text('+${chore.points}', style: const TextStyle(color: EmeraldPalette.gold, fontSize: 12, fontWeight: FontWeight.w700)),
+
+            // ── 3 boutons de décision ──
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ❌ Pas fait (pénalité)
+                _DecisionButton(
+                  icon: Icons.close_rounded,
+                  color: Colors.redAccent,
+                  selected: isMissed,
+                  onTap: onMissed,
+                ),
+                const SizedBox(width: 6),
+                // ➖ Non noté (skip, ni bonus ni pénalité)
+                _DecisionButton(
+                  icon: Icons.remove_rounded,
+                  color: Colors.grey,
+                  selected: isSkipped,
+                  onTap: onSkipped,
+                ),
+                const SizedBox(width: 6),
+                // ✅ Fait (bonus)
+                _DecisionButton(
+                  icon: Icons.check_rounded,
+                  color: EmeraldPalette.emerald,
+                  selected: isDone,
+                  onTap: onDone,
+                ),
+              ],
             ),
-            if (isParent && onDelete != null) ...[
-              const SizedBox(width: 4),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                onPressed: onDelete,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
           ],
         ),
-        onTap: onToggle,
+      ),
+    );
+  }
+}
+
+// ─── Bouton de décision rond ────────────────────────────────────
+class _DecisionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DecisionButton({
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: selected ? color : Colors.transparent,
+          border: Border.all(
+            color: selected ? color : Colors.white24,
+            width: selected ? 0 : 2,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                      color: color.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      spreadRadius: 1)
+                ]
+              : null,
+        ),
+        child: Icon(
+          icon,
+          color: selected ? const Color(0xFF051410) : Colors.white54,
+          size: 20,
+        ),
       ),
     );
   }
@@ -609,7 +1069,12 @@ class _TimeSlotChip extends StatelessWidget {
   final List<String> slots;
   final void Function(void Function()) onTap;
 
-  const _TimeSlotChip({required this.label, required this.value, required this.slots, required this.onTap});
+  const _TimeSlotChip({
+    required this.label,
+    required this.value,
+    required this.slots,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -626,16 +1091,23 @@ class _TimeSlotChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? EmeraldPalette.emerald.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+            color: isSelected
+                ? EmeraldPalette.emerald.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? EmeraldPalette.emerald : Colors.white12),
+            border: Border.all(
+                color:
+                    isSelected ? EmeraldPalette.emerald : Colors.white12),
           ),
           child: Center(
-            child: Text(label, style: TextStyle(
-              color: isSelected ? EmeraldPalette.emeraldLight : Colors.white54,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            )),
+            child: Text(label,
+                style: TextStyle(
+                  color: isSelected
+                      ? EmeraldPalette.emeraldLight
+                      : Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                )),
           ),
         ),
       ),

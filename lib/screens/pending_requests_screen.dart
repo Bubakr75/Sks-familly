@@ -14,6 +14,7 @@ class PendingRequestsScreen extends StatelessWidget {
       case 'bonus':      return 'Bonus';
       case 'chore_checklist': return 'Tâches du jour';
       case 'tribunal':   return 'Tribunal';
+      case 'boutique':   return 'Achat boutique';
       default:           return type;
     }
   }
@@ -26,6 +27,7 @@ class PendingRequestsScreen extends StatelessWidget {
       case 'bonus':      return Icons.star;
       case 'chore_checklist': return Icons.checklist_rounded;
       case 'tribunal':   return Icons.balance;
+      case 'boutique':   return Icons.shopping_bag_rounded;
       default:           return Icons.help_outline;
     }
   }
@@ -38,6 +40,7 @@ class PendingRequestsScreen extends StatelessWidget {
       case 'bonus':      return Colors.green;
       case 'chore_checklist': return Colors.teal;
       case 'tribunal':   return Colors.purple;
+      case 'boutique':   return Colors.amber;
       default:           return Colors.grey;
     }
   }
@@ -116,7 +119,9 @@ class PendingRequestsScreen extends StatelessWidget {
                           child: Text(
                             r.type == 'bonus'
                                 ? '${r.amount} points'
-                                : '${r.amount} ligne${r.amount > 1 ? 's' : ''}',
+                                : r.type == 'boutique'
+                                    ? '${r.amount} points'
+                                    : '${r.amount} ligne${r.amount > 1 ? 's' : ''}',
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600),
                           ),
@@ -132,11 +137,25 @@ class PendingRequestsScreen extends StatelessWidget {
                                 style: TextStyle(color: Colors.red)),
                           ),
                           const SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            onPressed: () => _showApproveDialog(context, fp, r),
-                            icon: const Icon(Icons.check),
-                            label: const Text('Approuver'),
-                          ),
+                          // 📺 Bouton spécial : Démarrer le chrono (temps d'écran)
+                          if (r.type == 'boutique' &&
+                              _isScreenTimeReward(r))
+                            ElevatedButton.icon(
+                              onPressed: () =>
+                                  _startScreenTimeNow(context, fp, r),
+                              icon: const Icon(Icons.play_circle_fill),
+                              label: const Text('Démarrer chrono'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal,
+                                foregroundColor: Colors.white,
+                              ),
+                            )
+                          else
+                            ElevatedButton.icon(
+                              onPressed: () => _showApproveDialog(context, fp, r),
+                              icon: const Icon(Icons.check),
+                              label: const Text('Approuver'),
+                            ),
                         ],
                       ),
                     ],
@@ -267,6 +286,109 @@ class PendingRequestsScreen extends StatelessWidget {
               }
             },
             child: const Text('Refuser', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Détecte si une demande boutique concerne du temps d'écran.
+  bool _isScreenTimeReward(PendingRequest r) {
+    if (r.type != 'boutique') return false;
+    final title = (r.extra['rewardTitle'] as String? ?? '').toLowerCase();
+    final icon = r.extra['icon'] as String? ?? '';
+    return title.contains('écran') ||
+        title.contains('ecran') ||
+        title.contains('min') ||
+        icon == '🎮';
+  }
+
+  /// Extrait le nombre de minutes d'un titre de récompense.
+  int _extractMinutes(PendingRequest r) {
+    final title = r.extra['rewardTitle'] as String? ?? '';
+    final match = RegExp(r'(\d+)').firstMatch(title);
+    return match != null ? int.tryParse(match.group(1)!) ?? 15 : 15;
+  }
+
+  /// Démarre le chrono immédiatement après approbation d'un achat temps d'écran.
+  void _startScreenTimeNow(
+      BuildContext context, FamilyProvider fp, PendingRequest r) {
+    final minutes = _extractMinutes(r);
+    final childName = fp.getChild(r.childId)?.name ?? 'l\'enfant';
+    final account = fp.getScreenTimeAccount(r.childId);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F2620),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('📺 Démarrer le chrono',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$childName veut commencer son temps d\'écran.',
+                style: const TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            // Infos solde
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.teal.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.teal.withValues(alpha: 0.4)),
+              ),
+              child: Column(children: [
+                Text('Solde : ${account.balanceMinutes} min',
+                    style: const TextStyle(
+                        color: Colors.tealAccent,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text('Cette session : $minutes min',
+                    style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              ]),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+                '⚠️ Quand le temps sera écoulé, l\'enfant perdra\n'
+                '-10 pts toutes les 5 min jusqu\'à ce qu\'il vienne te voir.',
+                style: TextStyle(color: Colors.orangeAccent, fontSize: 11),
+                textAlign: TextAlign.center),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal, foregroundColor: Colors.white),
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Démarrer',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              // 1. Valider la demande (confirme l'achat)
+              await fp.approveRequest(r.id);
+              // 2. Démarrer le chrono avec les minutes
+              if (!context.mounted) return;
+              await fp.startScreenTimeSession(r.childId, minutes);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      '📺 Chrono démarré pour $childName ($minutes min).\n'
+                      'Pense à vérifier quand le temps est écoulé !'),
+                  backgroundColor: Colors.teal,
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            },
           ),
         ],
       ),

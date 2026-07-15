@@ -3,6 +3,7 @@
 // Bilan du Soir : récap visuel de la journée + ajustement des points.
 // Le parent voit tout ce qui s'est passé aujourd'hui et peut ajuster.
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -311,15 +312,58 @@ class _HistoryRow extends StatelessWidget {
 
   const _HistoryRow({required this.entry, required this.isBonus});
 
+  void _openPhoto(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: GestureDetector(
+          onTap: () => Navigator.pop(ctx),
+          child: InteractiveViewer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.memory(
+                base64Decode(entry.proofPhotoBase64!),
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = isBonus ? EmeraldPalette.emeraldLight : Colors.redAccent;
+    final hasPhoto = entry.hasProofPhoto;
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
           Icon(isBonus ? Icons.add_circle_rounded : Icons.remove_circle_rounded, color: color, size: 16),
           const SizedBox(width: 8),
+          // 📸 Miniature photo IA si disponible
+          if (hasPhoto)
+            GestureDetector(
+              onTap: () => _openPhoto(context),
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.memory(
+                    base64Decode(entry.proofPhotoBase64!),
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
           Expanded(
             child: Text(entry.reason, style: const TextStyle(color: Colors.white70, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
           ),

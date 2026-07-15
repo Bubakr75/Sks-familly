@@ -893,36 +893,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     },
                   ),
                   _drawerItem(
-                    icon: Icons.edit_document,
-                    label: 'Lignes de Punition',
-                    color: Colors.redAccent,
+                    label: 'Bonus et Penalites',
+                    icon: Icons.monetization_on_rounded,
+                    color: Colors.greenAccent,
                     onTap: () {
                       Navigator.pop(context);
-                      PinGuard.guardAction(context, () {
-                        Navigator.push(
-                          context,
-                          SlidePageRoute(
-                              page: const PunishmentLinesScreen()),
-                        );
-                      });
+                      PinGuard.guardAction(
+                          context, () => _showBonusPenaltyHistory(context));
                     },
                   ),
-                  _drawerItem(
-                    label: 'Lignes d Immunite',
-                    icon: Icons.shield_rounded,
-                    color: Colors.amberAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      PinGuard.guardAction(context, () {
-                        Navigator.push(
-                          context,
-                          SlidePageRoute(
-                              page: const ImmunityLinesScreen()),
-                        );
-                      });
-                    },
-                  ),
-                  // NOUVEL ITEM : Punitions et Immunites multi-enfants
+                  // ─── Punitions et Immunités (multi-enfants) ───
                   _drawerItem(
                     label: 'Punitions et Immunites',
                     icon: Icons.balance_rounded,
@@ -935,16 +915,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           SlidePageRoute(page: const BalanceScreen()),
                         );
                       });
-                    },
-                  ),
-                  _drawerItem(
-                    label: 'Bonus et Penalites',
-                    icon: Icons.monetization_on_rounded,
-                    color: Colors.greenAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      PinGuard.guardAction(
-                          context, () => _showBonusPenaltyHistory(context));
                     },
                   ),
                 ],
@@ -960,18 +930,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
-                // ─── Pénalité / Immunité : PARENT UNIQUEMENT ───
-                if (isParent)
-                  _drawerItem(
-                    icon: Icons.assignment_late_rounded,
-                    label: 'Pénalité / Immunité',
-                    color: Colors.redAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(context,
-                          SlidePageRoute(page: const BalanceScreen()));
-                    },
-                  ),
                 _drawerItem(
                   icon: Icons.auto_awesome_rounded,
                   label: 'Gemini AI',

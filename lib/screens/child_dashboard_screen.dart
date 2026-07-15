@@ -13,6 +13,7 @@ import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../models/badge_model.dart';
 import '../models/history_entry.dart';
+import '../utils/image_cache.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
@@ -336,73 +337,19 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   // ─── Avatar ──────────────────────────────────────────────
+  // Utilise StableAvatar : la photo ne se recharge JAMAIS sauf si
+  // le base64 change réellement. Fini le clignotement.
   Widget _buildAvatar(ChildModel child, double radius,
       {bool showFrame = true}) {
-    final color      = _childColor(child);
-    final frameColor = _frameColor(child.level);
-    final highLevel  = child.level >= 4;
-
-    Widget core;
-    if (child.photoBase64.isNotEmpty) {
-      if (child.isPhotoUrl) {
-        // URL Firebase Storage — avec errorBuilder (fallback emoji si erreur)
-        core = CircleAvatar(
-            radius: radius,
-            backgroundColor: color,
-            child: ClipOval(
-              child: Image.network(
-                child.photoBase64,
-                fit: BoxFit.cover,
-                width: radius * 2,
-                height: radius * 2,
-                errorBuilder: (_, __, ___) => _letterAvatar(child, radius, color),
-              ),
-            ),
-          );
-      } else {
-        // base64 (ancien format ou offline)
-        try {
-          core = CircleAvatar(
-              radius: radius,
-              backgroundImage: MemoryImage(base64Decode(child.photoBase64)));
-        } catch (_) {
-          core = _letterAvatar(child, radius, color);
-        }
-      }
-    } else {
-      core = _letterAvatar(child, radius, color);
-    }
-
-    if (!showFrame || child.level < 2) return core;
-
-    return AnimatedBuilder(
-      animation: _glowAnim,
-      builder: (_, __) => Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: highLevel
-              ? SweepGradient(colors: [
-                  frameColor, Colors.white, frameColor,
-                  frameColor.withValues(alpha: 0.5), frameColor,
-                ])
-              : null,
-          color: highLevel ? null : frameColor,
-          boxShadow: [
-            BoxShadow(
-              color:        frameColor.withValues(alpha: 0.4 + 0.3 * _glowAnim.value),
-              blurRadius:   12 + 8 * _glowAnim.value,
-              spreadRadius: 2  + 2 * _glowAnim.value,
-            ),
-          ],
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(2),
-          decoration: const BoxDecoration(
-              shape: BoxShape.circle, color: Color(0xFF1A1A2E)),
-          child: core,
-        ),
-      ),
+    final color = _childColor(child);
+    return StableAvatar(
+      photoBase64: child.photoBase64,
+      emoji: child.avatar,
+      name: child.name,
+      radius: radius,
+      color: color,
+      level: child.level,
+      showFrame: showFrame,
     );
   }
 
@@ -702,6 +649,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             indicatorColor:       color,
             labelColor:           color,
             unselectedLabelColor: Colors.white38,
+            dividerColor:         Colors.transparent,
+            overlayColor:         WidgetStateProperty.all(Colors.transparent),
+            indicatorSize:        TabBarIndicatorSize.tab,
             tabs: const [
               Tab(icon: Icon(Icons.person),      text: 'Profil'),
               Tab(icon: Icon(Icons.tv),           text: 'Écran'),
@@ -1862,7 +1812,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final timeLabel =
         '${e.date.hour.toString().padLeft(2, '0')}:${e.date.minute.toString().padLeft(2, '0')}';
 
-    return Padding(
+    final isParent = context.read<PinProvider>().isParentMode;
+
+    return GestureDetector(
+      onLongPress: isParent ? () => _showHistoryEditMenu(e) : null,
+      child: Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Container(
         decoration: BoxDecoration(
@@ -1923,6 +1877,258 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ],
           ),
         ),
+      ),
+      ),
+    );
+  }
+
+  // ─── Menu Modifier / Supprimer (mode parent) ───────────────
+  void _showHistoryEditMenu(HistoryEntry e) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1F2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+              title: const Text('Modifier',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              subtitle: Text('Changer les points, la raison ou le type',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showHistoryEditDialog(e);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              title: const Text('Supprimer',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              subtitle: Text("Efface l'entrée et recalcule les points",
+                  style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final confirm = await _confirmDialog(
+                  title: 'Supprimer ?',
+                  message: "Cette entrée (${e.isBonus ? '+' : '-'}${e.points} pts)"
+                      "\nva être supprimée et les points de l'enfant recalculés.",
+                  confirmLabel: 'Supprimer',
+                  isDanger: true,
+                );
+                if (confirm == true) {
+                  if (!mounted) return;
+                  await context.read<FamilyProvider>().deleteHistoryEntry(e.id);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ Entrée supprimée, points recalculés'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showHistoryEditDialog(HistoryEntry e) {
+    final ptsCtrl = TextEditingController(text: e.points.toString());
+    final reasonCtrl = TextEditingController(text: e.reason);
+    bool isBonus = e.isBonus;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F2E),
+          title: const Text("Modifier l'entrée",
+              style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Type toggle
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setSt(() => isBonus = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isBonus
+                                ? Colors.green.withValues(alpha: 0.25)
+                                : Colors.white10,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isBonus
+                                  ? Colors.greenAccent
+                                  : Colors.white24,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text('✅ Bonus',
+                                style: TextStyle(
+                                  color: isBonus
+                                      ? Colors.greenAccent
+                                      : Colors.white54,
+                                  fontWeight: FontWeight.bold,
+                                )),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setSt(() => isBonus = false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: !isBonus
+                                ? Colors.red.withValues(alpha: 0.25)
+                                : Colors.white10,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: !isBonus
+                                  ? Colors.redAccent
+                                  : Colors.white24,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text('❌ Pénalité',
+                                style: TextStyle(
+                                  color: !isBonus
+                                      ? Colors.redAccent
+                                      : Colors.white54,
+                                  fontWeight: FontWeight.bold,
+                                )),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: ptsCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    labelText: 'Points',
+                    labelStyle: TextStyle(color: Colors.white54),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white24)),
+                    focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.blueAccent)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Raison',
+                    labelStyle: TextStyle(color: Colors.white54),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white24)),
+                    focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.blueAccent)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final pts = int.tryParse(ptsCtrl.text.trim()) ?? 0;
+                final reason = reasonCtrl.text.trim();
+                if (reason.isEmpty || pts == 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('⚠️ Raison et points requis')),
+                  );
+                  return;
+                }
+                Navigator.pop(ctx);
+                await context.read<FamilyProvider>().editHistoryEntry(
+                      entryId: e.id,
+                      newPoints: pts.abs(),
+                      newReason: reason,
+                      isBonus: isBonus,
+                    );
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('✅ Entrée modifiée'),
+                      duration: Duration(seconds: 2)),
+                );
+              },
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _confirmDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool isDanger = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1F2E),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDanger ? Colors.redAccent : Colors.blueAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(confirmLabel),
+          ),
+        ],
       ),
     );
   }

@@ -12,6 +12,7 @@ import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../models/trade_model.dart';
 import '../models/history_entry.dart';
+import '../utils/image_cache.dart';
 import '../config/emerald_theme.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
@@ -21,6 +22,7 @@ import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'pending_requests_screen.dart';
 import 'tribunal_screen.dart';
+import 'screen_time_new_screen.dart';
 import 'multi_child_evaluation_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -77,51 +79,15 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildChildAvatar(ChildModel child, double radius) {
-    if (child.hasPhoto) {
-      try {
-        final bytes = base64Decode(child.photoBase64);
-        return Container(
-          width: radius * 2,
-          height: radius * 2,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-                color: EmeraldPalette.emerald.withValues(alpha: 0.5),
-                width: 2),
-            image: DecorationImage(
-              image: MemoryImage(bytes),
-              fit: BoxFit.cover,
-            ),
-          ),
-        );
-      } catch (_) {}
-    }
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [
-            EmeraldPalette.emerald.withValues(alpha: 0.4),
-            EmeraldPalette.emeraldDark.withValues(alpha: 0.3),
-          ],
-        ),
-        border: Border.all(
-            color: EmeraldPalette.emerald.withValues(alpha: 0.4), width: 1.5),
-      ),
-      child: Center(
-        child: Text(
-          child.avatar.isNotEmpty
-              ? child.avatar
-              : (child.name.isNotEmpty ? child.name[0].toUpperCase() : '?'),
-          style: TextStyle(
-            color: EmeraldPalette.textPrimary,
-            fontWeight: FontWeight.w700,
-            fontSize: radius * 0.7,
-          ),
-        ),
-      ),
+    // 🛡️ StableAvatar : la photo ne clignote plus, elle est stable.
+    return StableAvatar(
+      photoBase64: child.photoBase64,
+      emoji: child.avatar,
+      name: child.name,
+      radius: radius,
+      color: EmeraldPalette.emerald.withValues(alpha: 0.4),
+      level: child.level,
+      showFrame: false,
     );
   }
 
@@ -196,6 +162,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                       child: _buildKpis(fp, totalPoints),
                     ),
 
+                    // ── Alerte temps d'écran (overtime) ──
+                    ..._buildScreenTimeAlerts(fp),
+
                     // Podium (Classement)
                     if (sorted.isNotEmpty)
                       _AnimatedFade(
@@ -232,6 +201,90 @@ class _DashboardScreenState extends State<DashboardScreen>
         );
       },
     );
+  }
+
+  // ── Bannière d'alerte pour les enfants en overtime temps d'écran ──
+  List<Widget> _buildScreenTimeAlerts(FamilyProvider fp) {
+    final alerts = <Widget>[];
+    for (final child in fp.children) {
+      final account = fp.getScreenTimeAccount(child.id);
+      if (account.isOvertime) {
+        alerts.add(GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            SlidePageRoute(page: const ScreenTimeNewScreen()),
+          ),
+          child: Container(
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                Colors.redAccent.withValues(alpha: 0.25),
+                Colors.red.withValues(alpha: 0.10),
+              ]),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_rounded, color: Colors.redAccent, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '⏰ ${child.name} dépasse son temps d\'écran !',
+                        style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${account.overtimeMinutes} min de retard · -${account.overtimePenalty} pts',
+                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.redAccent, size: 20),
+              ],
+            ),
+          ),
+        ));
+      } else if (account.isRunning) {
+        alerts.add(GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            SlidePageRoute(page: const ScreenTimeNewScreen()),
+          ),
+          child: Container(
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.teal.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.teal.withValues(alpha: 0.3), width: 1),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.tv_rounded, color: Colors.tealAccent, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '📺 ${child.name} : ${account.sessionRemaining} min restantes',
+                    style: const TextStyle(color: Colors.tealAccent, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.tealAccent, size: 20),
+              ],
+            ),
+          ),
+        ));
+      }
+    }
+    return alerts;
   }
 
   // Bouton demandes (cloche + badge) — visible en mode parent

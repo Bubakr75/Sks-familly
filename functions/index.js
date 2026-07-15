@@ -372,6 +372,11 @@ exports.onRequestCreated = functions.firestore
         body = (r.requestedBy || "Un enfant") + " demande une pénalité de " + r.amount + " points : \"" + (r.text || "") + "\"";
         notifType = "request_penalty";
         break;
+      case "boutique":
+        title = "🛒 Achat en boutique";
+        body = (r.requestedBy || "Un enfant") + " a acheté \"" + (r.extra && r.extra.rewardTitle ? r.extra.rewardTitle : "une récompense") + "\" (" + (r.amount || 0) + " pts). À confirmer !";
+        notifType = "request_boutique";
+        break;
     }
 
     await sendToFamily(familyId, sender, title, body, {

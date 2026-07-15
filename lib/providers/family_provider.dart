@@ -530,9 +530,78 @@ class FamilyProvider extends ChangeNotifier {
       _history.where((h) => h.childId == childId).toList();
 
   Future<void> deleteHistoryEntry(String entryId) async {
+    final entry = _history.firstWhere(
+      (h) => h.id == entryId,
+      orElse: () => HistoryEntry(
+          id: entryId, childId: '', points: 0, reason: ''),
+    );
+    // ↩️ Inverse l'effet des points sur l'enfant
+    if (entry.childId.isNotEmpty) {
+      final child = getChild(entry.childId);
+      if (child != null) {
+        if (entry.isBonus) {
+          child.points -= entry.points; // on retire le bonus
+        } else {
+          child.points += entry.points; // on rend les points d'une pénalité
+        }
+        if (child.points < 0) child.points = 0;
+        child.level = child.currentLevelNumber;
+        _markPending(child.id);
+        await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+        if (_firestore.isConnected) await _firestore.saveChild(child);
+      }
+    }
     _deletedEntryIds.add(entryId);
     _history.removeWhere((h) => h.id == entryId);
     await _historyBox.delete(entryId);
+    if (_firestore.isConnected) await _firestore.deleteHistoryEntry(entryId);
+    notifyListeners();
+  }
+
+  /// Modifie une entrée d'historique (points / raison / type) et recalcule
+  /// le total de l'enfant.
+  Future<void> editHistoryEntry({
+    required String entryId,
+    required int newPoints,
+    required String newReason,
+    bool? isBonus,
+  }) async {
+    final idx = _history.indexWhere((h) => h.id == entryId);
+    if (idx == -1) return;
+    final entry = _history[idx];
+    final child = getChild(entry.childId);
+
+    if (child != null) {
+      // 1) Annule l'ancien effet
+      if (entry.isBonus) {
+        child.points -= entry.points;
+      } else {
+        child.points += entry.points;
+      }
+      // 2) Applique le nouvel effet
+      final bonus = isBonus ?? entry.isBonus;
+      if (bonus) {
+        child.points += newPoints;
+      } else {
+        child.points -= newPoints;
+      }
+      if (child.points < 0) child.points = 0;
+      child.level = child.currentLevelNumber;
+      _markPending(child.id);
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      if (_firestore.isConnected) await _firestore.saveChild(child);
+    }
+
+    // 3) Met à jour l'entrée
+    entry
+      ..points = newPoints.abs()
+      ..reason = newReason
+      ..isBonus = isBonus ?? entry.isBonus;
+    _markPending(entry.id);
+    await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
+    if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
+
+    if (child != null) await _checkBadgeUnlock(child);
     notifyListeners();
   }
 
@@ -689,16 +758,17 @@ class FamilyProvider extends ChangeNotifier {
 
   /// Ajoute un bonus cumulatif (auto-calcul du montant).
   /// Retourne le montant accordé pour l'afficher à l'utilisateur.
-  Future<int> addQuickBonus(String childId, String reason) async {
+  Future<int> addQuickBonus(String childId, String reason, {String? proofPhotoBase64}) async {
     final amount = _calculateBonusAmount(childId);
     await addPoints(childId, amount, reason,
-        category: 'Bonus', isBonus: true);
+        category: 'Bonus', isBonus: true,
+        proofPhotoBase64: proofPhotoBase64);
     return amount;
   }
 
   /// Ajoute une pénalité cumulative (auto-calcul, jamais en dessous de 0).
   /// Retourne le montant retiré pour l'afficher.
-  Future<int> addQuickPenalty(String childId, String reason) async {
+  Future<int> addQuickPenalty(String childId, String reason, {String? proofPhotoBase64}) async {
     final child = getChild(childId);
     if (child == null) return 0;
     final amount = _calculatePenaltyAmount(childId);
@@ -706,7 +776,8 @@ class FamilyProvider extends ChangeNotifier {
     final actualAmount = amount > child.points ? child.points : amount;
     if (actualAmount <= 0) return 0;
     await addPoints(childId, actualAmount, reason,
-        category: 'Pénalité', isBonus: false);
+        category: 'Pénalité', isBonus: false,
+        proofPhotoBase64: proofPhotoBase64);
     return actualAmount;
   }
 
@@ -1867,6 +1938,11 @@ class FamilyProvider extends ChangeNotifier {
           accusedId: r.extra['accusedId']?.toString() ?? r.childId,
         );
         break;
+      case 'boutique':
+        // ✅ Les points ont déjà été déduits à l'achat.
+        // La validation du parent confirme simplement l'achat.
+        // On ajoute juste un commentaire si fourni.
+        break;
     }
 
     _pendingRequests.removeWhere((x) => x.id == requestId);
@@ -1879,6 +1955,34 @@ class FamilyProvider extends ChangeNotifier {
   /// Refuse une demande avec un message optionnel pour l'enfant.
   Future<void> rejectRequest(String requestId, {String? reason}) async {
     final r = _pendingRequests.where((x) => x.id == requestId).firstOrNull;
+
+    // 🛒 Si c'est un achat boutique → rembourser les points
+    if (r != null && r.type == 'boutique') {
+      final child = getChild(r.childId);
+      if (child != null) {
+        child.points += r.amount; // remboursement
+        child.level = child.currentLevelNumber;
+        _markPending(child.id);
+        await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+        if (_firestore.isConnected) await _firestore.saveChild(child);
+
+        // Entrée d'historique du remboursement
+        final refund = HistoryEntry(
+          id: _uuid.v4(),
+          childId: r.childId,
+          points: r.amount,
+          reason: '↩️ Achat annulé : ${r.extra['rewardTitle'] ?? 'récompense'}',
+          category: 'boutique',
+          isBonus: true,
+          actionBy: _currentParentName,
+        );
+        _markPending(refund.id);
+        _history.insert(0, refund);
+        await _historyBox.put(refund.id, jsonEncode(refund.toMap()));
+        if (_firestore.isConnected) await _firestore.saveHistoryEntry(refund);
+      }
+    }
+
     if (r != null && reason != null && reason.isNotEmpty) {
       // Créer une entrée d'historique pour informer l'enfant du refus
       final entry = HistoryEntry(
@@ -1981,6 +2085,20 @@ class FamilyProvider extends ChangeNotifier {
     if (_firestore.isConnected) {
       await _firestore.savePurchase(purchaseData);
     }
+
+    // 🔔 Notification au parent via le système de demande (badge cloche)
+    await createRequest(
+      type: 'boutique',
+      childId: childId,
+      requestedBy: child.name,
+      text: '🛒 ${child.name} achète "${reward.title}" (${reward.cost} pts)',
+      amount: reward.cost,
+      extra: {
+        'rewardId': reward.id,
+        'rewardTitle': reward.title,
+        'icon': reward.icon,
+      },
+    );
 
     // Ajouter à l'historique
     final entry = HistoryEntry(
@@ -2129,7 +2247,8 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   /// Arrête la session en cours (bouton STOP du parent)
-  /// Si l'enfant est en overtime, les pénalités déjà appliquées restent.
+  /// Les pénalités d'overtime sont déjà appliquées en temps réel par le timer,
+  /// on ne les re-applique PAS ici (sinon double pénalité).
   Future<void> stopScreenTimeSession(String childId) async {
     final account = getScreenTimeAccount(childId);
     if (!account.isRunning) return;
@@ -2141,18 +2260,15 @@ class FamilyProvider extends ChangeNotifier {
       account.balanceMinutes += remaining;
     }
 
-    // Si overtime, appliquer les pénalités restantes avant de stopper
-    if (account.isOvertime) {
-      final overdue = account.overtimePenalty;
-      if (overdue > 0) {
-        await addPoints(childId, overdue,
-          '⚠️ Overtime temps d\'écran : ${account.overtimeMinutes} min de retard',
-          category: 'overtime', isBonus: false);
-      }
-    }
+    // ⚠️ Les pénalités d'overtime ont déjà été appliquées en temps réel
+    // par le timer (_startOvertimeChecker). On ne double-pénalise PAS ici.
 
     account.history.insert(0, ScreenTimeTransaction(
-      minutes: used, type: 'used', reason: 'Session terminée', date: DateTime.now(),
+      minutes: used, type: 'used',
+      reason: account.isOvertime
+          ? 'Session terminée (${account.overtimeMinutes} min de retard)'
+          : 'Session terminée',
+      date: DateTime.now(),
     ));
     account.sessionStart = null;
     account.sessionMinutes = 0;

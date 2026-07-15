@@ -179,8 +179,15 @@ class AIFloatingButton extends StatelessWidget {
             ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: isBonus ? Colors.green : Colors.redAccent, foregroundColor: Colors.white),
               onPressed: selectedChildId == null ? null : () async {
                 Navigator.pop(ctx);
-                if (isBonus) { await fp.addQuickBonus(selectedChildId!, reason); }
-                else { await fp.addQuickPenalty(selectedChildId!, reason); }
+                // 📸 On enregistre la photo dans l'historique (pour le bilan du soir)
+                await fp.addPoints(
+                  selectedChildId!,
+                  points,
+                  reason,
+                  category: isBonus ? 'Bonus' : 'Pénalité',
+                  isBonus: isBonus,
+                  proofPhotoBase64: base64Photo,
+                );
                 if (context.mounted) {
                   HapticFeedback.heavyImpact();
                   messenger.showSnackBar(SnackBar(

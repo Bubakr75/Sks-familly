@@ -152,6 +152,8 @@ class FcmService {
       case 'request_immunity':
       case 'request_tribunal':
       case 'request_bonus':
+      case 'request_penalty':
+      case 'request_boutique':
         return NotificationType.sync; // demandes en attente = sync/info
       default:
         return NotificationType.sync;

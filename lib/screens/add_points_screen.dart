@@ -1023,12 +1023,15 @@ class _AddPointsScreenState extends State<AddPointsScreen>
               ),
               onPressed: selectedChildId == null ? null : () async {
                 Navigator.pop(ctx);
-                // Appliquer les points
-                if (isBonus) {
-                  await fp.addQuickBonus(selectedChildId!, reason);
-                } else {
-                  await fp.addQuickPenalty(selectedChildId!, reason);
-                }
+                // 📸 Appliquer les points AVEC la photo (sauvegardée pour le bilan)
+                await fp.addPoints(
+                  selectedChildId!,
+                  points,
+                  reason,
+                  category: isBonus ? 'Bonus' : 'Pénalité',
+                  isBonus: isBonus,
+                  proofPhotoBase64: base64Photo,
+                );
                 if (context.mounted) {
                   HapticFeedback.heavyImpact();
                   messenger.showSnackBar(SnackBar(
