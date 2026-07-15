@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  // ✅ Modèle corrigé : gemini-2.0-flash (gemini-2.5-flash n'existe pas/plus)
-  // ✅ Clé API récupérée via --dart-define (plus en dur pour la sécurité)
+  // ✅ Modèle : gemini-2.5-flash
+  // ✅ Clé API injectée via GitHub Actions (Python script)
   static const _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
   static const _apiKey = String.fromEnvironment('GEMINI_API_KEY',

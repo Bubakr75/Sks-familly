@@ -63,7 +63,6 @@ class FamilyProvider extends ChangeNotifier {
   List<ChoreModel>      _chores = [];
   final Map<String, ScreenTimeAccount> _screenTimeAccounts = {};
   Timer? _overtimeTimer;
-  int _lastOvertimePenaltyCount = 0; // Pour suivre combien de tranches de -10 pts déjà appliquées
 
   // ─── État de synchronisation (feedback UI) ──────────────────
   bool _isReconnecting = false;
@@ -185,6 +184,7 @@ class FamilyProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _stopOvertimeChecker();
     _firestore.dispose();
     super.dispose();
   }
@@ -795,7 +795,7 @@ class FamilyProvider extends ChangeNotifier {
     final child = getChild(childId);
     if (child == null) return;
     if (isBonus) { child.points += points; }
-    else         { child.points -= points; }
+    else         { child.points -= points; if (child.points < 0) child.points = 0; }
     child.level = child.currentLevelNumber;
     // ✅ Marque l'enfant comme pending pour protéger ses points
     _markPending(child.id);
@@ -2046,8 +2046,10 @@ class FamilyProvider extends ChangeNotifier {
   /// Retourne true si l'achat a réussi.
   Future<bool> purchaseReward(String childId, String rewardId) async {
     final child = getChild(childId);
-    final reward = _rewards.firstWhere((r) => r.id == rewardId);
-    if (child == null) return false;
+    // 🔒 Sécurité : ne pas crasher si la récompense n'existe plus
+    final rewardIdx = _rewards.indexWhere((r) => r.id == rewardId);
+    if (child == null || rewardIdx == -1) return false;
+    final reward = _rewards[rewardIdx];
 
     // Vérifier que l'enfant a assez de points
     if (child.points < reward.cost) return false;
@@ -2237,7 +2239,7 @@ class FamilyProvider extends ChangeNotifier {
     account.sessionStart = DateTime.now();
     account.sessionMinutes = minutes;
     account.balanceMinutes -= minutes;
-    _lastOvertimePenaltyCount = 0;
+    account.appliedOvertimeTranches = 0;
     _screenTimeAccounts[childId] = account;
     _startOvertimeChecker();
     if (_firestore.isConnected) {
@@ -2272,7 +2274,7 @@ class FamilyProvider extends ChangeNotifier {
     ));
     account.sessionStart = null;
     account.sessionMinutes = 0;
-    _lastOvertimePenaltyCount = 0;
+    account.appliedOvertimeTranches = 0;
     _screenTimeAccounts[childId] = account;
     _stopOvertimeChecker();
     if (_firestore.isConnected) {
@@ -2281,7 +2283,9 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Timer qui vérifie l'overtime toutes les 5 minutes
+  /// Timer qui vérifie l'overtime toutes les minutes.
+  /// 🔒 Chaque enfant a son propre compteur de tranches appliquées
+  /// (account.appliedOvertimeTranches) pour éviter les conflits multi-enfants.
   void _startOvertimeChecker() {
     _stopOvertimeChecker();
     _overtimeTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -2291,16 +2295,12 @@ class FamilyProvider extends ChangeNotifier {
         if (account.isOvertime) {
           anyOvertime = true;
           final currentTranches = account.overtimeMinutes ~/ 5;
-          // Appliquer -10 pts pour chaque nouvelle tranche de 5 min
-          while (_lastOvertimePenaltyCount < currentTranches) {
-            _lastOvertimePenaltyCount++;
-            // Appliquer la pénalité
+          // Appliquer -10 pts pour chaque NOUVELLE tranche de 5 min
+          while (account.appliedOvertimeTranches < currentTranches) {
+            account.appliedOvertimeTranches++;
             addPoints(entry.key, 10,
               '⚠️ Overtime : +5 min de retard sur le temps d\'écran',
               category: 'overtime', isBonus: false);
-            // Notifier
-            NotificationService.notifySyncUpdate(
-              '${entry.key} est en overtéme sur le temps d\'écran ! (-10 pts)');
           }
         }
       }

@@ -182,7 +182,9 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                             reward: reward,
                             child: child,
                             canAfford: child != null && child.points >= reward.cost,
-                            onBuy: () => _showPurchaseDialog(context, fp, child!, reward),
+                            onBuy: child == null
+                                ? null
+                                : () => _showPurchaseDialog(context, fp, child, reward),
                           );
                         },
                         childCount: fp.rewards.length,
@@ -347,13 +349,13 @@ class _RewardCard extends StatefulWidget {
   final RewardModel reward;
   final ChildModel? child;
   final bool canAfford;
-  final VoidCallback onBuy;
+  final VoidCallback? onBuy;
 
   const _RewardCard({
     required this.reward,
     required this.child,
     required this.canAfford,
-    required this.onBuy,
+    this.onBuy,
   });
 
   @override

@@ -14,6 +14,7 @@ import '../models/child_model.dart';
 import '../models/badge_model.dart';
 import '../models/history_entry.dart';
 import '../utils/image_cache.dart';
+import '../config/emerald_theme.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
@@ -202,7 +203,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: EmeraldPalette.surface,
         title: const Text('Ajouter un badge',
             style: TextStyle(color: Colors.white)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -368,7 +369,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   void _showChildSwitcher(FamilyProvider fp) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: EmeraldPalette.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => ListView(
@@ -447,7 +448,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         builder: (ctx) {
           final ctrl = TextEditingController();
           return AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
+            backgroundColor: EmeraldPalette.surface,
             title: const Text('PIN parent',
                 style: TextStyle(color: Colors.white)),
             content: TextField(
@@ -521,7 +522,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: EmeraldPalette.surface,
         title: const Text('Modifier le slogan',
             style: TextStyle(color: Colors.white)),
         content: TextField(
@@ -560,7 +561,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       final children = fp.children;
       if (children.isEmpty) {
         return const Scaffold(
-          backgroundColor: Color(0xFF0F0F1E),
+          backgroundColor: EmeraldPalette.background,
           body: Center(
               child: Text('Aucun enfant',
                   style: TextStyle(color: Colors.white54))),
@@ -576,7 +577,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       final color = _childColor(child);
 
       return Scaffold(
-        backgroundColor:        const Color(0xFF0F0F1E),
+        backgroundColor:        EmeraldPalette.background,
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -604,7 +605,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             if (context.watch<PinProvider>().isParentMode)
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: Colors.white70),
-                color: const Color(0xFF1A1A2E),
+                color: EmeraldPalette.surface,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 onSelected: (value) {
                   if (value == 'reset_points') {
@@ -687,7 +688,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: EmeraldPalette.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Row(children: [
           const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
@@ -1124,7 +1125,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             fit: BoxFit.cover,
                             alignment: Alignment.center,
                             errorBuilder: (_, __, ___) => Container(
-                              color: const Color(0xFF1A2744),
+                              color: EmeraldPalette.surfaceLow,
                               child: const Center(child: Icon(Icons.image, color: Colors.white24, size: 40)),
                             ),
                           )
@@ -1133,7 +1134,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             fit: BoxFit.cover,
                             alignment: Alignment.center,
                             errorBuilder: (_, __, ___) => Container(
-                              color: const Color(0xFF1A2744),
+                              color: EmeraldPalette.surfaceLow,
                               child: const Center(child: Icon(Icons.image, color: Colors.white24, size: 40)),
                             ),
                           ),
@@ -1873,7 +1874,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   void _showHistoryEditMenu(HistoryEntry e) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1F2E),
+      backgroundColor: EmeraldPalette.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1945,7 +1946,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1F2E),
+          backgroundColor: EmeraldPalette.surface,
           title: const Text("Modifier l'entrée",
               style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
@@ -2098,7 +2099,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F2E),
+        backgroundColor: EmeraldPalette.surface,
         title: Text(title, style: const TextStyle(color: Colors.white)),
         content: Text(message, style: const TextStyle(color: Colors.white70)),
         actions: [
@@ -2314,11 +2315,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.stars_rounded, size: 14, color: Color(0xFFD4AF37)),
+                const Icon(Icons.stars_rounded, size: 14, color: Color(0xFFD4AF37)),
                 const SizedBox(width: 3),
+                Text('$cost', style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 12, fontWeight: FontWeight.w800)),
               ],
             ),
           ),

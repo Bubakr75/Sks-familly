@@ -240,13 +240,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         ),
                         GestureDetector(
                           onTap: () => setState(() {
-                            final names = children
-                                .where((c) => _selectedChildIds.contains(c.id))
-                                .toList();
-                            if (names.isNotEmpty) {
-                              _selectedChildIds.clear();
-                              _selectedChildIds.addAll(names.map((c) => c.id));
-                            }
+                            // Sélectionner RÉELLEMENT tous les enfants
+                            _selectedChildIds.clear();
+                            _selectedChildIds.addAll(children.map((c) => c.id));
+                            _focusedChildId = children.isNotEmpty ? children.first.id : null;
                           }),
                           child: const Text('Tous',
                               style: TextStyle(
@@ -261,6 +258,22 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 // ── Compteur résumé (enfant focus) ──
                 if (focusedChild != null)
                   _buildSummary(focusedChild, chores),
+
+                // ── Légende des 3 états ──
+                if (chores.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _legendDot(EmeraldPalette.emerald, 'Fait (+pts)'),
+                        const SizedBox(width: 12),
+                        _legendDot(Colors.grey, 'Non noté'),
+                        const SizedBox(width: 12),
+                        _legendDot(Colors.redAccent, 'Pas fait (−pts)'),
+                      ],
+                    ),
+                  ),
 
                 // ── Liste des tâches ──
                 Expanded(
@@ -302,6 +315,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   // ─── Carte résumé ──────────────────────────────────────────────
+  Widget _legendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8, height: 8,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+      ],
+    );
+  }
+
   Widget _buildSummary(ChildModel child, List<ChoreModel> chores) {
     int donePts = 0, missedPts = 0;
     int doneCount = 0, missedCount = 0, skippedCount = 0;
@@ -990,7 +1017,7 @@ class _ChoreDecisionCard extends StatelessWidget {
                   selected: isMissed,
                   onTap: onMissed,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 10),
                 // ➖ Non noté (skip, ni bonus ni pénalité)
                 _DecisionButton(
                   icon: Icons.remove_rounded,
@@ -998,7 +1025,7 @@ class _ChoreDecisionCard extends StatelessWidget {
                   selected: isSkipped,
                   onTap: onSkipped,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 10),
                 // ✅ Fait (bonus)
                 _DecisionButton(
                   icon: Icons.check_rounded,
@@ -1035,8 +1062,8 @@ class _DecisionButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 34,
-        height: 34,
+        width: 46,
+        height: 46,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: selected ? color : Colors.transparent,
@@ -1056,7 +1083,7 @@ class _DecisionButton extends StatelessWidget {
         child: Icon(
           icon,
           color: selected ? const Color(0xFF051410) : Colors.white54,
-          size: 20,
+          size: 24,
         ),
       ),
     );

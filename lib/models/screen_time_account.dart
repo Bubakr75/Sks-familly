@@ -12,6 +12,7 @@ class ScreenTimeAccount {
   DateTime? sessionStart;    // Début de la session en cours (null = pas en cours)
   int sessionMinutes;        // Minutes au début de la session
   List<ScreenTimeTransaction> history;
+  int appliedOvertimeTranches; // 🔒 Tranches d'overtime déjà appliquées (par enfant)
 
   ScreenTimeAccount({
     required this.childId,
@@ -20,6 +21,7 @@ class ScreenTimeAccount {
     this.totalUsed = 0,
     this.sessionStart,
     this.sessionMinutes = 0,
+    this.appliedOvertimeTranches = 0,
     List<ScreenTimeTransaction>? history,
   }) : history = history ?? [];
 
@@ -61,6 +63,7 @@ class ScreenTimeAccount {
       'totalUsed': totalUsed,
       'sessionStart': sessionStart?.toIso8601String(),
       'sessionMinutes': sessionMinutes,
+      'appliedOvertimeTranches': appliedOvertimeTranches,
       'history': history.map((t) => t.toMap()).toList(),
     };
   }
@@ -73,6 +76,7 @@ class ScreenTimeAccount {
       totalUsed: map['totalUsed'] ?? 0,
       sessionStart: map['sessionStart'] != null ? DateTime.parse(map['sessionStart']) : null,
       sessionMinutes: map['sessionMinutes'] ?? 0,
+      appliedOvertimeTranches: map['appliedOvertimeTranches'] ?? 0,
       history: (map['history'] as List<dynamic>?)
           ?.map((t) => ScreenTimeTransaction.fromMap(Map<String, dynamic>.from(t)))
           .toList() ?? [],

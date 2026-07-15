@@ -16,7 +16,7 @@ import 'package:flutter/material.dart';
 class EmeraldPalette {
   EmeraldPalette._();
 
-  // Fonds — PLUS SOMBR€ pour contraste max avec les cards
+  // Fonds — PLUS SOMBRE pour contraste max avec les cards
   static const Color background = Color(0xFF051410); // Vert nuit très sombre
   static const Color surface = Color(0xFF0F2620); // Vert surface (cards)
   static const Color surfaceHigh = Color(0xFF193530); // Cards hover/active
