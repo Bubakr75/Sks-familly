@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../models/child_model.dart';
 import '../config/emerald_theme.dart';
 import '../models/wheel_segment.dart';
 import '../services/sound_service.dart';
@@ -204,9 +205,12 @@ class _DailyWheelScreenState extends State<DailyWheelScreen>
                         const SizedBox(height: 30),
 
                         // Résultat / bouton
-                        if (_hasSpunToday && _wonSegment != null)
-                          _buildResultCard(_wonSegment!)
-                        else if (_hasSpunToday)
+                        if (_hasSpunToday && _wonSegment != null) ...[
+                          _buildResultCard(_wonSegment!),
+                          const SizedBox(height: 12),
+                          _buildReplayButton(child),
+                        ]
+                        else if (_hasSpunToday) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             decoration: BoxDecoration(
@@ -222,7 +226,10 @@ class _DailyWheelScreenState extends State<DailyWheelScreen>
                                 Text('Reviens demain !', style: TextStyle(color: Colors.white54, fontSize: 15, fontWeight: FontWeight.w600)),
                               ],
                             ),
-                          )
+                          ),
+                          const SizedBox(height: 12),
+                          _buildReplayButton(child),
+                        ]
                         else
                           Text(
                             _isSpinning ? 'Rotation...' : 'Tire ta chance !',
@@ -357,6 +364,113 @@ class _DailyWheelScreenState extends State<DailyWheelScreen>
           ),
         ),
       ],
+    );
+  }
+
+  // ─── Bouton rejouer (code parent) ─────────────────────────────
+  Widget _buildReplayButton(ChildModel child) {
+    return GestureDetector(
+      onTap: () => _showReplayDialog(child),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.refresh_rounded, color: Colors.white38, size: 16),
+            SizedBox(width: 6),
+            Text('Rejouer', style: TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.w600)),
+            SizedBox(width: 4),
+            Icon(Icons.lock_outline, color: Colors.white24, size: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showReplayDialog(ChildModel child) {
+    final pinCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: EmeraldPalette.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.lock_outline, color: EmeraldPalette.gold),
+          SizedBox(width: 10),
+          Text('Code parent requis', style: TextStyle(color: EmeraldPalette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Entrez le code parent pour autoriser un nouveau tour.',
+                style: TextStyle(color: Colors.white54, fontSize: 13)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: pinCtrl,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 8),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: EmeraldPalette.surfaceLow,
+                hintText: '• • • •',
+                hintStyle: const TextStyle(color: Colors.white24, letterSpacing: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: EmeraldPalette.gold,
+              foregroundColor: const Color(0xFF051410),
+            ),
+            onPressed: () async {
+              final pin = context.read<PinProvider>();
+              if (pin.verifyPin(pinCtrl.text.trim())) {
+                Navigator.pop(ctx);
+                // Réinitialiser le tour
+                final prefs = await SharedPreferences.getInstance();
+                final today = DateTime.now();
+                final key = 'daily_wheel_${child.id}_${today.year}_${today.month}_${today.day}';
+                await prefs.setBool(key, false);
+                setState(() {
+                  _hasSpunToday = false;
+                  _wonSegment = null;
+                });
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🔄 Nouveau tour autorisé !'),
+                      backgroundColor: EmeraldPalette.gold,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('❌ Code incorrect'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            child: const Text('Débloquer', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
