@@ -73,29 +73,30 @@ jobs:
       - name: Inject Gemini API Key
         run: |
           python3 - << 'PYEOF'
-          import re
+          import os
+          api_key = os.environ.get('GEMINI_API_KEY', '').replace('\n', '').replace('\r', '').strip()
           with open('lib/services/gemini_service.dart', 'r', encoding='utf-8') as f:
-              content = f.read()
-          # Remplace toute la ligne const _apiKey = String.fromEnvironment(...)
-          # par la clé en dur, quelle que soit la mise en forme (1 ou 2 lignes)
-          pattern = r"static const _apiKey\s*=\s*String\.fromEnvironment\([^)]+\)\s*,?\s*\n?\s*defaultValue:\s*''\)?\s*;"
-          replacement = "static const _apiKey = '${{ secrets.GEMINI_API_KEY }}';"
-          new_content, count = re.subn(pattern, replacement, content)
-          if count == 0:
-              # Fallback : remplace toute ligne contenant _apiKey =
-              lines = new_content.split('\n')
-              for i, line in enumerate(lines):
-                  if '_apiKey' in line and '=' in line and 'fromEnvironment' in line:
-                      lines[i] = "  static const _apiKey = '${{ secrets.GEMINI_API_KEY }}';"
-                      count = 1
-                  elif '_apiKey' in line and "defaultValue:" in line:
-                      lines[i] = ''
-                      count = 1
-              new_content = '\n'.join(lines)
+              lines = f.readlines()
+          new_lines = []
+          skip_next = False
+          for i, line in enumerate(lines):
+              if skip_next:
+                  skip_next = False
+                  continue
+              # Ne remplacer QUE la déclaration : static const _apiKey =
+              if 'static const _apiKey' in line and '=' in line:
+                  new_lines.append("  static const _apiKey = '" + api_key + "';\n")
+                  # Si la ligne suivante contient defaultValue, la sauter
+                  if i + 1 < len(lines) and 'defaultValue' in lines[i + 1]:
+                      skip_next = True
+              else:
+                  new_lines.append(line)
           with open('lib/services/gemini_service.dart', 'w', encoding='utf-8') as f:
-              f.write(new_content)
-          print(f"Gemini key injected ({count} remplacement(s))")
+              f.writelines(new_lines)
+          print("Gemini key injected OK")
           PYEOF
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Create missing asset folders
         run: mkdir -p assets/animations assets/images
