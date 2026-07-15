@@ -415,7 +415,7 @@ class _ManageParentProfilesScreenState extends State<ManageParentProfilesScreen>
                         Icon(Icons.check_circle_rounded,
                             color: Colors.white, size: 18),
                         const SizedBox(width: 8),
-                        Text(isEdit ? 'Profil modifie !' : 'Profil cree !'),
+                        Text(isEdit ? 'Profil modifié !' : 'Profil créé !'),
                       ]),
                       backgroundColor: EmeraldPalette.emerald,
                       behavior: SnackBarBehavior.floating,

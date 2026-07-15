@@ -120,7 +120,7 @@ class _SetupPinScreenState extends State<SetupPinScreen> with SingleTickerProvid
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('Supprimer le code PIN ?'),
-                    content: const Text('Sans code PIN, les enfants pourront modifier les scores et les reglages.'),
+                    content: const Text('Sans code PIN, les enfants pourront modifier les scores et les réglages.'),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
                       FilledButton(
@@ -130,7 +130,7 @@ class _SetupPinScreenState extends State<SetupPinScreen> with SingleTickerProvid
                           Navigator.pop(ctx);
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Code parental supprime'), backgroundColor: Colors.orange),
+                            const SnackBar(content: Text('Code parental supprimé'), backgroundColor: Colors.orange),
                           );
                         },
                         child: const Text('Supprimer'),

@@ -1,3 +1,4 @@
+import '../config/emerald_theme.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +24,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
   final Map<String, List<int?>> _answersPerChild = {};
 
   static const _darkBg = Color(0xFF0D1B2E);
-  static const _cardBg = Color(0xFF1A2744);
+  static const _cardBg = EmeraldPalette.surfaceLow;
   static const _accent = Color(0xFF6C63FF);
   static const _accentLight = Color(0xFF9D97FF);
 

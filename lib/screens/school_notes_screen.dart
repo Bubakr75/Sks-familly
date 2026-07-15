@@ -1,3 +1,4 @@
+import '../config/emerald_theme.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -193,7 +194,7 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: EmeraldPalette.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -618,7 +619,7 @@ class _AiQuestionnaireSheetState extends State<_AiQuestionnaireSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
+        color: EmeraldPalette.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -845,7 +846,7 @@ class _AiResultSheet extends StatelessWidget {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
+        color: EmeraldPalette.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(

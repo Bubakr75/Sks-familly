@@ -1,3 +1,4 @@
+import '../config/emerald_theme.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -413,7 +414,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: EmeraldPalette.surface,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('❔ Comment utiliser SKS Family ?',

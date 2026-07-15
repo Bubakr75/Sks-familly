@@ -86,7 +86,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text('Punitions & Immunites', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const Text('Punitions & Immunities', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           actions: [
             IconButton(
               icon: const Icon(Icons.add_circle_rounded, color: Colors.redAccent, size: 28),
@@ -116,7 +116,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   children: [
                     const Icon(Icons.shield_rounded, size: 16),
                     const SizedBox(width: 6),
-                    Text('Immunites ($totalImmunityLines)'),
+                    Text('Immunities ($totalImmunityLines)'),
                   ],
                 ),
               ),
@@ -132,7 +132,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 controller: _tabController,
                 children: [
                   _buildPunitionsTab(active, completed, child, fp),
-                  _buildImmunitesTab(immunities, active, child, fp),
+                  _buildImmunitiesTab(immunities, active, child, fp),
                 ],
               ),
             ),
@@ -207,7 +207,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             _divider(),
             _statItem('✏️', '$totalLines', 'Lignes restantes', Colors.orangeAccent),
             _divider(),
-            _statItem('🛡️', '$immunityLines', 'Immunites dispo', Colors.greenAccent),
+            _statItem('🛡️', '$immunityLines', 'Immunities dipo', Colors.greenAccent),
             _divider(),
             _statItem('🎯', '${_quizCounts[child.id] ?? 0}', 'Quiz faits', Colors.amberAccent),
           ],
@@ -349,7 +349,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   ],
                 ),
                 const SizedBox(height: 10),
-                // Bouton utiliser immunites
+                // Bouton utiliser immunités
                 if (totalAvailable > 0)
                   GestureDetector(
                     onTap: () => _showUseImmunityDialog(p, child, fp, availableImmunities),
@@ -367,7 +367,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         children: [
                           const Icon(Icons.shield_rounded, color: Colors.greenAccent, size: 16),
                           const SizedBox(width: 6),
-                          Text('Utiliser immunite ($totalAvailable dispo)',
+                          Text('Utiliser immunité ($totalAvailable dipo)',
                               style: const TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.w600)),
                         ],
                       ),
@@ -383,8 +383,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  // ── Onglet Immunites ──────────────────────────────────────────────────────
-  Widget _buildImmunitesTab(List<ImmunityLines> immunities, List<PunishmentLines> active,
+  // ── Onglet Immunities ──────────────────────────────────────────────────────
+  Widget _buildImmunitiesTab(List<ImmunityLines> immunities, List<PunishmentLines> active,
       ChildModel child, FamilyProvider fp) {
     if (immunities.isEmpty) {
       return const Center(
@@ -393,9 +393,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           children: [
             Text('🛡️', style: TextStyle(fontSize: 48)),
             const SizedBox(height: 12),
-            Text('Aucune immunite disponible', style: TextStyle(color: Colors.white54, fontSize: 16)),
+            Text('Aucune immunité diponible', style: TextStyle(color: Colors.white54, fontSize: 16)),
             const SizedBox(height: 6),
-            Text('Gagnez des immunites en reussissant les quiz !',
+            Text('Gagnez des immunités en reussissant les quiz !',
                 style: TextStyle(color: Colors.white38, fontSize: 12), textAlign: TextAlign.center),
           ],
         ),
@@ -445,7 +445,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.greenAccent.withAlpha(80)),
                     ),
-                    child: Text('${immunity.availableLines} dispo',
+                    child: Text('${immunity.availableLines} dipo',
                         style: const TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
                 ],
@@ -503,7 +503,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  // ── Dialog utiliser immunite depuis punition ──────────────────────────────
+  // ── Dialog utiliser immunité depuis punition ──────────────────────────────
   void _showUseImmunityDialog(PunishmentLines punishment, ChildModel child,
       FamilyProvider fp, List<ImmunityLines> immunities) {
     int linesToUse = 1;
@@ -530,13 +530,13 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               Center(child: Container(width: 40, height: 4,
                   decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 16),
-              const Text('Utiliser des immunites',
+              const Text('Utiliser des immunités',
                   style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               Text('Punition : ${punishment.text}',
                   style: const TextStyle(color: Colors.white54, fontSize: 13)),
               const SizedBox(height: 16),
-              const Text('Choisir une immunite :',
+              const Text('Choisir une immunité :',
                   style: TextStyle(color: Colors.white70, fontSize: 13)),
               const SizedBox(height: 8),
               ConstrainedBox(
@@ -567,7 +567,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                               const SizedBox(width: 8),
                               Expanded(child: Text(i.reason,
                                   style: const TextStyle(color: Colors.white, fontSize: 13))),
-                              Text('${i.availableLines} dispo',
+                              Text('${i.availableLines} dipo',
                                   style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
                             ],
                           ),
@@ -619,7 +619,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                   icon: const Icon(Icons.shield_rounded),
-                  label: Text('Utiliser $linesToUse ligne(s) d immunite',
+                  label: Text('Utiliser $linesToUse ligne(s) d immunité',
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   onPressed: selectedImmunity == null ? null : () async {
                     Navigator.pop(ctx);
@@ -627,7 +627,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         selectedImmunity!.id, punishment.id, linesToUse);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('$linesToUse ligne(s) d immunite utilisee(s) !'),
+                        content: Text('$linesToUse ligne(s) d immunité utilisée(s) !'),
                         backgroundColor: Colors.greenAccent.withAlpha(200),
                         behavior: SnackBarBehavior.floating,
                       ));
@@ -642,7 +642,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  // ── Dialog utiliser immunite depuis onglet immunites ──────────────────────
+  // ── Dialog utiliser immunité depuis onglet immunités ──────────────────────
   void _showUseSingleImmunityDialog(ImmunityLines immunity, List<PunishmentLines> active,
       ChildModel child, FamilyProvider fp) {
     PunishmentLines? selectedPunishment = active.first;
@@ -668,10 +668,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               Center(child: Container(width: 40, height: 4,
                   decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 16),
-              const Text('Appliquer une immunite',
+              const Text('Appliquer une immunité',
                   style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text('Immunite : ${immunity.reason} (${immunity.availableLines} dispo)',
+              Text('Immunité : ${immunity.reason} (${immunity.availableLines} dipo)',
                   style: const TextStyle(color: Colors.white54, fontSize: 13)),
               const SizedBox(height: 16),
               const Text('Choisir une punition :',
@@ -756,7 +756,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                         immunity.id, selectedPunishment!.id, linesToUse);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('$linesToUse ligne(s) d immunite appliquee(s) !'),
+                        content: Text('$linesToUse ligne(s) d immunité appliquée(s) !'),
                         backgroundColor: Colors.greenAccent.withAlpha(200),
                         behavior: SnackBarBehavior.floating,
                       ));
@@ -1472,7 +1472,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Lignes d immunite a accorder :',
+              const Text('Lignes d immunité a accordér :',
                   style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 12),
               Row(
@@ -1505,7 +1505,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               const SizedBox(height: 8),
               Text(
                 parentAdjustment > 0
-                    ? '+$parentAdjustment ligne(s) d immunite'
+                    ? '+$parentAdjustment ligne(s) d immunité'
                     : 'Aucune recompense',
                 style: TextStyle(
                     color: parentAdjustment > 0 ? Colors.amberAccent : Colors.white38,
@@ -1522,7 +1522,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   backgroundColor: Colors.amberAccent, foregroundColor: Colors.black),
               icon: const Icon(Icons.shield, size: 16),
               label: Text(parentAdjustment > 0
-                  ? 'Accorder +$parentAdjustment immunite(s)'
+                  ? 'Accorder +$parentAdjustment immunité(s)'
                   : 'Fermer sans recompense'),
               onPressed: () async {
                 Navigator.pop(dialogContext);
@@ -1534,7 +1534,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(parentAdjustment > 0
-                        ? 'Quiz valide ! +$parentAdjustment ligne(s) d immunite accordee(s) !'
+                        ? 'Quiz valide ! +$parentAdjustment ligne(s) d immunité accordée(s) !'
                         : 'Quiz termine - aucune recompense'),
                     backgroundColor: Colors.purpleAccent.withAlpha(200),
                   ));

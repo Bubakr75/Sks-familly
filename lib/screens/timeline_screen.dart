@@ -1,3 +1,4 @@
+import '../config/emerald_theme.dart';
 // lib/screens/timeline_screen.dart
 
 import 'package:flutter/material.dart';
@@ -588,7 +589,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
           colorScheme: const ColorScheme.dark(
             primary:   Color(0xFF7C4DFF),
             onPrimary: Colors.white,
-            surface:   Color(0xFF1A1A2E),
+            surface:   EmeraldPalette.surface,
             onSurface: Colors.white,
           ),
         ),

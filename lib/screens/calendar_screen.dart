@@ -1,3 +1,4 @@
+import '../config/emerald_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -442,7 +443,7 @@ class _CalendarScreenState extends State<CalendarScreen>
           },
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A2E),
+              color: EmeraldPalette.surface,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               boxShadow: [
                 BoxShadow(color: Colors.cyan.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5)),

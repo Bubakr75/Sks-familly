@@ -414,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           borderRadius: BorderRadius.circular(2)),
                     ),
                     const SizedBox(height: 16),
-                    const Text('💰 Bonus & Penalites',
+                    const Text('💰 Bonus & Pénalités',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -469,7 +469,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Expanded(
                       child: entries.isEmpty
                           ? const Center(
-                              child: Text('Aucun bonus ou penalite',
+                              child: Text('Aucun bonus ou pénalité',
                                   style: TextStyle(color: Colors.white38)))
                           : ListView.builder(
                               controller: scrollController,
