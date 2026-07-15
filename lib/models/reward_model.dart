@@ -14,6 +14,7 @@ class RewardModel {
   bool isActive;         // Si la récompense est disponible à l'achat
   int? maxPerWeek;       // Limite d'achat par semaine (null = illimité)
   DateTime createdAt;
+  String? photoBase64;   // 📸 Photo optionnelle du produit
 
   RewardModel({
     required this.id,
@@ -25,7 +26,11 @@ class RewardModel {
     this.isActive = true,
     this.maxPerWeek,
     DateTime? createdAt,
+    this.photoBase64,
   }) : createdAt = createdAt ?? DateTime.now();
+
+  /// True si une photo est attachée à cette récompense.
+  bool get hasPhoto => photoBase64 != null && photoBase64!.isNotEmpty;
 
   Map<String, dynamic> toMap() {
     return {
@@ -38,6 +43,8 @@ class RewardModel {
       'isActive': isActive,
       'maxPerWeek': maxPerWeek,
       'createdAt': createdAt.toIso8601String(),
+      if (photoBase64 != null && photoBase64!.isNotEmpty)
+        'photoBase64': photoBase64,
     };
   }
 
@@ -54,6 +61,7 @@ class RewardModel {
       createdAt: map['createdAt'] != null
           ? DateTime.parse(map['createdAt'])
           : DateTime.now(),
+      photoBase64: map['photoBase64'],
     );
   }
 

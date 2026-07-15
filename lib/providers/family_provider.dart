@@ -2015,6 +2015,7 @@ class FamilyProvider extends ChangeNotifier {
     String description = '',
     String category = 'custom',
     int? maxPerWeek,
+    String? photoBase64,
   }) async {
     final r = RewardModel(
       id: 'reward_${_uuid.v4()}',
@@ -2024,6 +2025,7 @@ class FamilyProvider extends ChangeNotifier {
       description: description,
       category: category,
       maxPerWeek: maxPerWeek,
+      photoBase64: photoBase64,
     );
     _rewards.add(r);
     await _rewardsBox.put(r.id, jsonEncode(r.toMap()));

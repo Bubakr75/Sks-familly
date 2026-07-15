@@ -4,12 +4,27 @@
 // Les enfants y dépensent leurs points durement gagnés pour des privilèges réels.
 // Design premium : cartes dorées, animations, style boutique de luxe.
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../models/reward_model.dart';
 import '../config/emerald_theme.dart';
+import '../utils/image_cache.dart';
+
+// Pixel transparent 1x1 pour le fallback
+final kTransparentPixel = Uint8List.fromList([
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+  0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+  0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41,
+  0x54, 0x78, 0x9C, 0x62, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+  0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+  0x42, 0x60, 0x82,
+]);
 
 class ShopScreen extends StatefulWidget {
   final String? childId;
@@ -430,28 +445,43 @@ class _RewardCardState extends State<_RewardCard> with SingleTickerProviderState
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Icône dans un cercle avec halo
+                  // 📸 Photo ou icône emoji dans un cercle avec halo
                   Container(
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          accent.withValues(alpha: widget.canAfford ? 0.3 : 0.08),
-                          Colors.transparent,
-                        ],
-                      ),
+                      gradient: widget.reward.hasPhoto
+                          ? null
+                          : RadialGradient(
+                              colors: [
+                                accent.withValues(alpha: widget.canAfford ? 0.3 : 0.08),
+                                Colors.transparent,
+                              ],
+                            ),
+                      image: widget.reward.hasPhoto
+                          ? DecorationImage(
+                              image: ImageCacheUtil.getImage(widget.reward.photoBase64)
+                                  ?? MemoryImage(kTransparentPixel),
+                              fit: BoxFit.cover,
+                              colorFilter: widget.canAfford
+                                  ? null
+                                  : const ColorFilter.mode(
+                                      Colors.grey, BlendMode.saturation),
+                            )
+                          : null,
                     ),
-                    child: Center(
-                      child: Text(
-                        widget.reward.icon,
-                        style: TextStyle(
-                          fontSize: 28,
-                          color: widget.canAfford ? null : Colors.grey,
-                        ),
-                      ),
-                    ),
+                    child: widget.reward.hasPhoto
+                        ? null
+                        : Center(
+                            child: Text(
+                              widget.reward.icon,
+                              style: TextStyle(
+                                fontSize: 28,
+                                color: widget.canAfford ? null : Colors.grey,
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(height: 10),
                   // Titre
