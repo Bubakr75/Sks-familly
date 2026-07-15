@@ -25,6 +25,7 @@ import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 import '../utils/image_compressor.dart';
 import '../services/voice_service.dart';
+import '../services/sound_service.dart';
 
 class FamilyProvider extends ChangeNotifier {
   final FirestoreService _firestore = FirestoreService();
@@ -902,6 +903,9 @@ class FamilyProvider extends ChangeNotifier {
 
     await _checkBadgeUnlock(child);
     await recalculateStreak(childId);
+    // 🔊 Feedback sonore
+    if (isBonus) { SoundService.playBonus(); }
+    else { SoundService.playPenalty(); }
     notifyListeners();
   }
 
@@ -2215,6 +2219,8 @@ class FamilyProvider extends ChangeNotifier {
     await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
     if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
 
+    // 🔊 Feedback sonore d'achat
+    SoundService.playPurchase();
     notifyListeners();
     return true;
   }

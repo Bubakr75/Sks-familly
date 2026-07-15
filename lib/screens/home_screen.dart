@@ -36,6 +36,8 @@ import 'chores_screen.dart';
 import 'checklist_screen.dart';
 import 'evening_summary_screen.dart';
 import 'screen_time_new_screen.dart';
+import 'daily_wheel_screen.dart';
+import 'weekly_report_screen.dart';
 import '../widgets/animated_page_transition.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -981,6 +983,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 // ═══ 📊 SUIVI QUOTIDIEN ═══
                 _drawerSectionHeader('📊 Suivi quotidien'),
                 _drawerItem(
+                  icon: Icons.casino_rounded,
+                  label: 'Roue de la Fortune',
+                  color: Colors.orange,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context,
+                      SlidePageRoute(page: const DailyWheelScreen()));
+                  },
+                ),
+                _drawerItem(
                   icon: Icons.checklist_rounded,
                   label: 'Checklist du jour',
                   color: Colors.purpleAccent,
@@ -1032,6 +1044,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                 // ═══ ⚙️ OUTILS ═══
                 _drawerSectionHeader('⚙️ Outils'),
+                if (isParent)
+                  _drawerItem(
+                    icon: Icons.analytics_rounded,
+                    label: 'Rapport de la semaine',
+                    color: Colors.lightBlue,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context,
+                        SlidePageRoute(page: const WeeklyReportScreen()));
+                    },
+                  ),
                 _drawerItem(
                   icon: Icons.auto_awesome_rounded,
                   label: 'Gemini AI',
