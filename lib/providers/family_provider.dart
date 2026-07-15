@@ -543,6 +543,36 @@ class FamilyProvider extends ChangeNotifier {
       }
       notifyListeners();
     };
+
+    // 🔒 Listener pour les achats boutique (avec merge pour ne pas perdre de données)
+    _firestore.onPurchasesChanged = (list) {
+      final remoteIds = <String>{};
+      for (final remote in list) {
+        final id = remote['id'] as String? ?? '';
+        if (id.isEmpty) continue;
+        remoteIds.add(id);
+        // Chercher si on a déjà cet achat en local
+        final localIdx = _purchases.indexWhere((p) => p['id'] == id);
+        if (localIdx == -1) {
+          // Nouvel achat distant → ajouter
+          _purchases.insert(0, remote);
+        } else {
+          // Mettre à jour le statut si différent (pending → approved/rejected)
+          _purchases[localIdx] = remote;
+        }
+      }
+      // 🔒 Préserver les achats locaux non synchronisés
+      // (ne pas supprimer ceux qui ne sont pas sur Firestore)
+      _purchases.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
+      // Sauvegarder en local sans clear
+      for (final p in _purchases) {
+        final id = p['id'] as String? ?? '';
+        if (id.isNotEmpty) {
+          _purchasesBox.put(id, jsonEncode(p));
+        }
+      }
+      notifyListeners();
+    };
   }
 
   // ───────────────────────────────────────────────────────────
@@ -2220,19 +2250,22 @@ class FamilyProvider extends ChangeNotifier {
       await addScreenTimeMinutes(childId, minutes, '🛒 Achat boutique : ${reward.title}');
     }
 
-    // Enregistrer l'achat
+    // Enregistrer l'achat avec un ID stable
+    final purchaseId = 'purch_${_uuid.v4()}';
     final purchaseData = {
+      'id': purchaseId,
       'rewardId': reward.id,
       'childId': childId,
       'childName': child.name,
       'title': reward.title,
       'icon': reward.icon,
-      'cost': reward.cost,
+      'cost': actualCost,
+      'originalCost': reward.cost,
       'status': 'pending', // pending → approved / rejected
       'date': DateTime.now().toIso8601String(),
     };
     _purchases.insert(0, purchaseData);
-    await _purchasesBox.put('purch_${_uuid.v4()}', jsonEncode(purchaseData));
+    await _purchasesBox.put(purchaseId, jsonEncode(purchaseData));
     if (_firestore.isConnected) {
       await _firestore.savePurchase(purchaseData);
     }

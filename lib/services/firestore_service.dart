@@ -45,6 +45,7 @@ class FirestoreService {
   StreamSubscription? _parentProfilesSub;
   StreamSubscription? _choresSub;
   StreamSubscription? _rewardsSub;
+  StreamSubscription? _purchasesSub;
 
   Timer? _keepAliveTimer;
   DateTime _lastDataReceived = DateTime.now();
@@ -63,6 +64,7 @@ class FirestoreService {
   void Function(List<ParentProfile>)? onParentProfilesChanged;
   void Function(List<Map<String, dynamic>>)? onChoresChanged;
   void Function(List<Map<String, dynamic>>)? onRewardsChanged;
+  void Function(List<Map<String, dynamic>>)? onPurchasesChanged;
 
   // ─── Init ────────────────────────────────────────────────────
   Future<void> init() async {
@@ -422,6 +424,17 @@ class FirestoreService {
       }).toList();
       onRewardsChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
+    // ─── Achats boutique ───
+    _purchasesSub = fRef.collection('purchases').snapshots().listen((s) {
+      _markDataReceived();
+      final list = s.docs.map((doc) {
+        final d = Map<String, dynamic>.from(doc.data());
+        d['id'] = doc.id;
+        return d;
+      }).toList();
+      onPurchasesChanged?.call(list);
+    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
   }
 
   void _stopListening() {
@@ -439,6 +452,7 @@ class FirestoreService {
     _parentProfilesSub?.cancel();
     _choresSub?.cancel();
     _rewardsSub?.cancel();
+    _purchasesSub?.cancel();
     _childrenSub = null;
     _historySub = null;
     _goalsSub = null;
@@ -451,6 +465,9 @@ class FirestoreService {
     _requestsSub = null;
     _screenTimeSub = null;
     _parentProfilesSub = null;
+    _choresSub = null;
+    _rewardsSub = null;
+    _purchasesSub = null;
   }
 
   // ─── WRITE : Children ────────────────────────────────────────
@@ -843,7 +860,9 @@ class FirestoreService {
   Future<void> savePurchase(Map<String, dynamic> data) async {
     if (_familyId == null) return;
     try {
-      await _db.collection('families').doc(_familyId).collection('purchases').add(data);
+      // 🔒 Utilise un ID stable (défini par l'appelant) au lieu de .add()
+      final purchaseId = data['id'] as String? ?? 'purch_${DateTime.now().millisecondsSinceEpoch}';
+      await _db.collection('families').doc(_familyId).collection('purchases').doc(purchaseId).set(data);
     } catch (e) {
       if (kDebugMode) debugPrint('savePurchase error: $e');
     }
