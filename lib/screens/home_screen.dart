@@ -21,7 +21,6 @@ import 'calendar_screen.dart';
 import 'stats_screen.dart';
 import 'gemini_chat_screen.dart';
 import 'settings_screen.dart';
-import 'badges_screen.dart';
 import 'shop_screen.dart';
 import 'shop_admin_screen.dart';
 import 'school_notes_screen.dart';
@@ -261,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           fontSize: 20,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('\ entree(s)',
+                  Text('${history.length} entrée(s)',
                       style: const TextStyle(
                           color: Colors.white54, fontSize: 13)),
                   const SizedBox(height: 12),
@@ -517,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 overflow:
                                                     TextOverflow.ellipsis),
                                             Text(
-                                                '${entry.date.day}/${entry.date.month}/${entry.date.year} "¢ ${entry.actionBy}',
+                                                '${entry.date.day}/${entry.date.month}/${entry.date.year} · par ${entry.actionBy}',
                                                 style: const TextStyle(
                                                     color: Colors.white38,
                                                     fontSize: 11)),
@@ -874,7 +873,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                if (isParent) ...[
+                // ═══ 📚 ÉDUCATION ═══
+                _drawerSectionHeader('📚 Éducation'),
+                if (isParent)
                   _drawerItem(
                     icon: Icons.school_rounded,
                     label: 'Notes Scolaires',
@@ -892,8 +893,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       });
                     },
                   ),
+                if (isParent)
                   _drawerItem(
-                    label: 'Bonus et Penalites',
+                    label: 'Bonus et Pénalités',
                     icon: Icons.monetization_on_rounded,
                     color: Colors.greenAccent,
                     onTap: () {
@@ -902,22 +904,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           context, () => _showBonusPenaltyHistory(context));
                     },
                   ),
-                  // ─── Punitions et Immunités (multi-enfants) ───
-                  _drawerItem(
-                    label: 'Punitions et Immunites',
-                    icon: Icons.balance_rounded,
-                    color: Colors.deepOrangeAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      PinGuard.guardAction(context, () {
-                        Navigator.push(
-                          context,
-                          SlidePageRoute(page: const BalanceScreen()),
-                        );
-                      });
-                    },
-                  ),
-                ],
+
+                // ═══ ⚖️ JUSTICE ═══
+                _drawerSectionHeader('⚖️ Justice'),
                 _drawerItem(
                   icon: Icons.gavel_rounded,
                   label: 'Tribunal',
@@ -930,18 +919,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
+                if (isParent)
+                  _drawerItem(
+                    label: 'Punitions et Immunités',
+                    icon: Icons.balance_rounded,
+                    color: Colors.deepOrangeAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      PinGuard.guardAction(context, () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(page: const BalanceScreen()),
+                        );
+                      });
+                    },
+                  ),
                 _drawerItem(
-                  icon: Icons.auto_awesome_rounded,
-                  label: 'Gemini AI',
-                  color: Colors.cyanAccent,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context,
-                      SlidePageRoute(page: const GeminiChatScreen()));
-                  },
-                ),
-                _drawerItem(
-                  label: 'Vente d immunites',
+                  label: 'Vente d\'immunités',
                   icon: Icons.sell_rounded,
                   color: Colors.tealAccent,
                   onTap: () {
@@ -955,6 +949,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     });
                   },
                 ),
+
+                // ═══ 🛒 RÉCOMPENSES ═══
+                _drawerSectionHeader('🛒 Récompenses'),
                 _drawerItem(
                   icon: Icons.shopping_bag_rounded,
                   label: 'Boutique',
@@ -967,7 +964,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
-                // Admin boutique (parent uniquement)
                 if (isParent)
                   _drawerItem(
                     icon: Icons.admin_panel_settings_rounded,
@@ -978,6 +974,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Navigator.push(
                         context,
                         ZoomPageRoute(page: const ShopAdminScreen()),
+                      );
+                    },
+                  ),
+
+                // ═══ 📊 SUIVI QUOTIDIEN ═══
+                _drawerSectionHeader('📊 Suivi quotidien'),
+                _drawerItem(
+                  icon: Icons.checklist_rounded,
+                  label: 'Checklist du jour',
+                  color: Colors.purpleAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const ChecklistScreen()),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  icon: Icons.tv_rounded,
+                  label: "Temps d'écran",
+                  color: Colors.tealAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const ScreenTimeNewScreen()),
+                    );
+                  },
+                ),
+                if (isParent)
+                  _drawerItem(
+                    icon: Icons.nights_stay_rounded,
+                    label: 'Bilan du soir',
+                    color: Colors.indigoAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        SlidePageRoute(page: const EveningSummaryScreen()),
                       );
                     },
                   ),
@@ -993,55 +1029,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
-                // Bilan du soir (parent uniquement)
-                if (isParent)
-                  _drawerItem(
-                    icon: Icons.nights_stay_rounded,
-                    label: 'Bilan du soir',
-                    color: Colors.indigoAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        SlidePageRoute(page: const EveningSummaryScreen()),
-                      );
-                    },
-                  ),
+
+                // ═══ ⚙️ OUTILS ═══
+                _drawerSectionHeader('⚙️ Outils'),
                 _drawerItem(
-                  icon: Icons.checklist_rounded,
-                  label: 'Checklist du jour',
-                  color: Colors.purpleAccent,
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'Gemini AI',
+                  color: Colors.cyanAccent,
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      SlidePageRoute(page: const ChecklistScreen()),
-                    );
-                  },
-                ),
-                _drawerItem(
-                  icon: Icons.casino_rounded,
-                  label: 'Roue des tâches',
-                  color: Colors.deepPurpleAccent,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      SlidePageRoute(page: const ChoresScreen()),
-                    );
-                  },
-                ),
-                // Temps d'écran
-                _drawerItem(
-                  icon: Icons.tv_rounded,
-                  label: 'Temps d\'écran',
-                  color: Colors.tealAccent,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      SlidePageRoute(page: const ScreenTimeNewScreen()),
-                    );
+                    Navigator.push(context,
+                      SlidePageRoute(page: const GeminiChatScreen()));
                   },
                 ),
                 if (isParent) ...[
@@ -1077,6 +1075,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     color: Colors.white.withValues(alpha: 0.2), fontSize: 12)),
           ),
         ]),
+      ),
+    );
+  }
+
+  Widget _drawerSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 16, 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.4),
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }

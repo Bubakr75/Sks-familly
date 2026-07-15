@@ -70,6 +70,46 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   }
 }
 
+// ===== HELPER : envoyer SILENCIEUSEMENT (data-only, pas de bannière) =====
+// La notif arrive dans l'app sans popup — juste mise à jour du badge cloche.
+async function sendToFamilySilent(familyId, senderDeviceId, type, data) {
+  const tokensSnap = await db
+    .collection("families")
+    .doc(familyId)
+    .collection("fcm_tokens")
+    .get();
+
+  if (tokensSnap.empty) return;
+
+  const tokens = [];
+  tokensSnap.docs.forEach((doc) => {
+    if (doc.id !== senderDeviceId) {
+      const token = doc.data().token;
+      if (token) tokens.push(token);
+    }
+  });
+
+  if (tokens.length === 0) return;
+
+  // Message data-only : PAS de clé "notification" = pas de bannière système
+  const message = {
+    data: Object.assign(
+      { sender: senderDeviceId, silent: "true", type: type },
+      data || {}
+    ),
+    android: { priority: "normal" },
+    webpush: { headers: { Urgency: "low" } },
+    tokens: tokens,
+  };
+
+  try {
+    const response = await admin.messaging().sendEachForMulticast(message);
+    console.log("[SILENT] Sent to " + response.successCount + "/" + tokens.length + " devices");
+  } catch (e) {
+    console.error("FCM silent send error:", e);
+  }
+}
+
 // Helper : récupérer le nom d'un enfant
 async function getChildName(familyId, childId) {
   try {
@@ -93,12 +133,11 @@ exports.onChildUpdate = functions.firestore
     const oldBadges = before.badgeIds || [];
     const newBadges = after.badgeIds || [];
     if (newBadges.length > oldBadges.length) {
-      await sendToFamily(
+      await sendToFamilySilent(
         familyId,
         sender,
-        "🏆 Nouveau badge !",
-        after.name + " a débloqué un nouveau badge !",
-        { type: "badge", childId: context.params.childId }
+        "badge",
+        { childId: context.params.childId, title: "🏆 Nouveau badge", body: after.name + " a débloqué un badge !" }
       );
     }
   });
@@ -111,15 +150,14 @@ exports.onHistoryCreated = functions.firestore
     const familyId = context.params.familyId;
     const sender = data.deviceId || data.lastModifiedBy || "";
 
-    // Notification note scolaire
+    // Notification note scolaire — SILENCIEUSE
     if (data.category === "school_note") {
       const childName = await getChildName(familyId, data.childId);
-      await sendToFamily(
+      await sendToFamilySilent(
         familyId,
         sender,
-        "📚 Note scolaire - " + childName,
-        data.reason || "Note ajoutée",
-        { type: "school_note", childId: data.childId || "" }
+        "school_note",
+        { childId: data.childId || "", title: "📚 Note scolaire", body: childName + " : " + (data.reason || "") }
       );
       return;
     }
@@ -129,17 +167,16 @@ exports.onHistoryCreated = functions.firestore
       return;
     }
 
-    // Notification standard (bonus/malus)
+    // Notification standard (bonus/malus) — SILENCIEUSE
     const childName = await getChildName(familyId, data.childId);
     const emoji = data.isBonus ? "✅" : "⚠️";
     const sign = data.isBonus ? "+" : "-";
 
-    await sendToFamily(
+    await sendToFamilySilent(
       familyId,
       sender,
-      emoji + " " + childName + " : " + sign + data.points + " pts",
-      data.reason || "Points modifiés",
-      { type: "history", childId: data.childId || "" }
+      "history",
+      { childId: data.childId || "", title: emoji + " " + childName + " : " + sign + data.points + " pts", body: data.reason || "" }
     );
   });
 
@@ -152,12 +189,11 @@ exports.onPunishmentCreated = functions.firestore
     const sender = p.lastModifiedBy || "";
     const childName = await getChildName(familyId, p.childId);
 
-    await sendToFamily(
+    await sendToFamilySilent(
       familyId,
       sender,
-      "📝 Punition pour " + childName,
-      p.totalLines + ' lignes : "' + p.text + '"',
-      { type: "punishment", childId: p.childId || "" }
+      "punishment",
+      { childId: p.childId || "", title: "📝 Punition", body: childName + " : " + p.totalLines + " lignes" }
     );
   });
 
@@ -174,20 +210,18 @@ exports.onPunishmentUpdated = functions.firestore
       const pct = Math.round((after.completedLines / after.totalLines) * 100);
 
       if (after.completedLines >= after.totalLines) {
-        await sendToFamily(
+        await sendToFamilySilent(
           familyId,
           sender,
-          "🎉 Punition terminée !",
-          childName + " a fini : " + after.completedLines + "/" + after.totalLines + " lignes",
-          { type: "punishment_done", childId: after.childId || "" }
+          "punishment_done",
+          { childId: after.childId || "", title: "🎉 Punition terminée", body: childName + " a fini !" }
         );
       } else {
-        await sendToFamily(
+        await sendToFamilySilent(
           familyId,
           sender,
-          "📈 Progrès - " + childName,
-          after.completedLines + "/" + after.totalLines + " lignes (" + pct + "%)",
-          { type: "punishment_progress", childId: after.childId || "" }
+          "punishment_progress",
+          { childId: after.childId || "", title: "📈 Progrès " + childName, body: after.completedLines + "/" + after.totalLines + " (" + pct + "%)" }
         );
       }
     }
@@ -202,12 +236,11 @@ exports.onImmunityCreated = functions.firestore
     const sender = im.lastModifiedBy || "";
     const childName = await getChildName(familyId, im.childId);
 
-    await sendToFamily(
+    await sendToFamilySilent(
       familyId,
       sender,
-      "🛡️ Immunité pour " + childName,
-      im.lines + " ligne(s) : " + im.reason,
-      { type: "immunity", childId: im.childId || "" }
+      "immunity",
+      { childId: im.childId || "", title: "🛡️ Immunité", body: childName + " : " + im.lines + " ligne(s)" }
     );
   });
 
@@ -221,12 +254,11 @@ exports.onTradeCreated = functions.firestore
     const seller = await getChildName(familyId, trade.fromChildId);
     const buyer = await getChildName(familyId, trade.toChildId);
 
-    await sendToFamily(
+    await sendToFamilySilent(
       familyId,
       sender,
-      "🏪 Nouvelle vente",
-      seller + " propose " + trade.immunityLines + " ligne(s) à " + buyer + " - " + trade.serviceDescription,
-      { type: "trade_new", tradeId: context.params.tradeId }
+      "trade_new",
+      { tradeId: context.params.tradeId, title: "🏪 Nouvelle vente", body: seller + " → " + buyer }
     );
   });
 
@@ -271,9 +303,10 @@ exports.onTradeUpdated = functions.firestore
     }
 
     if (title) {
-      await sendToFamily(familyId, sender, title, body, {
-        type: "trade_update",
+      await sendToFamilySilent(familyId, sender, "trade_update", {
         tradeId: context.params.tradeId,
+        title: title,
+        body: body,
       });
     }
   });
@@ -321,10 +354,19 @@ exports.onTribunalUpdated = functions.firestore
         break;
     }
 
-    await sendToFamily(familyId, sender, title, after.title || "", {
-      type: "tribunal_update",
-      caseId: context.params.caseId,
-    });
+    // Le VERDICT (closed) reste en push visible, le reste est silencieux
+    if (after.status === "closed") {
+      await sendToFamily(familyId, sender, title, after.title || "", {
+        type: "tribunal_update",
+        caseId: context.params.caseId,
+      });
+    } else {
+      await sendToFamilySilent(familyId, sender, "tribunal_update", {
+        caseId: context.params.caseId,
+        title: title,
+        body: after.title || "",
+      });
+    }
   });
 
 // ===== 7. DEMANDES EN ATTENTE (validation parentale) =====
@@ -396,12 +438,11 @@ exports.onGoalCreated = functions.firestore
     const sender = g.lastModifiedBy || "";
     const childName = await getChildName(familyId, g.childId);
 
-    await sendToFamily(
+    await sendToFamilySilent(
       familyId,
       sender,
-      "🎯 Nouvel objectif",
-      childName + " : \"" + (g.title || "") + "\" (" + (g.targetPoints || 0) + " pts)",
-      { type: "goal_new", goalId: context.params.goalId, childId: g.childId || "" }
+      "goal_new",
+      { goalId: context.params.goalId, childId: g.childId || "", title: "🎯 Nouvel objectif", body: childName + " : " + (g.title || "") }
     );
   });
 
@@ -414,28 +455,12 @@ exports.onNoteCreated = functions.firestore
     const sender = n.lastModifiedBy || "";
     const childName = await getChildName(familyId, n.childId);
 
-    await sendToFamily(
+    await sendToFamilySilent(
       familyId,
       sender,
-      "📌 Note pour " + childName,
-      n.text || "Nouvelle note",
-      { type: "note_new", noteId: context.params.noteId, childId: n.childId || "" }
+      "note_new",
+      { noteId: context.params.noteId, childId: n.childId || "", title: "📌 Note", body: childName + " : " + (n.text || "") }
     );
   });
 
-// ===== 10. BADGES PERSONNALISÉS (NOUVEAU) =====
-exports.onCustomBadgeCreated = functions.firestore
-  .document("families/{familyId}/custom_badges/{badgeId}")
-  .onCreate(async (snap, context) => {
-    const b = snap.data();
-    const familyId = context.params.familyId;
-    const sender = b.lastModifiedBy || "";
-
-    await sendToFamily(
-      familyId,
-      sender,
-      "🎖️ Nouveau badge personnalisé",
-      "Badge \"" + (b.name || "") + "\" créé (" + (b.requiredPoints || 0) + " pts)",
-      { type: "custom_badge_new", badgeId: context.params.badgeId }
-    );
-  });
+// Note : onCustomBadgeCreated supprimé — pas besoin de notifier pour un badge personnalisé

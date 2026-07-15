@@ -67,7 +67,7 @@ class FcmService {
     }
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (kDebugMode) debugPrint('FG message: ${message.notification?.title}');
+      if (kDebugMode) debugPrint('FCM message: ${message.notification?.title}');
 
       // 🔑 ANTI-DÉDOUBLEMENT : si le message provient de NOTRE propre appareil,
       // on ignore l'overlay (notre action locale l'a déjà affiché).
@@ -77,8 +77,18 @@ class FcmService {
         return;
       }
 
+      // 🔇 NOTIFICATIONS SILENCIEUSES : les messages data-only (sans clé
+      // notification) ou avec silent=true n'affichent PAS de bannière.
+      // Ils mettent juste à jour les données (badge cloche via Firestore listener).
+      final isSilent = message.data['silent'] == 'true';
       final notification = message.notification;
-      if (notification == null) return;
+
+      if (isSilent || notification == null) {
+        if (kDebugMode) debugPrint('FCM: notif silencieuse (${message.data['type']}) — pas de bannière');
+        return;
+      }
+
+      // Seules les notifs NON-silencieuses (tribunal, demandes) affichent une bannière
       final type = _getNotificationType(message.data['type'] ?? '');
       // Sur web : le navigateur affiche DÉJÀ la notification (via le service
       // worker push). On évite donc le dédoublement en n'affichant que l'overlay

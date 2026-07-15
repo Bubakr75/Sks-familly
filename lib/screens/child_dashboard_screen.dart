@@ -1227,24 +1227,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () => _editBanner(child, fp, requirePin: false),
-                icon:  const Icon(Icons.image, size: 16),
-                label: const Text('Bannière 🖼️', style: TextStyle(fontSize: 11)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white54,
-                  side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () => _editBanner(child, fp, requirePin: true),
-                icon:  const Icon(Icons.lock, size: 16),
-                label: const Text('Bannière 🔒', style: TextStyle(fontSize: 11)),
+                // Un seul bouton : PIN requis selon le mode (parent/enfant)
+                onPressed: () => _editBanner(child, fp,
+                    requirePin: context.read<PinProvider>().isParentMode),
+                icon: const Icon(Icons.image, size: 16),
+                label: const Text('Bannière', style: TextStyle(fontSize: 12)),
               ),
             ),
           ]),

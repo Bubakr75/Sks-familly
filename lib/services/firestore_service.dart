@@ -371,11 +371,12 @@ class FirestoreService {
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
 
     _requestsSub = fRef.collection('requests').snapshots().listen((s) {
+      // 🔔 Ne garder que les demandes "pending" pour le badge cloche
       final list = s.docs.map((doc) {
         final d = Map<String, dynamic>.from(doc.data());
         d['id'] = doc.id;
         return PendingRequest.fromMap(d);
-      }).toList();
+      }).where((r) => r.status == 'pending').toList();
       onRequestsChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
 
