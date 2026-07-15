@@ -39,14 +39,16 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   /// childId -> validé aujourd'hui
   final Set<String> _validatedToday = {};
 
-  String _key(String childId, String choreId) => '$childId|$choreId';
+  /// Clé combinée : childId|choreId|slot (pour dissocier matin/midi/soir)
+  String _key(String childId, String choreId, String slot) =>
+      '$childId|$choreId|$slot';
 
-  _ChoreState _getState(String childId, String choreId) {
-    return _states[_key(childId, choreId)] ?? _ChoreState.pending;
+  _ChoreState _getState(String childId, String choreId, String slot) {
+    return _states[_key(childId, choreId, slot)] ?? _ChoreState.pending;
   }
 
-  void _setState(String childId, String choreId, _ChoreState s) {
-    final k = _key(childId, choreId);
+  void _setState(String childId, String choreId, String slot, _ChoreState s) {
+    final k = _key(childId, choreId, slot);
     // Toggle : re-cliquer sur le même état → revient à pending
     if (_states[k] == s) {
       _states[k] = _ChoreState.pending;
@@ -332,22 +334,27 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   Widget _buildSummary(ChildModel child, List<ChoreModel> chores) {
     int donePts = 0, missedPts = 0;
     int doneCount = 0, missedCount = 0, skippedCount = 0;
+    const allSlots = ['matin', 'midi', 'soir'];
     for (final c in chores) {
-      final s = _getState(child.id, c.id);
-      switch (s) {
-        case _ChoreState.done:
-          donePts += c.points;
-          doneCount++;
-          break;
-        case _ChoreState.missed:
-          missedPts += (c.points ~/ 2).clamp(1, 10);
-          missedCount++;
-          break;
-        case _ChoreState.skipped:
-          skippedCount++;
-          break;
-        case _ChoreState.pending:
-          break;
+      // Scanner chaque slot où la tâche est prévue
+      final slots = c.timeSlots ?? allSlots;
+      for (final slot in slots) {
+        final s = _getState(child.id, c.id, slot);
+        switch (s) {
+          case _ChoreState.done:
+            donePts += c.points;
+            doneCount++;
+            break;
+          case _ChoreState.missed:
+            missedPts += (c.points ~/ 2).clamp(1, 10);
+            missedCount++;
+            break;
+          case _ChoreState.skipped:
+            skippedCount++;
+            break;
+          case _ChoreState.pending:
+            break;
+        }
       }
     }
     final net = donePts - missedPts;
@@ -425,23 +432,22 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               padding: const EdgeInsets.only(bottom: 8),
               child: _ChoreDecisionCard(
                 chore: chore,
-                state: _getState(child.id, chore.id),
+                state: _getState(child.id, chore.id, slot),
                 isParent: isParent,
                 onDone: () {
                   HapticFeedback.selectionClick();
-                  _setState(child.id, chore.id, _ChoreState.done);
-                  // En multi : propage à tous les enfants sélectionnés
-                  _propagate(child.id, chore.id, _ChoreState.done);
+                  _setState(child.id, chore.id, slot, _ChoreState.done);
+                  _propagate(child.id, chore.id, slot, _ChoreState.done);
                 },
                 onSkipped: () {
                   HapticFeedback.selectionClick();
-                  _setState(child.id, chore.id, _ChoreState.skipped);
-                  _propagate(child.id, chore.id, _ChoreState.skipped);
+                  _setState(child.id, chore.id, slot, _ChoreState.skipped);
+                  _propagate(child.id, chore.id, slot, _ChoreState.skipped);
                 },
                 onMissed: () {
                   HapticFeedback.selectionClick();
-                  _setState(child.id, chore.id, _ChoreState.missed);
-                  _propagate(child.id, chore.id, _ChoreState.missed);
+                  _setState(child.id, chore.id, slot, _ChoreState.missed);
+                  _propagate(child.id, chore.id, slot, _ChoreState.missed);
                 },
                 onDelete: isParent
                     ? () => _confirmDeleteChore(context, fp, chore)
@@ -455,11 +461,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   /// Propage l'état aux autres enfants sélectionnés (notation groupée).
-  void _propagate(String focusChildId, String choreId, _ChoreState s) {
+  void _propagate(String focusChildId, String choreId, String slot, _ChoreState s) {
     if (_selectedChildIds.length <= 1) return;
     for (final cid in _selectedChildIds) {
       if (cid == focusChildId) continue;
-      _states[_key(cid, choreId)] = s;
+      _states[_key(cid, choreId, slot)] = s;
     }
     setState(() {});
   }
@@ -493,11 +499,15 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   // ─── Bouton Valider (tous les enfants sélectionnés) ────────────
   Widget _buildValidateButton(List<ChildModel> children, List<ChoreModel> chores) {
     int totalDone = 0, totalMissed = 0;
+    const allSlots = ['matin', 'midi', 'soir'];
     for (final cid in _selectedChildIds) {
       for (final c in chores) {
-        final s = _getState(cid, c.id);
-        if (s == _ChoreState.done) totalDone++;
-        if (s == _ChoreState.missed) totalMissed++;
+        final slots = c.timeSlots ?? allSlots;
+        for (final slot in slots) {
+          final s = _getState(cid, c.id, slot);
+          if (s == _ChoreState.done) totalDone++;
+          if (s == _ChoreState.missed) totalMissed++;
+        }
       }
     }
 
@@ -565,45 +575,52 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     int grandBonus = 0;
     int grandPenalty = 0;
 
+    const allSlots = ['matin', 'midi', 'soir'];
+
     for (final child in selectedChildren) {
-      final done = chores
-          .where((c) => _getState(child.id, c.id) == _ChoreState.done)
-          .toList();
-      final missed = chores
-          .where((c) => _getState(child.id, c.id) == _ChoreState.missed)
-          .toList();
-      // skipped = ignoré (pas de bonus, pas de pénalité)
+      // Collecter les tâches done/missed par slot
+      final doneList = <String>[]; // labels des tâches done
+      final missedList = <String>[]; // labels des tâches missed
+      int donePts = 0;
+      int missedPts = 0;
+
+      for (final c in chores) {
+        final slots = c.timeSlots ?? allSlots;
+        for (final slot in slots) {
+          final s = _getState(child.id, c.id, slot);
+          final slotLabel = slot == 'matin' ? '🌅' : (slot == 'midi' ? '☀️' : '🌙');
+          if (s == _ChoreState.done) {
+            doneList.add('$slotLabel ${c.label}');
+            donePts += c.points;
+          } else if (s == _ChoreState.missed) {
+            missedList.add('$slotLabel ${c.label}');
+            missedPts += (c.points ~/ 2).clamp(1, 10);
+          }
+        }
+      }
 
       if (isParent) {
-        if (done.isNotEmpty) {
-          grandBonus += await fp.validateChores(child.id, done);
+        if (doneList.isNotEmpty) {
+          await fp.addPoints(child.id, donePts,
+              '✅ Tâches du jour : ${doneList.join(', ')}',
+              category: 'ménage', isBonus: true);
+          grandBonus += donePts;
         }
-        if (missed.isNotEmpty) {
-          final labels = <String>[];
-          int pen = 0;
-          for (final c in missed) {
-            final p = (c.points ~/ 2).clamp(1, 10);
-            pen += p;
-            labels.add('${c.emoji} ${c.label}');
-          }
-          if (pen > 0) {
-            await fp.addPoints(child.id, pen,
-                '⚠️ Tâches non faites : ${labels.join(', ')}',
-                category: 'ménage', isBonus: false);
-            grandPenalty += pen;
-          }
+        if (missedList.isNotEmpty) {
+          await fp.addPoints(child.id, missedPts,
+              '⚠️ Tâches non faites : ${missedList.join(', ')}',
+              category: 'ménage', isBonus: false);
+          grandPenalty += missedPts;
         }
       } else {
         // Mode enfant : demande silencieuse
-        final total = done.fold(0, (sum, c) => sum + c.points);
-        final labels = done.map((c) => '${c.emoji} ${c.label}').join(', ');
-        if (done.isNotEmpty) {
+        if (doneList.isNotEmpty) {
           await fp.createRequest(
             type: 'chore_checklist',
             childId: child.id,
             requestedBy: child.name,
-            text: '✅ Tâches du jour : $labels',
-            amount: total,
+            text: '✅ Tâches du jour : ${doneList.join(', ')}',
+            amount: donePts,
           );
         }
       }

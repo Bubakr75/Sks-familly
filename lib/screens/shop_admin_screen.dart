@@ -30,6 +30,15 @@ class ShopAdminScreen extends StatelessWidget {
                 TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: EmeraldPalette.textPrimary),
         actions: [
+          // 🔥 Bouton Soldes
+          IconButton(
+            icon: Icon(
+              fp.isSaleActive ? Icons.local_fire_department_rounded : Icons.local_offer_outlined,
+              color: fp.isSaleActive ? Colors.orange : Colors.redAccent,
+              size: 26,
+            ),
+            onPressed: () => _showSaleDialog(context, fp),
+          ),
           IconButton(
             icon: const Icon(Icons.add_circle_rounded,
                 color: EmeraldPalette.gold, size: 30),
@@ -249,15 +258,29 @@ class ShopAdminScreen extends StatelessWidget {
                   if (title.isEmpty) return;
 
                   if (existing != null) {
-                    await fp.deleteReward(existing.id);
+                    // 🔒 Mise à jour SANS changer l'ID (préserve les achats liés)
+                    final updated = RewardModel(
+                      id: existing.id,
+                      title: title,
+                      cost: cost,
+                      icon: selectedIcon,
+                      description: descCtrl.text.trim(),
+                      category: existing.category,
+                      isActive: existing.isActive,
+                      maxPerWeek: existing.maxPerWeek,
+                      createdAt: existing.createdAt,
+                      photoBase64: photoBase64,
+                    );
+                    await fp.updateReward(updated);
+                  } else {
+                    await fp.addReward(
+                      title: title,
+                      cost: cost,
+                      icon: selectedIcon,
+                      description: descCtrl.text.trim(),
+                      photoBase64: photoBase64,
+                    );
                   }
-                  await fp.addReward(
-                    title: title,
-                    cost: cost,
-                    icon: selectedIcon,
-                    description: descCtrl.text.trim(),
-                    photoBase64: photoBase64,
-                  );
                   if (ctx.mounted) Navigator.pop(ctx);
                 },
                 child: const Text('Enregistrer',
@@ -330,6 +353,172 @@ class ShopAdminScreen extends StatelessWidget {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  /// 🔥 Dialogue de gestion des soldes
+  void _showSaleDialog(BuildContext context, FamilyProvider fp) {
+    int selectedPercent = fp.saleDiscountPercent > 0 ? fp.saleDiscountPercent : 50;
+    int selectedHours = 24;
+    final labelCtrl = TextEditingController(text: fp.saleLabel.isNotEmpty ? fp.saleLabel : 'Soldes');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          backgroundColor: EmeraldPalette.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(children: [
+            const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 28),
+            const SizedBox(width: 10),
+            const Text('Soldes Boutique',
+                style: TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold)),
+          ]),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (fp.isSaleActive) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.access_time, color: Colors.orange, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Vente en cours : -${fp.saleDiscountPercent}%',
+                          style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
+                const Text('Réduction :',
+                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                // Choix du pourcentage
+                Wrap(
+                  spacing: 6,
+                  children: [25, 50, 70, 90].map((p) {
+                    final isSel = selectedPercent == p;
+                    return GestureDetector(
+                      onTap: () => setSt(() => selectedPercent = p),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSel ? Colors.orange.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isSel ? Colors.orange : Colors.white12),
+                        ),
+                        child: Text('-$p%',
+                            style: TextStyle(
+                                color: isSel ? Colors.orange : Colors.white54,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                const Text('Durée :',
+                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                // Choix de la durée
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    (6, '6h'),
+                    (12, '12h'),
+                    (24, '24h'),
+                    (48, '2j'),
+                    (72, '3j'),
+                  ].map((item) {
+                    final h = item.$1;
+                    final label = item.$2;
+                    final isSel = selectedHours == h;
+                    return GestureDetector(
+                      onTap: () => setSt(() => selectedHours = h),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSel ? Colors.orange.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isSel ? Colors.orange : Colors.white12),
+                        ),
+                        child: Text(label,
+                            style: TextStyle(
+                                color: isSel ? Colors.orange : Colors.white54,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: labelCtrl,
+                  style: const TextStyle(color: EmeraldPalette.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Nom de la vente',
+                    labelStyle: const TextStyle(color: EmeraldPalette.textSecondary),
+                    filled: true,
+                    fillColor: EmeraldPalette.surfaceLow,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            if (fp.isSaleActive)
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await fp.stopSale();
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('✅ Vente arrêtée'), backgroundColor: Colors.grey),
+                    );
+                  }
+                },
+                child: const Text('Arrêter la vente', style: TextStyle(color: Colors.redAccent)),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await fp.startSale(
+                  percent: selectedPercent,
+                  durationHours: selectedHours,
+                  label: labelCtrl.text.trim().isEmpty ? 'Soldes' : labelCtrl.text.trim(),
+                );
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('🔥 Vente lancée ! -$selectedPercent% pendant ${selectedHours}h'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Lancer 🔥', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
   }

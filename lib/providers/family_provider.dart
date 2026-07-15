@@ -64,6 +64,12 @@ class FamilyProvider extends ChangeNotifier {
   final Map<String, ScreenTimeAccount> _screenTimeAccounts = {};
   Timer? _overtimeTimer;
 
+  // ─── Soldes boutique ──────────────────────────────────────────
+  int _saleDiscountPercent = 0;     // ex: 50 = -50%
+  DateTime? _saleEndDate;           // null = pas de vente en cours
+  String _saleLabel = '';           // ex: "Soldes d'été"
+  Timer? _saleTimer;
+
   // ─── État de synchronisation (feedback UI) ──────────────────
   bool _isReconnecting = false;
   DateTime? _lastSyncAt;
@@ -133,6 +139,72 @@ class FamilyProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get purchases     => _purchases;
   List<ChoreModel>      get chores             => _chores;
 
+  // ─── Getters Soldes boutique ──────────────────────────────────
+  int    get saleDiscountPercent => _saleDiscountPercent;
+  DateTime? get saleEndDate      => _saleEndDate;
+  String get saleLabel           => _saleLabel;
+  bool   get isSaleActive        => _saleDiscountPercent > 0 &&
+      (_saleEndDate == null || _saleEndDate!.isAfter(DateTime.now()));
+
+  /// Calcule le prix soldé d'une récompense
+  int salePrice(int originalCost) {
+    if (!isSaleActive) return originalCost;
+    final discounted = (originalCost * (100 - _saleDiscountPercent) / 100).round();
+    return discounted > 0 ? discounted : 1;
+  }
+
+  /// Démarre une vente (parent). percent: 10-90, duration: en heures
+  Future<void> startSale({required int percent, required int durationHours, String label = 'Soldes'}) async {
+    _saleDiscountPercent = percent.clamp(1, 90);
+    _saleEndDate = DateTime.now().add(Duration(hours: durationHours));
+    _saleLabel = label;
+    await _metaBox.put('sale_percent', _saleDiscountPercent);
+    await _metaBox.put('sale_end', _saleEndDate!.toIso8601String());
+    await _metaBox.put('sale_label', _saleLabel);
+    // Timer pour arrêter automatiquement la vente
+    _saleTimer?.cancel();
+    _saleTimer = Timer(Duration(hours: durationHours), () {
+      stopSale();
+    });
+    notifyListeners();
+  }
+
+  /// Arrête la vente immédiatement
+  Future<void> stopSale() async {
+    _saleDiscountPercent = 0;
+    _saleEndDate = null;
+    _saleLabel = '';
+    _saleTimer?.cancel();
+    _saleTimer = null;
+    await _metaBox.delete('sale_percent');
+    await _metaBox.delete('sale_end');
+    await _metaBox.delete('sale_label');
+    notifyListeners();
+  }
+
+  /// Charge l'état de la vente depuis Hive (au démarrage)
+  void _loadSaleState() {
+    final pct = _metaBox.get('sale_percent');
+    if (pct != null) {
+      _saleDiscountPercent = (pct as num).toInt();
+      final endStr = _metaBox.get('sale_end');
+      if (endStr != null) {
+        _saleEndDate = DateTime.tryParse(endStr as String);
+        // Si la vente a expiré pendant que l'app était fermée
+        if (_saleEndDate != null && _saleEndDate!.isBefore(DateTime.now())) {
+          _saleDiscountPercent = 0;
+          _saleEndDate = null;
+        } else if (_saleEndDate != null) {
+          // Relance le timer pour l'expiration automatique
+          final remaining = _saleEndDate!.difference(DateTime.now());
+          _saleTimer?.cancel();
+          _saleTimer = Timer(remaining, () => stopSale());
+        }
+      }
+      _saleLabel = _metaBox.get('sale_label') as String? ?? '';
+    }
+  }
+
   /// Récupère le compte de temps d'écran d'un enfant
   ScreenTimeAccount getScreenTimeAccount(String childId) {
     return _screenTimeAccounts[childId] ?? ScreenTimeAccount(childId: childId);
@@ -172,6 +244,7 @@ class FamilyProvider extends ChangeNotifier {
     _purchasesBox   = await Hive.openBox('purchases');
     _choresBox      = await Hive.openBox('chores');
     _loadLocal();
+    _loadSaleState();
     try {
       await _firestore.init();
       _familyCode = await _firestore.getFamilyCode();
@@ -185,6 +258,7 @@ class FamilyProvider extends ChangeNotifier {
   @override
   void dispose() {
     _stopOvertimeChecker();
+    _saleTimer?.cancel();
     _firestore.dispose();
     super.dispose();
   }
@@ -397,20 +471,28 @@ class FamilyProvider extends ChangeNotifier {
       notifyListeners();
     };
     // 🔧 FIX : synchroniser les récompenses boutique depuis Firestore (avec merge)
+    // 🔒 On préserve TOUJOURS les récompenses locales, même si Firestore est vide
     _firestore.onRewardsChanged = (list) {
       if (list.isNotEmpty) {
         final remoteRewards = list.map((d) => RewardModel.fromMap(d)).toList();
         final localIds = _rewards.map((r) => r.id).toSet();
         for (final remote in remoteRewards) {
           if (!localIds.contains(remote.id)) {
+            // Récompense distante pas en local → on l'ajoute
             _rewards.add(remote);
           } else {
+            // Mise à jour de la récompense existante
             final idx = _rewards.indexWhere((r) => r.id == remote.id);
             if (idx >= 0) _rewards[idx] = remote;
           }
         }
+        // 🔒 On NE supprime JAMAIS les locales qui ne sont pas sur Firestore
+        // (évite de perdre les récompenses créées récemment)
       }
-      _saveBoxFromList(_rewardsBox, _rewards, (e) => e.id, (e) => e.toMap());
+      // Sauvegarder en local SANS clear (pour ne pas perdre de données)
+      for (final r in _rewards) {
+        _rewardsBox.put(r.id, jsonEncode(r.toMap()));
+      }
       notifyListeners();
     };
   }
@@ -2035,6 +2117,19 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 🔒 Met à jour une récompense existante SANS changer l'ID
+  /// (préserve les achats en attente qui référencent cet ID)
+  Future<void> updateReward(RewardModel reward) async {
+    final idx = _rewards.indexWhere((r) => r.id == reward.id);
+    if (idx == -1) return;
+    _rewards[idx] = reward;
+    await _rewardsBox.put(reward.id, jsonEncode(reward.toMap()));
+    if (_firestore.isConnected) {
+      await _firestore.saveReward(reward.toMap(), reward.id);
+    }
+    notifyListeners();
+  }
+
   Future<void> deleteReward(String id) async {
     _rewards.removeWhere((r) => r.id == id);
     await _rewardsBox.delete(id);
@@ -2053,11 +2148,12 @@ class FamilyProvider extends ChangeNotifier {
     if (child == null || rewardIdx == -1) return false;
     final reward = _rewards[rewardIdx];
 
-    // Vérifier que l'enfant a assez de points
-    if (child.points < reward.cost) return false;
+    // Vérifier que l'enfant a assez de points (prix soldé si vente en cours)
+    final actualCost = salePrice(reward.cost);
+    if (child.points < actualCost) return false;
 
     // Déduire les points
-    child.points -= reward.cost;
+    child.points -= actualCost;
     _markPending(child.id);
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     if (_firestore.isConnected) await _firestore.saveChild(child);

@@ -66,6 +66,16 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  String _formatSaleEnd(DateTime end) {
+    final remaining = end.difference(DateTime.now());
+    if (remaining.inHours > 0) {
+      return 'Encore ${remaining.inHours}h ${remaining.inMinutes % 60}min';
+    } else if (remaining.inMinutes > 0) {
+      return 'Encore ${remaining.inMinutes}min';
+    }
+    return 'Se termine bientôt';
+  }
+
   @override
   Widget build(BuildContext context) {
     final fp = context.watch<FamilyProvider>();
@@ -178,6 +188,50 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               ),
             ),
 
+            // ─── BANNIÈRE SOLDES ───
+            if (fp.isSaleActive)
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [
+                      Colors.redAccent.withValues(alpha: 0.25),
+                      Colors.orange.withValues(alpha: 0.15),
+                    ]),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.local_fire_department_rounded,
+                          color: Colors.orange, size: 24),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '🔥 ${fp.saleLabel} -${fp.saleDiscountPercent}%',
+                              style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900),
+                            ),
+                            if (fp.saleEndDate != null)
+                              Text(
+                                _formatSaleEnd(fp.saleEndDate!),
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 11),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             // ─── GRILLE DE RÉCOMPENSES ───
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -196,7 +250,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                           return _RewardCard(
                             reward: reward,
                             child: child,
-                            canAfford: child != null && child.points >= reward.cost,
+                            canAfford: child != null && child.points >= fp.salePrice(reward.cost),
                             onBuy: child == null
                                 ? null
                                 : () => _showPurchaseDialog(context, fp, child, reward),
@@ -278,10 +332,12 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   }
 
   void _showPurchaseDialog(BuildContext context, FamilyProvider fp, ChildModel child, RewardModel reward) {
-    if (child.points < reward.cost) {
+    final actualCost = fp.salePrice(reward.cost);
+    final isOnSale = fp.isSaleActive && actualCost < reward.cost;
+    if (child.points < actualCost) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Pas assez de points ! Il te manque ${reward.cost - child.points} pts.'),
+          content: Text('❌ Pas assez de points ! Il te manque ${actualCost - child.points} pts.'),
           backgroundColor: Colors.red.shade700,
         ),
       );
@@ -318,14 +374,31 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                     children: [
                       const Icon(Icons.stars_rounded, color: Color(0xFF051410)),
                       const SizedBox(width: 6),
-                      Text('${reward.cost} pts', style: const TextStyle(color: Color(0xFF051410), fontWeight: FontWeight.w800, fontSize: 18)),
+                      // Prix soldé + prix barré si en vente
+                      if (isOnSale) ...[
+                        Text('$actualCost pts', style: const TextStyle(color: Color(0xFF051410), fontWeight: FontWeight.w800, fontSize: 18)),
+                        const SizedBox(width: 6),
+                        Text('${reward.cost}', style: TextStyle(color: Color(0xFF051410).withValues(alpha: 0.5), decoration: TextDecoration.lineThrough, fontSize: 14)),
+                      ] else
+                        Text('$actualCost pts', style: const TextStyle(color: Color(0xFF051410), fontWeight: FontWeight.w800, fontSize: 18)),
                     ],
                   ),
                 ),
               ],
             ),
+            if (isOnSale) ...[
+              const SizedBox(height: 8),
+              Center(child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text('-${fp.saleDiscountPercent}% 🔥', style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w800)),
+              )),
+            ],
             const SizedBox(height: 12),
-            Center(child: Text('Solde après achat : ${child.points - reward.cost} pts', style: const TextStyle(color: EmeraldPalette.textMuted, fontSize: 13))),
+            Center(child: Text('Solde après achat : ${child.points - actualCost} pts', style: const TextStyle(color: EmeraldPalette.textMuted, fontSize: 13))),
           ],
         ),
         actions: [
@@ -510,31 +583,46 @@ class _RewardCardState extends State<_RewardCard> with SingleTickerProviderState
                       overflow: TextOverflow.ellipsis,
                     ),
                   const Spacer(),
-                  // Prix
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: accent.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.stars_rounded, size: 16, color: accent),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${widget.reward.cost}',
-                          style: TextStyle(
-                            color: accent,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Prix (avec soldes si actifs)
+                  Builder(builder: (context) {
+                    final fp = context.watch<FamilyProvider>();
+                    final saleCost = fp.salePrice(widget.reward.cost);
+                    final onSale = fp.isSaleActive && saleCost < widget.reward.cost;
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: (onSale ? Colors.redAccent : accent).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: (onSale ? Colors.redAccent : accent).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.stars_rounded, size: 16, color: onSale ? Colors.redAccent : accent),
+                          const SizedBox(width: 4),
+                          if (onSale) ...[
+                            Text('$saleCost',
+                                style: const TextStyle(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16)),
+                            const SizedBox(width: 4),
+                            Text('${widget.reward.cost}',
+                                style: TextStyle(
+                                    color: accent.withValues(alpha: 0.4),
+                                    decoration: TextDecoration.lineThrough,
+                                    fontSize: 12)),
+                          ] else
+                            Text('${widget.reward.cost}',
+                                style: TextStyle(
+                                    color: accent,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16)),
+                        ],
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
