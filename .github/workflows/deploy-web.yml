@@ -42,13 +42,28 @@ jobs:
       - name: Inject Gemini API Key
         run: |
           python3 - << 'PYEOF'
-          import os
+          import os, re
           api_key = os.environ.get('GEMINI_API_KEY', '').replace('\n', '').replace('\r', '').strip()
-          with open('lib/services/gemini_service.dart', 'r') as f:
+          with open('lib/services/gemini_service.dart', 'r', encoding='utf-8') as f:
               content = f.read()
-          content = content.replace("String.fromEnvironment('GEMINI_API_KEY')", "'" + api_key + "'")
-          with open('lib/services/gemini_service.dart', 'w') as f:
-              f.write(content)
+          # Remplace toute la déclaration const _apiKey = String.fromEnvironment(...)
+          pattern = r"static const _apiKey\s*=\s*String\.fromEnvironment\([^)]+\)\s*,?\s*\n?\s*defaultValue:\s*''\)?\s*;"
+          replacement = "static const _apiKey = '" + api_key + "';"
+          new_content, count = re.subn(pattern, replacement, content)
+          if count == 0:
+              # Fallback : remplace toute ligne contenant _apiKey = avec fromEnvironment
+              lines = new_content.split('\n')
+              for i, line in enumerate(lines):
+                  if '_apiKey' in line and 'fromEnvironment' in line:
+                      lines[i] = "  static const _apiKey = '" + api_key + "';"
+                      count = 1
+                  elif '_apiKey' in line and "defaultValue:" in line:
+                      lines[i] = ''
+                      count = 1
+              new_content = '\n'.join(lines)
+          with open('lib/services/gemini_service.dart', 'w', encoding='utf-8') as f:
+              f.write(new_content)
+          print(f"Gemini key injected ({count} remplacement(s))")
           PYEOF
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

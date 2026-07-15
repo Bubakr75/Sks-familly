@@ -72,12 +72,30 @@ jobs:
 
       - name: Inject Gemini API Key
         run: |
-          sed -i "s|String.fromEnvironment('GEMINI_API_KEY',|String.fromEnvironment('GEMINI_API_KEY_REPLACED',|g" lib/services/gemini_service.dart
-          sed -i "s|String.fromEnvironment('GEMINI_API_KEY_REPLACED',\s*\n\?\s*defaultValue: '')|'${{ secrets.GEMINI_API_KEY }}'|g" lib/services/gemini_service.dart
-          sed -i "/GEMINI_API_KEY_REPLACED/{N;s|String.fromEnvironment('GEMINI_API_KEY_REPLACED',\n*.*defaultValue: '')|'${{ secrets.GEMINI_API_KEY }}'|}" lib/services/gemini_service.dart
-          echo "Gemini key injected"
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          python3 - << 'PYEOF'
+          import re
+          with open('lib/services/gemini_service.dart', 'r', encoding='utf-8') as f:
+              content = f.read()
+          # Remplace toute la ligne const _apiKey = String.fromEnvironment(...)
+          # par la clé en dur, quelle que soit la mise en forme (1 ou 2 lignes)
+          pattern = r"static const _apiKey\s*=\s*String\.fromEnvironment\([^)]+\)\s*,?\s*\n?\s*defaultValue:\s*''\)?\s*;"
+          replacement = "static const _apiKey = '${{ secrets.GEMINI_API_KEY }}';"
+          new_content, count = re.subn(pattern, replacement, content)
+          if count == 0:
+              # Fallback : remplace toute ligne contenant _apiKey =
+              lines = new_content.split('\n')
+              for i, line in enumerate(lines):
+                  if '_apiKey' in line and '=' in line and 'fromEnvironment' in line:
+                      lines[i] = "  static const _apiKey = '${{ secrets.GEMINI_API_KEY }}';"
+                      count = 1
+                  elif '_apiKey' in line and "defaultValue:" in line:
+                      lines[i] = ''
+                      count = 1
+              new_content = '\n'.join(lines)
+          with open('lib/services/gemini_service.dart', 'w', encoding='utf-8') as f:
+              f.write(new_content)
+          print(f"Gemini key injected ({count} remplacement(s))")
+          PYEOF
 
       - name: Create missing asset folders
         run: mkdir -p assets/animations assets/images
