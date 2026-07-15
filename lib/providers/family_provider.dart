@@ -19,6 +19,7 @@ import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
 import '../models/reward_model.dart';
 import '../models/chore_model.dart';
+import '../models/wheel_segment.dart';
 import '../models/screen_time_account.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
@@ -62,6 +63,7 @@ class FamilyProvider extends ChangeNotifier {
   List<RewardModel>     _rewards = [];
   List<Map<String, dynamic>> _purchases = [];
   List<ChoreModel>      _chores = [];
+  List<WheelSegment>    _wheelSegments = [];
   final Map<String, ScreenTimeAccount> _screenTimeAccounts = {};
   Timer? _overtimeTimer;
 
@@ -139,6 +141,7 @@ class FamilyProvider extends ChangeNotifier {
   List<RewardModel>     get rewards            => _rewards;
   List<Map<String, dynamic>> get purchases     => _purchases;
   List<ChoreModel>      get chores             => _chores;
+  List<WheelSegment>    get wheelSegments      => _wheelSegments;
 
   // ─── Getters Soldes boutique ──────────────────────────────────
   int    get saleDiscountPercent => _saleDiscountPercent;
@@ -206,6 +209,49 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
+  // ─── Segments de la roue de la fortune ────────────────────────
+  void _loadWheelSegments() {
+    final raw = _metaBox.get('wheel_segments');
+    if (raw != null) {
+      try {
+        final list = jsonDecode(raw as String) as List;
+        _wheelSegments = list
+            .map((m) => WheelSegment.fromMap(Map<String, dynamic>.from(m)))
+            .toList();
+      } catch (_) {
+        _wheelSegments = WheelSegment.defaults();
+      }
+    } else {
+      _wheelSegments = WheelSegment.defaults();
+      _saveWheelSegments();
+    }
+  }
+
+  void _saveWheelSegments() {
+    _metaBox.put('wheel_segments',
+        jsonEncode(_wheelSegments.map((s) => s.toMap()).toList()));
+  }
+
+  Future<void> addWheelSegment(WheelSegment segment) async {
+    _wheelSegments.add(segment);
+    _saveWheelSegments();
+    notifyListeners();
+  }
+
+  Future<void> updateWheelSegment(WheelSegment segment) async {
+    final idx = _wheelSegments.indexWhere((s) => s.id == segment.id);
+    if (idx >= 0) _wheelSegments[idx] = segment;
+    _saveWheelSegments();
+    notifyListeners();
+  }
+
+  Future<void> deleteWheelSegment(String id) async {
+    if (_wheelSegments.length <= 2) return; // minimum 2 segments
+    _wheelSegments.removeWhere((s) => s.id == id);
+    _saveWheelSegments();
+    notifyListeners();
+  }
+
   /// Récupère le compte de temps d'écran d'un enfant
   ScreenTimeAccount getScreenTimeAccount(String childId) {
     return _screenTimeAccounts[childId] ?? ScreenTimeAccount(childId: childId);
@@ -246,6 +292,7 @@ class FamilyProvider extends ChangeNotifier {
     _choresBox      = await Hive.openBox('chores');
     _loadLocal();
     _loadSaleState();
+    _loadWheelSegments();
     try {
       await _firestore.init();
       _familyCode = await _firestore.getFamilyCode();
