@@ -2271,25 +2271,34 @@ class FamilyProvider extends ChangeNotifier {
     }
 
     // 🔔 Notification au parent via le système de demande (badge cloche)
+    // 🔒 On transmet le PRIX PAYÉ (soldé) et non le prix original
+    final onSale = actualCost < reward.cost;
     await createRequest(
       type: 'boutique',
       childId: childId,
       requestedBy: child.name,
-      text: '🛒 ${child.name} achète "${reward.title}" (${reward.cost} pts)',
-      amount: reward.cost,
+      text: onSale
+          ? '🛒 ${child.name} achète "${reward.title}" ($actualCost pts 🔥 -${_saleDiscountPercent}%)'
+          : '🛒 ${child.name} achète "${reward.title}" ($actualCost pts)',
+      amount: actualCost,
       extra: {
         'rewardId': reward.id,
         'rewardTitle': reward.title,
         'icon': reward.icon,
+        'originalCost': reward.cost,
+        'salePrice': actualCost,
+        'onSale': onSale,
       },
     );
 
-    // Ajouter à l'historique
+    // Ajouter à l'historique (prix réellement payé)
     final entry = HistoryEntry(
       id: _uuid.v4(),
       childId: childId,
-      points: reward.cost,
-      reason: '🛒 Achat boutique : ${reward.title}',
+      points: actualCost,
+      reason: onSale
+          ? '🛒 Achat boutique : ${reward.title} (-${_saleDiscountPercent}%)'
+          : '🛒 Achat boutique : ${reward.title}',
       category: 'boutique',
       isBonus: false,
       actionBy: child.name,
