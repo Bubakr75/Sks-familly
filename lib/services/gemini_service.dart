@@ -25,21 +25,83 @@ class GeminiService {
     return true;
   }
 
-  static List<Map<String, dynamic>> generateQuizQuestions({required String theme, required int age}) {
+  static const List<String> scoreCategories = [
+    'Respect',
+    'Coopération',
+    'Autonomie',
+    'Gestion des émotions',
+  ];
+
+  static List<Map<String, dynamic>> generateQuizQuestions({
+    required String theme,
+    required int age,
+  }) {
     return [
-      {'question': 'A-t-il/elle répété les mêmes erreurs après correction ?', 'answers': ['Jamais', 'Rarement', 'Souvent', 'Toujours'], 'correctIndex': 0},
-      {'question': 'A-t-il/elle eu un bon comportement avec ses frères/sœurs ?', 'answers': ['Toujours', 'Souvent', 'Rarement', 'Jamais'], 'correctIndex': 0},
-      {'question': 'A-t-il/elle été respectueux(se) envers ses parents ?', 'answers': ['Toujours', 'Souvent', 'Rarement', 'Jamais'], 'correctIndex': 0},
-      {'question': 'A-t-il/elle utilisé des gros mots ou mal parlé ?', 'answers': ['Jamais', 'Rarement', 'Souvent', 'Toujours'], 'correctIndex': 0},
-      {'question': 'Quelle était son attitude générale cette semaine ?', 'answers': ['Excellente', 'Bonne', 'Moyenne', 'Mauvaise'], 'correctIndex': 0},
-      {'question': 'A-t-il/elle boudé ou fait la tête ?', 'answers': ['Jamais', 'Rarement', 'Souvent', 'Toujours'], 'correctIndex': 0},
-      {'question': 'A-t-il/elle rendu service spontanément ?', 'answers': ['Souvent', 'Parfois', 'Rarement', 'Jamais'], 'correctIndex': 0},
-      {'question': 'A-t-il/elle eu un acte fraternel ou généreux ?', 'answers': ['Oui plusieurs fois', 'Une fois', 'Rarement', 'Aucun'], 'correctIndex': 0},
-      {'question': 'Comment a-t-il/elle géré ses disputes ou conflits ?', 'answers': ['Très bien', 'Bien', 'Difficilement', 'Très mal'], 'correctIndex': 0},
-      {'question': 'A-t-il/elle fait ses devoirs sans rappel ?', 'answers': ['Toujours', 'Souvent', 'Rarement', 'Jamais'], 'correctIndex': 0},
+      {
+        'question':
+            'A-t-il/elle répété les mêmes erreurs après correction ?',
+        'answers': ['Jamais', 'Rarement', 'Souvent', 'Toujours'],
+        'correctIndex': 0,
+        'category': 'Autonomie',
+      },
+      {
+        'question':
+            'A-t-il/elle eu un bon comportement avec ses frères/sœurs ?',
+        'answers': ['Toujours', 'Souvent', 'Rarement', 'Jamais'],
+        'correctIndex': 0,
+        'category': 'Coopération',
+      },
+      {
+        'question':
+            'A-t-il/elle été respectueux(se) envers ses parents ?',
+        'answers': ['Toujours', 'Souvent', 'Rarement', 'Jamais'],
+        'correctIndex': 0,
+        'category': 'Respect',
+      },
+      {
+        'question': 'A-t-il/elle utilisé des gros mots ou mal parlé ?',
+        'answers': ['Jamais', 'Rarement', 'Souvent', 'Toujours'],
+        'correctIndex': 0,
+        'category': 'Respect',
+      },
+      {
+        'question': 'Quelle était son attitude générale cette semaine ?',
+        'answers': ['Excellente', 'Bonne', 'Moyenne', 'Mauvaise'],
+        'correctIndex': 0,
+        'category': 'Gestion des émotions',
+      },
+      {
+        'question': 'A-t-il/elle boudé ou fait la tête ?',
+        'answers': ['Jamais', 'Rarement', 'Souvent', 'Toujours'],
+        'correctIndex': 0,
+        'category': 'Gestion des émotions',
+      },
+      {
+        'question': 'A-t-il/elle rendu service spontanément ?',
+        'answers': ['Souvent', 'Parfois', 'Rarement', 'Jamais'],
+        'correctIndex': 0,
+        'category': 'Coopération',
+      },
+      {
+        'question': 'A-t-il/elle eu un acte fraternel ou généreux ?',
+        'answers': ['Oui plusieurs fois', 'Une fois', 'Rarement', 'Aucun'],
+        'correctIndex': 0,
+        'category': 'Coopération',
+      },
+      {
+        'question': 'Comment a-t-il/elle géré ses disputes ou conflits ?',
+        'answers': ['Très bien', 'Bien', 'Difficilement', 'Très mal'],
+        'correctIndex': 0,
+        'category': 'Gestion des émotions',
+      },
+      {
+        'question': 'A-t-il/elle fait ses devoirs sans rappel ?',
+        'answers': ['Toujours', 'Souvent', 'Rarement', 'Jamais'],
+        'correctIndex': 0,
+        'category': 'Autonomie',
+      },
     ];
   }
-
   /// Calcule une note normalisée sur 20.
   ///
   /// Chaque question peut définir :
@@ -127,6 +189,36 @@ class GeminiService {
     return normalizedScore.round().clamp(0, 20).toInt();
   }
 
+  /// Calcule une sous-note sur 20 pour chaque catégorie.
+  ///
+  /// Les catégories sont calculées localement et ne dépendent pas de l'IA.
+  static Map<String, int> calculateCategoryScores(
+    List<Map<String, dynamic>> questions,
+    List<dynamic> answers,
+  ) {
+    final scores = <String, int>{};
+
+    for (final category in scoreCategories) {
+      final categoryQuestions = <Map<String, dynamic>>[];
+      final categoryAnswers = <dynamic>[];
+
+      for (int i = 0; i < questions.length; i++) {
+        if (questions[i]['category'] != category) {
+          continue;
+        }
+
+        categoryQuestions.add(questions[i]);
+        categoryAnswers.add(i < answers.length ? answers[i] : null);
+      }
+
+      scores[category] = calculateScore(
+        categoryQuestions,
+        categoryAnswers,
+      );
+    }
+
+    return scores;
+  }
   static String _extract(String text, String key) {
     final patterns = [
       RegExp(key + r'\s*:\s*\*\*(.+?)\*\*', dotAll: true),

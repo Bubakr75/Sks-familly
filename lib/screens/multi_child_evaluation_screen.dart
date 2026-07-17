@@ -102,6 +102,11 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
             break;
           }
         }
+        final categoryScores = GeminiService.calculateCategoryScores(
+          _questions,
+          _answersPerChild[child.id] ?? const [],
+        );
+
         results[child.id] = _AiEvalResult(
           aiNote: data.isEmpty ? -1 : (data['note'] ?? -1).toInt(),
           appreciation: data['appreciation'] ?? '',
@@ -109,6 +114,7 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
           pointFort: data['point_fort'] ?? '',
           pointAmeliorer: data['point_ameliorer'] ?? '',
           parentNote: (_parentNotes[child.id] ?? 10).round(),
+          categoryScores: categoryScores,
         );
       }
       setState(() { _results = results; _evaluating = false; _step = 3; });
@@ -123,8 +129,25 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
     for (final child in _selectedChildren) {
       final result = _results[child.id];
       if (result == null) continue;
-      final moyenne = ((result.aiNote + result.parentNote) / 2).round();
-      fp.addNote(child.id, 'Bulletin: IA=' + result.aiNote.toString() + '/20 Parent=' + result.parentNote.toString() + '/20 Moy=' + moyenne.toString() + '/20 | ' + result.appreciation);
+      final moyenne = result.aiNote >= 0
+          ? ((result.aiNote + result.parentNote) / 2).round()
+          : result.parentNote;
+
+      final aiText =
+          result.aiNote >= 0 ? '${result.aiNote}/20' : 'indisponible';
+
+      final categoryText = result.categoryScores.entries
+          .map((entry) => '${entry.key}=${entry.value}/20')
+          .join(' | ');
+
+      fp.addNote(
+        child.id,
+        'Bulletin: IA=$aiText '
+        'Parent=${result.parentNote}/20 '
+        'Moy=$moyenne/20 | '
+        '$categoryText | '
+        '${result.appreciation}',
+      );
     }
     Navigator.pop(context);
   }
@@ -570,7 +593,10 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
                         Expanded(child: _noteBox('Note Parent', result.parentNote, Colors.purple)),
                       ]),
                       const SizedBox(height: 14),
-                      if (result.appreciation.isNotEmpty) _infoTile('💬', 'Appréciation', result.appreciation, Colors.blue),
+                      if (result.categoryScores.isNotEmpty) ...[
+                      _categoryScoresCard(result.categoryScores),
+                      const SizedBox(height: 14),
+                    ],                    if (result.appreciation.isNotEmpty) _infoTile('💬', 'Appréciation', result.appreciation, Colors.blue),
                       if (result.pointFort.isNotEmpty) _infoTile('💪', 'Point fort', result.pointFort, const Color(0xFF43E97B)),
                       if (result.pointAmeliorer.isNotEmpty) _infoTile('📈', 'À améliorer', result.pointAmeliorer, const Color(0xFFFFD93D)),
                       if (result.conseil.isNotEmpty) _infoTile('💡', 'Conseil', result.conseil, Colors.purple),
@@ -601,6 +627,144 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
     );
   }
 
+  Widget _categoryScoresCard(Map<String, int> scores) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.insights_outlined,
+                color: _accentLight,
+                size: 20,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Détail par catégorie',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _categoryScoreRow(
+            icon: Icons.shield_outlined,
+            label: 'Respect',
+            score: scores['Respect'] ?? 0,
+            color: const Color(0xFF00D2FF),
+          ),
+          _categoryScoreRow(
+            icon: Icons.groups_outlined,
+            label: 'Coopération',
+            score: scores['Coopération'] ?? 0,
+            color: const Color(0xFF43E97B),
+          ),
+          _categoryScoreRow(
+            icon: Icons.task_alt,
+            label: 'Autonomie',
+            score: scores['Autonomie'] ?? 0,
+            color: const Color(0xFFFA8231),
+          ),
+          _categoryScoreRow(
+            icon: Icons.favorite_outline,
+            label: 'Gestion des émotions',
+            score: scores['Gestion des émotions'] ?? 0,
+            color: const Color(0xFF9D97FF),
+            showBottomPadding: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _categoryScoreRow({
+    required IconData icon,
+    required String label,
+    required int score,
+    required Color color,
+    bool showBottomPadding = true,
+  }) {
+    final safeScore = score.clamp(0, 20);
+    final progress = safeScore / 20.0;
+
+    final String level;
+
+    if (safeScore >= 16) {
+      level = 'Excellent';
+    } else if (safeScore >= 12) {
+      level = 'Bien';
+    } else if (safeScore >= 8) {
+      level = 'À renforcer';
+    } else {
+      level = 'À accompagner';
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: showBottomPadding ? 14 : 0,
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                level,
+                style: TextStyle(
+                  color: color.withValues(alpha: 0.85),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$safeScore/20',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 7,
+              backgroundColor: Colors.white.withValues(alpha: 0.07),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _noteBox(String label, dynamic note, Color color) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -639,6 +803,7 @@ class _AiEvalResult {
   final String pointFort;
   final String pointAmeliorer;
   final int parentNote;
+  final Map<String, int> categoryScores;
 
   const _AiEvalResult({
     required this.aiNote,
@@ -647,5 +812,6 @@ class _AiEvalResult {
     required this.pointFort,
     required this.pointAmeliorer,
     required this.parentNote,
+    required this.categoryScores,
   });
 }
