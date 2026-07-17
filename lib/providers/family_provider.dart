@@ -1047,13 +1047,27 @@ class FamilyProvider extends ChangeNotifier {
   List<NoteModel> getNotesForChild(String childId) =>
       _notes.where((n) => n.childId == childId).toList();
 
-  Future<void> addNote(String childId, String text,
-      {String authorName = 'Parent'}) async {
+  Future<void> addNote(
+    String childId,
+    String text, {
+    String authorName = 'Parent',
+    bool isEvaluation = false,
+    int? aiScore,
+    int? parentScore,
+    int? overallScore,
+    Map<String, int> categoryScores = const {},
+  }) async {
     final note = NoteModel(
-      id: _uuid.v4(), childId: childId,
-      text: text, authorName: authorName,
-    );
-    _markPending(note.id);
+      id: _uuid.v4(),
+      childId: childId,
+      text: text,
+      authorName: authorName,
+      isEvaluation: isEvaluation,
+      aiScore: aiScore,
+      parentScore: parentScore,
+      overallScore: overallScore,
+      categoryScores: categoryScores,
+    );    _markPending(note.id);
     _notes.add(note);
     await _notesBox.put(note.id, jsonEncode(note.toMap()));
     if (_firestore.isConnected) await _firestore.saveNote(note);

@@ -5,6 +5,7 @@ import '../models/note_model.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/glass_widgets.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/evaluation_history_card.dart';
 
 class NotesScreen extends StatefulWidget {
   final String childId;
@@ -142,41 +143,69 @@ class _NotesScreenState extends State<NotesScreen> {
                   ],
                 ),
               ),
-              // Liste des notes
+              // Liste des notes et historique des évaluations
               Expanded(
                 child: Consumer<FamilyProvider>(
                   builder: (context, provider, _) {
                     final notes =
                         provider.getNotesForChild(widget.childId);
+
+                    final evaluations = notes
+                        .where((note) => note.isEvaluation)
+                        .toList();
+
                     if (notes.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.note_alt_outlined,
-                                size: 64, color: Colors.grey[700]),
+                            Icon(
+                              Icons.note_alt_outlined,
+                              size: 64,
+                              color: Colors.grey[700],
+                            ),
                             const SizedBox(height: 16),
                             NeonText(
-                                text: 'Aucune note',
-                                fontSize: 16,
-                                color: Colors.grey),
+                              text: 'Aucune note',
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               'Ajoutez des notes pour ${widget.childName}',
                               style: TextStyle(
-                                  color: Colors.grey[600], fontSize: 13),
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
                       );
                     }
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                      itemCount: notes.length,
-                      itemBuilder: (_, i) {
-                        final note = notes[i];
-                        return _buildNoteCard(note, provider, primary);
-                      },
+
+                    return Column(
+                      children: [
+                        if (evaluations.isNotEmpty)
+                          EvaluationHistoryCard(
+                            evaluations: evaluations,
+                          ),
+                        Expanded(
+                          child: ListView.builder(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                            itemCount: notes.length,
+                            itemBuilder: (_, index) {
+                              final note = notes[index];
+
+                              return _buildNoteCard(
+                                note,
+                                provider,
+                                primary,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -187,7 +216,6 @@ class _NotesScreenState extends State<NotesScreen> {
       ),
     );
   }
-
   void _addNote() {
     if (_noteController.text.trim().isEmpty) return;
     context.read<FamilyProvider>().addNote(

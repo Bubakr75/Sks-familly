@@ -124,12 +124,14 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
     }
   }
 
-  void _saveAll() {
+  Future<void> _saveAll() async {
     final fp = context.read<FamilyProvider>();
+
     for (final child in _selectedChildren) {
       final result = _results[child.id];
       if (result == null) continue;
-      final moyenne = result.aiNote >= 0
+
+      final overallScore = result.aiNote >= 0
           ? ((result.aiNote + result.parentNote) / 2).round()
           : result.parentNote;
 
@@ -140,18 +142,23 @@ class _MultiChildEvaluationScreenState extends State<MultiChildEvaluationScreen>
           .map((entry) => '${entry.key}=${entry.value}/20')
           .join(' | ');
 
-      fp.addNote(
+      await fp.addNote(
         child.id,
         'Bulletin: IA=$aiText '
         'Parent=${result.parentNote}/20 '
-        'Moy=$moyenne/20 | '
+        'Moy=$overallScore/20 | '
         '$categoryText | '
         '${result.appreciation}',
+        isEvaluation: true,
+        aiScore: result.aiNote >= 0 ? result.aiNote : null,
+        parentScore: result.parentNote,
+        overallScore: overallScore,
+        categoryScores: result.categoryScores,
       );
     }
-    Navigator.pop(context);
-  }
 
+    if (mounted) Navigator.pop(context);
+  }
   @override
   Widget build(BuildContext context) {
     return AnimatedBackground(
