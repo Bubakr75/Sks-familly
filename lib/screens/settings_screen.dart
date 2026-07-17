@@ -511,6 +511,26 @@ class _SettingsScreenState extends State<SettingsScreen>
                   const SizedBox(height: 16),
                   _animatedSection(
                       index: 3,
+                      child: _sectionTitle('☁️ Cloud & Famille')),
+                  _animatedSection(
+                    index: 3,
+                    child: GlassCard(
+                      child: TvFocusWrapper(
+                        onTap: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const FamilyScreen())),
+                        child: _settingRow(
+                          icon: Icons.sync_rounded,
+                          iconColor: Colors.lightBlueAccent,
+                          title: 'Synchronisation',
+                          subtitle: 'Connexion familiale multi-appareils',
+                          trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _animatedSection(
+                      index: 3,
                       child: _sectionTitle('🔐 Sécurité')),
                   _animatedSection(
                     index: 4,

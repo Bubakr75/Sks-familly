@@ -781,34 +781,52 @@ class _Wheel3DPainter extends CustomPainter {
       canvas.drawArc(rect, startAngle, sweep, true,
         Paint()..color = Colors.white.withValues(alpha: 0.15)..style = PaintingStyle.stroke..strokeWidth = 1.5);
 
-      // Emoji + label
+      // Emoji + label — lisibilité maximale
       final textAngle = startAngle + sweep / 2;
-      final textRadius = radius * 0.62;
+      final textRadius = radius * 0.68;
       final textOffset = Offset(
         center.dx + textRadius * math.cos(textAngle),
         center.dy + textRadius * math.sin(textAngle),
       );
 
-      // Emoji
+      // Emoji (gros, avec ombre pour contraste)
       final emojiPainter = TextPainter(
-        text: TextSpan(text: seg.emoji, style: const TextStyle(fontSize: 26)),
+        text: TextSpan(
+          text: seg.emoji,
+          style: const TextStyle(
+            fontSize: 32,
+            shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+          ),
+        ),
         textDirection: TextDirection.ltr,
       );
       emojiPainter.layout();
       canvas.save();
-      canvas.translate(textOffset.dx, textOffset.dy - 8);
+      canvas.translate(textOffset.dx, textOffset.dy - 12);
       canvas.rotate(textAngle + math.pi / 2);
       emojiPainter.paint(canvas, Offset(-emojiPainter.width / 2, -emojiPainter.height / 2));
       canvas.restore();
 
-      // Label
+      // Label (gros, blanc, gras, avec ombre noire pour lisibilité)
       final labelPainter = TextPainter(
-        text: TextSpan(text: seg.label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+        text: TextSpan(
+          text: seg.label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            shadows: [
+              Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
+              Shadow(color: Colors.black87, blurRadius: 2, offset: Offset(0, 0)),
+            ],
+          ),
+        ),
         textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
       );
-      labelPainter.layout();
+      labelPainter.layout(maxWidth: 90);
       canvas.save();
-      canvas.translate(textOffset.dx, textOffset.dy + 14);
+      canvas.translate(textOffset.dx, textOffset.dy + 18);
       canvas.rotate(textAngle + math.pi / 2);
       labelPainter.paint(canvas, Offset(-labelPainter.width / 2, -labelPainter.height / 2));
       canvas.restore();

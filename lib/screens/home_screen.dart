@@ -1055,18 +1055,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 if (isParent) ...[
                   _drawerItem(
-                    icon: Icons.sync_rounded,
-                    label: 'Synchronisation',
-                    color: Colors.lightBlueAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        SlidePageRoute(page: const FamilyScreen()),
-                      );
-                    },
-                  ),
-                  _drawerItem(
                     icon: Icons.history_rounded,
                     label: 'Historique Complet',
                     color: Colors.white70,

@@ -7,12 +7,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/reward_model.dart';
 import '../config/emerald_theme.dart';
 import '../utils/image_cache.dart';
 import '../utils/image_compressor.dart';
+import '../utils/photo_helper.dart';
 
 class ShopAdminScreen extends StatelessWidget {
   const ShopAdminScreen({super.key});
@@ -92,15 +94,16 @@ class ShopAdminScreen extends StatelessWidget {
             try {
               final xfile = await ImagePicker().pickImage(
                 source: source,
-                imageQuality: 70,
-                maxWidth: 600,
+                imageQuality: 80,
+                maxWidth: 1000,
               );
               if (xfile == null) return;
-              final bytes = await xfile.readAsBytes();
-              final compressed =
-                  await ImageCompressor.compressBase64(base64Encode(bytes)) ??
-                      base64Encode(bytes);
-              setDialogState(() => photoBase64 = compressed);
+              // 📸 Recadrage manuel via PhotoHelper
+              final result = await PhotoHelper.pickAndCrop(ctx,
+                  cropStyle: CropStyle.rectangle);
+              if (result != null) {
+                setDialogState(() => photoBase64 = result);
+              }
             } catch (_) {}
           }
 
