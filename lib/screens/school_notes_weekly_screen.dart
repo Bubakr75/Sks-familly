@@ -249,39 +249,36 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
     try {
       final result = await GeminiService.chatFamilyAssistant(
         message:
-          'Tu es un psychologue de l\'éducation. Évalue la semaine de ${child.name} UNIQUEMENT à partir des données ci-dessous.\n\n'
-          'DONNÉES DE LA SEMAINE:\n'
-          '- Bonus obtenus: ${stats['bonusCount']} (${stats['bonusPts']} pts)\n'
-          '- Pénalités: ${stats['penaltyCount']} (${stats['penaltyPts']} pts)\n'
-          '- Immunités gagnées (bon comportement): ${stats['immunities']}\n'
-          '- Punitions: ${stats['punishments']}\n'
-          '- Points nets: ${stats['net']}\n\n'
-          'COMPORTEMENT (évalué par le parent sur 5):\n'
+          'Tu es un psychologue de l\'éducation. Voici le bilan de la semaine de ${child.name}.\n\n'
+          'BILAN DE LA SEMAINE:\n'
+          '- Actions positives (bonus): ${stats['bonusCount']} pour ${stats['bonusPts']} points\n'
+          '- Actions négatives (pénalités): ${stats['penaltyCount']} pour ${stats['penaltyPts']} points\n'
+          '- Immunités gagnées: ${stats['immunities']}\n'
+          '- Punitions: ${stats['punishments']}\n\n'
+          'OBSERVATIONS DU PARENT (sur 5):\n'
           '$behaviorText\n\n'
-          'BARÈME POUR TA NOTE SUR 20:\n'
-          '- Beaucoup de bonus, peu de pénalités, bon comportement (4-5/5) = 16 à 20\n'
-          '- Plus de bonus que de pénalités, comportement correct (3/5) = 12 à 15\n'
-          '- Autant de bonus que de pénalités, comportement moyen = 8 à 11\n'
-          '- Plus de pénalités, comportement à améliorer (1-2/5) = 4 à 7\n'
-          '- Beaucoup de punitions et pénalités = 0 à 3\n\n'
-          'Calcule TA note toi-même à partir de ces données. Ne recopie pas une note qu\'on te donnerait.\n\n'
-          'FORMAT EXACT (respecte les mots clés):\n'
+          'Analyse ces données comme un professionnel. Donne TA propre note sur 20 '
+          'en tenant compte de TOUT (bonus, pénalités, immunités, punitions ET comportement). '
+          'Ta note reflète ta propre analyse professionnelle.\n\n'
+          'Réponds EXACTEMENT dans ce format:\n'
           'NOTE: X\n'
-          'APPRECIATION: ton appréciation en 2 phrases, style psychologue bienveillant\n'
-          'CONSEIL PARENT: un conseil concret pour le parent\n'
-          'MOT POUR ENFANT: un message d\'encouragement pour ${child.name}',
-        familyContext: 'Évaluation comportementale hebdomadaire de ${child.name}',
+          'APPRECIATION: (2 phrases, ton de psychologue)\n'
+          'CONSEIL PARENT: (1 conseil concret)\n'
+          'MOT ENFANT: (1 encouragement pour ${child.name})',
+        familyContext: 'Évaluation de ${child.name}',
       );
 
-      // Si l'IA n'est pas configurée, on garde la note suggérée
-      if (result.contains('n\'est pas configuré') || result.isEmpty) {
-        setState(() {
-          _evaluatingChildren.remove(child.id);
-        });
+      // Vérifier si l'IA a vraiment répondu (pas un fallback)
+      final isRealResponse = result.isNotEmpty &&
+          !result.contains('n\'est pas configuré') &&
+          !result.contains('Désolé');
+
+      if (!isRealResponse) {
+        setState(() => _evaluatingChildren.remove(child.id));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('⚠️ IA non disponible. Note suggérée : $currentNote/20'),
+            const SnackBar(
+              content: Text('⚠️ L\'IA n\'est pas disponible actuellement.'),
               backgroundColor: Colors.orange,
             ),
           );
@@ -291,13 +288,15 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
 
       // Extraire la note depuis "NOTE: X"
       final noteMatch = RegExp(r'NOTE:\s*(\d{1,2})', caseSensitive: false).firstMatch(result);
-      int aiNote = currentNote; // fallback
+      int? aiNote;
       if (noteMatch != null) {
         final parsed = int.tryParse(noteMatch.group(1)!);
         if (parsed != null && parsed >= 0 && parsed <= 20) {
           aiNote = parsed;
         }
       }
+      // Si extraction échoue, on ne met PAS la note du parent — on met null
+      // pour montrer clairement que l'IA n'a pas donné de note valide
 
       // Parser les sections avec un regex simple
       String extractSection(String startKeyword, [String? endKeyword]) {
