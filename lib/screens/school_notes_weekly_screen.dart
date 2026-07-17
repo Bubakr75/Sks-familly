@@ -1,12 +1,12 @@
 // lib/screens/school_notes_weekly_screen.dart
 //
-// 📚 Notes Scolaires Hebdomadaires — refonte complète
+// 📚 Notes Scolaires Hebdomadaires — refonte v2
 // - Multi-enfants (notation rapide de tous en même temps)
 // - Évaluation hebdomadaire (pas journalière)
+// - Stats filtrées (exclut boutique/overtime/refus)
+// - Questions comportement parent (5 questions pertinentes)
 // - Calcul automatique des points (10 à 200 selon la note)
-// - Intègre l'historique de la semaine (bonus, immunités)
-// - Note IA Gemini
-// - Tout l'historique de la semaine est pris en compte
+// - IA Gemini qui prend en compte bonus/pénalités + réponses comportement
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -18,6 +18,61 @@ import '../config/emerald_theme.dart';
 import '../models/child_model.dart';
 import '../services/gemini_service.dart';
 
+// ─── Questions comportement ────────────────────────────────────
+class BehaviorQuestion {
+  final String id;
+  final String emoji;
+  final String question;
+  final String positiveLabel;
+  final String negativeLabel;
+
+  const BehaviorQuestion({
+    required this.id,
+    required this.emoji,
+    required this.question,
+    required this.positiveLabel,
+    required this.negativeLabel,
+  });
+}
+
+const _behaviorQuestions = [
+  BehaviorQuestion(
+    id: 'listening',
+    emoji: '👂',
+    question: 'A bien écouté les parents ?',
+    positiveLabel: 'Très attentif',
+    negativeLabel: 'A dû être répété',
+  ),
+  BehaviorQuestion(
+    id: 'siblings',
+    emoji: '👫',
+    question: 'Bon comportement avec frères/sœurs ?',
+    positiveLabel: 'Aimable',
+    negativeLabel: 'Conflits',
+  ),
+  BehaviorQuestion(
+    id: 'repetition',
+    emoji: '🔁',
+    question: 'A-t-on dû répéter les choses plusieurs fois ?',
+    positiveLabel: 'Du 1er coup',
+    negativeLabel: 'Répétitions',
+  ),
+  BehaviorQuestion(
+    id: 'tidiness',
+    emoji: '🧹',
+    question: 'A rangé ses affaires sans rappel ?',
+    positiveLabel: 'Autonome',
+    negativeLabel: 'Affaires traînées',
+  ),
+  BehaviorQuestion(
+    id: 'attitude',
+    emoji: '😊',
+    question: 'Attitude générale (politesse, respect) ?',
+    positiveLabel: 'Exemplaire',
+    negativeLabel: 'À améliorer',
+  ),
+];
+
 class SchoolNotesWeeklyScreen extends StatefulWidget {
   const SchoolNotesWeeklyScreen({super.key});
 
@@ -28,24 +83,17 @@ class SchoolNotesWeeklyScreen extends StatefulWidget {
 
 class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _weekTabController;
   DateTime _weekStart = _getWeekStart(DateTime.now());
 
-  // notes par enfant pour la semaine : { childId: { 'note': int, 'comment': String, 'aiNote': int, 'aiAppreciation': String } }
+  // notes par enfant : { childId: { 'note', 'behavior': {qId: 1-5}, 'aiNote', 'aiAppreciation', 'validated', 'pointsAwarded' } }
   Map<String, Map<String, dynamic>> _weeklyNotes = {};
-  bool _loading = false;
+  Set<String> _evaluatingChildren = {}; // enfants en cours d'éval IA
+  bool _validating = false;
 
   @override
   void initState() {
     super.initState();
-    _weekTabController = TabController(length: 2, vsync: this);
     _loadWeekNotes();
-  }
-
-  @override
-  void dispose() {
-    _weekTabController.dispose();
-    super.dispose();
   }
 
   static DateTime _getWeekStart(DateTime date) {
@@ -76,14 +124,20 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
     await prefs.setString('weekly_notes_$_weekKey', jsonEncode(_weeklyNotes));
   }
 
-  /// Calcule les stats de la semaine pour un enfant
-  /// (bonus, pénalités, immunités, pour l'évaluation globale)
+  /// Stats de la semaine FILTRÉES (exclut boutique, overtime, refus, écran)
   Map<String, int> _getChildWeekStats(String childId, FamilyProvider fp) {
     final weekEnd = _weekStart.add(const Duration(days: 7));
+    // Catégories à EXCLURE (ne reflètent pas le comportement)
+    const excludeCategories = {
+      'boutique', 'overtime', 'refus', 'screen_time_bonus',
+      'saturday_rating', 'échange',
+    };
+
     final entries = fp.history.where((h) =>
         h.childId == childId &&
         h.date.isAfter(_weekStart.subtract(const Duration(seconds: 1))) &&
-        h.date.isBefore(weekEnd));
+        h.date.isBefore(weekEnd) &&
+        !excludeCategories.contains(h.category.toLowerCase()));
 
     int bonusPts = 0, penaltyPts = 0, bonusCount = 0, penaltyCount = 0;
     for (final h in entries) {
@@ -96,13 +150,17 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
       }
     }
 
-    // Immunités de la semaine
-    final immunities = fp.immunities
-        .where((im) =>
-            im.childId == childId &&
-            im.createdAt.isAfter(_weekStart.subtract(const Duration(seconds: 1))) &&
-            im.createdAt.isBefore(weekEnd))
-        .length;
+    // Immunités = bonne attitude (gagnées par bon comportement)
+    final immunities = fp.immunities.where((im) =>
+        im.childId == childId &&
+        im.createdAt.isAfter(_weekStart.subtract(const Duration(seconds: 1))) &&
+        im.createdAt.isBefore(weekEnd)).length;
+
+    // Punitions = mauvaise conduite
+    final punishments = fp.punishments.where((p) =>
+        p.childId == childId &&
+        p.createdAt.isAfter(_weekStart.subtract(const Duration(seconds: 1))) &&
+        p.createdAt.isBefore(weekEnd)).length;
 
     return {
       'bonusPts': bonusPts,
@@ -110,12 +168,47 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
       'bonusCount': bonusCount,
       'penaltyCount': penaltyCount,
       'immunities': immunities,
+      'punishments': punishments,
       'net': bonusPts - penaltyPts,
     };
   }
 
-  /// Calcule les points de bonus à attribuer selon la note (sur 20)
-  /// Note 20 → 200 pts, Note 10 → 50 pts, Note < 8 → 10 pts
+  /// Note suggérée : combine stats + comportement
+  int _suggestedNote(String childId) {
+    final fp = context.read<FamilyProvider>();
+    final stats = _getChildWeekStats(childId, fp);
+    final behavior = _weeklyNotes[childId]?['behavior']
+        as Map<String, dynamic>?;
+
+    int note = 12; // Base moyenne
+
+    // Ajustement selon points nets (bonus - pénalités)
+    final net = stats['net'] ?? 0;
+    note += (net ~/ 15).clamp(-5, 6);
+
+    // Régularité
+    if ((stats['bonusCount'] ?? 0) > 7) note += 2;
+    if ((stats['penaltyCount'] ?? 0) == 0) note += 1;
+    if ((stats['penaltyCount'] ?? 0) > 5) note -= 2;
+
+    // Immunités = bon comportement
+    note += (stats['immunities'] ?? 0).clamp(0, 2);
+    // Punitions = mauvais comportement
+    note -= ((stats['punishments'] ?? 0) * 2).clamp(0, 6);
+
+    // Ajustement comportement parent (1 à 5 par question)
+    if (behavior != null && behavior.isNotEmpty) {
+      final avgBehavior = behavior.values
+          .map((v) => (v as num).toDouble())
+          .reduce((a, b) => a + b) / behavior.length;
+      // avgBehavior 5 = excellent → +3, avgBehavior 1 = mauvais → -3
+      note += ((avgBehavior - 3) * 1.5).round().clamp(-3, 3);
+    }
+
+    return note.clamp(0, 20);
+  }
+
+  /// Points attribués selon la note
   int _noteToPoints(int note) {
     if (note >= 20) return 200;
     if (note >= 18) return 180;
@@ -127,75 +220,84 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
     return 10;
   }
 
-  /// Note suggérée par l'app en fonction des stats de la semaine
-  int _suggestedNote(Map<String, int> stats) {
-    // Base : équilibre bonus/pénalité
-    final net = stats['net'] ?? 0;
-    final bonusCount = stats['bonusCount'] ?? 0;
-    final penaltyCount = stats['penaltyCount'] ?? 0;
-    final immunities = stats['immunities'] ?? 0;
-
-    // Commencer à 12 (moyen)
-    int note = 12;
-    // Ajuster selon le net
-    note += (net ~/ 15).clamp(-5, 6);
-    // Bonus pour régularité
-    if (bonusCount > 7) note += 2;
-    if (penaltyCount == 0) note += 1;
-    // Pénalité si beaucoup de pénalités
-    if (penaltyCount > 5) note -= 2;
-    // Bonus immunités (bon comportement)
-    note += immunities.clamp(0, 2);
-
-    return note.clamp(0, 20);
-  }
-
-  /// Évaluation IA Gemini pour un enfant
+  /// Évaluation IA pour UN enfant (avec stats + comportement)
   Future<void> _evaluateWithAI(
       ChildModel child, FamilyProvider fp) async {
-    if (_loading) return;
-    setState(() => _loading = true);
+    if (_evaluatingChildren.contains(child.id)) return;
+    setState(() => _evaluatingChildren.add(child.id));
 
     final stats = _getChildWeekStats(child.id, fp);
-    final currentNote =
-        (_weeklyNotes[child.id]?['note'] as int?) ?? _suggestedNote(stats);
-    final comment =
-        (_weeklyNotes[child.id]?['comment'] as String?) ?? '';
+    final behavior = _weeklyNotes[child.id]?['behavior']
+        as Map<String, dynamic>? ?? {};
+    final currentNote = (_weeklyNotes[child.id]?['note'] as int?) ??
+        _suggestedNote(child.id);
+
+    // Construire le résumé comportement
+    final behaviorLines = <String>[];
+    for (final q in _behaviorQuestions) {
+      final val = behavior[q.id];
+      if (val != null) {
+        final label = (val as num).toInt() >= 4 ? q.positiveLabel :
+                      (val as num).toInt() <= 2 ? q.negativeLabel : 'Moyen';
+        behaviorLines.add('${q.emoji} ${q.question} : $label (${(val as num).toInt()}/5)');
+      }
+    }
+    final behaviorText = behaviorLines.isEmpty
+        ? 'Non évalué'
+        : behaviorLines.join(', ');
 
     try {
       final result = await GeminiService.chatFamilyAssistant(
         message:
-          'Évalue la semaine de ${child.name} : '
-          'Note actuelle proposée : $currentNote/20. '
-          'Bonus : ${stats['bonusCount']} (${stats['bonusPts']} pts). '
-          'Pénalités : ${stats['penaltyCount']} (${stats['penaltyPts']} pts). '
-          'Immunités gagnées : ${stats['immunities']}. '
-          'Commentaire parent : "$comment". '
-          'Donne une note sur 20 et une appréciation en 2 phrases.',
-        familyContext: 'Évaluation scolaire hebdomadaire de ${child.name}',
+          'Tu es un enseignant qui évalue la semaine de ${child.name}.\n\n'
+          'STATISTIQUES DE LA SEMAINE:\n'
+          '- Bonus obtenus: ${stats['bonusCount']} (${stats['bonusPts']} pts)\n'
+          '- Pénalités: ${stats['penaltyCount']} (${stats['penaltyPts']} pts)\n'
+          '- Immunités gagnées (bon comportement): ${stats['immunities']}\n'
+          '- Punitions: ${stats['punishments']}\n'
+          '- Net points: ${stats['net']}\n\n'
+          'COMPORTEMENT (noté par le parent sur 5):\n'
+          '$behaviorText\n\n'
+          'Note que tu proposes: $currentNote/20\n\n'
+          'TACHE: Donne ta note sur 20 (juste le chiffre sur la première ligne), '
+          'puis une appréciation constructive de 2-3 phrases.',
+        familyContext: 'Évaluation scolaire hebdomadaire',
       );
 
-      // Essayer d'extraire la note
-      final noteMatch = RegExp(r'(\d{1,2})(?:\s*/\s*20)?')
-          .firstMatch(result.split('\n').first);
-      final aiNote = noteMatch != null
-          ? int.tryParse(noteMatch.group(1)!) ?? currentNote
-          : currentNote;
+      // Extraire la note (premier chiffre de la première ligne)
+      final lines = result.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      int? aiNote;
+      if (lines.isNotEmpty) {
+        final match = RegExp(r'(\d{1,2})').firstMatch(lines.first);
+        if (match != null) {
+          final parsed = int.tryParse(match.group(1)!);
+          if (parsed != null && parsed >= 0 && parsed <= 20) {
+            aiNote = parsed;
+          }
+        }
+      }
 
       setState(() {
         _weeklyNotes[child.id] ??= {};
-        _weeklyNotes[child.id]!['aiNote'] = aiNote.clamp(0, 20);
+        _weeklyNotes[child.id]!['aiNote'] = aiNote ?? currentNote;
         _weeklyNotes[child.id]!['aiAppreciation'] = result;
       });
       await _saveWeekNotes();
-    } catch (_) {
-      // Fallback silencieux
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Évaluation IA échouée pour ${child.name}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
 
-    setState(() => _loading = false);
+    setState(() => _evaluatingChildren.remove(child.id));
   }
 
-  /// Évalue tous les enfants d'un coup avec l'IA
+  /// Évalue tous les enfants d'un coup
   Future<void> _evaluateAllWithAI(FamilyProvider fp) async {
     for (final child in fp.children) {
       await _evaluateWithAI(child, fp);
@@ -210,19 +312,20 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
     }
   }
 
-  /// Valide les notes de la semaine → attribue les points
+  /// Valide les notes → attribue les points
   Future<void> _validateWeek(FamilyProvider fp) async {
-    bool anyValidated = false;
+    if (_validating) return;
+    setState(() => _validating = true);
+
+    int count = 0;
     for (final child in fp.children) {
       final noteData = _weeklyNotes[child.id];
       if (noteData == null) continue;
       final note = (noteData['note'] as int?) ?? 0;
       if (note == 0) continue;
+      if ((noteData['validated'] as bool?) ?? false) continue; // déjà validé
 
       final points = _noteToPoints(note);
-      final appreciation = noteData['aiAppreciation'] as String? ?? '';
-
-      // Attribuer les points bonus
       await fp.addPoints(
         child.id,
         points,
@@ -230,26 +333,24 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
         category: 'school_note',
         isBonus: true,
       );
-
-      // Marquer comme validé
       noteData['validated'] = true;
       noteData['pointsAwarded'] = points;
-      anyValidated = true;
+      count++;
     }
 
-    if (anyValidated) {
+    if (count > 0) {
       await _saveWeekNotes();
       HapticFeedback.heavyImpact();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                '✅ Notes validées ! Points attribués pour ${_weeklyNotes.length} enfant(s).'),
+            content: Text('✅ $count note(s) validée(s) ! Points attribués.'),
             backgroundColor: EmeraldPalette.emerald,
           ),
         );
       }
     }
+    setState(() => _validating = false);
   }
 
   @override
@@ -280,10 +381,7 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
                   style: TextStyle(color: Colors.white54)))
           : Column(
               children: [
-                // ── Bandeau semaine ──
                 _buildWeekHeader(),
-
-                // ── Actions rapides ──
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
@@ -291,9 +389,11 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
                       Expanded(
                         child: _ActionChip(
                           icon: Icons.auto_awesome_rounded,
-                          label: 'Évaluer avec IA',
+                          label: 'Évaluer tous (IA)',
                           color: Colors.deepPurpleAccent,
-                          onTap: _loading ? null : () => _evaluateAllWithAI(fp),
+                          onTap: _evaluatingChildren.isNotEmpty
+                              ? null
+                              : () => _evaluateAllWithAI(fp),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -302,39 +402,37 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
                           icon: Icons.check_circle_rounded,
                           label: 'Valider la semaine',
                           color: EmeraldPalette.emerald,
-                          onTap: () => _validateWeek(fp),
+                          onTap: _validating
+                              ? null
+                              : () => _validateWeek(fp),
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                // ── Liste des enfants ──
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                     itemCount: children.length,
                     itemBuilder: (context, index) {
                       final child = children[index];
-                      final stats = _getChildWeekStats(child.id, fp);
                       final noteData = _weeklyNotes[child.id] ?? {};
                       final note = (noteData['note'] as int?) ??
-                          _suggestedNote(stats);
-                      final validated =
-                          (noteData['validated'] as bool?) ?? false;
+                          _suggestedNote(child.id);
+                      final validated = (noteData['validated'] as bool?) ?? false;
+                      final behavior = (noteData['behavior']
+                          as Map<String, dynamic>?) ?? {};
 
                       return _ChildNoteCard(
                         child: child,
-                        stats: stats,
+                        stats: _getChildWeekStats(child.id, fp),
                         currentNote: note,
-                        comment: (noteData['comment'] as String?) ?? '',
+                        behavior: behavior,
                         aiNote: noteData['aiNote'] as int?,
-                        aiAppreciation:
-                            noteData['aiAppreciation'] as String?,
+                        aiAppreciation: noteData['aiAppreciation'] as String?,
                         validated: validated,
-                        pointsAwarded:
-                            noteData['pointsAwarded'] as int?,
-                        loading: _loading,
+                        pointsAwarded: noteData['pointsAwarded'] as int?,
+                        isEvaluating: _evaluatingChildren.contains(child.id),
                         onNoteChanged: (newNote) async {
                           setState(() {
                             _weeklyNotes[child.id] ??= {};
@@ -342,10 +440,11 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
                           });
                           await _saveWeekNotes();
                         },
-                        onCommentChanged: (newComment) async {
+                        onBehaviorChanged: (qId, value) async {
                           setState(() {
                             _weeklyNotes[child.id] ??= {};
-                            _weeklyNotes[child.id]!['comment'] = newComment;
+                            _weeklyNotes[child.id]!['behavior'] ??= {};
+                            _weeklyNotes[child.id]!['behavior'][qId] = value;
                           });
                           await _saveWeekNotes();
                         },
@@ -453,34 +552,34 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
 }
 
 // ════════════════════════════════════════════════════════════════
-// CARTE NOTE PAR ENFANT — rapide à remplir
+// CARTE NOTE PAR ENFANT
 // ════════════════════════════════════════════════════════════════
 class _ChildNoteCard extends StatelessWidget {
   final ChildModel child;
   final Map<String, int> stats;
   final int currentNote;
-  final String comment;
+  final Map<String, dynamic> behavior;
   final int? aiNote;
   final String? aiAppreciation;
   final bool validated;
   final int? pointsAwarded;
-  final bool loading;
+  final bool isEvaluating;
   final ValueChanged<int> onNoteChanged;
-  final ValueChanged<String> onCommentChanged;
+  final void Function(String qId, int value) onBehaviorChanged;
   final VoidCallback onEvaluate;
 
   const _ChildNoteCard({
     required this.child,
     required this.stats,
     required this.currentNote,
-    required this.comment,
+    required this.behavior,
     required this.aiNote,
     required this.aiAppreciation,
     required this.validated,
     required this.pointsAwarded,
-    required this.loading,
+    required this.isEvaluating,
     required this.onNoteChanged,
-    required this.onCommentChanged,
+    required this.onBehaviorChanged,
     required this.onEvaluate,
   });
 
@@ -517,161 +616,179 @@ class _ChildNoteCard extends StatelessWidget {
                 ? EmeraldPalette.emerald.withValues(alpha: 0.5)
                 : noteColor.withValues(alpha: 0.25)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: ExpansionTile(
+        initiallyExpanded: !validated,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        backgroundColor: Colors.transparent,
+        collapsedBackgroundColor: Colors.transparent,
+        title: Row(
           children: [
-            // ── Header : enfant + note ──
+            Text(child.avatar.isNotEmpty ? child.avatar : '👤',
+                style: const TextStyle(fontSize: 26)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(child.name,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800)),
+            ),
+            if (validated) ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: EmeraldPalette.emerald.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('+$points pts',
+                    style: const TextStyle(
+                        color: EmeraldPalette.emeraldLight,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.check_circle,
+                  color: EmeraldPalette.emerald, size: 20),
+            ] else ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: noteColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                  border:
+                      Border.all(color: noteColor.withValues(alpha: 0.4)),
+                ),
+                child: Text('$currentNote/20',
+                    style: TextStyle(
+                        color: noteColor,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900)),
+              ),
+            ],
+          ],
+        ),
+        children: [
+          if (!validated) ...[
+            // ── Sélecteur de note ──
             Row(
               children: [
-                Text(child.avatar.isNotEmpty ? child.avatar : '👤',
-                    style: const TextStyle(fontSize: 28)),
-                const SizedBox(width: 10),
+                const Text('Note :',
+                    style: TextStyle(color: Colors.white54, fontSize: 13)),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(child.name,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800)),
+                  child: Slider(
+                    value: currentNote.toDouble().clamp(0, 20),
+                    min: 0,
+                    max: 20,
+                    divisions: 20,
+                    activeColor: noteColor,
+                    label:
+                        '$currentNote/20 (+${_noteToPoints(currentNote)} pts)',
+                    onChanged: (v) => onNoteChanged(v.round()),
+                  ),
                 ),
-                if (validated) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: EmeraldPalette.emerald.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text('+$points pts',
-                        style: const TextStyle(
-                            color: EmeraldPalette.emeraldLight,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800)),
-                  ),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.check_circle,
-                      color: EmeraldPalette.emerald, size: 20),
-                ] else ...[
-                  // Note sur 20
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: noteColor.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: noteColor.withValues(alpha: 0.4)),
-                    ),
-                    child: Text('$currentNote/20',
-                        style: TextStyle(
-                            color: noteColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900)),
-                  ),
-                ],
               ],
             ),
 
-            if (!validated) ...[
-              const SizedBox(height: 14),
-
-              // ── Sélecteur de note rapide (slider) ──
-              Row(
+            // ── Stats semaine ──
+            const SizedBox(height: 4),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: EmeraldPalette.surfaceLow,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  const Text('Note :',
-                      style: TextStyle(color: Colors.white54, fontSize: 13)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Slider(
-                      value: currentNote.toDouble(),
-                      min: 0,
-                      max: 20,
-                      divisions: 20,
-                      activeColor: noteColor,
-                      label: '$currentNote/20 (+${_noteToPoints(currentNote)} pts)',
-                      onChanged: (v) => onNoteChanged(v.round()),
-                    ),
-                  ),
+                  _StatChip('✅', '${stats['bonusCount']}',
+                      '+${stats['bonusPts']}', EmeraldPalette.emeraldLight),
+                  _StatChip('⚠️', '${stats['penaltyCount']}',
+                      '-${stats['penaltyPts']}', Colors.redAccent),
+                  _StatChip('🛡️', '${stats['immunities']}', 'immu',
+                      Colors.blueAccent),
+                  _StatChip('📝', '${stats['punishments']}', 'punis',
+                      Colors.deepOrange),
+                  _StatChip('📊', '${stats['net']}', 'net',
+                      EmeraldPalette.gold),
                 ],
               ),
+            ),
 
-              // ── Stats de la semaine ──
-              const SizedBox(height: 8),
+            // ── Questions comportement ──
+            const SizedBox(height: 12),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('🧠 Comportement de la semaine',
+                  style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(height: 6),
+            ..._behaviorQuestions.map((q) {
+              final val = (behavior[q.id] as num?)?.toDouble() ?? 3.0;
+              return _BehaviorSlider(
+                question: q,
+                value: val,
+                onChanged: (v) => onBehaviorChanged(q.id, v.round()),
+              );
+            }),
+
+            // ── Points ──
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.stars_rounded,
+                    color: EmeraldPalette.gold, size: 18),
+                const SizedBox(width: 6),
+                Text('Bonus : +$points pts',
+                    style: const TextStyle(
+                        color: EmeraldPalette.goldLight,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800)),
+              ],
+            ),
+
+            // ── IA ──
+            if (aiNote != null || aiAppreciation != null) ...[
+              const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: EmeraldPalette.surfaceLow,
-                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.deepPurple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: Colors.deepPurpleAccent.withValues(alpha: 0.3)),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _StatChip(
-                        '✅', '${stats['bonusCount']}', '+${stats['bonusPts']}',
-                        EmeraldPalette.emeraldLight),
-                    _StatChip(
-                        '⚠️', '${stats['penaltyCount']}', '-${stats['penaltyPts']}',
-                        Colors.redAccent),
-                    _StatChip(
-                        '🛡️', '${stats['immunities']}', 'immu',
-                        Colors.blueAccent),
-                    _StatChip(
-                        '📊', '${stats['net']}', 'net',
-                        EmeraldPalette.gold),
-                  ],
-                ),
-              ),
-
-              // ── Points à attribuer ──
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.stars_rounded,
-                      color: EmeraldPalette.gold, size: 18),
-                  const SizedBox(width: 6),
-                  Text('Bonus : +$points pts',
-                      style: const TextStyle(
-                          color: EmeraldPalette.goldLight,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800)),
-                ],
-              ),
-
-              // ── IA note (si évaluée) ──
-              if (aiNote != null) ...[
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.deepPurple.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: Colors.deepPurpleAccent.withValues(alpha: 0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        const Icon(Icons.auto_awesome_rounded,
-                            color: Colors.deepPurpleAccent, size: 16),
-                        const SizedBox(width: 6),
+                    Row(children: [
+                      const Icon(Icons.auto_awesome_rounded,
+                          color: Colors.deepPurpleAccent, size: 16),
+                      const SizedBox(width: 6),
+                      if (aiNote != null)
                         Text('IA : $aiNote/20',
                             style: const TextStyle(
                                 color: Colors.deepPurpleAccent,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13)),
-                        const Spacer(),
+                      const Spacer(),
+                      if (aiNote != null)
                         GestureDetector(
                           onTap: () => onNoteChanged(aiNote!),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color:
-                                  Colors.deepPurpleAccent.withValues(alpha: 0.2),
+                              color: Colors.deepPurpleAccent
+                                  .withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Text('Appliquer',
@@ -681,42 +798,122 @@ class _ChildNoteCard extends StatelessWidget {
                                     fontWeight: FontWeight.w600)),
                           ),
                         ),
-                      ]),
-                      if (aiAppreciation != null) ...[
-                        const SizedBox(height: 6),
-                        Text(aiAppreciation!,
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 12),
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis),
-                      ],
+                    ]),
+                    if (aiAppreciation != null) ...[
+                      const SizedBox(height: 6),
+                      Text(aiAppreciation!,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12),
+                          maxLines: 6,
+                          overflow: TextOverflow.ellipsis),
                     ],
-                  ),
-                ),
-              ],
-
-              // ── Bouton évaluer IA ──
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: loading ? null : onEvaluate,
-                  icon: loading
-                      ? const SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2,
-                              color: Colors.deepPurpleAccent))
-                      : const Icon(Icons.auto_awesome_rounded,
-                          color: Colors.deepPurpleAccent, size: 18),
-                  label: Text(
-                      aiNote == null ? 'Évaluer avec IA' : 'Réévaluer',
-                      style: const TextStyle(
-                          color: Colors.deepPurpleAccent, fontSize: 12)),
+                  ],
                 ),
               ),
             ],
+
+            // ── Bouton évaluer IA ──
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: isEvaluating ? null : onEvaluate,
+                icon: isEvaluating
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2,
+                            color: Colors.deepPurpleAccent))
+                    : const Icon(Icons.auto_awesome_rounded,
+                        color: Colors.deepPurpleAccent, size: 18),
+                label: Text(
+                    isEvaluating
+                        ? 'Évaluation...'
+                        : (aiNote == null
+                            ? 'Évaluer avec IA'
+                            : 'Réévaluer avec IA'),
+                    style: const TextStyle(
+                        color: Colors.deepPurpleAccent, fontSize: 12)),
+              ),
+            ),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Slider comportement (1 à 5) ───────────────────────────────
+class _BehaviorSlider extends StatelessWidget {
+  final BehaviorQuestion question;
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  const _BehaviorSlider({
+    required this.question,
+    required this.value,
+    required this.onChanged,
+  });
+
+  String get _label {
+    if (value >= 4.5) return question.positiveLabel;
+    if (value <= 2.5) return question.negativeLabel;
+    return 'Moyen';
+  }
+
+  Color get _color {
+    if (value >= 4) return EmeraldPalette.emerald;
+    if (value >= 3) return EmeraldPalette.gold;
+    if (value >= 2) return Colors.orange;
+    return Colors.redAccent;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Text(question.emoji, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(question.question,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 12)),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('${value.round()}/5',
+                  style: TextStyle(
+                      color: _color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ]),
+          const SizedBox(height: 2),
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 4,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+              activeTrackColor: _color,
+              inactiveTrackColor: Colors.white12,
+            ),
+            child: Slider(
+              value: value,
+              min: 1,
+              max: 5,
+              divisions: 4,
+              label: _label,
+              onChanged: onChanged,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -735,13 +932,13 @@ class _StatChip extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 16)),
+        Text(emoji, style: const TextStyle(fontSize: 14)),
         const SizedBox(height: 2),
         Text(value,
             style: TextStyle(
-                color: color, fontSize: 14, fontWeight: FontWeight.w800)),
+                color: color, fontSize: 13, fontWeight: FontWeight.w800)),
         Text(sub,
-            style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 10)),
+            style: TextStyle(color: color.withValues(alpha: 0.6), fontSize: 9)),
       ],
     );
   }
