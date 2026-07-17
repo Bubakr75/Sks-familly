@@ -249,58 +249,78 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
     try {
       final result = await GeminiService.chatFamilyAssistant(
         message:
-          'Tu es un psychologue de l\'éducation qui évalue la semaine de ${child.name}.\n\n'
-          'STATISTIQUES DE LA SEMAINE (hors achats/temps écran):\n'
+          'Tu es un psychologue de l\'éducation. Évalue la semaine de ${child.name} UNIQUEMENT à partir des données ci-dessous.\n\n'
+          'DONNÉES DE LA SEMAINE:\n'
           '- Bonus obtenus: ${stats['bonusCount']} (${stats['bonusPts']} pts)\n'
           '- Pénalités: ${stats['penaltyCount']} (${stats['penaltyPts']} pts)\n'
           '- Immunités gagnées (bon comportement): ${stats['immunities']}\n'
           '- Punitions: ${stats['punishments']}\n'
-          '- Net points: ${stats['net']}\n\n'
-          'COMPORTEMENT (noté par le parent sur 5):\n'
+          '- Points nets: ${stats['net']}\n\n'
+          'COMPORTEMENT (évalué par le parent sur 5):\n'
           '$behaviorText\n\n'
-          'IMPORTANT: La note que propose l\'application est $currentNote/20. '
-          'Ta note DOIT être comprise entre ${(currentNote - 2).clamp(0, 20)} et ${(currentNote + 2).clamp(0, 20)}. '
-          'Ne t\'en éloigne pas de plus de 2 points.\n\n'
-          'FORMAT DE RÉPONSE EXACT:\n'
-          'NOTE: X/20\n'
-          'APPRECIATION: (2 phrases max, ton bienveillant de psychologue)\n'
-          'CONSEIL PARENT: (1 phrase actionable pour le parent)\n'
-          'CONSEIL ENFANT: (1 phrase d\'encouragement directement adressée à ${child.name})',
+          'BARÈME POUR TA NOTE SUR 20:\n'
+          '- Beaucoup de bonus, peu de pénalités, bon comportement (4-5/5) = 16 à 20\n'
+          '- Plus de bonus que de pénalités, comportement correct (3/5) = 12 à 15\n'
+          '- Autant de bonus que de pénalités, comportement moyen = 8 à 11\n'
+          '- Plus de pénalités, comportement à améliorer (1-2/5) = 4 à 7\n'
+          '- Beaucoup de punitions et pénalités = 0 à 3\n\n'
+          'Calcule TA note toi-même à partir de ces données. Ne recopie pas une note qu\'on te donnerait.\n\n'
+          'FORMAT EXACT (respecte les mots clés):\n'
+          'NOTE: X\n'
+          'APPRECIATION: ton appréciation en 2 phrases, style psychologue bienveillant\n'
+          'CONSEIL PARENT: un conseil concret pour le parent\n'
+          'MOT POUR ENFANT: un message d\'encouragement pour ${child.name}',
         familyContext: 'Évaluation comportementale hebdomadaire de ${child.name}',
       );
 
-      // Extraire la note depuis le format "NOTE: X/20"
+      // Si l'IA n'est pas configurée, on garde la note suggérée
+      if (result.contains('n\'est pas configuré') || result.isEmpty) {
+        setState(() {
+          _evaluatingChildren.remove(child.id);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('⚠️ IA non disponible. Note suggérée : $currentNote/20'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Extraire la note depuis "NOTE: X"
       final noteMatch = RegExp(r'NOTE:\s*(\d{1,2})', caseSensitive: false).firstMatch(result);
-      int? aiNote;
+      int aiNote = currentNote; // fallback
       if (noteMatch != null) {
         final parsed = int.tryParse(noteMatch.group(1)!);
         if (parsed != null && parsed >= 0 && parsed <= 20) {
           aiNote = parsed;
         }
       }
-      // 🔒 Sécurité : si l'IA donne une note absurde, on garde la note suggérée
-      aiNote ??= currentNote;
-      // 🔒 Clamp : ne pas s'éloigner de plus de 3 points de la note suggérée
-      if ((aiNote - currentNote).abs() > 3) {
-        aiNote = (currentNote + (aiNote > currentNote ? 3 : -3)).clamp(0, 20);
+
+      // Parser les sections avec un regex simple
+      String extractSection(String startKeyword, [String? endKeyword]) {
+        final startIdx = result.indexOf(startKeyword);
+        if (startIdx == -1) return '';
+        final contentStart = startIdx + startKeyword.length;
+        int endIdx = result.length;
+        if (endKeyword != null) {
+          final endMatch = result.indexOf(endKeyword, contentStart);
+          if (endMatch != -1) endIdx = endMatch;
+        }
+        return result.substring(contentStart, endIdx).trim();
       }
 
-      // Parser les sections
-      String? extractSection(String name) {
-        final m = RegExp('$name:\\s*(.+?)(?=\\n\\w+:|\$)',
-            caseSensitive: false, dotAll: true).firstMatch(result);
-        return m?.group(1)?.trim();
-      }
-
-      final appreciation = extractSection('APPRECIATION') ?? '';
-      final conseilParent = extractSection('CONSEIL PARENT') ?? '';
-      final conseilEnfant = extractSection('CONSEIL ENFANT') ?? '';
+      final appreciation = extractSection('APPRECIATION:', 'CONSEIL PARENT:');
+      final conseilParent = extractSection('CONSEIL PARENT:', 'MOT POUR ENFANT:');
+      final motEnfant = extractSection('MOT POUR ENFANT:');
 
       // Construire le texte complet structuré
       final fullText = StringBuffer();
       if (appreciation.isNotEmpty) fullText.writeln('💬 $appreciation');
       if (conseilParent.isNotEmpty) fullText.writeln('\n👨‍👩‍👧 Conseil parent : $conseilParent');
-      if (conseilEnfant.isNotEmpty) fullText.writeln('\n👦👧 À ${child.name} : $conseilEnfant');
+      if (motEnfant.isNotEmpty) fullText.writeln('\n👦 À ${child.name} : $motEnfant');
       if (fullText.isEmpty) fullText.write(result);
 
       setState(() {
