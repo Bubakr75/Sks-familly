@@ -40,49 +40,91 @@ class GeminiService {
     ];
   }
 
-  // 'positive': index 0 = meilleur, index max = pire
-  // 'negative': index 0 = pire, index max = meilleur
-  static const List<String> _questionSense = [
-    'negative', // Q1: repeter erreurs: Jamais(idx0)=bon
-    'positive', // Q2: comportement freres: Toujours(idx0)=bon
-    'positive', // Q3: respect parents: Toujours(idx0)=bon
-    'negative', // Q4: gros mots: Jamais(idx0)=bon
-    'positive', // Q5: attitude: Excellente(idx0)=bon
-    'negative', // Q6: bouder: Jamais(idx0)=bon
-    'positive', // Q7: rendre service: Souvent(idx0)=bon
-    'positive', // Q8: acte fraternel: Oui(idx0)=bon
-    'positive', // Q9: gestion disputes: Tres bien(idx0)=bon
-    'positive', // Q10: devoirs: Toujours(idx0)=bon
-  ];
+  /// Calcule une note normalisée sur 20.
+  ///
+  /// Chaque question peut définir :
+  /// - `correctIndex` : index de la meilleure réponse ;
+  /// - `weight` : poids facultatif, 1.0 par défaut.
+  ///
+  /// Les réponses peuvent être fournies sous forme d'index ou de texte.
+  /// Une réponse absente ou invalide rapporte zéro point.
+  static int calculateScore(
+    List<Map<String, dynamic>> questions,
+    List<dynamic> answers,
+  ) {
+    if (questions.isEmpty) return 0;
 
-  static int calculateScore(List<Map<String, dynamic>> questions, List<dynamic> answers) {
-    if (questions.isEmpty) return 10;
-    double total = 0;
-    for (int i = 0; i < questions.length && i < answers.length; i++) {
-      final val = answers[i];
-      int idx = 0;
-      if (val is num) {
-        idx = val.toInt();
-      } else if (val is String) {
-        final opts = questions[i]['answers'] as List<dynamic>? ?? [];
-        idx = opts.indexOf(val);
-        if (idx < 0) idx = 0;
+    double earnedWeight = 0;
+    double totalWeight = 0;
+
+    for (int i = 0; i < questions.length; i++) {
+      final question = questions[i];
+      final rawOptions = question['answers'];
+
+      if (rawOptions is! List || rawOptions.length < 2) {
+        continue;
       }
-      final List<dynamic> opts = questions[i]['answers'] as List<dynamic>? ?? [];
-      final int n = opts.isNotEmpty ? opts.length - 1 : 3;
-      if (n <= 0) continue;
-      final sense = i < _questionSense.length ? _questionSense[i] : 'positive';
-      double points;
-      if (sense == 'negative') {
-        // index 0 = bonne reponse (Jamais/Non), index max = mauvaise (Toujours)
-        points = idx * (20.0 / (n * questions.length));
-      } else {
-        // index 0 = bonne reponse (Toujours/Excellente), index max = mauvaise
-        points = (n - idx) * (20.0 / (n * questions.length));
+
+      final options = List<dynamic>.from(rawOptions);
+
+      final rawWeight = question['weight'];
+      final double weight =
+          rawWeight is num && rawWeight > 0 ? rawWeight.toDouble() : 1.0;
+
+      totalWeight += weight;
+
+      if (i >= answers.length || answers[i] == null) {
+        continue;
       }
-      total += points;
+
+      final answer = answers[i];
+      int? answerIndex;
+
+      if (answer is num) {
+        answerIndex = answer.toInt();
+      } else if (answer is String) {
+        final index = options.indexOf(answer);
+
+        if (index >= 0) {
+          answerIndex = index;
+        }
+      }
+
+      if (answerIndex == null ||
+          answerIndex < 0 ||
+          answerIndex >= options.length) {
+        continue;
+      }
+
+      final rawCorrectIndex = question['correctIndex'];
+      int correctIndex = rawCorrectIndex is num ? rawCorrectIndex.toInt() : 0;
+
+      if (correctIndex < 0 || correctIndex >= options.length) {
+        correctIndex = 0;
+      }
+
+      final lastIndex = options.length - 1;
+      final leftDistance = correctIndex;
+      final rightDistance = lastIndex - correctIndex;
+      final maxDistance =
+          leftDistance > rightDistance ? leftDistance : rightDistance;
+
+      if (maxDistance <= 0) {
+        continue;
+      }
+
+      final distance = (answerIndex - correctIndex).abs();
+
+      final ratio = (1.0 - (distance / maxDistance)).clamp(0.0, 1.0).toDouble();
+
+      earnedWeight += ratio * weight;
     }
-    return total.round().clamp(0, 20);
+
+    if (totalWeight <= 0) return 0;
+
+    final normalizedScore = (earnedWeight / totalWeight) * 20;
+
+    return normalizedScore.round().clamp(0, 20).toInt();
   }
 
   static String _extract(String text, String key) {
