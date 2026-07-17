@@ -249,8 +249,8 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
     try {
       final result = await GeminiService.chatFamilyAssistant(
         message:
-          'Tu es un enseignant qui évalue la semaine de ${child.name}.\n\n'
-          'STATISTIQUES DE LA SEMAINE:\n'
+          'Tu es un psychologue de l\'éducation qui évalue la semaine de ${child.name}.\n\n'
+          'STATISTIQUES DE LA SEMAINE (hors achats/temps écran):\n'
           '- Bonus obtenus: ${stats['bonusCount']} (${stats['bonusPts']} pts)\n'
           '- Pénalités: ${stats['penaltyCount']} (${stats['penaltyPts']} pts)\n'
           '- Immunités gagnées (bon comportement): ${stats['immunities']}\n'
@@ -258,29 +258,55 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
           '- Net points: ${stats['net']}\n\n'
           'COMPORTEMENT (noté par le parent sur 5):\n'
           '$behaviorText\n\n'
-          'Note que tu proposes: $currentNote/20\n\n'
-          'TACHE: Donne ta note sur 20 (juste le chiffre sur la première ligne), '
-          'puis une appréciation constructive de 2-3 phrases.',
-        familyContext: 'Évaluation scolaire hebdomadaire',
+          'IMPORTANT: La note que propose l\'application est $currentNote/20. '
+          'Ta note DOIT être comprise entre ${(currentNote - 2).clamp(0, 20)} et ${(currentNote + 2).clamp(0, 20)}. '
+          'Ne t\'en éloigne pas de plus de 2 points.\n\n'
+          'FORMAT DE RÉPONSE EXACT:\n'
+          'NOTE: X/20\n'
+          'APPRECIATION: (2 phrases max, ton bienveillant de psychologue)\n'
+          'CONSEIL PARENT: (1 phrase actionable pour le parent)\n'
+          'CONSEIL ENFANT: (1 phrase d\'encouragement directement adressée à ${child.name})',
+        familyContext: 'Évaluation comportementale hebdomadaire de ${child.name}',
       );
 
-      // Extraire la note (premier chiffre de la première ligne)
-      final lines = result.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      // Extraire la note depuis le format "NOTE: X/20"
+      final noteMatch = RegExp(r'NOTE:\s*(\d{1,2})', caseSensitive: false).firstMatch(result);
       int? aiNote;
-      if (lines.isNotEmpty) {
-        final match = RegExp(r'(\d{1,2})').firstMatch(lines.first);
-        if (match != null) {
-          final parsed = int.tryParse(match.group(1)!);
-          if (parsed != null && parsed >= 0 && parsed <= 20) {
-            aiNote = parsed;
-          }
+      if (noteMatch != null) {
+        final parsed = int.tryParse(noteMatch.group(1)!);
+        if (parsed != null && parsed >= 0 && parsed <= 20) {
+          aiNote = parsed;
         }
       }
+      // 🔒 Sécurité : si l'IA donne une note absurde, on garde la note suggérée
+      aiNote ??= currentNote;
+      // 🔒 Clamp : ne pas s'éloigner de plus de 3 points de la note suggérée
+      if ((aiNote - currentNote).abs() > 3) {
+        aiNote = (currentNote + (aiNote > currentNote ? 3 : -3)).clamp(0, 20);
+      }
+
+      // Parser les sections
+      String? extractSection(String name) {
+        final m = RegExp('$name:\\s*(.+?)(?=\\n\\w+:|\$)',
+            caseSensitive: false, dotAll: true).firstMatch(result);
+        return m?.group(1)?.trim();
+      }
+
+      final appreciation = extractSection('APPRECIATION') ?? '';
+      final conseilParent = extractSection('CONSEIL PARENT') ?? '';
+      final conseilEnfant = extractSection('CONSEIL ENFANT') ?? '';
+
+      // Construire le texte complet structuré
+      final fullText = StringBuffer();
+      if (appreciation.isNotEmpty) fullText.writeln('💬 $appreciation');
+      if (conseilParent.isNotEmpty) fullText.writeln('\n👨‍👩‍👧 Conseil parent : $conseilParent');
+      if (conseilEnfant.isNotEmpty) fullText.writeln('\n👦👧 À ${child.name} : $conseilEnfant');
+      if (fullText.isEmpty) fullText.write(result);
 
       setState(() {
         _weeklyNotes[child.id] ??= {};
-        _weeklyNotes[child.id]!['aiNote'] = aiNote ?? currentNote;
-        _weeklyNotes[child.id]!['aiAppreciation'] = result;
+        _weeklyNotes[child.id]!['aiNote'] = aiNote;
+        _weeklyNotes[child.id]!['aiAppreciation'] = fullText.toString().trim();
       });
       await _saveWeekNotes();
     } catch (e) {
@@ -362,7 +388,7 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
       backgroundColor: EmeraldPalette.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('📚 Notes de la semaine',
+        title: const Text('📚 Notes Comportementales',
             style: TextStyle(
                 color: EmeraldPalette.textPrimary,
                 fontWeight: FontWeight.bold)),
@@ -601,6 +627,86 @@ class _ChildNoteCard extends StatelessWidget {
     return 10;
   }
 
+  void _showFullAppreciation(BuildContext context, String childName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF0F2620),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurpleAccent.withValues(alpha: 0.15),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.auto_awesome_rounded,
+                      color: Colors.deepPurpleAccent, size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Évaluation IA - $childName',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                  if (aiNote != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurpleAccent.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('$aiNote/20',
+                          style: const TextStyle(
+                              color: Colors.deepPurpleAccent,
+                              fontWeight: FontWeight.w800)),
+                    ),
+                ]),
+              ),
+              // Contenu
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    aiAppreciation ?? '',
+                    style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+                  ),
+                ),
+              ),
+              // Bouton fermer
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurpleAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Fermer', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final noteColor = _noteColor(currentNote);
@@ -821,11 +927,40 @@ class _ChildNoteCard extends StatelessWidget {
                     ]),
                     if (aiAppreciation != null) ...[
                       const SizedBox(height: 6),
-                      Text(aiAppreciation!,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12),
-                          maxLines: 6,
-                          overflow: TextOverflow.ellipsis),
+                      GestureDetector(
+                        onTap: () => _showFullAppreciation(context, child.name),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurple.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(aiAppreciation!,
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 12),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 4),
+                              const Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text('Lire tout',
+                                      style: TextStyle(
+                                          color: Colors.deepPurpleAccent,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600)),
+                                  Icon(Icons.expand_more,
+                                      color: Colors.deepPurpleAccent, size: 14),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ],
                 ),

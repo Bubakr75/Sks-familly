@@ -278,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             itemCount: history.length,
                             itemBuilder: (_, i) {
                               final entry = history[i];
-                              final isPositive = entry.points >= 0;
+                              final isPositive = entry.isBonus;
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: GlassCard(
@@ -880,7 +880,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 if (isParent)
                   _drawerItem(
                     icon: Icons.school_rounded,
-                    label: 'Notes Scolaires',
+                    label: 'Notes Comportementales',
                     color: Colors.orangeAccent,
                     onTap: () {
                       Navigator.pop(context);

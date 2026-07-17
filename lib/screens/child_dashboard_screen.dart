@@ -1782,7 +1782,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     final cat   = _categoryColor(e);
     final emoji = _categoryEmoji(e);
     final pts   = e.points;
-    final sign  = pts >= 0 ? '+' : '';
+    // 🔒 Utiliser isBonus (pas pts >= 0 qui est toujours vrai)
+    final isBonus = e.isBonus;
+    final sign  = isBonus ? '+' : '-';
+    final ptsLabel = isBonus ? '$sign$pts pts' : '$sign$pts pts';
 
     // Formatage date
     final now   = DateTime.now();
@@ -1827,9 +1830,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           fontSize: 13),
                       overflow: TextOverflow.ellipsis),
                 ),
-                Text('$sign$pts pts bonus',
+                Text(isBonus ? '+$pts pts' : '-$pts pts',
                     style: TextStyle(
-                        color:      pts >= 0 ? Colors.greenAccent : Colors.redAccent,
+                        color:      isBonus ? Colors.greenAccent : Colors.redAccent,
                         fontWeight: FontWeight.bold,
                         fontSize:   14)),
               ]),
