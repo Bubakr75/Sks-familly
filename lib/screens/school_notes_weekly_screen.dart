@@ -647,83 +647,143 @@ class _ChildNoteCard extends StatelessWidget {
   }
 
   void _showFullAppreciation(BuildContext context, String childName) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0F2620),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.7,
-            maxWidth: MediaQuery.of(context).size.width * 0.9,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.deepPurpleAccent.withValues(alpha: 0.15),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.auto_awesome_rounded,
-                      color: Colors.deepPurpleAccent, size: 24),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text('Évaluation IA - $childName',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
-                  ),
-                  if (aiNote != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurpleAccent.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text('$aiNote/20',
-                          style: const TextStyle(
-                              color: Colors.deepPurpleAccent,
-                              fontWeight: FontWeight.w800)),
-                    ),
-                ]),
-              ),
-              // Contenu
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    aiAppreciation ?? '',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
-                  ),
-                ),
-              ),
-              // Bouton fermer
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurpleAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Fermer', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0F2620),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Poignée
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: Row(children: [
+                      const Icon(Icons.auto_awesome_rounded,
+                          color: Colors.deepPurpleAccent, size: 24),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text('Évaluation IA - $childName',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                      if (aiNote != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurpleAccent.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text('$aiNote/20',
+                              style: const TextStyle(
+                                  color: Colors.deepPurpleAccent,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16)),
+                        ),
+                    ]),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  // Contenu scrollable — pas de limite de lignes
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: _buildAppreciationWidgets(childName),
+                      ),
+                    ),
+                  ),
+                  // Bouton fermer
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurpleAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Fermer', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  /// Construit les widgets du commentaire avec mise en forme par section
+  List<Widget> _buildAppreciationWidgets(String childName) {
+    final text = aiAppreciation ?? '';
+    final widgets = <Widget>[];
+
+    // Découper par sections (💬, 👨‍👩‍👧, 👦)
+    final lines = text.split('\n');
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      IconData? icon;
+      Color? color;
+      if (trimmed.startsWith('💬')) { icon = Icons.chat_bubble_outline; color = Colors.white; }
+      else if (trimmed.startsWith('👨') || trimmed.startsWith('👨‍👩‍👧')) { icon = Icons.family_restroom; color = Colors.lightBlueAccent; }
+      else if (trimmed.startsWith('👦')) { icon = Icons.child_care; color = Colors.orangeAccent; }
+
+      if (icon != null) {
+        widgets.add(const SizedBox(height: 12));
+        widgets.add(Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                trimmed.substring(trimmed.indexOf(' ') + 1),
+                style: TextStyle(color: color ?? Colors.white70, fontSize: 14, height: 1.5),
+              ),
+            ),
+          ],
+        ));
+      } else {
+        widgets.add(Text(trimmed,
+            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5)));
+      }
+    }
+    if (widgets.isEmpty) {
+      widgets.add(Text(text,
+          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5)));
+    }
+    return widgets;
   }
 
   @override
