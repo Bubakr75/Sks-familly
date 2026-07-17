@@ -24,6 +24,7 @@ import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'shop_admin_screen.dart';
 import 'school_notes_screen.dart';
+import 'school_notes_weekly_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
 import 'balance_screen.dart'; // â† NOUVEAU
@@ -884,13 +885,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     onTap: () {
                       Navigator.pop(context);
                       PinGuard.guardAction(context, () {
-                        _showChildPicker(context, (child) {
-                          Navigator.push(
-                            context,
-                            SlidePageRoute(
-                                page: SchoolNotesScreen(childId: child.id, childName: child.name, childAge: child.streakDays ?? 10)),
-                          );
-                        });
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(
+                              page: const SchoolNotesWeeklyScreen()),
+                        );
                       });
                     },
                   ),
