@@ -672,23 +672,43 @@ class _ChildNoteCard extends StatelessWidget {
         ),
         children: [
           if (!validated) ...[
-            // ── Sélecteur de note ──
+            // ── Sélecteur de note (boutons +/− au lieu de slider) ──
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Note :',
-                    style: TextStyle(color: Colors.white54, fontSize: 13)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Slider(
-                    value: currentNote.toDouble().clamp(0, 20),
-                    min: 0,
-                    max: 20,
-                    divisions: 20,
-                    activeColor: noteColor,
-                    label:
-                        '$currentNote/20 (+${_noteToPoints(currentNote)} pts)',
-                    onChanged: (v) => onNoteChanged(v.round()),
+                IconButton(
+                  onPressed: () => onNoteChanged((currentNote - 1).clamp(0, 20)),
+                  icon: const Icon(Icons.remove_circle_outline,
+                      color: Colors.white54, size: 32),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: noteColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: noteColor.withValues(alpha: 0.4)),
                   ),
+                  child: Column(
+                    children: [
+                      Text('$currentNote/20',
+                          style: TextStyle(
+                              color: noteColor,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900)),
+                      Text('+${_noteToPoints(currentNote)} pts',
+                          style: TextStyle(
+                              color: noteColor.withValues(alpha: 0.8),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: () => onNoteChanged((currentNote + 1).clamp(0, 20)),
+                  icon: const Icon(Icons.add_circle_outline,
+                      color: Colors.white54, size: 32),
                 ),
               ],
             ),
@@ -842,7 +862,7 @@ class _ChildNoteCard extends StatelessWidget {
   }
 }
 
-// ─── Slider comportement (1 à 5) ───────────────────────────────
+// ─── Sélecteur comportement (5 boutons ronds) ──────────────────
 class _BehaviorSlider extends StatelessWidget {
   final BehaviorQuestion question;
   final double value;
@@ -854,29 +874,30 @@ class _BehaviorSlider extends StatelessWidget {
     required this.onChanged,
   });
 
-  String get _label {
-    if (value >= 4.5) return question.positiveLabel;
-    if (value <= 2.5) return question.negativeLabel;
-    return 'Moyen';
+  Color _colorForLevel(int level) {
+    if (level >= 4) return EmeraldPalette.emerald;
+    if (level == 3) return EmeraldPalette.gold;
+    if (level == 2) return Colors.orange;
+    return Colors.redAccent;
   }
 
-  Color get _color {
-    if (value >= 4) return EmeraldPalette.emerald;
-    if (value >= 3) return EmeraldPalette.gold;
-    if (value >= 2) return Colors.orange;
-    return Colors.redAccent;
+  String get _label {
+    if (value >= 4) return question.positiveLabel;
+    if (value <= 2) return question.negativeLabel;
+    return 'Moyen';
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentLevel = value.round();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(question.emoji, style: const TextStyle(fontSize: 16)),
-            const SizedBox(width: 6),
+            Text(question.emoji, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(question.question,
                   style: const TextStyle(
@@ -886,32 +907,59 @@ class _BehaviorSlider extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: _color.withValues(alpha: 0.15),
+                color: _colorForLevel(currentLevel).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('${value.round()}/5',
+              child: Text(_label,
                   style: TextStyle(
-                      color: _color,
-                      fontSize: 11,
+                      color: _colorForLevel(currentLevel),
+                      fontSize: 10,
                       fontWeight: FontWeight.w700)),
             ),
           ]),
-          const SizedBox(height: 2),
-          SliderTheme(
-            data: SliderThemeData(
-              trackHeight: 4,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-              activeTrackColor: _color,
-              inactiveTrackColor: Colors.white12,
-            ),
-            child: Slider(
-              value: value,
-              min: 1,
-              max: 5,
-              divisions: 4,
-              label: _label,
-              onChanged: onChanged,
-            ),
+          const SizedBox(height: 6),
+          // 5 boutons ronds (1 à 5)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(5, (i) {
+              final level = i + 1;
+              final isSelected = level == currentLevel;
+              final color = _colorForLevel(level);
+              return GestureDetector(
+                onTap: () => onChanged(level.toDouble()),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected ? color : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected ? color : Colors.white24,
+                      width: isSelected ? 0 : 1.5,
+                    ),
+                    boxShadow: isSelected
+                        ? [BoxShadow(
+                            color: color.withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            spreadRadius: 1)]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$level',
+                      style: TextStyle(
+                        color: isSelected
+                            ? const Color(0xFF051410)
+                            : Colors.white54,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
         ],
       ),
