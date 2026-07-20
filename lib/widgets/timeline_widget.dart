@@ -234,9 +234,11 @@ class TimelineWidget extends StatelessWidget {
                         Text(
                           _formatPoints(entry),
                           style: TextStyle(
-                            color: isBonus
-                                ? Colors.greenAccent
-                                : Colors.redAccent,
+                            color: entry.isPurchase
+                                ? Colors.amber
+                                : isBonus
+                                    ? Colors.greenAccent
+                                    : Colors.redAccent,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),

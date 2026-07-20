@@ -1207,7 +1207,7 @@ void _showDailyScoreboard(BuildContext context, FamilyProvider fp) {
                   final bonuses =
                       todayEntries.where((h) => h.isBonus).length;
                   final penalties =
-                      todayEntries.where((h) => !h.isBonus).length;
+                      todayEntries.where((h) => h.isPenalty).length;
                   final notesToday =
                       fp.getHistoryForChild(child.id).where((h) {
                     return h.date.year == today.year &&

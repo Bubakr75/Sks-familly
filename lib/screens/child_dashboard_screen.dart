@@ -1270,7 +1270,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Widget _buildStatsGrid(ChildModel child, FamilyProvider fp, Color color) {
     final history   = fp.history.where((h) => h.childId == child.id).toList();
     final bonuses   = history.where((h) => h.isBonus).length;
-    final penalties = history.where((h) => !h.isBonus).length;
+    final penalties = history.where((h) => h.isPenalty).length;
     return GridView.count(
       shrinkWrap:        true,
       physics:           const NeverScrollableScrollPhysics(),
@@ -1690,7 +1690,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           }).toList();
 
     final bonuses   = allEntries.where((h) => h.isBonus).length;
-    final penalties = allEntries.where((h) => !h.isBonus).length;
+    final penalties = allEntries.where((h) => h.isPenalty).length;
 
     return SingleChildScrollView(
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),

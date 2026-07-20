@@ -828,7 +828,7 @@ class FamilyProvider extends ChangeNotifier {
 
     final hasPenaltyToday = hist.any((h) {
       final d = DateTime(h.date.year, h.date.month, h.date.day);
-      return d == today && !h.isBonus && h.category != 'screen_time_bonus';
+      return d == today && h.isPenalty && h.category != 'screen_time_bonus';
     });
 
     int streak;
@@ -836,7 +836,7 @@ class FamilyProvider extends ChangeNotifier {
       streak = 0;
     } else {
       final lastPenalty = hist
-          .where((h) => !h.isBonus && h.category != 'screen_time_bonus')
+          .where((h) => h.isPenalty && h.category != 'screen_time_bonus')
           .firstOrNull;
       if (lastPenalty == null) {
         final created = child.createdAt;
@@ -902,7 +902,7 @@ class FamilyProvider extends ChangeNotifier {
     final todayStart = DateTime(now.year, now.month, now.day);
     return _history.where((h) {
       if (h.childId != childId) return false;
-      if (h.isBonus != isBonus) return false;
+      if (isBonus ? !h.isBonus : !h.isPenalty) return false;
       // Exclure les catégories spéciales (temps écran, notes école, boutique)
       if (h.category == 'school_note' ||
           h.category == 'screen_time_bonus' ||
@@ -1379,7 +1379,7 @@ class FamilyProvider extends ChangeNotifier {
         h.category != 'tribunal_verdict').toList();
     if (weekEntries.isEmpty) return 10.0;
     final bonusCount   = weekEntries.where((h) => h.isBonus).length;
-    final penaltyCount = weekEntries.where((h) => !h.isBonus).length;
+    final penaltyCount = weekEntries.where((h) => h.isPenalty).length;
     final total        = bonusCount + penaltyCount;
     if (total == 0) return 10.0;
     return ((bonusCount / total) * 20).clamp(0.0, 20.0);
@@ -1429,7 +1429,7 @@ class FamilyProvider extends ChangeNotifier {
     }).toList();
     if (entries.isEmpty) return 10.0;
     final bonusCount   = entries.where((h) => h.isBonus).length;
-    final penaltyCount = entries.where((h) => !h.isBonus).length;
+    final penaltyCount = entries.where((h) => h.isPenalty).length;
     final total        = bonusCount + penaltyCount;
     if (total == 0) return 10.0;
     return ((bonusCount / total) * 20).clamp(0.0, 20.0);
@@ -2015,7 +2015,7 @@ class FamilyProvider extends ChangeNotifier {
     final todayDate = DateTime(today.year, today.month, today.day);
     return _history.where((h) {
       if (h.childId != childId) return false;
-      if (!h.isBonus) return false;
+      if (h.isPenalty) return false;
       if (h.category == 'screen_time_bonus') return false;
       final d = DateTime(h.date.year, h.date.month, h.date.day);
       return d == todayDate;

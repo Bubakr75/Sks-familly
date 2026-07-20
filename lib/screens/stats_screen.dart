@@ -304,7 +304,7 @@ class _StatsScreenState extends State<StatsScreen>
             ),
             const SizedBox(width: 8),
             _summaryChip(
-              '${history.where((h) => !h.isBonus).length}',
+              '${history.where((h) => h.isPenalty).length}',
               '❌ Pénalités',
               Colors.redAccent,
             ),
