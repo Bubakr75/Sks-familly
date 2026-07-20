@@ -890,8 +890,9 @@ class _AddPointsScreenState extends State<AddPointsScreen>
     if (!context.mounted) return;
 
     final isBonus = result['type'] == 'bonus';
-    final points = result['points'] as int;
     final reason = result['reason'] as String;
+    // 📝 Points modifiables par le parent (valeur initiale = proposition IA)
+    final pointsCtrl = TextEditingController(text: (result['points'] as int).toString());
 
     HapticFeedback.mediumImpact();
 
@@ -951,16 +952,64 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                               fontSize: 14, fontWeight: FontWeight.w800,
                             ),
                           ),
-                          const Spacer(),
-                          Text(
-                            '${isBonus ? "+" : "-"}$points pts',
-                            style: TextStyle(
-                              color: isBonus ? Colors.green : Colors.redAccent,
-                              fontSize: 20, fontWeight: FontWeight.w900,
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // 📝 Éditeur de points : - / saisie / + (limites 1-999)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              final cur = int.tryParse(pointsCtrl.text) ?? 1;
+                              if (cur > 1) {
+                                pointsCtrl.text = '${cur - 1}';
+                                setDialog(() {});
+                              }
+                            },
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.white54),
+                          ),
+                          SizedBox(
+                            width: 90,
+                            child: TextField(
+                              controller: pointsCtrl,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isBonus ? Colors.green : Colors.redAccent,
+                                fontSize: 22, fontWeight: FontWeight.w900,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.1),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                isDense: true,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(color: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.4)),
+                                ),
+                                prefixText: isBonus ? '+' : '-',
+                                prefixStyle: TextStyle(color: isBonus ? Colors.green : Colors.redAccent, fontSize: 18, fontWeight: FontWeight.w900),
+                              ),
+                              onChanged: (_) => setDialog(() {}),
                             ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              final cur = int.tryParse(pointsCtrl.text) ?? 1;
+                              if (cur < 999) {
+                                pointsCtrl.text = '${cur + 1}';
+                                setDialog(() {});
+                              }
+                            },
+                            icon: const Icon(Icons.add_circle_outline, color: Colors.white54),
                           ),
                         ],
                       ),
+                      if (() { final v = int.tryParse(pointsCtrl.text); return v == null || v < 1 || v > 999; }())
+                        const Text('Entre 1 et 999 points',
+                            style: TextStyle(color: Colors.redAccent, fontSize: 11),
+                            textAlign: TextAlign.center),
                       const SizedBox(height: 6),
                       Text('"$reason"',
                         style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic),
@@ -1021,33 +1070,39 @@ class _AddPointsScreenState extends State<AddPointsScreen>
                 backgroundColor: isBonus ? Colors.green : Colors.redAccent,
                 foregroundColor: Colors.white,
               ),
-              onPressed: selectedChildId == null ? null : () async {
-                Navigator.pop(ctx);
-                // 📸 Appliquer les points AVEC la photo (sauvegardée pour le bilan)
-                await fp.addPoints(
-                  selectedChildId!,
-                  points,
-                  reason,
-                  category: isBonus ? 'Bonus' : 'Pénalité',
-                  isBonus: isBonus,
-                  proofPhotoBase64: base64Photo,
-                );
-                if (context.mounted) {
-                  HapticFeedback.heavyImpact();
-                  messenger.showSnackBar(SnackBar(
-                    content: Text('${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} appliqué à ${fp.getChild(selectedChildId!)?.name}\n$points pts : "$reason"'),
-                    backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
-                    behavior: SnackBarBehavior.floating,
-                    duration: const Duration(seconds: 4),
-                  ));
-                }
-              },
+              onPressed: (() {
+                final v = int.tryParse(pointsCtrl.text);
+                final valid = v != null && v >= 1 && v <= 999 && selectedChildId != null;
+                return valid ? () async {
+                  final confirmedPoints = v;
+                  Navigator.pop(ctx);
+                  // 📸 Appliquer les points AVEC la photo (sauvegardée pour le bilan)
+                  await fp.addPoints(
+                    selectedChildId!,
+                    confirmedPoints,
+                    reason,
+                    category: isBonus ? 'Bonus' : 'Pénalité',
+                    isBonus: isBonus,
+                    proofPhotoBase64: base64Photo,
+                  );
+                  if (context.mounted) {
+                    HapticFeedback.heavyImpact();
+                    messenger.showSnackBar(SnackBar(
+                      content: Text('${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} appliqué à ${fp.getChild(selectedChildId!)?.name}\n$confirmedPoints pts : "$reason"'),
+                      backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 4),
+                    ));
+                  }
+                } : null;
+              })(),
               child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
       ),
     );
+    pointsCtrl.dispose();
   }
 
   void _showDirectInput(BuildContext context) {
