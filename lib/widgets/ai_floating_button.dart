@@ -125,6 +125,8 @@ class AIFloatingButton extends StatelessWidget {
     int points = result['points'] as int;
     String reason = result['reason'] as String;
     String? selectedChildId;
+    // 📝 Contrôleur pour saisie numérique directe (valeur initiale = IA)
+    final pointsCtrl = TextEditingController(text: points.toString());
 
     HapticFeedback.mediumImpact();
 
@@ -150,11 +152,17 @@ class AIFloatingButton extends StatelessWidget {
               ]),
               const SizedBox(height: 12),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                IconButton(onPressed: () => setDialog(() { if (points > 1) points--; }), icon: const Icon(Icons.remove_circle_outline, color: Colors.white54)),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), decoration: BoxDecoration(color: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
-                  child: Text('${isBonus ? "+" : "-"}$points pts', style: TextStyle(color: isBonus ? Colors.green : Colors.redAccent, fontSize: 20, fontWeight: FontWeight.w800))),
-                IconButton(onPressed: () => setDialog(() { if (points < 50) points++; }), icon: const Icon(Icons.add_circle_outline, color: Colors.white54)),
+                IconButton(onPressed: () { final cur = int.tryParse(pointsCtrl.text) ?? 1; if (cur > 1) { pointsCtrl.text = '${cur - 1}'; setDialog(() => points = cur - 1); } }, icon: const Icon(Icons.remove_circle_outline, color: Colors.white54)),
+                SizedBox(width: 90, child: TextField(controller: pointsCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center,
+                  style: TextStyle(color: isBonus ? Colors.green : Colors.redAccent, fontSize: 20, fontWeight: FontWeight.w800),
+                  decoration: InputDecoration(filled: true, fillColor: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.15), contentPadding: const EdgeInsets.symmetric(vertical: 8), isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: (isBonus ? Colors.green : Colors.redAccent).withValues(alpha: 0.4))),
+                    prefixText: isBonus ? '+' : '-', prefixStyle: TextStyle(color: isBonus ? Colors.green : Colors.redAccent, fontSize: 18, fontWeight: FontWeight.w800)),
+                  onChanged: (v) { final p = int.tryParse(v); if (p != null && p >= 1 && p <= 999) setDialog(() => points = p); })),
+                IconButton(onPressed: () { final cur = int.tryParse(pointsCtrl.text) ?? 1; if (cur < 999) { pointsCtrl.text = '${cur + 1}'; setDialog(() => points = cur + 1); } }, icon: const Icon(Icons.add_circle_outline, color: Colors.white54)),
               ]),
+              if (() { final v = int.tryParse(pointsCtrl.text); return v == null || v < 1 || v > 999; }())
+                const Padding(padding: EdgeInsets.only(top: 4), child: Text('Entre 1 et 999 points', style: TextStyle(color: Colors.redAccent, fontSize: 11), textAlign: TextAlign.center)),
               const SizedBox(height: 8),
               Text('"$reason"', style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic)),
               const SizedBox(height: 16),
@@ -177,29 +185,32 @@ class AIFloatingButton extends StatelessWidget {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler', style: TextStyle(color: Colors.white54))),
             ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: isBonus ? Colors.green : Colors.redAccent, foregroundColor: Colors.white),
-              onPressed: selectedChildId == null ? null : () async {
-                Navigator.pop(ctx);
-                // 📸 On enregistre la photo dans l'historique (pour le bilan du soir)
-                await fp.addPoints(
-                  selectedChildId!,
-                  points,
-                  reason,
-                  category: isBonus ? 'Bonus' : 'Pénalité',
-                  isBonus: isBonus,
-                  proofPhotoBase64: base64Photo,
-                );
-                if (context.mounted) {
-                  HapticFeedback.heavyImpact();
-                  messenger.showSnackBar(SnackBar(
-                    content: Text('${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} pour ${fp.getChild(selectedChildId!)?.name}\n$points pts : "$reason"'),
-                    backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700, behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4)));
-                }
-              },
+              onPressed: (() { final v = int.tryParse(pointsCtrl.text); final valid = v != null && v >= 1 && v <= 999 && selectedChildId != null;
+                return valid ? () async {
+                  final confirmedPoints = v;
+                  Navigator.pop(ctx);
+                  // 📸 On enregistre la photo dans l'historique (pour le bilan du soir)
+                  await fp.addPoints(
+                    selectedChildId!,
+                    confirmedPoints,
+                    reason,
+                    category: isBonus ? 'Bonus' : 'Pénalité',
+                    isBonus: isBonus,
+                    proofPhotoBase64: base64Photo,
+                  );
+                  if (context.mounted) {
+                    HapticFeedback.heavyImpact();
+                    messenger.showSnackBar(SnackBar(
+                      content: Text('${isBonus ? "✅ Bonus" : "⚠️ Pénalité"} pour ${fp.getChild(selectedChildId!)?.name}\n$confirmedPoints pts : "$reason"'),
+                      backgroundColor: isBonus ? Colors.green.shade700 : Colors.red.shade700, behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4)));
+                  }
+                } : null; })(),
               child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
         ),
       ),
     );
+    pointsCtrl.dispose();
   }
 
   // ════════════════════════════════════════════════════════════
