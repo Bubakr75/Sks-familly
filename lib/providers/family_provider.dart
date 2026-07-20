@@ -2009,7 +2009,7 @@ class FamilyProvider extends ChangeNotifier {
     final todayDate = DateTime(today.year, today.month, today.day);
     return _history.where((h) {
       if (h.childId != childId) return false;
-      if (h.isPenalty) return false;
+      if (!h.isBonus) return false;
       if (h.category == 'screen_time_bonus') return false;
       final d = DateTime(h.date.year, h.date.month, h.date.day);
       return d == todayDate;
