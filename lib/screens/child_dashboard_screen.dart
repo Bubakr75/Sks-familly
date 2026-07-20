@@ -303,16 +303,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return palette[child.name.codeUnitAt(0) % palette.length];
   }
 
-  Color _frameColor(int level) {
-    switch (level) {
-      case 1:  return Colors.grey.shade400;
-      case 2:  return const Color(0xFFCD7F32);
-      case 3:  return const Color(0xFFC0C0C0);
-      case 4:  return const Color(0xFFFFD700);
-      default: return const Color(0xFF00E5FF);
-    }
-  }
-
   Color _categoryColor(HistoryEntry e) {
     final cat = e.category.toLowerCase();
     if (cat.contains('punition') || cat.contains('penalty')) return Colors.redAccent;
@@ -340,8 +330,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // ─── Avatar ──────────────────────────────────────────────
   // Utilise StableAvatar : la photo ne se recharge JAMAIS sauf si
   // le base64 change réellement. Fini le clignotement.
-  Widget _buildAvatar(ChildModel child, double radius,
-      {bool showFrame = true}) {
+  Widget _buildAvatar(ChildModel child, double radius) {
     final color = _childColor(child);
     return StableAvatar(
       photoBase64: child.photoBase64,
@@ -349,8 +338,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       name: child.name,
       radius: radius,
       color: color,
-      level: child.level,
-      showFrame: showFrame,
     );
   }
 
@@ -383,7 +370,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               textAlign: TextAlign.center),
           const SizedBox(height: 12),
           ...fp.children.map((c) => ListTile(
-            leading:  _buildAvatar(c, 22, showFrame: false),
+            leading:  _buildAvatar(c, 22),
             title:    Text(c.name,
                 style: const TextStyle(color: Colors.white)),
             subtitle: Text('${c.points} pts bonus',
@@ -587,7 +574,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             onPressed: () => Navigator.pop(context),
           ),
           title: Row(children: [
-            _buildAvatar(child, 16, showFrame: false),
+            _buildAvatar(child, 16),
             const SizedBox(width: 8),
             Text(child.name,
                 style: const TextStyle(
@@ -1053,7 +1040,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
   
   Widget _buildProfileTab(ChildModel child, FamilyProvider fp, Color color) {
-    final frame = _frameColor(child.level);
     return SingleChildScrollView(
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24),
       child: Column(children: [
@@ -1143,7 +1129,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   const SizedBox(height: 16),
                 ],
 
-                _buildAvatar(child, 52, showFrame: true),
+                _buildAvatar(child, 52),
                 const SizedBox(height: 12),
                 Text(child.name,
                     style: const TextStyle(
@@ -1158,44 +1144,31 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             fontStyle: FontStyle.italic)),
                   ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(child.levelTitle,
-                        style: TextStyle(
-                            color: frame, fontWeight: FontWeight.bold,
-                            fontSize: 13)),
-                    Text('${child.points} pts bonus',
-                        style: const TextStyle(
-                            color: Colors.white54, fontSize: 12)),
-                  ],
-                ),
-                const SizedBox(height: 6),
                 Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: frame.withValues(alpha: 0.5)),
-                    color: Colors.white10,
+                    color: color.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(14),
+                    border:
+                        Border.all(color: color.withValues(alpha: 0.35)),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: LinearProgressIndicator(
-                      value:           child.levelProgress,
-                      backgroundColor: Colors.transparent,
-                      valueColor:      AlwaysStoppedAnimation(frame),
-                      minHeight:       18,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.stars_rounded, color: color, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${child.points} points disponibles',
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '${(child.levelProgress * 100).toInt()}% → NIV.${child.level + 1}',
-                    style: const TextStyle(color: Colors.white38, fontSize: 10),
-                  ),
-                ),
-              ]),
+                ),              ]),
             ),
           ),
         ),
@@ -1222,8 +1195,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: frame,
-                  side: BorderSide(color: frame.withValues(alpha: 0.5)),
+                  foregroundColor: color,
+                  side: BorderSide(color: color.withValues(alpha: 0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -1281,8 +1254,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       children: [
         _statCard('🎯', 'Bonus',     '$bonuses',   Colors.greenAccent),
         _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
-        _statCard('🏆', 'Niveau',    '${child.level} – ${child.levelTitle}', color),
-        _statCard('🛡️', 'Immunités',
+        _statCard(
+            '\u{2B50}', 'Points disponibles', '${child.points} pts', color),        _statCard('🛡️', 'Immunités',
             '${fp.getTotalAvailableImmunity(child.id)} lignes',
             Colors.amberAccent),
       ],

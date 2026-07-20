@@ -385,7 +385,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   fontSize: 16),
                             ),
                             subtitle: Text(
-                              '${child.points} pts · Nv.${child.currentLevelNumber}',
+                              '${child.points} points disponibles',
                               style: TextStyle(
                                   color: Colors.grey[500], fontSize: 12),
                             ),
@@ -987,18 +987,10 @@ class _ChildStatCardState extends State<_ChildStatCard>
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: c.levelProgress.clamp(0.0, 1.0),
-                minHeight: 4,
-                backgroundColor: Colors.white.withValues(alpha: 0.08),
-                valueColor: AlwaysStoppedAnimation<Color>(_rankColor),
-              ),
+            Text(
+              '${c.points} points disponibles',
+              style: TextStyle(color: Colors.grey[500], fontSize: 9),
             ),
-            const SizedBox(height: 2),
-            Text(c.levelTitle,
-                style: TextStyle(color: Colors.grey[500], fontSize: 9)),
           ],
         ),
       ),

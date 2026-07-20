@@ -705,7 +705,6 @@ class FamilyProvider extends ChangeNotifier {
           child.points += entry.points; // on rend les points d'une pénalité
         }
         if (child.points < 0) child.points = 0;
-        child.level = child.currentLevelNumber;
         _markPending(child.id);
         await _childrenBox.put(child.id, jsonEncode(child.toMap()));
         if (_firestore.isConnected) await _firestore.saveChild(child);
@@ -746,7 +745,6 @@ class FamilyProvider extends ChangeNotifier {
         child.points -= newPoints;
       }
       if (child.points < 0) child.points = 0;
-      child.level = child.currentLevelNumber;
       _markPending(child.id);
       await _childrenBox.put(child.id, jsonEncode(child.toMap()));
       if (_firestore.isConnected) await _firestore.saveChild(child);
@@ -956,7 +954,6 @@ class FamilyProvider extends ChangeNotifier {
     if (child == null) return;
     if (isBonus) { child.points += points; }
     else         { child.points -= points; if (child.points < 0) child.points = 0; }
-    child.level = child.currentLevelNumber;
     // ✅ Marque l'enfant comme pending pour protéger ses points
     _markPending(child.id);
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
@@ -1932,7 +1929,6 @@ class FamilyProvider extends ChangeNotifier {
     final child = getChild(childId);
     if (child == null) return;
     child.points = 0;
-    child.level = 1;
     child.badgeIds = [];
     _markPending(childId);
     await _childrenBox.put(childId, jsonEncode(child.toMap()));
@@ -1943,7 +1939,6 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> resetAllScores() async {
     for (final child in _children) {
       child.points   = 0;
-      child.level    = 1;
       child.badgeIds = [];
       _markPending(child.id); // protéger le reset contre l'écrasement distant
       await _childrenBox.put(child.id, jsonEncode(child.toMap()));
@@ -1958,9 +1953,8 @@ class FamilyProvider extends ChangeNotifier {
     final child = getChild(childId);
     if (child == null) return;
 
-    // Points + badges + niveau
+    // Points + badges
     child.points = 0;
-    child.level = 1;
     child.badgeIds = [];
     _markPending(child.id);
     await _childrenBox.put(child.id, jsonEncode(child.toMap()));
@@ -2138,7 +2132,6 @@ class FamilyProvider extends ChangeNotifier {
       final child = getChild(r.childId);
       if (child != null) {
         child.points += r.amount; // remboursement
-        child.level = child.currentLevelNumber;
         _markPending(child.id);
         await _childrenBox.put(child.id, jsonEncode(child.toMap()));
         if (_firestore.isConnected) await _firestore.saveChild(child);
