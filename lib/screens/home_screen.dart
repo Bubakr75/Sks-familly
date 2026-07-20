@@ -51,7 +51,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _navBarController;
-  final List<int> _protectedIndices = [4]; // Seulement Réglages protégé
+  // 🔒 Onglets protégés : Points (1), Stats (3), Réglages (4)
+  // Dashboard (0) et Calendrier (2) restent visibles aux enfants
+  final List<int> _protectedIndices = [1, 3, 4];
 
   @override
   void initState() {
@@ -118,7 +120,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return;
     }
     if (children.length == 1) {
-      context.read<PinProvider>().enterChildMode();
+      // 🔒 Ne PAS basculer en mode enfant automatiquement
+      // Le parent garde son mode, l'enfant garde le sien
       onSelected(children.first);
       return;
     }
