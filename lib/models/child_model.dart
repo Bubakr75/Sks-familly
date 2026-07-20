@@ -54,44 +54,6 @@ class ChildModel {
   bool get isBannerUrl =>
       bannerBase64 != null && bannerBase64!.startsWith('http');
 
-  String get levelTitle {
-    if (points >= 300) return 'Niveau MAX ⭐';
-    if (points >= 220) return 'Niveau 5';
-    if (points >= 150) return 'Niveau 4';
-    if (points >= 90)  return 'Niveau 3';
-    if (points >= 40)  return 'Niveau 2';
-    return 'Niveau 1';
-  }
-
-  bool get isMaxLevel => points >= 300;
-
-  double get levelProgress {
-    if (points >= 300) return 1.0;
-    if (points >= 220) return (points - 220) / 80.0;
-    if (points >= 150) return (points - 150) / 70.0;
-    if (points >= 90)  return (points - 90)  / 60.0;
-    if (points >= 40)  return (points - 40)  / 50.0;
-    return (points / 40.0).clamp(0.0, 1.0);
-  }
-
-  int get nextLevelPoints {
-    if (points >= 300) return 300;
-    if (points >= 220) return 300;
-    if (points >= 150) return 220;
-    if (points >= 90)  return 150;
-    if (points >= 40)  return 90;
-    return 40;
-  }
-
-  int get currentLevelNumber {
-    if (points >= 300) return 6;
-    if (points >= 220) return 5;
-    if (points >= 150) return 4;
-    if (points >= 90)  return 3;
-    if (points >= 40)  return 2;
-    return 1;
-  }
-
   ChildModel copyWith({
     String?       id,
     String?       name,
@@ -141,7 +103,7 @@ class ChildModel {
       'avatar':      avatar,
       'photoBase64': photoBase64,
       'points':      points,
-      'level':       currentLevelNumber,
+      'level':       level,
       'badgeIds':    badgeIds,
       'createdAt':   createdAt.toIso8601String(),
     };
@@ -186,7 +148,6 @@ class ChildModel {
           ? List<String>.from(map['recentReasons'])
           : null,
     );
-    child.level = child.currentLevelNumber;
     return child;
   }
 

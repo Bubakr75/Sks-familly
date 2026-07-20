@@ -329,225 +329,6 @@ class EmeraldActionTile extends StatelessWidget {
   }
 }
 
-/// Composant : Podium row (style Apple Fitness épuré + glow doré pour le #1)
-class EmeraldPodiumRow extends StatefulWidget {
-  final int rank;
-  final String name;
-  final int points;
-  final String level;
-  final Widget avatar;
-  final bool isTop;
-  final double levelProgress; // 0.0 → 1.0 (progression vers niveau suivant)
-
-  const EmeraldPodiumRow({
-    super.key,
-    required this.rank,
-    required this.name,
-    required this.points,
-    required this.level,
-    required this.avatar,
-    this.isTop = false,
-    this.levelProgress = 0.0,
-  });
-
-  @override
-  State<EmeraldPodiumRow> createState() => _EmeraldPodiumRowState();
-}
-
-class _EmeraldPodiumRowState extends State<EmeraldPodiumRow>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    );
-    _pulseAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
-    );
-    if (widget.isTop) _pulseController.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
-
-  Color get _rankColor {
-    switch (widget.rank) {
-      case 1:
-        return EmeraldPalette.goldMedal;
-      case 2:
-        return EmeraldPalette.silverMedal;
-      case 3:
-        return EmeraldPalette.bronzeMedal;
-      default:
-        return EmeraldPalette.textMuted;
-    }
-  }
-
-  String get _rankEmoji {
-    switch (widget.rank) {
-      case 1:
-        return '🥇';
-      case 2:
-        return '🥈';
-      case 3:
-        return '🥉';
-      default:
-        return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _pulseAnim,
-      builder: (context, child) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: widget.isTop
-                ? EmeraldPalette.gold.withValues(alpha: 0.08)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: widget.isTop
-                ? Border.all(
-                    color: EmeraldPalette.gold
-                        .withValues(alpha: 0.4 + _pulseAnim.value * 0.3),
-                    width: 1.5,
-                  )
-                : Border.all(
-                    color: EmeraldPalette.glassBorder,
-                    width: 1,
-                  ),
-            boxShadow: widget.isTop
-                ? [
-                    BoxShadow(
-                      color: EmeraldPalette.gold
-                          .withValues(alpha: 0.15 * _pulseAnim.value),
-                      blurRadius: 20,
-                      spreadRadius: 1,
-                    ),
-                  ]
-                : null,
-          ),
-          child: child,
-        );
-      },
-      child: Row(
-        children: [
-          // Rang (médaille ou #)
-          SizedBox(
-            width: 36,
-            child: Text(
-              _rankEmoji.isNotEmpty ? _rankEmoji : '#${widget.rank}',
-              style: TextStyle(
-                fontSize: _rankEmoji.isNotEmpty ? 22 : 14,
-                fontWeight: FontWeight.w800,
-                color: _rankColor,
-              ),
-            ),
-          ),
-          // Avatar
-          widget.avatar,
-          const SizedBox(width: 12),
-          // Nom + niveau + barre de progression
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.name,
-                  style: EmeraldTypography.heading.copyWith(
-                    fontSize: 15,
-                    fontWeight:
-                        widget.isTop ? FontWeight.w700 : FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  widget.level,
-                  style: EmeraldTypography.caption.copyWith(fontSize: 10),
-                ),
-                const SizedBox(height: 6),
-                // Barre de progression vers niveau suivant
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: SizedBox(
-                    height: 4,
-                    child: Stack(
-                      children: [
-                        // Track
-                        Container(
-                          decoration: BoxDecoration(
-                            color: EmeraldPalette.surfaceHigh,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                        // Fill animé
-                        FractionallySizedBox(
-                          widthFactor:
-                              widget.levelProgress.clamp(0.0, 1.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: widget.isTop
-                                  ? EmeraldPalette.goldGradient
-                                  : EmeraldPalette.emeraldGradient,
-                              borderRadius: BorderRadius.circular(3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: (widget.isTop
-                                          ? EmeraldPalette.gold
-                                          : EmeraldPalette.emerald)
-                                      .withValues(alpha: 0.5),
-                                  blurRadius: 6,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Points
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${widget.points}',
-                style: EmeraldTypography.kpiNumber.copyWith(
-                  fontSize: 20,
-                  color: widget.isTop
-                      ? EmeraldPalette.goldLight
-                      : EmeraldPalette.emeraldLight,
-                ),
-              ),
-              Text(
-                'pts bonus',
-                style: EmeraldTypography.caption.copyWith(fontSize: 10),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Composant : Header premium avec greeting
 class EmeraldHeader extends StatelessWidget {
   final String title;
@@ -923,8 +704,6 @@ Color emeraldChildAccent(String name) {
 /// Valorise chaque enfant individuellement, sans compétition.
 class EmeraldChildCard extends StatefulWidget {
   final String name;
-  final String levelTitle;
-  final double levelProgress; // 0.0 → 1.0
   final int points;
   final int pointsToday;
   final int badgeCount;
@@ -937,8 +716,6 @@ class EmeraldChildCard extends StatefulWidget {
   const EmeraldChildCard({
     super.key,
     required this.name,
-    required this.levelTitle,
-    required this.levelProgress,
     required this.points,
     required this.pointsToday,
     required this.badgeCount,
@@ -1101,7 +878,7 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
                               border: Border.all(color: accent.withValues(alpha: 0.4)),
                             ),
                             child: Text(
-                              widget.levelTitle,
+                              'Points disponibles',
                               style: TextStyle(
                                 color: accent,
                                 fontSize: 9,
@@ -1137,44 +914,13 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'pts bonus',
+                          'points disponibles',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: EmeraldPalette.textSecondary,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Barre de progression niveau
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: SizedBox(
-                        height: 4,
-                        child: Stack(
-                          children: [
-                            Container(decoration: BoxDecoration(color: EmeraldPalette.surfaceHigh, borderRadius: BorderRadius.circular(3))),
-                            FractionallySizedBox(
-                              widthFactor: widget.levelProgress.clamp(0.0, 1.0),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(colors: [accent, accent.withValues(alpha: 0.7)]),
-                                  borderRadius: BorderRadius.circular(3),
-                                  boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.5), blurRadius: 6)],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('${(widget.levelProgress * 100).round()}%', style: EmeraldTypography.caption.copyWith(fontSize: 9, color: EmeraldPalette.textMuted)),
-                        Text(widget.levelTitle, style: TextStyle(color: accent, fontSize: 9, fontWeight: FontWeight.w600)),
                       ],
                     ),
                     const SizedBox(height: 8),

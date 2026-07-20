@@ -205,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             color: Colors.cyanAccent,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14)),
-                                    Text('Nv.${child.level}',
+                                    Text('${child.points} pts',
                                         style: const TextStyle(
                                             color: Colors.white38,
                                             fontSize: 11)),

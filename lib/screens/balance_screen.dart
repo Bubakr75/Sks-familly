@@ -1084,7 +1084,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold)),
                         Text(
-                            '${child.points} pts Â· Niv. ${child.currentLevelNumber}',
+                            '${child.points} points disponibles',
                             style: const TextStyle(
                                 color: Colors.white38, fontSize: 12)),
                       ],

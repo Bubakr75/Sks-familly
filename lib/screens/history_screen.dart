@@ -25,7 +25,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         if (_filter == 'bonus') {
           entries = entries.where((e) => e.isBonus).toList();
         } else if (_filter == 'penalite') {
-          entries = entries.where((e) => !e.isBonus).toList();
+          entries = entries.where((e) => e.isPenalty).toList();
         }
 
         entries.sort((a, b) => b.date.compareTo(a.date));

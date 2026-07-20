@@ -36,7 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     ),
     _OnboardPage(
       emoji: '\u{2B50}',
-      title: 'Points & Niveaux',
+      title: 'Points & Récompenses',
       desc:
           'Attribuez des points pour les bons\ncomportements et suivez la progression',
       colorIndex: 1,

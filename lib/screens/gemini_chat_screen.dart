@@ -24,7 +24,6 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
       buf.writeln('');
       buf.writeln('Enfant : ${child.name}');
       buf.writeln('  Points : ${child.points}');
-      buf.writeln('  Niveau : ' + child.levelTitle);
       final punishments = fp.punishments.where((p) => p.childId == child.id && !p.isCompleted).toList();
       buf.writeln('  Punitions actives : ${punishments.length}');
       for (final p in punishments) {

@@ -21,8 +21,14 @@ class HistoryEntry {
     this.actionBy,
   }) : date = date ?? DateTime.now();
 
-  bool get hasProofPhoto => proofPhotoBase64 != null && proofPhotoBase64!.isNotEmpty;
+  bool get hasProofPhoto =>
+      proofPhotoBase64 != null && proofPhotoBase64!.isNotEmpty;
 
+  /// Achat effectué dans la boutique.
+  bool get isPurchase => category.toLowerCase() == 'boutique';
+
+  /// Véritable pénalité : un achat boutique n'est jamais une pénalité.
+  bool get isPenalty => !isBonus && !isPurchase;
   Map<String, dynamic> toMap() => {
         'id': id,
         'childId': childId,
@@ -41,7 +47,8 @@ class HistoryEntry {
         points: map['points'] ?? 0,
         reason: map['reason'] ?? '',
         category: map['category'] ?? 'Bonus',
-        date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
+        date:
+            map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
         isBonus: map['isBonus'] ?? true,
         proofPhotoBase64: map['proofPhotoBase64'],
         actionBy: map['actionBy'],

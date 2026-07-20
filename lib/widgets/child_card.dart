@@ -247,8 +247,6 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
                 children: [
                   _buildNameRow(isDark, primary),
                   const SizedBox(height: 10),
-                  _buildProgressBar(isDark, primary),
-                  const SizedBox(height: 8),
                   _buildPointsRow(isDark, primary),
                 ],
               ),
@@ -452,9 +450,9 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_getLevelIcon(), size: 12, color: _isTop3 ? _rankPrimary : primary),
+              Icon(Icons.stars_rounded, size: 12, color: _isTop3 ? _rankPrimary : primary),
               const SizedBox(width: 4),
-              Text(widget.child.levelTitle, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _isTop3 ? _rankPrimary : primary)),
+              Text('Points disponibles', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _isTop3 ? _rankPrimary : primary)),
             ],
           ),
         ),
@@ -462,49 +460,9 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
     );
   }
 
-  IconData _getLevelIcon() {
-    switch (widget.child.levelTitle) {
-      case 'Champion': return Icons.military_tech_rounded;
-      case 'Expert': return Icons.workspace_premium_rounded;
-      default: return Icons.stars_rounded;
-    }
-  }
-
-  Widget _buildProgressBar(bool isDark, Color primary) {
-    final progress = widget.child.levelProgress.clamp(0.0, 1.0);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(5),
-      child: Stack(
-        children: [
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
-              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.15),
-            ),
-          ),
-          FractionallySizedBox(
-            widthFactor: progress,
-            child: Container(
-              height: 8,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(5),
-                gradient: LinearGradient(colors: _isTop3 ? [_rankSecondary, _rankPrimary] : [primary.withValues(alpha: 0.7), primary]),
-                boxShadow: isDark
-                    ? [BoxShadow(color: (_isTop3 ? _rankPrimary : primary).withValues(alpha: 0.5), blurRadius: 8, offset: const Offset(0, 1))]
-                    : null,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPointsRow(bool isDark, Color primary) {
     final pointColor = _isTop3 ? _rankPrimary : primary;
     final pts = widget.child.points;
-    final nextPts = widget.child.nextLevelPoints;
     final badgeCount = widget.child.badgeIds.length;
     return Row(
       children: [
@@ -515,7 +473,7 @@ class _ChildCardState extends State<ChildCard> with TickerProviderStateMixin {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.08)),
-          child: Text('$pts/$nextPts', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+          child: Text('$pts pts disponibles', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[500])),
         ),
         if (badgeCount > 0) ...[
           const SizedBox(width: 8),

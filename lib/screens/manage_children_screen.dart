@@ -212,7 +212,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                                         borderRadius:
                                             BorderRadius.circular(6),
                                       ),
-                                      child: Text('Nv.${child.level}',
+                                      child: Text('${child.points} pts',
                                           style: TextStyle(
                                               color: primary,
                                               fontSize: 11,

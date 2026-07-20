@@ -86,8 +86,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       name: child.name,
       radius: radius,
       color: EmeraldPalette.emerald.withValues(alpha: 0.4),
-      level: child.level,
-      showFrame: false,
     );
   }
 
@@ -426,8 +424,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: sorted.map((child) {
             return EmeraldChildCard(
               name: child.name,
-              levelTitle: child.levelTitle,
-              levelProgress: child.levelProgress,
               points: child.points,
               pointsToday: pointsTodayByChild[child.id] ?? 0,
               badgeCount: child.badgeIds.length,
@@ -921,14 +917,14 @@ class _ChildTileState extends State<_ChildTile> {
                         color: widget.accent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(c.levelTitle,
+                      child: Text('Points disponibles',
                           style: TextStyle(
                               color: widget.accent,
                               fontSize: 10,
                               fontWeight: FontWeight.w600)),
                     ),
                     const SizedBox(width: 6),
-                    Text('${c.points} pts bonus',
+                    Text('${c.points} pts',
                         style: EmeraldTypography.caption.copyWith(
                             fontSize: 11)),
                   ]),
@@ -937,24 +933,6 @@ class _ChildTileState extends State<_ChildTile> {
             ),
             Icon(Icons.arrow_forward_ios_rounded,
                 color: widget.accent, size: 14),
-            const SizedBox(width: 6),
-            Container(
-              width: 48, height: 4,
-              decoration: BoxDecoration(
-                color: EmeraldPalette.surfaceHigh,
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: c.levelProgress.clamp(0.0, 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: widget.accent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ),
           ]),
         ),
       ),

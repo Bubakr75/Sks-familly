@@ -859,7 +859,7 @@ class _ImmunityLinesScreenState extends State<ImmunityLinesScreen>
               ),
               const SizedBox(width: 8),
               _summaryChip(
-                '${history.where((h) => !h.isBonus).length}',
+                '${history.where((h) => h.isPenalty).length}',
                 '🛡️ Utilisées',
                 Colors.cyanAccent,
               ),

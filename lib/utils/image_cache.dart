@@ -85,7 +85,7 @@ class ImageCacheUtil {
 }
 
 /// Widget d'avatar stable qui ne se reconstruit QUE quand la photo
-/// ou le niveau change — PAS à chaque notifyListeners() du provider.
+/// ou ses données visuelles changent — PAS à chaque notifyListeners() du provider.
 /// C'est ce widget qui élimine définitivement le clignotement.
 class StableAvatar extends StatelessWidget {
   final String photoBase64;
@@ -93,8 +93,6 @@ class StableAvatar extends StatelessWidget {
   final String name;
   final double radius;
   final Color color;
-  final int level;
-  final bool showFrame;
 
   const StableAvatar({
     super.key,
@@ -103,8 +101,6 @@ class StableAvatar extends StatelessWidget {
     required this.name,
     required this.radius,
     required this.color,
-    required this.level,
-    this.showFrame = true,
   });
 
   @override
@@ -115,8 +111,6 @@ class StableAvatar extends StatelessWidget {
       name: name,
       radius: radius,
       color: color,
-      level: level,
-      showFrame: showFrame,
     );
   }
 }
@@ -127,8 +121,6 @@ class _StableAvatarImpl extends StatefulWidget {
   final String name;
   final double radius;
   final Color color;
-  final int level;
-  final bool showFrame;
 
   const _StableAvatarImpl({
     required this.photoBase64,
@@ -136,8 +128,6 @@ class _StableAvatarImpl extends StatefulWidget {
     required this.name,
     required this.radius,
     required this.color,
-    required this.level,
-    required this.showFrame,
   });
 
   @override
@@ -195,17 +185,7 @@ class _StableAvatarImplState extends State<_StableAvatarImpl> {
       );
     }
 
-    if (!widget.showFrame || widget.level < 2) return core;
-
-    // Cadre simple sans animation pour éviter tout clignotement
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: widget.color.withValues(alpha: 0.5), width: 2),
-      ),
-      child: core,
-    );
+    return core;
   }
 
   Widget _letter() {
