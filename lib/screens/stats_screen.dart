@@ -104,6 +104,8 @@ class _StatsScreenState extends State<StatsScreen>
           final history = fp.getHistoryForChild(child.id);
           totalActivities += history.length;
           for (final h in history) {
+            // Exclure les transferts des totaux bonus/pénalité
+            if (h.isPointsTransfer) continue;
             if (h.isBonus) {
               totalBonus++;
               totalPoints += h.points;
@@ -298,13 +300,13 @@ class _StatsScreenState extends State<StatsScreen>
         Row(
           children: [
             _summaryChip(
-              '${history.where((h) => h.isBonus).length}',
+              '${history.where((h) => h.isBonus && !h.isPointsTransfer).length}',
               '✅ Bonus',
               Colors.greenAccent,
             ),
             const SizedBox(width: 8),
             _summaryChip(
-              '${history.where((h) => h.isPenalty).length}',
+              '${history.where((h) => h.isPenalty && !h.isPointsTransfer).length}',
               '❌ Pénalités',
               Colors.redAccent,
             ),
@@ -511,6 +513,8 @@ class _StatsScreenState extends State<StatsScreen>
     for (final h in history) {
       final diff = now.difference(h.date).inDays;
       if (diff >= 0 && diff < 7) {
+        // Exclure les transferts du graphique quotidien
+        if (h.isPointsTransfer) continue;
         final dayIndex = (h.date.weekday - 1).clamp(0, 6);
         dailyPoints[dayIndex] += h.isBonus ? h.points : -h.points;
       }

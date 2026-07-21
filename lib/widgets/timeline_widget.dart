@@ -19,6 +19,8 @@ IconData timelineCategoryIcon(String cat) {
     case 'pénalité':          return Icons.remove_circle_rounded;
     case 'screen_time_bonus': return Icons.timer_rounded;
     case 'saturday_rating':   return Icons.calendar_today_rounded;
+    case 'points_transfer_out':
+    case 'points_transfer_in': return Icons.swap_horiz_rounded;
     default:                  return Icons.circle_rounded;
   }
 }
@@ -37,6 +39,8 @@ Color timelineCategoryColor(String cat) {
     case 'pénalité':          return const Color(0xFFE57373);
     case 'screen_time_bonus': return const Color(0xFF64B5F6);
     case 'saturday_rating':   return const Color(0xFFA5D6A7);
+    case 'points_transfer_out': return const Color(0xFFFFB74D);
+    case 'points_transfer_in':  return const Color(0xFF06B6D4);
     default:                  return const Color(0xFF90A4AE);
   }
 }
@@ -55,6 +59,8 @@ String timelineCategoryLabel(String cat) {
     case 'pénalité':          return 'Pénalité';
     case 'screen_time_bonus': return 'Temps écran';
     case 'saturday_rating':   return 'Note samedi';
+    case 'points_transfer_out': return 'Transfert envoyé';
+    case 'points_transfer_in':  return 'Transfert reçu';
     default:                  return cat;
   }
 }

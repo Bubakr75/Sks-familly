@@ -9,10 +9,16 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../config/emerald_theme.dart';
+import '../utils/pin_guard.dart';
 
 /// Ouvre la bottom sheet de transfert express SKS.
-/// Réservé au mode parent — l'appelant doit vérifier PinProvider avant.
+/// 🔒 Sécurité centrale : PinGuard centralise l'autorisation parent.
+/// Si aucun PIN n'est configuré, ouvre directement ; sinon demande le PIN.
 void showTransferPointsSheet(BuildContext context) {
+  PinGuard.guardAction(context, () => _openSheet(context));
+}
+
+void _openSheet(BuildContext context) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -75,7 +81,14 @@ class _TransferSheetState extends State<_TransferSheet>
     setState(() => _processing = true);
     HapticFeedback.mediumImpact();
 
+    // 🔒 Capturer TOUTES les valeurs avant l'appel async
     final fp = context.read<FamilyProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final capturedFromId = _fromChildId!;
+    final capturedToId = _toChildId!;
+    final capturedAmount = _amount;
+    final capturedFromName = fp.getChild(capturedFromId)?.name ?? '';
+    final capturedToName = fp.getChild(capturedToId)?.name ?? '';
     final reason = _reason == 'Autre'
         ? (_customReason?.trim().isNotEmpty == true
             ? _customReason!.trim()
@@ -83,9 +96,9 @@ class _TransferSheetState extends State<_TransferSheet>
         : _reason;
 
     final ok = await fp.transferPointsBetweenChildren(
-      fromChildId: _fromChildId!,
-      toChildId: _toChildId!,
-      amount: _amount,
+      fromChildId: capturedFromId,
+      toChildId: capturedToId,
+      amount: capturedAmount,
       reason: reason,
     );
 
@@ -94,17 +107,15 @@ class _TransferSheetState extends State<_TransferSheet>
 
     if (ok) {
       HapticFeedback.heavyImpact();
-      final fromName = fp.getChild(_fromChildId!)?.name ?? '';
-      final toName = fp.getChild(_toChildId!)?.name ?? '';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      messenger.showSnackBar(SnackBar(
         content: Text(
-            'Transfert effectué\n$_amount points SKS transférés de $fromName vers $toName'),
+            'Transfert effectué\n$capturedAmount points SKS transférés de $capturedFromName vers $capturedToName'),
         backgroundColor: EmeraldPalette.emerald,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
       ));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      messenger.showSnackBar(const SnackBar(
         content: Text('Transfert impossible — vérifiez les soldes'),
         backgroundColor: Colors.redAccent,
       ));
@@ -164,6 +175,8 @@ class _TransferSheetState extends State<_TransferSheet>
 
               // Content scrollable
               Flexible(
+                child: IgnorePointer(
+                  ignoring: _processing,
                 child: SingleChildScrollView(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -285,6 +298,7 @@ class _TransferSheetState extends State<_TransferSheet>
                     ],
                   ),
                 ),
+                ), // fin IgnorePointer
               ),
 
               // ── Bouton confirmer ──

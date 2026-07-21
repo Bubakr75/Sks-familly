@@ -31,8 +31,8 @@ class HistoryEntry {
   /// Achat effectué dans la boutique.
   bool get isPurchase => category.toLowerCase() == 'boutique';
 
-  /// Véritable pénalité : un achat boutique n'est jamais une pénalité.
-  bool get isPenalty => !isBonus && !isPurchase;
+  /// Véritable pénalité : un achat boutique ou un transfert n'est jamais une pénalité.
+  bool get isPenalty => !isBonus && !isPurchase && !isPointsTransfer;
 
   /// Transfert de points entre enfants (ne compte ni comme bonus ni comme pénalité).
   bool get isPointsTransfer =>

@@ -76,10 +76,9 @@ void main() {
         category: 'points_transfer_out',
         isBonus: false,
       );
-      // isPenalty = !isBonus && !isPurchase
-      // Un transfert n'est ni un achat, mais isPointsTransfer doit exclure
       expect(entry.isPointsTransfer, isTrue);
-      expect(entry.isPurchase, isFalse);
+      expect(entry.isPenalty, isFalse,
+          reason: 'Un transfert sortant ne doit jamais être une pénalité');
     });
 
     test('points_transfer_in n\'est pas un bonus quotidien', () {
@@ -92,7 +91,36 @@ void main() {
         isBonus: true,
       );
       expect(entry.isPointsTransfer, isTrue);
-      // Le getter isPointsTransfer permet au provider d'exclure du compteur
+      // Vérifie réellement l'expression utilisée pour exclure le transfert
+      // des bonus quotidiens dans les compteurs
+      final dailyBonuses = [entry].where((h) => h.isBonus && !h.isPointsTransfer).toList();
+      expect(dailyBonuses, isEmpty,
+          reason: 'Un transfert entrant ne doit pas compter comme bonus quotidien');
+    });
+
+    test('classification des deux catégories de transfert', () {
+      final outEntry = HistoryEntry(
+        id: 'out',
+        childId: 'a',
+        points: 5,
+        reason: 'Test',
+        category: 'points_transfer_out',
+        isBonus: false,
+      );
+      final inEntry = HistoryEntry(
+        id: 'in',
+        childId: 'b',
+        points: 5,
+        reason: 'Test',
+        category: 'points_transfer_in',
+        isBonus: true,
+      );
+      expect(outEntry.isPointsTransfer, isTrue);
+      expect(inEntry.isPointsTransfer, isTrue);
+      expect(outEntry.isPenalty, isFalse);
+      expect(inEntry.isPenalty, isFalse);
+      expect(outEntry.isPurchase, isFalse);
+      expect(inEntry.isPurchase, isFalse);
     });
 
     test('isPointsTransfer est faux pour un bonus normal', () {

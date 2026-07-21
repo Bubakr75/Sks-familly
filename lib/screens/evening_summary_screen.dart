@@ -109,8 +109,8 @@ class _ChildSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = emeraldChildAccent(child.name);
-    final bonusEntries = history.where((h) => h.isBonus).toList();
-    final penaltyEntries = history.where((h) => h.isPenalty).toList();
+    final bonusEntries = history.where((h) => h.isBonus && !h.isPointsTransfer).toList();
+    final penaltyEntries = history.where((h) => h.isPenalty && !h.isPointsTransfer).toList();
     final totalBonus = bonusEntries.fold(0, (sum, h) => sum + h.points);
     final totalPenalty = penaltyEntries.fold(0, (sum, h) => sum + h.points);
     final net = totalBonus - totalPenalty;
