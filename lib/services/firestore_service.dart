@@ -552,6 +552,47 @@ class FirestoreService {
     }
   }
 
+  /// Écriture groupée atomique d'un transfert de points entre deux enfants.
+  /// Met à jour les deux enfants et crée les deux entrées d'historique en un
+  /// seul WriteBatch pour garantir la cohérence.
+  Future<void> transferPointsBatch({
+    required ChildModel fromChild,
+    required ChildModel toChild,
+    required HistoryEntry outEntry,
+    required HistoryEntry inEntry,
+  }) async {
+    if (_familyId == null) return;
+    try {
+      final batch = _db.batch();
+      final familyDoc = _db.collection('families').doc(_familyId);
+
+      // 1. Enfant source (débité)
+      final fromData = fromChild.toMap();
+      fromData['lastModifiedBy'] = deviceId;
+      batch.set(familyDoc.collection('children').doc(fromChild.id), fromData);
+
+      // 2. Enfant destination (crédité)
+      final toData = toChild.toMap();
+      toData['lastModifiedBy'] = deviceId;
+      batch.set(familyDoc.collection('children').doc(toChild.id), toData);
+
+      // 3. Historique source (transfert sortant)
+      final outData = outEntry.toMap();
+      outData['deviceId'] = deviceId;
+      batch.set(familyDoc.collection('history').doc(outEntry.id), outData);
+
+      // 4. Historique destination (transfert entrant)
+      final inData = inEntry.toMap();
+      inData['deviceId'] = deviceId;
+      batch.set(familyDoc.collection('history').doc(inEntry.id), inData);
+
+      await batch.commit();
+    } catch (e) {
+      if (kDebugMode) debugPrint('transferPointsBatch error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> clearAllHistory() async {
     if (_familyId == null) return;
     try {

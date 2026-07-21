@@ -39,6 +39,7 @@ import 'evening_summary_screen.dart';
 import 'screen_time_new_screen.dart';
 import 'daily_wheel_screen.dart';
 import '../widgets/animated_page_transition.dart';
+import '../widgets/transfer_points_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   final String parentName;
@@ -952,6 +953,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     });
                   },
                 ),
+                if (isParent)
+                  _drawerItem(
+                    icon: Icons.swap_horiz_rounded,
+                    label: 'Transfert express SKS',
+                    color: Colors.cyan,
+                    onTap: () {
+                      Navigator.pop(context);
+                      PinGuard.guardAction(context, () {
+                        showTransferPointsSheet(context);
+                      });
+                    },
+                  ),
 
                 // ═══ 🛒 RÉCOMPENSES ═══
                 _drawerSectionHeader('🛒 Récompenses'),
