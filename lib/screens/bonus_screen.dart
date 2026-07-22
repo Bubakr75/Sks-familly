@@ -30,6 +30,12 @@ class BonusScreen extends StatelessWidget {
       ActionMotif('🛏️', 'Chambre rangée', 5),
       ActionMotif('✏️', 'Effort scolaire', 10),
       ActionMotif('🌟', 'Bonne attitude', 5),
+      ActionMotif(
+        '✨',
+        'Autre bonne action',
+        5,
+        isOther: true,
+      ),
     ],
   );
 

@@ -30,6 +30,12 @@ class PenaltyScreen extends StatelessWidget {
       ActionMotif('😈', 'Bêtise', 5),
       ActionMotif('🤥', 'Mensonge', 10),
       ActionMotif('🧦', 'Désordre', 5),
+      ActionMotif(
+        '🔎',
+        'Autre comportement',
+        5,
+        isOther: true,
+      ),
     ],
   );
 
