@@ -38,14 +38,18 @@ String todayDateStr() {
 
 /// Calcule le montant réel d'une pénalité : min(demandé, solde) ou 0 si solde ≤ 0.
 /// Pour un bonus, retourne toujours le montant demandé.
+/// Retourne 0 si requested <= 0.
 int actualPenaltyAmount(
     {required int requested, required int balance, required bool isBonus}) {
+  if (requested <= 0) return 0;
   if (isBonus) return requested;
   if (balance <= 0) return 0;
   return requested.clamp(1, balance);
 }
 
 /// Tente de parser le résultat de Gemini (int, double, ou String numérique).
+/// Accepte les chaînes décimales via num.tryParse.
+/// Refuse NaN, Infinity, et les types non numériques.
 /// Retourne null si invalide.
 int? parseGeminiPoints(dynamic value) {
   if (value == null) return null;
@@ -55,19 +59,33 @@ int? parseGeminiPoints(dynamic value) {
     return value.round();
   }
   if (value is String) {
-    final parsed = int.tryParse(value.trim());
-    return parsed;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    final num? parsed = num.tryParse(trimmed);
+    if (parsed == null) return null;
+    if (parsed.isNaN || parsed.isInfinite) return null;
+    return parsed.round();
   }
   return null;
 }
 
 /// Valide le type retourné par Gemini.
+/// Accepte dynamic — retourne null si ce n'est pas une String.
 /// Accepte 'bonus', 'penalty', 'pénalité' (insensible à la casse).
 /// Retourne true si c'est un bonus, false si pénalité, null si invalide.
-bool? parseGeminiType(String? type) {
-  if (type == null) return null;
+bool? parseGeminiType(dynamic type) {
+  if (type is! String) return null;
   final lower = type.toLowerCase().trim();
   if (lower == 'bonus') return true;
   if (lower == 'penalty' || lower == 'pénalité') return false;
   return null;
+}
+
+/// Extrait et valide la raison retournée par Gemini.
+/// Accepte dynamic — retourne null si ce n'est pas une String ou si vide après trim.
+String? parseGeminiReason(dynamic value) {
+  if (value is! String) return null;
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return null;
+  return trimmed;
 }

@@ -67,12 +67,12 @@ Future<bool> startAiPhotoFlow(BuildContext context) async {
   if (context.mounted) Navigator.pop(context); // Fermer le loader
   if (!context.mounted) return false;
 
-  // 🔒 Validation robuste du résultat Gemini
-  final parsedBonus = parseGeminiType(result['type'] as String?);
+  // 🔒 Validation robuste du résultat Gemini — sans casts directs
+  final parsedBonus = parseGeminiType(result['type']);
   final parsedPoints = parseGeminiPoints(result['points']);
-  final reason = result['reason'] as String? ?? '';
+  final reason = parseGeminiReason(result['reason']);
 
-  if (parsedBonus == null || parsedPoints == null || reason.trim().isEmpty) {
+  if (parsedBonus == null || parsedPoints == null || reason == null) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('⚠️ Résultat IA invalide — réessaie'),

@@ -285,8 +285,8 @@ void main() {
     });
 
     test('raison vide → invalide', () {
-      const reason = '';
-      expect(reason.trim().isEmpty, isTrue);
+      final reason = parseGeminiReason('');
+      expect(reason, isNull);
     });
 
     test('type invalide → invalide', () {
@@ -298,6 +298,75 @@ void main() {
       final pts = parseGeminiPoints(1500);
       expect(pts, 1500);
       expect(pts!.clamp(1, 999), 999);
+    });
+  });
+
+  group('parseGeminiType — types dynamiques', () {
+    test('bool → null', () {
+      expect(parseGeminiType(true), isNull);
+    });
+    test('int → null', () {
+      expect(parseGeminiType(42), isNull);
+    });
+    test('liste → null', () {
+      expect(parseGeminiType(['bonus']), isNull);
+    });
+    test('null → null', () {
+      expect(parseGeminiType(null), isNull);
+    });
+  });
+
+  group('parseGeminiReason — types dynamiques', () {
+    test('null → null', () {
+      expect(parseGeminiReason(null), isNull);
+    });
+    test('nombre → null', () {
+      expect(parseGeminiReason(123), isNull);
+    });
+    test('liste → null', () {
+      expect(parseGeminiReason(['x']), isNull);
+    });
+    test('vide → null', () {
+      expect(parseGeminiReason(''), isNull);
+    });
+    test('espaces seulement → null', () {
+      expect(parseGeminiReason('   '), isNull);
+    });
+    test('chaîne valide trimée', () {
+      expect(parseGeminiReason('  Bon comportement  '), 'Bon comportement');
+    });
+  });
+
+  group('parseGeminiPoints — formats étendus', () {
+    test('chaîne décimale "7.5" → 8', () {
+      expect(parseGeminiPoints('7.5'), 8);
+    });
+    test('chaîne décimale "3.2" → 3', () {
+      expect(parseGeminiPoints('3.2'), 3);
+    });
+    test('NaN → null', () {
+      expect(parseGeminiPoints(double.nan), isNull);
+    });
+    test('Infinity → null', () {
+      expect(parseGeminiPoints(double.infinity), isNull);
+    });
+    test('-Infinity → null', () {
+      expect(parseGeminiPoints(double.negativeInfinity), isNull);
+    });
+    test('chaîne "NaN" → null', () {
+      expect(parseGeminiPoints('NaN'), isNull);
+    });
+  });
+
+  group('actualPenaltyAmount — montant nul ou négatif', () {
+    test('demandé 0 → 0', () {
+      expect(actualPenaltyAmount(requested: 0, balance: 50, isBonus: false), 0);
+    });
+    test('demandé -5 → 0', () {
+      expect(actualPenaltyAmount(requested: -5, balance: 50, isBonus: false), 0);
+    });
+    test('demandé 0 en bonus → 0', () {
+      expect(actualPenaltyAmount(requested: 0, balance: 50, isBonus: true), 0);
     });
   });
 }
