@@ -17,7 +17,14 @@ class ActionMotif {
   final String emoji;
   final String label;
   final int defaultPoints;
-  const ActionMotif(this.emoji, this.label, this.defaultPoints);
+  final bool isOther;
+
+  const ActionMotif(
+    this.emoji,
+    this.label,
+    this.defaultPoints, {
+    this.isOther = false,
+  });
 }
 
 /// Configuration visuelle et métier du panneau.
@@ -304,7 +311,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                     onTap: _processing ? null : () => _selectMotif(motif),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      width: 150,
+                      width: motif.isOther ? double.infinity : 150,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: isSel
