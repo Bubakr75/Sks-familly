@@ -24,6 +24,7 @@ import 'pending_requests_screen.dart';
 import 'tribunal_screen.dart';
 import 'screen_time_new_screen.dart';
 import 'multi_child_evaluation_screen.dart';
+import '../widgets/transfer_points_sheet.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -464,6 +465,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       _Act('Tribunal', Icons.gavel_rounded, const Color(0xFF8B5CF6), () {
         Navigator.push(
             context, SlidePageRoute(page: const TribunalScreen()));
+      }),
+      _Act('Transfert', Icons.swap_horiz_rounded, const Color(0xFF06B6D4), () {
+        showTransferPointsSheet(context);
       }),
       _Act('Ventes', Icons.storefront_rounded, EmeraldPalette.emerald, () {
         _showChildPickerForNav(fp, (childId) {

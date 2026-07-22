@@ -67,6 +67,9 @@ class FamilyProvider extends ChangeNotifier {
   final Map<String, ScreenTimeAccount> _screenTimeAccounts = {};
   Timer? _overtimeTimer;
 
+  // ─── Verrou anti-double-traitement pour les transferts ──────
+  bool _isTransferring = false;
+
   // ─── Soldes boutique ──────────────────────────────────────────
   int _saleDiscountPercent = 0;     // ex: 50 = -50%
   DateTime? _saleEndDate;           // null = pas de vente en cours
@@ -695,6 +698,8 @@ class FamilyProvider extends ChangeNotifier {
       orElse: () => HistoryEntry(
           id: entryId, childId: '', points: 0, reason: ''),
     );
+    // 🔒 Empêcher la suppression d'une seule moitié d'un transfert
+    if (entry.isPointsTransfer) return;
     // ↩️ Inverse l'effet des points sur l'enfant
     if (entry.childId.isNotEmpty) {
       final child = getChild(entry.childId);
@@ -728,6 +733,8 @@ class FamilyProvider extends ChangeNotifier {
     final idx = _history.indexWhere((h) => h.id == entryId);
     if (idx == -1) return;
     final entry = _history[idx];
+    // 🔒 Empêcher la modification d'une seule moitié d'un transfert
+    if (entry.isPointsTransfer) return;
     final child = getChild(entry.childId);
 
     if (child != null) {
@@ -901,6 +908,8 @@ class FamilyProvider extends ChangeNotifier {
     return _history.where((h) {
       if (h.childId != childId) return false;
       if (isBonus ? !h.isBonus : !h.isPenalty) return false;
+      // Exclure les transferts (ne comptent ni comme bonus ni comme pénalité)
+      if (h.isPointsTransfer) return false;
       // Exclure les catégories spéciales (temps écran, notes école, boutique)
       if (h.category == 'school_note' ||
           h.category == 'screen_time_bonus' ||
@@ -981,6 +990,98 @@ class FamilyProvider extends ChangeNotifier {
     if (isBonus) { SoundService.playBonus(); }
     else { SoundService.playPenalty(); }
     notifyListeners();
+  }
+
+  /// Transfert express SKS : déplace des points d'un enfant vers un autre.
+  /// Aucun point créé ou perdu. Crée deux HistoryEntry liées par transferId.
+  /// N'appelle PAS addPoints (pour éviter bonus/pénalité/streak/son).
+  Future<bool> transferPointsBetweenChildren({
+    required String fromChildId,
+    required String toChildId,
+    required int amount,
+    required String reason,
+  }) async {
+    // Validations
+    if (fromChildId == toChildId) return false;
+    if (amount < 1 || amount > 999) return false;
+    if (reason.trim().isEmpty) return false;
+    // 🔒 Verrou anti-double-traitement
+    if (_isTransferring) return false;
+
+    final fromChild = getChild(fromChildId);
+    final toChild = getChild(toChildId);
+    if (fromChild == null || toChild == null) return false;
+    if (fromChild.points < amount) return false;
+
+    _isTransferring = true;
+    try {
+      // 1. Ajuster les soldes
+      fromChild.points -= amount;
+      toChild.points += amount;
+
+      _markPending(fromChild.id);
+      _markPending(toChild.id);
+
+      // 2. Créer les deux entrées liées
+      final transferId = 'transfer_${_uuid.v4()}';
+      final now = DateTime.now();
+
+      final outEntry = HistoryEntry(
+        id: _uuid.v4(),
+        childId: fromChildId,
+        points: amount,
+        reason: reason,
+        category: 'points_transfer_out',
+        isBonus: false,
+        date: now,
+        actionBy: _currentParentName,
+        transferId: transferId,
+        counterpartyChildId: toChildId,
+      );
+      final inEntry = HistoryEntry(
+        id: _uuid.v4(),
+        childId: toChildId,
+        points: amount,
+        reason: reason,
+        category: 'points_transfer_in',
+        isBonus: true,
+        date: now,
+        actionBy: _currentParentName,
+        transferId: transferId,
+        counterpartyChildId: fromChildId,
+      );
+
+      _markPending(outEntry.id);
+      _markPending(inEntry.id);
+
+      // 3. Sauvegarder localement
+      await _childrenBox.put(fromChild.id, jsonEncode(fromChild.toMap()));
+      await _childrenBox.put(toChild.id, jsonEncode(toChild.toMap()));
+      _history.insert(0, outEntry);
+      _history.insert(0, inEntry);
+      await _historyBox.put(outEntry.id, jsonEncode(outEntry.toMap()));
+      await _historyBox.put(inEntry.id, jsonEncode(inEntry.toMap()));
+
+      // 4. Écriture groupée distante (atomique)
+      if (_firestore.isConnected) {
+        try {
+          await _firestore.transferPointsBatch(
+            fromChild: fromChild,
+            toChild: toChild,
+            outEntry: outEntry,
+            inEntry: inEntry,
+          );
+        } catch (_) {
+          // L'écriture locale a réussi, la sync retry automatiquement
+        }
+      }
+
+      // Pas de son bonus/pénalité (transfert neutre)
+      notifyListeners();
+      return true;
+    } finally {
+      _isTransferring = false;
+    }
   }
 
   Future<void> clearHistory() async {

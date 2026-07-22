@@ -10,6 +10,7 @@ import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../services/gemini_service.dart';
+import '../widgets/transfer_points_sheet.dart';
 
 class TribunalScreen extends StatefulWidget {
   const TribunalScreen({super.key});
@@ -50,6 +51,13 @@ class _TribunalScreenState extends State<TribunalScreen>
             appBar: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.swap_horiz_rounded, color: Colors.cyan),
+                  tooltip: 'Transfert express SKS — sans ouvrir d\'affaire',
+                  onPressed: () => showTransferPointsSheet(context),
+                ),
+              ],
               title: ShaderMask(
                 shaderCallback: (bounds) =>
                     const LinearGradient(

@@ -8,6 +8,8 @@ class HistoryEntry {
   bool isBonus;
   String? proofPhotoBase64;
   String? actionBy;
+  String? transferId;
+  String? counterpartyChildId;
 
   HistoryEntry({
     required this.id,
@@ -19,6 +21,8 @@ class HistoryEntry {
     this.isBonus = true,
     this.proofPhotoBase64,
     this.actionBy,
+    this.transferId,
+    this.counterpartyChildId,
   }) : date = date ?? DateTime.now();
 
   bool get hasProofPhoto =>
@@ -27,8 +31,13 @@ class HistoryEntry {
   /// Achat effectué dans la boutique.
   bool get isPurchase => category.toLowerCase() == 'boutique';
 
-  /// Véritable pénalité : un achat boutique n'est jamais une pénalité.
-  bool get isPenalty => !isBonus && !isPurchase;
+  /// Véritable pénalité : un achat boutique ou un transfert n'est jamais une pénalité.
+  bool get isPenalty => !isBonus && !isPurchase && !isPointsTransfer;
+
+  /// Transfert de points entre enfants (ne compte ni comme bonus ni comme pénalité).
+  bool get isPointsTransfer =>
+      category == 'points_transfer_out' || category == 'points_transfer_in';
+
   Map<String, dynamic> toMap() => {
         'id': id,
         'childId': childId,
@@ -39,6 +48,9 @@ class HistoryEntry {
         'isBonus': isBonus,
         'proofPhotoBase64': proofPhotoBase64,
         'actionBy': actionBy,
+        if (transferId != null) 'transferId': transferId,
+        if (counterpartyChildId != null)
+          'counterpartyChildId': counterpartyChildId,
       };
 
   factory HistoryEntry.fromMap(Map<String, dynamic> map) => HistoryEntry(
@@ -52,5 +64,7 @@ class HistoryEntry {
         isBonus: map['isBonus'] ?? true,
         proofPhotoBase64: map['proofPhotoBase64'],
         actionBy: map['actionBy'],
+        transferId: map['transferId'],
+        counterpartyChildId: map['counterpartyChildId'],
       );
 }
