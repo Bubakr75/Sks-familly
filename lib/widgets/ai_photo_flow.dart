@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../services/gemini_service.dart';
+import '../utils/checklist_helpers.dart';
 
 /// Lance le flow Photo IA complet.
 /// Retourne true si des points ont été appliqués, false sinon.
@@ -66,10 +67,23 @@ Future<bool> startAiPhotoFlow(BuildContext context) async {
   if (context.mounted) Navigator.pop(context); // Fermer le loader
   if (!context.mounted) return false;
 
-  bool isBonus = result['type'] == 'bonus';
-  // 🔒 Valider et limiter le montant entre 1 et 999
-  int points = (result['points'] as int).clamp(1, 999);
-  final reason = result['reason'] as String;
+  // 🔒 Validation robuste du résultat Gemini
+  final parsedBonus = parseGeminiType(result['type'] as String?);
+  final parsedPoints = parseGeminiPoints(result['points']);
+  final reason = result['reason'] as String? ?? '';
+
+  if (parsedBonus == null || parsedPoints == null || reason.trim().isEmpty) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ Résultat IA invalide — réessaie'),
+        backgroundColor: Colors.redAccent,
+      ));
+    }
+    return false;
+  }
+
+  bool isBonus = parsedBonus;
+  int points = parsedPoints.clamp(1, 999);
   String? selectedChildId;
   bool processing = false;
 
@@ -89,12 +103,13 @@ Future<bool> startAiPhotoFlow(BuildContext context) async {
           final capturedChildId = selectedChildId!;
           final capturedIsBonus = isBonus;
           final childName = fp.getChild(capturedChildId)?.name ?? '';
-          // 🔒 Pour une pénalité : montant réel = min(demandé, solde)
           final child = fp.getChild(capturedChildId);
-          // 🔒 Montant réel : bonus = demandé ; pénalité = min(demandé, solde) ou 0
-          final actualPoints = capturedIsBonus
-              ? points
-              : (child == null || child.points <= 0 ? 0 : points.clamp(1, child.points));
+          // 🔒 Montant réel via helper testable
+          final actualPoints = actualPenaltyAmount(
+            requested: points,
+            balance: child?.points ?? 0,
+            isBonus: capturedIsBonus,
+          );
 
           // 🔒 Pénalité avec solde nul : ne rien faire
           if (actualPoints == 0) {

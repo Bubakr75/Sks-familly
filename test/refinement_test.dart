@@ -1,107 +1,223 @@
-// Tests pour les corrections de la refonte Bonus/Pénalité/Navigation.
-// Teste requestKey exacte, solde nul, historique récent, Photo IA.
+// Tests utilisant les vrais helpers de production.
+// Teste requestKey multi-enfants, parsing Gemini, montant réel pénalité.
 
-import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:family_score/utils/checklist_helpers.dart';
+import 'package:family_score/models/chore_model.dart';
 import 'package:family_score/models/history_entry.dart';
 import 'package:family_score/models/pending_request.dart';
 
 void main() {
-  group('requestKey exacte vs différente', () {
-    String buildKey(
-        String childId, String dateStr, List<String> doneKeys, int amount) {
-      final sorted = List<String>.from(doneKeys)..sort();
-      return 'chore_checklist|$childId|$dateStr|${sorted.join(',')}|$amount';
-    }
+  group('Multi-enfants — requestKey', () {
+    final chores = [
+      ChoreModel(
+          id: 'chore1',
+          label: 'Lit',
+          emoji: '🛏️',
+          points: 5,
+          timeSlots: ['matin']),
+      ChoreModel(
+          id: 'chore2',
+          label: 'Devoirs',
+          emoji: '📚',
+          points: 10,
+          timeSlots: ['soir']),
+    ];
 
-    test('même requestKey pending → bouton doit être bloqué', () {
-      final key = buildKey('child-a', '2026-07-22', ['chore1:matin'], 5);
+    test('enfant A déjà pending + enfant B nouveau → envoi autorisé', () {
+      final keyA = buildChecklistRequestKey(
+        childId: 'child-a',
+        dateStr: '2026-07-22',
+        chores: chores,
+        doneStates: {'child-a|chore1|matin': 'done'},
+      );
+      final keyB = buildChecklistRequestKey(
+        childId: 'child-b',
+        dateStr: '2026-07-22',
+        chores: chores,
+        doneStates: {'child-b|chore2|soir': 'done'},
+      );
+
       final pendingRequests = [
         PendingRequest(
           id: 'r1',
           type: 'chore_checklist',
           childId: 'child-a',
-          requestedBy: 'Enfant',
-          text: 'Tâches',
+          requestedBy: 'A',
+          text: 'T',
           amount: 5,
           status: 'pending',
-          extra: {'requestKey': key},
+          extra: {'requestKey': keyA},
         ),
       ];
-      final isBlocked = pendingRequests.any((r) =>
+
+      final aPending = pendingRequests.any((r) =>
           r.status == 'pending' &&
-          (r.extra['requestKey'] as String?)?.trim() == key);
-      expect(isBlocked, isTrue);
+          (r.extra['requestKey'] as String?)?.trim() == keyA);
+      final bPending = pendingRequests.any((r) =>
+          r.status == 'pending' &&
+          (r.extra['requestKey'] as String?)?.trim() == keyB);
+
+      expect(aPending, isTrue);
+      expect(bPending, isFalse, reason: 'Enfant B doit pouvoir envoyer');
     });
 
-    test('requestKey différente le même jour → envoi autorisé', () {
-      final keyPending = buildKey('child-a', '2026-07-22', ['chore1:matin'], 5);
-      final keyNew = buildKey('child-a', '2026-07-22', ['chore2:soir'], 10);
+    test('tous les enfants sélectionnés déjà pending → bouton bloqué', () {
+      final keyA = buildChecklistRequestKey(
+        childId: 'child-a',
+        dateStr: '2026-07-22',
+        chores: chores,
+        doneStates: {'child-a|chore1|matin': 'done'},
+      );
+      final keyB = buildChecklistRequestKey(
+        childId: 'child-b',
+        dateStr: '2026-07-22',
+        chores: chores,
+        doneStates: {'child-b|chore2|soir': 'done'},
+      );
 
       final pendingRequests = [
         PendingRequest(
           id: 'r1',
           type: 'chore_checklist',
           childId: 'child-a',
-          requestedBy: 'Enfant',
-          text: 'Tâches',
+          requestedBy: 'A',
+          text: 'T',
           amount: 5,
           status: 'pending',
-          extra: {'requestKey': keyPending},
+          extra: {'requestKey': keyA},
+        ),
+        PendingRequest(
+          id: 'r2',
+          type: 'chore_checklist',
+          childId: 'child-b',
+          requestedBy: 'B',
+          text: 'T',
+          amount: 10,
+          status: 'pending',
+          extra: {'requestKey': keyB},
         ),
       ];
 
-      final isBlocked = pendingRequests.any((r) =>
+      final allPending = [keyA, keyB].every((key) => pendingRequests.any((r) =>
           r.status == 'pending' &&
-          (r.extra['requestKey'] as String?)?.trim() == keyNew);
-      expect(isBlocked, isFalse,
-          reason: 'Une sélection différente doit pouvoir être envoyée');
+          (r.extra['requestKey'] as String?)?.trim() == key));
+
+      expect(allPending, isTrue, reason: 'Tous bloqués → bouton masqué');
+    });
+
+    test('ordre des tâches différent → même clé (tri)', () {
+      final k1 = buildChecklistRequestKey(
+        childId: 'c',
+        dateStr: '2026-07-22',
+        chores: chores,
+        doneStates: {'c|chore1|matin': 'done', 'c|chore2|soir': 'done'},
+      );
+      final k2 = buildChecklistRequestKey(
+        childId: 'c',
+        dateStr: '2026-07-22',
+        chores: chores,
+        doneStates: {'c|chore2|soir': 'done', 'c|chore1|matin': 'done'},
+      );
+      expect(k1, k2);
     });
   });
 
-  group('Montant réel pour pénalité', () {
-    int actualPenaltyAmount(int requested, int balance) {
-      if (balance <= 0) return 0;
-      return min(requested, balance);
-    }
-
-    test('solde 3, pénalité demandée 10 → historique de 3', () {
-      final result = actualPenaltyAmount(10, 3);
-      expect(result, 3);
+  group('Parsing Gemini — parseGeminiPoints', () {
+    test('int valide', () {
+      expect(parseGeminiPoints(5), 5);
     });
 
-    test('solde 0, pénalité demandée 10 → aucune opération', () {
-      final result = actualPenaltyAmount(10, 0);
-      expect(result, 0, reason: 'Solde nul = aucune pénalité');
+    test('double valide', () {
+      expect(parseGeminiPoints(10.0), 10);
+      expect(parseGeminiPoints(7.6), 8);
     });
 
-    test('solde 25, pénalité demandée 10 → retrait de 10', () {
-      final result = actualPenaltyAmount(10, 25);
-      expect(result, 10);
+    test('chaîne numérique valide', () {
+      expect(parseGeminiPoints('15'), 15);
+      expect(parseGeminiPoints(' 3 '), 3);
+    });
+
+    test('null → null', () {
+      expect(parseGeminiPoints(null), isNull);
+    });
+
+    test('NaN → null', () {
+      expect(parseGeminiPoints(double.nan), isNull);
+    });
+
+    test('chaîne invalide → null', () {
+      expect(parseGeminiPoints('abc'), isNull);
+      expect(parseGeminiPoints(''), isNull);
+    });
+
+    test('type inattendu → null', () {
+      expect(parseGeminiPoints([1, 2]), isNull);
+      expect(parseGeminiPoints(true), isNull);
+    });
+  });
+
+  group('Parsing Gemini — parseGeminiType', () {
+    test('bonus → true', () {
+      expect(parseGeminiType('bonus'), isTrue);
+      expect(parseGeminiType('BONUS'), isTrue);
+    });
+
+    test('penalty → false', () {
+      expect(parseGeminiType('penalty'), isFalse);
+    });
+
+    test('pénalité → false', () {
+      expect(parseGeminiType('pénalité'), isFalse);
+    });
+
+    test('null ou invalide → null', () {
+      expect(parseGeminiType(null), isNull);
+      expect(parseGeminiType('xyz'), isNull);
+    });
+  });
+
+  group('actualPenaltyAmount — vrai helper', () {
+    test('solde 3, demande 10 → 3', () {
+      expect(actualPenaltyAmount(requested: 10, balance: 3, isBonus: false), 3);
+    });
+
+    test('solde 0, demande 10 → 0', () {
+      expect(actualPenaltyAmount(requested: 10, balance: 0, isBonus: false), 0);
+    });
+
+    test('solde négatif, demande 10 → 0', () {
+      expect(
+          actualPenaltyAmount(requested: 10, balance: -5, isBonus: false), 0);
+    });
+
+    test('solde 25, demande 10 → 10', () {
+      expect(
+          actualPenaltyAmount(requested: 10, balance: 25, isBonus: false), 10);
+    });
+
+    test('bonus → toujours demandé', () {
+      expect(actualPenaltyAmount(requested: 15, balance: 0, isBonus: true), 15);
+      expect(
+          actualPenaltyAmount(requested: 15, balance: 100, isBonus: true), 15);
     });
 
     test('actualAmount == 0 désactive la confirmation', () {
-      final actualAmount = actualPenaltyAmount(10, 0);
-      final canConfirm = actualAmount > 0;
-      expect(canConfirm, isFalse);
-    });
-
-    test('ne crée aucune entrée d\'historique à zéro point', () {
-      final actualAmount = actualPenaltyAmount(10, 0);
-      final shouldCreateEntry = actualAmount > 0;
-      expect(shouldCreateEntry, isFalse);
+      final amt =
+          actualPenaltyAmount(requested: 10, balance: 0, isBonus: false);
+      expect(amt > 0, isFalse);
     });
   });
 
-  group('chore_checklist affiché en points', () {
-    test('le montant s\'affiche en points et non en lignes', () {
+  group('chore_checklist affiche points', () {
+    test('montant en points pas en lignes', () {
       final r = PendingRequest(
-        id: 'r1',
+        id: 'r',
         type: 'chore_checklist',
         childId: 'c',
-        requestedBy: 'Enfant',
-        text: 'Tâches',
+        requestedBy: 'E',
+        text: 'T',
         amount: 15,
       );
       final display = r.type == 'chore_checklist'
@@ -112,141 +228,76 @@ void main() {
     });
   });
 
-  group('Exclusion achats et transferts de l\'historique récent', () {
-    test('un achat n\'apparaît pas dans l\'historique bonus', () {
+  group('Exclusion achats et transferts de l\'historique', () {
+    test('achat exclu du bonus', () {
       final entries = [
         HistoryEntry(
-            id: 'h1',
+            id: '1',
             childId: 'c',
             points: 5,
-            reason: 'Bonus',
+            reason: 'B',
             category: 'Bonus',
             isBonus: true),
         HistoryEntry(
-            id: 'h2',
+            id: '2',
             childId: 'c',
             points: 50,
             reason: 'Achat',
             category: 'boutique',
             isBonus: false),
       ];
-      final bonusOnly = entries
+      final bonus = entries
           .where((h) => h.isBonus && !h.isPurchase && !h.isPointsTransfer)
           .toList();
-      expect(bonusOnly.length, 1);
-      expect(bonusOnly.first.id, 'h1');
+      expect(bonus.length, 1);
+      expect(bonus.first.id, '1');
     });
 
-    test('un transfert n\'apparaît pas dans l\'historique pénalité', () {
+    test('transfert exclu de la pénalité', () {
       final entries = [
         HistoryEntry(
-            id: 'h1',
+            id: '1',
             childId: 'c',
             points: 5,
-            reason: 'Pénalité',
+            reason: 'P',
             category: 'Pénalité',
             isBonus: false),
         HistoryEntry(
-            id: 'h2',
+            id: '2',
             childId: 'c',
             points: 10,
-            reason: 'Transfert',
+            reason: 'T',
             category: 'points_transfer_out',
             isBonus: false),
       ];
-      final penaltyOnly = entries
-          .where(
-              (h) => h.isBonus == false && !h.isPurchase && !h.isPointsTransfer)
+      final penalty = entries
+          .where((h) => !h.isBonus && !h.isPurchase && !h.isPointsTransfer)
           .toList();
-      expect(penaltyOnly.length, 1);
-      expect(penaltyOnly.first.id, 'h1');
+      expect(penalty.length, 1);
+      expect(penalty.first.id, '1');
     });
   });
 
-  group('startAiPhotoFlow — retour booléen', () {
-    test('annulation du dialogue → false', () {
-      // Simule showDialog retournant null (annulation)
-      final dialogResult = null;
-      expect(dialogResult == true, isFalse);
+  group('startAiPhotoFlow — retour après invalidité Gemini', () {
+    test('points null → invalide', () {
+      final pts = parseGeminiPoints(null);
+      expect(pts, isNull);
     });
 
-    test('confirmation réussie → true', () {
-      // Simule Navigator.pop(ctx, true) après addPoints
-      final dialogResult = true;
-      expect(dialogResult == true, isTrue);
+    test('raison vide → invalide', () {
+      const reason = '';
+      expect(reason.trim().isEmpty, isTrue);
     });
 
-    test('erreur Gemini → false (return avant dialogue)', () {
-      // Simule le catch autour de GeminiService.analyzePhoto
-      bool geminiFailed = true;
-      bool result = false;
-      if (geminiFailed) result = false;
-      expect(result, isFalse);
-    });
-  });
-
-  group('Persistance après reconstruction', () {
-    test('demande pending détectée après redémarrage', () {
-      final today = DateTime.now();
-      final todayStr =
-          '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-
-      final requests = [
-        PendingRequest(
-          id: 'r1',
-          type: 'chore_checklist',
-          childId: 'child-a',
-          requestedBy: 'Enfant',
-          text: 'Tâches',
-          amount: 15,
-          status: 'pending',
-          extra: {'requestDate': todayStr},
-        ),
-      ];
-
-      final detected = requests.any((r) =>
-          r.type == 'chore_checklist' &&
-          r.status == 'pending' &&
-          r.childId == 'child-a' &&
-          (r.extra['requestDate'] as String?) == todayStr);
-
-      expect(detected, isTrue);
+    test('type invalide → invalide', () {
+      final t = parseGeminiType('xyz');
+      expect(t, isNull);
     });
 
-    test('verrou libéré après finally même en cas d\'échec', () {
-      bool lock = false;
-      bool isInFlight = false;
-
-      try {
-        lock = true;
-        isInFlight = true;
-        throw Exception('simulated failure');
-      } catch (_) {
-        // échec
-      } finally {
-        isInFlight = false;
-        lock = false;
-      }
-
-      expect(isInFlight, isFalse,
-          reason: 'Le verrou doit toujours être libéré');
-      expect(lock, isFalse);
-    });
-
-    test('sélections conservées après échec', () {
-      final states = <String, String>{'child-a|chore1|matin': 'done'};
-      final validatedToday = <String>{};
-
-      // Simule RequestResult.failed → ne pas nettoyer
-      final result = 'failed';
-      if (result != 'failed') {
-        states.clear();
-        validatedToday.add('child-a');
-      }
-
-      expect(states.isNotEmpty, isTrue,
-          reason: 'Les sélections doivent être conservées');
-      expect(validatedToday.contains('child-a'), isFalse);
+    test('combinaison valide → points clampés entre 1 et 999', () {
+      final pts = parseGeminiPoints(1500);
+      expect(pts, 1500);
+      expect(pts!.clamp(1, 999), 999);
     });
   });
 }

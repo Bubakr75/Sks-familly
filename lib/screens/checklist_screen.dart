@@ -14,6 +14,7 @@ import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../models/chore_model.dart';
 import '../config/emerald_theme.dart';
+import '../utils/checklist_helpers.dart';
 
 class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({super.key});
@@ -64,38 +65,51 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     return _hasPendingChecklistRequest(fp, _focusedChildId!);
   }
 
-  /// Calcule la requestKey exacte pour la sélection actuelle de l'enfant focalisé.
-  String? _computeRequestKey() {
-    if (_focusedChildId == null) return null;
-    final fp = context.read<FamilyProvider>();
+  /// Calcule la requestKey pour un enfant donné à partir de ses tâches done.
+  String? _computeKeyForChild(FamilyProvider fp, String childId) {
     final chores = fp.chores.where((c) => c.isActive).toList();
+    final doneStates = <String, String>{};
     const allSlots = ['matin', 'midi', 'soir'];
-    final doneKeys = <String>[];
-    int donePts = 0;
     for (final c in chores) {
       final slots = c.timeSlots ?? allSlots;
       for (final slot in slots) {
-        if (_getState(_focusedChildId!, c.id, slot) == _ChoreState.done) {
-          doneKeys.add('${c.id}:$slot');
-          donePts += c.points;
+        final state = _getState(childId, c.id, slot);
+        if (state == _ChoreState.done) {
+          doneStates['$childId|${c.id}|$slot'] = 'done';
         }
       }
     }
-    if (doneKeys.isEmpty) return null;
-    doneKeys.sort();
-    final today = DateTime.now();
-    final todayStr =
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-    return 'chore_checklist|$_focusedChildId|$todayStr|${doneKeys.join(',')}|$donePts';
+    if (doneStates.isEmpty) return null;
+    return buildChecklistRequestKey(
+      childId: childId,
+      dateStr: todayDateStr(),
+      chores: chores,
+      doneStates: doneStates,
+    );
   }
 
-  /// Vérifie si la requestKey exacte de la sélection actuelle est déjà pending.
+  /// Vérifie si la requestKey exacte de l'enfant focalisé est déjà pending.
   bool _isExactKeyPending(FamilyProvider fp) {
-    final key = _computeRequestKey();
+    if (_focusedChildId == null) return false;
+    final key = _computeKeyForChild(fp, _focusedChildId!);
     if (key == null) return false;
     return fp.pendingRequests.any((r) =>
         r.status == 'pending' &&
         (r.extra['requestKey'] as String?)?.trim() == key);
+  }
+
+  /// 🔒 Multi-enfants : le bouton Valider reste visible si au moins un enfant
+  /// sélectionné avec des tâches done n'a pas sa clé exacte déjà pending.
+  bool _allSelectedKeysPending(FamilyProvider fp) {
+    for (final cid in _selectedChildIds) {
+      final key = _computeKeyForChild(fp, cid);
+      if (key == null) continue; // pas de tâche done → ignore
+      final isPending = fp.pendingRequests.any((r) =>
+          r.status == 'pending' &&
+          (r.extra['requestKey'] as String?)?.trim() == key);
+      if (!isPending) return false; // au moins un peut encore envoyer
+    }
+    return true;
   }
 
   /// Clé combinée : childId|choreId|slot (pour dissocier matin/midi/soir)
@@ -358,7 +372,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
                 // ── Bouton Valider ──
                 // 🔒 Masqué uniquement si la requestKey exacte est déjà pending
-                if (_anyDecision() && !_allValidated() && !_isExactKeyPending(fp))
+                if (_anyDecision() && !_allValidated() && !_allSelectedKeysPending(fp))
                   _buildValidateButton(children, chores),
                 if (_allValidated() && _selectedChildIds.isNotEmpty)
                   _buildValidatedBanner(),

@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../models/history_entry.dart';
+import '../utils/checklist_helpers.dart';
 
 /// Configuration d'un motif de bonus ou pénalité.
 class ActionMotif {
@@ -136,10 +137,12 @@ class _PointActionPanelState extends State<PointActionPanel>
     final capturedMotif = _selectedMotif!.label;
     final capturedEmoji = _selectedMotif!.emoji;
 
-    // 🔒 Montant réel : bonus = demandé ; pénalité = min(demandé, solde)
-    final actualAmount = widget.config.isBonus
-        ? _amount
-        : (child!.points <= 0 ? 0 : _amount.clamp(1, child.points));
+    // 🔒 Montant réel via helper testable
+    final actualAmount = actualPenaltyAmount(
+      requested: _amount,
+      balance: child!.points,
+      isBonus: widget.config.isBonus,
+    );
 
     try {
       await fp.addPoints(
