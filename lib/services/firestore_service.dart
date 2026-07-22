@@ -892,7 +892,19 @@ class FirestoreService {
   Future<void> deleteReward(String id) async {
     if (_familyId == null) return;
     try {
-      await _db.collection('families').doc(_familyId).collection('rewards').doc(id).delete();
+      // Tombstone conservé dans Firestore pour que tous les appareils
+      // sachent que cette récompense doit être supprimée localement.
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('rewards')
+          .doc(id)
+          .set({
+        'id': id,
+        'isDeleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'lastModifiedBy': deviceId,
+      });
     } catch (e) {
       if (kDebugMode) debugPrint('deleteReward error: $e');
     }

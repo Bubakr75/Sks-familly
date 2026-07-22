@@ -103,6 +103,18 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if isSignedIn();
       }
+
+      // Récompenses de la boutique
+      match /rewards/{rewardId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
+      }
+
+      // Achats effectués dans la boutique
+      match /purchases/{purchaseId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
+      }
     }
   }
 }
