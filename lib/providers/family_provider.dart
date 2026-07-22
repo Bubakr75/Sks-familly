@@ -28,6 +28,9 @@ import '../utils/image_compressor.dart';
 import '../services/voice_service.dart';
 import '../services/sound_service.dart';
 
+/// Résultat de createRequest pour exploiter la déduplication.
+enum RequestResult { created, duplicate, failed }
+
 class FamilyProvider extends ChangeNotifier {
   final FirestoreService _firestore = FirestoreService();
   static const _uuid = Uuid();
@@ -69,6 +72,9 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── Verrou anti-double-traitement pour les transferts ──────
   bool _isTransferring = false;
+
+  // ─── Verrou anti-doublon pour createRequest ─────────────────
+  final Set<String> _requestKeysInFlight = {};
 
   // ─── Soldes boutique ──────────────────────────────────────────
   int _saleDiscountPercent = 0;     // ex: 50 = -50%
@@ -2174,7 +2180,7 @@ class FamilyProvider extends ChangeNotifier {
   // ─── Demandes en attente (validation parentale) ────────────
   int get pendingRequestsCount => _pendingRequests.length;
 
-  Future<void> createRequest({
+  Future<RequestResult> createRequest({
     required String type,
     required String childId,
     required String requestedBy,
@@ -2182,6 +2188,21 @@ class FamilyProvider extends ChangeNotifier {
     int amount = 0,
     Map<String, dynamic>? extra,
   }) async {
+    final requestKey = (extra?['requestKey'] as String?)?.trim() ?? '';
+
+    // 🔒 Anti-doublon : vérifier les demandes pending existantes
+    if (requestKey.isNotEmpty) {
+      final existing = _pendingRequests.any((r) =>
+          r.status == 'pending' &&
+          (r.extra['requestKey'] as String?)?.trim() == requestKey);
+      if (existing) return RequestResult.duplicate;
+      // 🔒 Verrou d'exécution : empêche deux appels concurrents
+      if (_requestKeysInFlight.contains(requestKey)) {
+        return RequestResult.duplicate;
+      }
+      _requestKeysInFlight.add(requestKey);
+    }
+
     final r = PendingRequest(
       id: _uuid.v4(),
       type: type,
@@ -2192,11 +2213,26 @@ class FamilyProvider extends ChangeNotifier {
       status: 'pending',
       extra: extra ?? {},
     );
-    _markPending(r.id);
-    _pendingRequests.add(r);
-    await _requestsBox.put(r.id, jsonEncode(r.toMap()));
-    if (_firestore.isConnected) await _firestore.saveRequest(r);
-    notifyListeners();
+
+    try {
+      _markPending(r.id);
+      _pendingRequests.add(r);
+      await _requestsBox.put(r.id, jsonEncode(r.toMap()));
+      // Sauvegarde distante — si connecté et échec → failed
+      if (_firestore.isConnected) {
+        await _firestore.saveRequest(r); // relance l'exception si échec
+      }
+      notifyListeners();
+      return RequestResult.created;
+    } catch (_) {
+      // Échec local OU distant : nettoyer l'état partiel
+      _pendingRequests.removeWhere((p) => p.id == r.id);
+      _pendingIds.remove(r.id);
+      try { await _requestsBox.delete(r.id); } catch (_) {}
+      return RequestResult.failed;
+    } finally {
+      if (requestKey.isNotEmpty) _requestKeysInFlight.remove(requestKey);
+    }
   }
 
   Future<void> approveRequest(String requestId, {int? customAmount, String? comment}) async {

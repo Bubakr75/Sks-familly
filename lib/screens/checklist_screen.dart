@@ -14,6 +14,7 @@ import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../models/chore_model.dart';
 import '../config/emerald_theme.dart';
+import '../utils/checklist_helpers.dart';
 
 class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({super.key});
@@ -24,6 +25,9 @@ class ChecklistScreen extends StatefulWidget {
 
 /// État d'une tâche pour la session en cours.
 enum _ChoreState { pending, done, skipped, missed }
+
+/// Résultat de validation par enfant (mode enfant uniquement).
+enum _ChildValidationResult { created, duplicate, failed, noTasks }
 
 class _ChecklistScreenState extends State<ChecklistScreen> {
   /// Enfants sélectionnés pour la notation (multiples)
@@ -38,6 +42,75 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   /// childId -> validé aujourd'hui
   final Set<String> _validatedToday = {};
+
+  /// 🔒 Verrou anti-double-traitement pour la validation
+  bool _isSubmittingChecklist = false;
+
+  /// Vérifie si une demande chore_checklist pending existe déjà pour
+  /// cet enfant et ce jour (persistance après redémarrage).
+  bool _hasPendingChecklistRequest(FamilyProvider fp, String childId) {
+    final today = DateTime.now();
+    final todayStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    return fp.pendingRequests.any((r) =>
+        r.type == 'chore_checklist' &&
+        r.status == 'pending' &&
+        r.childId == childId &&
+        (r.extra['requestDate'] as String?) == todayStr);
+  }
+
+  /// Vérifie si l'enfant focalisé a une demande pending aujourd'hui.
+  bool _hasPendingForFocusedChild(FamilyProvider fp) {
+    if (_focusedChildId == null) return false;
+    return _hasPendingChecklistRequest(fp, _focusedChildId!);
+  }
+
+  /// Calcule la requestKey pour un enfant donné à partir de ses tâches done.
+  String? _computeKeyForChild(FamilyProvider fp, String childId) {
+    final chores = fp.chores.where((c) => c.isActive).toList();
+    final doneStates = <String, String>{};
+    const allSlots = ['matin', 'midi', 'soir'];
+    for (final c in chores) {
+      final slots = c.timeSlots ?? allSlots;
+      for (final slot in slots) {
+        final state = _getState(childId, c.id, slot);
+        if (state == _ChoreState.done) {
+          doneStates['$childId|${c.id}|$slot'] = 'done';
+        }
+      }
+    }
+    if (doneStates.isEmpty) return null;
+    return buildChecklistRequestKey(
+      childId: childId,
+      dateStr: todayDateStr(),
+      chores: chores,
+      doneStates: doneStates,
+    );
+  }
+
+  /// Vérifie si la requestKey exacte de l'enfant focalisé est déjà pending.
+  bool _isExactKeyPending(FamilyProvider fp) {
+    if (_focusedChildId == null) return false;
+    final key = _computeKeyForChild(fp, _focusedChildId!);
+    if (key == null) return false;
+    return fp.pendingRequests.any((r) =>
+        r.status == 'pending' &&
+        (r.extra['requestKey'] as String?)?.trim() == key);
+  }
+
+  /// 🔒 Multi-enfants : le bouton Valider reste visible si au moins un enfant
+  /// sélectionné avec des tâches done n'a pas sa clé exacte déjà pending.
+  bool _allSelectedKeysPending(FamilyProvider fp) {
+    for (final cid in _selectedChildIds) {
+      final key = _computeKeyForChild(fp, cid);
+      if (key == null) continue; // pas de tâche done → ignore
+      final isPending = fp.pendingRequests.any((r) =>
+          r.status == 'pending' &&
+          (r.extra['requestKey'] as String?)?.trim() == key);
+      if (!isPending) return false; // au moins un peut encore envoyer
+    }
+    return true;
+  }
 
   /// Clé combinée : childId|choreId|slot (pour dissocier matin/midi/soir)
   String _key(String childId, String choreId, String slot) =>
@@ -104,7 +177,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           ? const Center(
               child: Text('Aucun enfant enregistré',
                   style: TextStyle(color: Colors.white54)))
-          : Column(
+          : IgnorePointer(
+              ignoring: _isSubmittingChecklist,
+              child: Column(
               children: [
                 // ── Sélecteur d'enfants (avatars, sélection multiple) ──
                 if (children.length >= 1)
@@ -296,12 +371,34 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 ),
 
                 // ── Bouton Valider ──
-                if (_anyDecision() && !_allValidated())
+                // 🔒 Masqué uniquement si la requestKey exacte est déjà pending
+                if (_anyDecision() && !_allValidated() && !_allSelectedKeysPending(fp))
                   _buildValidateButton(children, chores),
                 if (_allValidated() && _selectedChildIds.isNotEmpty)
                   _buildValidatedBanner(),
+                // 🔒 Bandeau informatif si une demande du jour est pending
+                if (_hasPendingForFocusedChild(fp))
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.4), width: 1.5),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.hourglass_top_rounded, color: Color(0xFF7C4DFF), size: 20),
+                        SizedBox(width: 8),
+                        Text('Validation demandée — en attente du parent',
+                            style: TextStyle(color: Color(0xFFB39DDB), fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
               ],
-            ),
+            ), // fin Column
+            ), // fin IgnorePointer global
     );
   }
 
@@ -518,19 +615,26 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         height: 54,
         child: ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
-            backgroundColor: EmeraldPalette.emerald,
+            backgroundColor: _isSubmittingChecklist
+                ? Colors.white12
+                : EmeraldPalette.emerald,
             foregroundColor: const Color(0xFF051410),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16)),
-            elevation: 6,
+            elevation: _isSubmittingChecklist ? 0 : 6,
           ),
-          onPressed: () => _validateAll(children, chores),
-          icon: const Icon(Icons.check_circle_rounded, size: 24),
+          onPressed: _isSubmittingChecklist ? null : () => _validateAll(children, chores),
+          icon: _isSubmittingChecklist
+              ? const SizedBox(width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF051410)))
+              : const Icon(Icons.check_circle_rounded, size: 24),
           label: Text(
-            'Valider '
-            '($totalDone ✅'
-            '${totalMissed > 0 ? ', $totalMissed ❌' : ''}'
-            '${_selectedChildIds.length > 1 ? ', ${_selectedChildIds.length} enfants' : ''})',
+            _isSubmittingChecklist
+                ? 'Envoi de la demande…'
+                : 'Valider '
+                    '($totalDone ✅'
+                    '${totalMissed > 0 ? ', $totalMissed ❌' : ''}'
+                    '${_selectedChildIds.length > 1 ? ', ${_selectedChildIds.length} enfants' : ''})',
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
         ),
@@ -565,88 +669,170 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   // ─── Validation pour tous les enfants sélectionnés ─────────────
   Future<void> _validateAll(
       List<ChildModel> children, List<ChoreModel> chores) async {
+    // 🔒 Verrou anti-double-traitement
+    if (_isSubmittingChecklist) return;
+
     final fp = context.read<FamilyProvider>();
     final isParent = context.read<PinProvider>().isParentMode;
     final messenger = ScaffoldMessenger.of(context);
 
+    // Capturer les données AVANT le premier await
     final selectedChildren =
         children.where((c) => _selectedChildIds.contains(c.id)).toList();
 
     int grandBonus = 0;
     int grandPenalty = 0;
+    final today = DateTime.now();
+    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final childResults = <String, _ChildValidationResult>{};
 
-    const allSlots = ['matin', 'midi', 'soir'];
+    setState(() => _isSubmittingChecklist = true);
+    HapticFeedback.mediumImpact();
 
-    for (final child in selectedChildren) {
-      // Collecter les tâches done/missed par slot
-      final doneList = <String>[]; // labels des tâches done
-      final missedList = <String>[]; // labels des tâches missed
-      int donePts = 0;
-      int missedPts = 0;
+    try {
+      const allSlots = ['matin', 'midi', 'soir'];
 
-      for (final c in chores) {
-        final slots = c.timeSlots ?? allSlots;
-        for (final slot in slots) {
-          final s = _getState(child.id, c.id, slot);
-          final slotLabel = slot == 'matin' ? '🌅' : (slot == 'midi' ? '☀️' : '🌙');
-          if (s == _ChoreState.done) {
-            doneList.add('$slotLabel ${c.label}');
-            donePts += c.points;
-          } else if (s == _ChoreState.missed) {
-            missedList.add('$slotLabel ${c.label}');
-            missedPts += (c.points ~/ 2).clamp(1, 10);
+      for (final child in selectedChildren) {
+        // Collecter les tâches done/missed par slot
+        final doneList = <String>[];
+        final missedList = <String>[];
+        int donePts = 0;
+        int missedPts = 0;
+
+        for (final c in chores) {
+          final slots = c.timeSlots ?? allSlots;
+          for (final slot in slots) {
+            final s = _getState(child.id, c.id, slot);
+            final slotLabel =
+                slot == 'matin' ? '🌅' : (slot == 'midi' ? '☀️' : '🌙');
+            if (s == _ChoreState.done) {
+              doneList.add('$slotLabel ${c.label}');
+              donePts += c.points;
+            } else if (s == _ChoreState.missed) {
+              missedList.add('$slotLabel ${c.label}');
+              missedPts += (c.points ~/ 2).clamp(1, 10);
+            }
+          }
+        }
+
+        if (isParent) {
+          if (doneList.isNotEmpty) {
+            await fp.addPoints(child.id, donePts,
+                '✅ Tâches du jour : ${doneList.join(', ')}',
+                category: 'ménage', isBonus: true);
+            grandBonus += donePts;
+          }
+          if (missedList.isNotEmpty) {
+            await fp.addPoints(child.id, missedPts,
+                '⚠️ Tâches non faites : ${missedList.join(', ')}',
+                category: 'ménage', isBonus: false);
+            grandPenalty += missedPts;
+          }
+          _validatedToday.add(child.id);
+          // Nettoie les états de cet enfant
+          _states.removeWhere((k, _) => k.startsWith('${child.id}|'));
+        } else {
+          // Mode enfant : demande avec requestKey précis anti-doublon
+          if (doneList.isEmpty) {
+            // Pas de tâche terminée → ne pas appeler createRequest
+            childResults[child.id] = _ChildValidationResult.noTasks;
+          } else {
+            // 🔒 Construire une clé stable et précise
+            final doneKeys = <String>[];
+            for (final c in chores) {
+              final slots = c.timeSlots ?? allSlots;
+              for (final slot in slots) {
+                if (_getState(child.id, c.id, slot) == _ChoreState.done) {
+                  doneKeys.add('${c.id}:$slot');
+                }
+              }
+            }
+            doneKeys.sort(); // Ordre stable
+            final requestKey =
+                'chore_checklist|${child.id}|$todayStr|${doneKeys.join(',')}|$donePts';
+
+            final result = await fp.createRequest(
+              type: 'chore_checklist',
+              childId: child.id,
+              requestedBy: child.name,
+              text: '✅ Tâches du jour : ${doneList.join(', ')}',
+              amount: donePts,
+              extra: {
+                'requestKey': requestKey,
+                'requestDate': todayStr,
+                'choreKeys': doneKeys,
+                'source': 'checklist_child',
+                'amount': donePts,
+              },
+            );
+
+            if (result == RequestResult.created) {
+              childResults[child.id] = _ChildValidationResult.created;
+              _validatedToday.add(child.id);
+              // Nettoie les états de cet enfant
+              _states.removeWhere((k, _) => k.startsWith('${child.id}|'));
+            } else if (result == RequestResult.duplicate) {
+              childResults[child.id] = _ChildValidationResult.duplicate;
+              _validatedToday.add(child.id);
+              _states.removeWhere((k, _) => k.startsWith('${child.id}|'));
+            } else {
+              // failed : ne pas nettoyer, ne pas valider
+              childResults[child.id] = _ChildValidationResult.failed;
+            }
           }
         }
       }
 
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      final net = grandBonus - grandPenalty;
+
       if (isParent) {
-        if (doneList.isNotEmpty) {
-          await fp.addPoints(child.id, donePts,
-              '✅ Tâches du jour : ${doneList.join(', ')}',
-              category: 'ménage', isBonus: true);
-          grandBonus += donePts;
-        }
-        if (missedList.isNotEmpty) {
-          await fp.addPoints(child.id, missedPts,
-              '⚠️ Tâches non faites : ${missedList.join(', ')}',
-              category: 'ménage', isBonus: false);
-          grandPenalty += missedPts;
-        }
+        messenger.showSnackBar(SnackBar(
+          content: Text(selectedChildren.length == 1
+              ? (net >= 0
+                  ? '🎉 ${selectedChildren.first.name} : +$grandBonus'
+                      '${grandPenalty > 0 ? ', -$grandPenalty' : ''}'
+                      ' = +$net pts'
+                  : '⚠️ ${selectedChildren.first.name} : +$grandBonus, -$grandPenalty = $net pts')
+              : '🎉 ${selectedChildren.length} enfants notés : '
+                  '+$grandBonus bonus${grandPenalty > 0 ? ', -$grandPenalty pénalité' : ''}'),
+          backgroundColor:
+              net >= 0 ? EmeraldPalette.emerald : Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ));
       } else {
-        // Mode enfant : demande silencieuse
-        if (doneList.isNotEmpty) {
-          await fp.createRequest(
-            type: 'chore_checklist',
-            childId: child.id,
-            requestedBy: child.name,
-            text: '✅ Tâches du jour : ${doneList.join(', ')}',
-            amount: donePts,
-          );
+        // Mode enfant : messages différenciés par enfant
+        final messages = <String>[];
+        bool allFailed = true;
+        for (final child in selectedChildren) {
+          final res = childResults[child.id];
+          if (res == _ChildValidationResult.created) {
+            messages.add('✅ ${child.name} : Demande envoyée au parent');
+            allFailed = false;
+          } else if (res == _ChildValidationResult.duplicate) {
+            messages.add('ℹ️ ${child.name} : Cette demande a déjà été envoyée');
+            allFailed = false;
+          } else if (res == _ChildValidationResult.failed) {
+            messages.add('❌ ${child.name} : Envoi impossible — réessaie dans un instant');
+          } else if (res == _ChildValidationResult.noTasks) {
+            messages.add('⚠️ ${child.name} : Sélectionne au moins une tâche terminée');
+          }
+        }
+        if (messages.isNotEmpty) {
+          messenger.showSnackBar(SnackBar(
+            content: Text(messages.join('\n')),
+            backgroundColor: allFailed ? Colors.redAccent : const Color(0xFF7C4DFF),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ));
         }
       }
-
-      _validatedToday.add(child.id);
-      // Nettoie les états de cet enfant
-      _states.removeWhere((k, _) => k.startsWith('${child.id}|'));
+    } finally {
+      if (mounted) setState(() => _isSubmittingChecklist = false);
     }
-
-    HapticFeedback.heavyImpact();
-    final net = grandBonus - grandPenalty;
-    messenger.showSnackBar(SnackBar(
-      content: Text(selectedChildren.length == 1
-          ? (net >= 0
-              ? '🎉 ${selectedChildren.first.name} : +$grandBonus'
-                  '${grandPenalty > 0 ? ', -$grandPenalty' : ''}'
-                  ' = +$net pts'
-              : '⚠️ ${selectedChildren.first.name} : +$grandBonus, -$grandPenalty = $net pts')
-          : '🎉 ${selectedChildren.length} enfants notés : '
-              '+$grandBonus bonus${grandPenalty > 0 ? ', -$grandPenalty pénalité' : ''}'),
-      backgroundColor: net >= 0 ? EmeraldPalette.emerald : Colors.redAccent,
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 4),
-    ));
-
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   // ─── Ajout de tâche (parent) ───────────────────────────────────
