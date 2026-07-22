@@ -521,29 +521,53 @@ class FamilyProvider extends ChangeNotifier {
       _saveBoxFromList(_choresBox, _chores, (e) => e.id, (e) => e.toMap());
       notifyListeners();
     };
-    // 🔧 FIX : synchroniser les récompenses boutique depuis Firestore (avec merge)
-    // 🔒 On préserve TOUJOURS les récompenses locales, même si Firestore est vide
+    // Synchroniser les récompenses boutique depuis Firestore.
+    // Les suppressions sont propagées avec un tombstone `isDeleted`.
+    // Les récompenses encore uniquement locales sont envoyées vers Firestore.
     _firestore.onRewardsChanged = (list) {
-      if (list.isNotEmpty) {
-        final remoteRewards = list.map((d) => RewardModel.fromMap(d)).toList();
-        final localIds = _rewards.map((r) => r.id).toSet();
-        for (final remote in remoteRewards) {
-          if (!localIds.contains(remote.id)) {
-            // Récompense distante pas en local → on l'ajoute
-            _rewards.add(remote);
-          } else {
-            // Mise à jour de la récompense existante
-            final idx = _rewards.indexWhere((r) => r.id == remote.id);
-            if (idx >= 0) _rewards[idx] = remote;
-          }
+      final deletedIds = list
+          .where((data) => data['isDeleted'] == true)
+          .map((data) => data['id'] as String? ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+
+      if (deletedIds.isNotEmpty) {
+        _rewards.removeWhere((reward) => deletedIds.contains(reward.id));
+        for (final id in deletedIds) {
+          unawaited(_rewardsBox.delete(id));
         }
-        // 🔒 On NE supprime JAMAIS les locales qui ne sont pas sur Firestore
-        // (évite de perdre les récompenses créées récemment)
       }
-      // Sauvegarder en local SANS clear (pour ne pas perdre de données)
-      for (final r in _rewards) {
-        _rewardsBox.put(r.id, jsonEncode(r.toMap()));
+
+      final remoteRewards = list
+          .where((data) => data['isDeleted'] != true)
+          .map((data) => RewardModel.fromMap(data))
+          .toList();
+
+      for (final remote in remoteRewards) {
+        final index = _rewards.indexWhere((reward) => reward.id == remote.id);
+        if (index == -1) {
+          _rewards.add(remote);
+        } else {
+          _rewards[index] = remote;
+        }
       }
+
+      final remoteIds = remoteRewards.map((reward) => reward.id).toSet();
+      for (final local in _rewards) {
+        if (!remoteIds.contains(local.id) &&
+            !deletedIds.contains(local.id) &&
+            _firestore.isConnected) {
+          unawaited(_firestore.saveReward(local.toMap(), local.id));
+        }
+      }
+
+      _rewards.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      for (final reward in _rewards) {
+        unawaited(
+          _rewardsBox.put(reward.id, jsonEncode(reward.toMap())),
+        );
+      }
+
       notifyListeners();
     };
 
