@@ -12,7 +12,7 @@ import 'dart:convert';
 import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../services/gemini_service.dart';
-import '../screens/add_points_screen.dart';
+import '../screens/bonus_screen.dart';
 import '../screens/gemini_chat_screen.dart';
 
 class AIFloatingButton extends StatelessWidget {
@@ -75,7 +75,7 @@ class AIFloatingButton extends StatelessWidget {
               label: 'Saisie texte IA',
               subtitle: 'Tape une phrase → l\'IA remplit',
               color: Colors.cyanAccent,
-              onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => const AddPointsScreen())); },
+              onTap: () { Navigator.pop(ctx); Navigator.push(context, MaterialPageRoute(builder: (_) => const BonusScreen())); },
             ),
 
             // 💬 Chat

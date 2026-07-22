@@ -10,15 +10,16 @@ import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/quick_shortcut_panel.dart';
-import '../widgets/ai_floating_button.dart';
+import '../widgets/ai_photo_flow.dart';
 import '../services/fcm_service.dart';
 import 'pending_requests_screen.dart';
 import 'pin_verification_screen.dart';
 import 'profile_selection_screen.dart';
 import 'dashboard_screen.dart';
-import 'add_points_screen.dart';
 import 'calendar_screen.dart';
 import 'stats_screen.dart';
+import 'bonus_screen.dart';
+import 'penalty_screen.dart';
 import 'gemini_chat_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
@@ -52,8 +53,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _navBarController;
-  // 🔒 Onglets protégés : Points (1), Stats (3), Réglages (4)
-  // Dashboard (0) et Calendrier (2) restent visibles aux enfants
+  // 🔒 Onglets protégés : Bonus (1), Pénalité (3), Réglages (4)
+  // Dashboard (0) reste visible aux enfants
+  // Photo IA (2) est protégée mais gérée séparément (bouton central)
   final List<int> _protectedIndices = [1, 3, 4];
 
   @override
@@ -83,11 +85,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       case 0:
         return const DashboardScreen();
       case 1:
-        return const AddPointsScreen();
-      case 2:
-        return const CalendarScreen();
+        return const BonusScreen();
       case 3:
-        return const StatsScreen();
+        return const PenaltyScreen();
       case 4:
         return const SettingsScreen();
       default:
@@ -106,6 +106,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     }
     setState(() => _currentIndex = index);
+  }
+
+  /// Bouton central Photo IA — protégé par PinGuard, ne modifie pas l'index.
+  void _openPhotoIA() {
+    HapticFeedback.mediumImpact();
+    PinGuard.guardAction(context, () {
+      startAiPhotoFlow(context);
+    });
   }
 
   void _showChildPicker(BuildContext context, void Function(dynamic child) onSelected) {
@@ -727,8 +735,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
       // Bouton IA flottant 🤖 (overlay sur tout l'écran)
-      floatingActionButton: const AIFloatingButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0, 1),
@@ -750,19 +756,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: List.generate(5, (i) {
+                  // Index 2 = Photo IA (bouton central spécial)
+                  if (i == 2) {
+                    return TvFocusWrapper(
+                      onTap: _openPhotoIA,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF7C4DFF), Color(0xFF5E35B1)],
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.camera_alt_rounded,
+                            color: Colors.white, size: 26),
+                      ),
+                    );
+                  }
                   final isSelected = _currentIndex == i;
                   final icons = [
                     Icons.home_rounded,
-                    Icons.stars_rounded,
-                    Icons.calendar_month_rounded,
-                    Icons.bar_chart_rounded,
+                    Icons.star_rounded,
+                    null, // Photo IA — géré ci-dessus
+                    Icons.warning_amber_rounded,
                     Icons.settings_rounded,
                   ];
                   final labels = [
                     'Accueil',
-                    'Points',
-                    'Calendrier',
-                    'Stats',
+                    'Bonus',
+                    '', // Photo IA
+                    'Pénalité',
                     'Reglages',
                   ];
                   return TvFocusWrapper(
@@ -1055,6 +1086,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                 ),
+                _drawerItem(
+                  icon: Icons.calendar_month_rounded,
+                  label: 'Calendrier',
+                  color: Colors.lightBlue,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context,
+                        SlidePageRoute(page: const CalendarScreen()));
+                  },
+                ),
+                if (isParent)
+                  _drawerItem(
+                    icon: Icons.bar_chart_rounded,
+                    label: 'Statistiques',
+                    color: Colors.purpleAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      PinGuard.guardAction(context, () {
+                        Navigator.push(context,
+                            SlidePageRoute(page: const StatsScreen()));
+                      });
+                    },
+                  ),
 
                 // ═══ ⚙️ OUTILS ═══
                 _drawerSectionHeader('⚙️ Outils'),

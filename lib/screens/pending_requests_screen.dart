@@ -53,7 +53,9 @@ class PendingRequestsScreen extends StatelessWidget {
       ),
       body: Consumer<FamilyProvider>(
         builder: (context, fp, _) {
-          final requests = fp.pendingRequests;
+          // 🔒 Trier par createdAt décroissant sans modifier la liste du provider
+          final requests = List<PendingRequest>.from(fp.pendingRequests)
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
           if (requests.isEmpty) {
             return const Center(
               child: Column(
@@ -105,6 +107,13 @@ class PendingRequestsScreen extends StatelessWidget {
                                   'Proposé par ${r.requestedBy}',
                                   style: TextStyle(
                                       color: Colors.grey[600], fontSize: 12),
+                                ),
+                                const SizedBox(height: 2),
+                                // 📅 Date exacte + ancienneté
+                                Text(
+                                  '${_formatDate(r.createdAt)} · ${_formatRelative(r.createdAt)}',
+                                  style: TextStyle(
+                                      color: Colors.grey[500], fontSize: 11),
                                 ),
                               ],
                             ),
@@ -293,6 +302,22 @@ class PendingRequestsScreen extends StatelessWidget {
   }
 
   /// Détecte si une demande boutique concerne du temps d'écran.
+  /// Format JJ/MM/AAAA HH:mm
+  String _formatDate(DateTime d) {
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} '
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Ancienneté lisible : « il y a 5 min », « il y a 2 h », « il y a 3 j »
+  String _formatRelative(DateTime d) {
+    final diff = DateTime.now().difference(d);
+    if (diff.inMinutes < 1) return 'à l\'instant';
+    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
+    if (diff.inDays == 1) return 'hier';
+    return 'il y a ${diff.inDays} j';
+  }
+
   bool _isScreenTimeReward(PendingRequest r) {
     if (r.type != 'boutique') return false;
     final title = (r.extra['rewardTitle'] as String? ?? '').toLowerCase();
