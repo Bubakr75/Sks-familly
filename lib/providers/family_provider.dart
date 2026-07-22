@@ -2218,18 +2218,14 @@ class FamilyProvider extends ChangeNotifier {
       _markPending(r.id);
       _pendingRequests.add(r);
       await _requestsBox.put(r.id, jsonEncode(r.toMap()));
-      // Sauvegarde distante — l'échec réseau ne bloque pas le résultat local
+      // Sauvegarde distante — si connecté et échec → failed
       if (_firestore.isConnected) {
-        try {
-          await _firestore.saveRequest(r);
-        } catch (_) {
-          // Le mécanisme pending existant gère le retry
-        }
+        await _firestore.saveRequest(r); // relance l'exception si échec
       }
       notifyListeners();
       return RequestResult.created;
     } catch (_) {
-      // Échec local : nettoyer l'état partiel
+      // Échec local OU distant : nettoyer l'état partiel
       _pendingRequests.removeWhere((p) => p.id == r.id);
       _pendingIds.remove(r.id);
       try { await _requestsBox.delete(r.id); } catch (_) {}

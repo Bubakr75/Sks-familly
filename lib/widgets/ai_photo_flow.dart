@@ -49,19 +49,32 @@ Future<bool> startAiPhotoFlow(BuildContext context) async {
     ),
   );
 
-  // 3. Analyser avec Gemini
-  final result = await GeminiService.analyzePhoto(base64Photo);
+  // 3. Analyser avec Gemini — try/catch pour gérer les erreurs
+  Map<String, dynamic> result;
+  try {
+    result = await GeminiService.analyzePhoto(base64Photo);
+  } catch (_) {
+    if (context.mounted) Navigator.pop(context); // Fermer le loader
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ Analyse IA impossible — réessaie'),
+        backgroundColor: Colors.redAccent,
+      ));
+    }
+    return false;
+  }
   if (context.mounted) Navigator.pop(context); // Fermer le loader
   if (!context.mounted) return false;
 
   bool isBonus = result['type'] == 'bonus';
-  int points = result['points'] as int;
+  // 🔒 Valider et limiter le montant entre 1 et 999
+  int points = (result['points'] as int).clamp(1, 999);
   final reason = result['reason'] as String;
   String? selectedChildId;
   bool processing = false;
 
   // 4. Dialogue de confirmation
-  await showDialog(
+  final dialogResult = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDialog) {
@@ -74,31 +87,56 @@ Future<bool> startAiPhotoFlow(BuildContext context) async {
           HapticFeedback.mediumImpact();
 
           final capturedChildId = selectedChildId!;
-          final capturedPoints = points;
           final capturedIsBonus = isBonus;
           final childName = fp.getChild(capturedChildId)?.name ?? '';
+          // 🔒 Pour une pénalité : montant réel = min(demandé, solde)
+          final child = fp.getChild(capturedChildId);
+          // 🔒 Montant réel : bonus = demandé ; pénalité = min(demandé, solde) ou 0
+          final actualPoints = capturedIsBonus
+              ? points
+              : (child == null || child.points <= 0 ? 0 : points.clamp(1, child.points));
 
-          await fp.addPoints(
-            capturedChildId,
-            capturedPoints,
-            reason,
-            category: capturedIsBonus ? 'Bonus' : 'Pénalité',
-            isBonus: capturedIsBonus,
-            proofPhotoBase64: base64Photo,
-          );
+          // 🔒 Pénalité avec solde nul : ne rien faire
+          if (actualPoints == 0) {
+            if (ctx.mounted) Navigator.pop(ctx);
+            messenger.showSnackBar(const SnackBar(
+              content: Text('Cet enfant n\'a aucun point à retirer'),
+              backgroundColor: Colors.orange,
+            ));
+            return;
+          }
 
-          if (!ctx.mounted) return;
-          Navigator.pop(ctx);
+          try {
+            await fp.addPoints(
+              capturedChildId,
+              actualPoints,
+              reason,
+              category: capturedIsBonus ? 'Bonus' : 'Pénalité',
+              isBonus: capturedIsBonus,
+              proofPhotoBase64: base64Photo,
+            );
 
-          HapticFeedback.heavyImpact();
-          messenger.showSnackBar(SnackBar(
-            content: Text(
-                '${capturedIsBonus ? "✅ Bonus" : "⚠️ Pénalité"} pour $childName\n$capturedPoints pts : "$reason"'),
-            backgroundColor:
-                capturedIsBonus ? Colors.green.shade700 : Colors.red.shade700,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
-          ));
+            if (!ctx.mounted) return;
+            Navigator.pop(ctx, true); // true = succès
+
+            HapticFeedback.heavyImpact();
+            messenger.showSnackBar(SnackBar(
+              content: Text(
+                  '${capturedIsBonus ? "✅ Bonus" : "⚠️ Pénalité"} pour $childName\n$actualPoints pts : "$reason"'),
+              backgroundColor:
+                  capturedIsBonus ? Colors.green.shade700 : Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ));
+          } catch (_) {
+            if (!ctx.mounted) return;
+            messenger.showSnackBar(const SnackBar(
+              content: Text('Erreur lors de l\'application des points'),
+              backgroundColor: Colors.redAccent,
+            ));
+          } finally {
+            if (ctx.mounted) setDialog(() => processing = false);
+          }
         }
 
         return AlertDialog(
@@ -298,5 +336,5 @@ Future<bool> startAiPhotoFlow(BuildContext context) async {
     ),
   );
 
-  return true;
+  return dialogResult == true;
 }

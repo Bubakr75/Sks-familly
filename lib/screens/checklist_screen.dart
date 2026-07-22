@@ -58,6 +58,46 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         (r.extra['requestDate'] as String?) == todayStr);
   }
 
+  /// Vérifie si l'enfant focalisé a une demande pending aujourd'hui.
+  bool _hasPendingForFocusedChild(FamilyProvider fp) {
+    if (_focusedChildId == null) return false;
+    return _hasPendingChecklistRequest(fp, _focusedChildId!);
+  }
+
+  /// Calcule la requestKey exacte pour la sélection actuelle de l'enfant focalisé.
+  String? _computeRequestKey() {
+    if (_focusedChildId == null) return null;
+    final fp = context.read<FamilyProvider>();
+    final chores = fp.chores.where((c) => c.isActive).toList();
+    const allSlots = ['matin', 'midi', 'soir'];
+    final doneKeys = <String>[];
+    int donePts = 0;
+    for (final c in chores) {
+      final slots = c.timeSlots ?? allSlots;
+      for (final slot in slots) {
+        if (_getState(_focusedChildId!, c.id, slot) == _ChoreState.done) {
+          doneKeys.add('${c.id}:$slot');
+          donePts += c.points;
+        }
+      }
+    }
+    if (doneKeys.isEmpty) return null;
+    doneKeys.sort();
+    final today = DateTime.now();
+    final todayStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    return 'chore_checklist|$_focusedChildId|$todayStr|${doneKeys.join(',')}|$donePts';
+  }
+
+  /// Vérifie si la requestKey exacte de la sélection actuelle est déjà pending.
+  bool _isExactKeyPending(FamilyProvider fp) {
+    final key = _computeRequestKey();
+    if (key == null) return false;
+    return fp.pendingRequests.any((r) =>
+        r.status == 'pending' &&
+        (r.extra['requestKey'] as String?)?.trim() == key);
+  }
+
   /// Clé combinée : childId|choreId|slot (pour dissocier matin/midi/soir)
   String _key(String childId, String choreId, String slot) =>
       '$childId|$choreId|$slot';
@@ -123,7 +163,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           ? const Center(
               child: Text('Aucun enfant enregistré',
                   style: TextStyle(color: Colors.white54)))
-          : Column(
+          : IgnorePointer(
+              ignoring: _isSubmittingChecklist,
+              child: Column(
               children: [
                 // ── Sélecteur d'enfants (avatars, sélection multiple) ──
                 if (children.length >= 1)
@@ -298,9 +340,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
                 // ── Liste des tâches ──
                 Expanded(
-                  child: IgnorePointer(
-                    ignoring: _isSubmittingChecklist,
-                    child: chores.isEmpty
+                  child: chores.isEmpty
                       ? const Center(
                           child: Padding(
                             padding: EdgeInsets.all(24),
@@ -314,16 +354,37 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         )
                       : _buildChoreGroups(
                           focusedChild!, chores, isParent, fp),
-                  ), // fin IgnorePointer
                 ),
 
                 // ── Bouton Valider ──
-                if (_anyDecision() && !_allValidated())
+                // 🔒 Masqué uniquement si la requestKey exacte est déjà pending
+                if (_anyDecision() && !_allValidated() && !_isExactKeyPending(fp))
                   _buildValidateButton(children, chores),
                 if (_allValidated() && _selectedChildIds.isNotEmpty)
                   _buildValidatedBanner(),
+                // 🔒 Bandeau informatif si une demande du jour est pending
+                if (_hasPendingForFocusedChild(fp))
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.4), width: 1.5),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.hourglass_top_rounded, color: Color(0xFF7C4DFF), size: 20),
+                        SizedBox(width: 8),
+                        Text('Validation demandée — en attente du parent',
+                            style: TextStyle(color: Color(0xFFB39DDB), fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
               ],
-            ),
+            ), // fin Column
+            ), // fin IgnorePointer global
     );
   }
 

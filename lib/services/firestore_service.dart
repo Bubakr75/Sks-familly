@@ -682,18 +682,15 @@ class FirestoreService {
 
   Future<void> saveRequest(PendingRequest r) async {
     if (_familyId == null) return;
-    try {
-      final data = r.toMap();
-      data['lastModifiedBy'] = deviceId;
-      await _db
-          .collection('families')
-          .doc(_familyId)
-          .collection('requests')
-          .doc(r.id)
-          .set(data);
-    } catch (e) {
-      if (kDebugMode) debugPrint('saveRequest error: $e');
-    }
+    // Relance l'exception pour que FamilyProvider puisse détecter l'échec
+    final data = r.toMap();
+    data['lastModifiedBy'] = deviceId;
+    await _db
+        .collection('families')
+        .doc(_familyId)
+        .collection('requests')
+        .doc(r.id)
+        .set(data);
   }
 
   Future<void> deleteRequest(String rId) async {

@@ -113,48 +113,76 @@ class _PointActionPanelState extends State<PointActionPanel>
 
   Future<void> _apply() async {
     if (!_isValid) return;
+
+    final fp = context.read<FamilyProvider>();
+    final child = fp.getChild(_selectedChildId!);
+
+    // 🔒 Pour une pénalité avec solde nul : aucune action
+    if (!widget.config.isBonus && (child == null || child.points <= 0)) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Cet enfant n\'a aucun point à retirer'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
     setState(() => _processing = true);
     HapticFeedback.mediumImpact();
 
-    final fp = context.read<FamilyProvider>();
     final messenger = ScaffoldMessenger.of(context);
-    final childName = fp.getChild(_selectedChildId!)?.name ?? '';
-    final capturedAmount = _amount;
+    final childName = child?.name ?? '';
     final capturedMotif = _selectedMotif!.label;
     final capturedEmoji = _selectedMotif!.emoji;
 
-    await fp.addPoints(
-      _selectedChildId!,
-      _amount,
-      '$capturedEmoji $capturedMotif',
-      category: widget.config.category,
-      isBonus: widget.config.isBonus,
-    );
+    // 🔒 Montant réel : bonus = demandé ; pénalité = min(demandé, solde)
+    final actualAmount = widget.config.isBonus
+        ? _amount
+        : (child!.points <= 0 ? 0 : _amount.clamp(1, child.points));
 
-    if (!mounted) return;
-    setState(() => _processing = false);
+    try {
+      await fp.addPoints(
+        _selectedChildId!,
+        actualAmount,
+        '$capturedEmoji $capturedMotif',
+        category: widget.config.category,
+        isBonus: widget.config.isBonus,
+      );
 
-    // Animation de célébration
-    if (!MediaQuery.of(context).disableAnimations) {
-      _celebrationController.forward().then((_) {
-        if (mounted) _celebrationController.reset();
+      if (!mounted) return;
+
+      // Animation de célébration
+      if (!MediaQuery.of(context).disableAnimations) {
+        _celebrationController.forward().then((_) {
+          if (mounted) _celebrationController.reset();
+        });
+      }
+
+      HapticFeedback.heavyImpact();
+      messenger.showSnackBar(SnackBar(
+        content: Text(widget.config.successMessage
+            .replaceAll('{name}', childName)
+            .replaceAll('{amount}', '$actualAmount')),
+        backgroundColor: widget.config.primaryColor,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ));
+
+      // Reset partiel : garder l'enfant, effacer le motif
+      setState(() {
+        _selectedMotif = null;
       });
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text('Erreur lors de l\'application des points'),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _processing = false);
     }
-
-    HapticFeedback.heavyImpact();
-    messenger.showSnackBar(SnackBar(
-      content: Text(widget.config.successMessage
-          .replaceAll('{name}', childName)
-          .replaceAll('{amount}', '$capturedAmount')),
-      backgroundColor: widget.config.primaryColor,
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 3),
-    ));
-
-    // Reset partiel : garder l'enfant, effacer le motif
-    setState(() {
-      _selectedMotif = null;
-    });
   }
 
   @override
@@ -422,7 +450,9 @@ class _PointActionPanelState extends State<PointActionPanel>
                             size: 18),
                         const SizedBox(width: 8),
                         Text(
-                            '${widget.config.isBonus ? selectedChild.points + _amount : (selectedChild.points - _amount).clamp(0, 999)}',
+                            widget.config.isBonus
+                                ? '${selectedChild.points + _amount}'
+                                : '${(selectedChild.points - (selectedChild.points <= 0 ? 0 : _amount.clamp(1, selectedChild.points))).clamp(0, 999)}',
                             style: TextStyle(
                                 color: config.primaryColor,
                                 fontSize: 20,
@@ -507,7 +537,9 @@ class _PointActionPanelState extends State<PointActionPanel>
         .where((h) =>
             h.childId == childId &&
             h.isBonus == config.isBonus &&
-            h.category == config.category)
+            h.category == config.category &&
+            !h.isPurchase &&
+            !h.isPointsTransfer)
         .take(3)
         .toList();
     if (recent.isEmpty) return [];

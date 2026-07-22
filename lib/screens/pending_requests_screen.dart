@@ -130,7 +130,9 @@ class PendingRequestsScreen extends StatelessWidget {
                                 ? '${r.amount} points'
                                 : r.type == 'boutique'
                                     ? '${r.amount} points'
-                                    : '${r.amount} ligne${r.amount > 1 ? 's' : ''}',
+                                    : r.type == 'chore_checklist'
+                                        ? '${r.amount} points'
+                                        : '${r.amount} ligne${r.amount > 1 ? 's' : ''}',
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600),
                           ),
