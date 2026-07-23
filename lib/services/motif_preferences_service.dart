@@ -84,6 +84,12 @@ class MotifPreferencesService {
     required Set<String> favorites,
     required Map<String, int> usage,
   }) {
+    // Construire un index original explicite pour garantir la stabilité
+    final originalIndex = <T, int>{};
+    for (var i = 0; i < motifs.length; i++) {
+      originalIndex[motifs[i]] = i;
+    }
+
     final other = motifs.where(isOther).toList();
     final regular = motifs.where((m) => !isOther(m)).toList();
 
@@ -92,19 +98,18 @@ class MotifPreferencesService {
     final nonFavs =
         regular.where((m) => !favorites.contains(getId(m))).toList();
 
-    // Trier favoris par fréquence décroissante, puis ordre d'origine stable
-    favs.sort((a, b) {
+    // Comparateur : fréquence décroissante, puis index original croissant
+    int compareByFreqThenOriginal(T a, T b) {
       final ua = usage[getId(a)] ?? 0;
       final ub = usage[getId(b)] ?? 0;
-      return ub.compareTo(ua);
-    });
+      final freqCompare = ub.compareTo(ua);
+      if (freqCompare != 0) return freqCompare;
+      // Stabilité explicite : ordre original
+      return (originalIndex[a] ?? 0).compareTo(originalIndex[b] ?? 0);
+    }
 
-    // Trier non-favoris par fréquence décroissante, puis ordre d'origine stable
-    nonFavs.sort((a, b) {
-      final ua = usage[getId(a)] ?? 0;
-      final ub = usage[getId(b)] ?? 0;
-      return ub.compareTo(ua);
-    });
+    favs.sort(compareByFreqThenOriginal);
+    nonFavs.sort(compareByFreqThenOriginal);
 
     return [...favs, ...nonFavs, ...other];
   }

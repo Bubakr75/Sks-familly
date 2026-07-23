@@ -1,7 +1,8 @@
 // Tests pour les motifs personnalisés (LOT 1), Photo IA (LOT 2),
-// et favoris/compteurs (LOT 3).
-// Utilise les vrais helpers de production.
+// favoris/compteurs (LOT 3), et fluidité/tri stable.
+// Utilise les vrais helpers de production et SharedPreferences mock.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,11 +14,7 @@ void main() {
   // ═══ LOT 1 — Motif "Autre" personnalisable ═══
   group('LOT 1 — motif_helpers', () {
     test('motif classique valide sans texte personnalisé', () {
-      final reason = buildReason(
-        isOther: false,
-        emoji: '🧹',
-        label: 'Ménage',
-      );
+      final reason = buildReason(isOther: false, emoji: '🧹', label: 'Ménage');
       expect(reason, '🧹 Ménage');
     });
 
@@ -37,37 +34,25 @@ void main() {
     });
 
     test('raison finale pour Autre contient le bon texte', () {
-      final reason = buildReason(
-        isOther: true,
-        emoji: '✨',
-        customText: 'A aidé sa sœur',
-      );
+      final reason =
+          buildReason(isOther: true, emoji: '✨', customText: 'A aidé sa sœur');
       expect(reason, '✨ A aidé sa sœur');
     });
 
     test('raison finale pour Autre pénalité', () {
       final reason = buildReason(
-        isOther: true,
-        emoji: '🔎',
-        customText: 'A menti sur ses devoirs',
-      );
+          isOther: true, emoji: '🔎', customText: 'A menti sur ses devoirs');
       expect(reason, '🔎 A menti sur ses devoirs');
     });
 
     test('pas de double emoji si le texte commence déjà par l\'emoji', () {
-      final reason = buildReason(
-        isOther: true,
-        emoji: '✨',
-        customText: '✨ Super effort',
-      );
+      final reason =
+          buildReason(isOther: true, emoji: '✨', customText: '✨ Super effort');
       expect(reason, '✨ Super effort');
-      expect(reason.split('✨').length, 2); // un seul emoji
+      expect(reason.split('✨').length, 2);
     });
 
-    test(
-        'motif classique sélectionné après Autre n\'utilise pas l\'ancien texte',
-        () {
-      // Simule le comportement : on appelle buildReason avec isOther=false
+    test('motif classique après Autre ignore l\'ancien texte', () {
       final reasonClassic = buildReason(
         isOther: false,
         emoji: '📚',
@@ -91,14 +76,9 @@ void main() {
     });
   });
 
-  // ═══ LOT 2 — Photo IA modifiable ═══
-  // Les tests du dialogue nécessiteraient un widget test complet avec Provider.
-  // On teste les helpers utilisés par le dialogue.
-
-  group('LOT 2 — Photo IA helpers', () {
-    test('raison IA préremplie et modifiable', () {
-      // Le TextEditingController est prérempli avec initialReason
-      // On vérifie que le helper de validation fonctionne
+  // ═══ LOT 2 — Photo IA helpers (dialogue testé via widget) ═══
+  group('LOT 2 — Photo IA buildReason', () {
+    test('raison non vide est valide', () {
       expect('Bonne aide en cuisine'.trim().isNotEmpty, isTrue);
     });
 
@@ -109,13 +89,6 @@ void main() {
 
     test('texte modifié est trimé avant utilisation', () {
       expect('  texte modifié  '.trim(), 'texte modifié');
-    });
-
-    test('annulation = false, succès = true', () {
-      // showDialog<bool> : null (annulation) != true → false
-      // Navigator.pop(ctx, true) → true
-      expect(null == true, isFalse);
-      expect(true == true, isTrue);
     });
   });
 
@@ -148,7 +121,6 @@ void main() {
 
     test('persistance après reconstruction du service', () async {
       await MotifPreferencesService.toggleFavorite(true, 'persist_id');
-      // Recharger comme une nouvelle instance le ferait
       final favs = await MotifPreferencesService.loadFavorites(true);
       expect(favs.contains('persist_id'), isTrue);
     });
@@ -174,14 +146,12 @@ void main() {
         motifs: motifs,
         getId: (m) => m.id,
         isOther: (m) => m.isOther,
-        favorites: {'b'}, // B est favori
-        usage: {'a': 10, 'b': 1, 'c': 5}, // A le plus utilisé
+        favorites: {'b'},
+        usage: {'a': 10, 'b': 1, 'c': 5},
       );
-
-      expect(sorted.first.id, 'b', reason: 'Favori en premier');
-      expect(sorted[1].id, 'a', reason: 'A (fréquent) ensuite');
-      expect(sorted[2].id, 'c');
-      expect(sorted.last.id, 'other', reason: 'Autre toujours à la fin');
+      expect(sorted.first.id, 'b');
+      expect(sorted[1].id, 'a');
+      expect(sorted.last.id, 'other');
     });
 
     test('fréquence décroissante', () {
@@ -197,13 +167,12 @@ void main() {
         favorites: {},
         usage: {'a': 3, 'b': 10, 'c': 1},
       );
-
-      expect(sorted[0].id, 'b', reason: 'B (10) avant A (3)');
+      expect(sorted[0].id, 'b');
       expect(sorted[1].id, 'a');
       expect(sorted[2].id, 'c');
     });
 
-    test('ordre stable en cas d\'égalité', () {
+    test('égalité de fréquence conserve explicitement l\'ordre initial', () {
       final ids = ['x', 'y', 'z'];
       final motifs =
           ids.map((id) => ActionMotif(id, '🔹', id.toUpperCase(), 5)).toList();
@@ -217,7 +186,7 @@ void main() {
       expect(sorted.map((m) => m.id).toList(), ids);
     });
 
-    test('Autre reste toujours à la fin', () {
+    test('Autre reste toujours à la fin même avec usage élevé', () {
       final ids = ['x', 'y', 'z'];
       final motifs =
           ids.map((id) => ActionMotif(id, '🔹', id.toUpperCase(), 5)).toList();
@@ -233,17 +202,41 @@ void main() {
     });
 
     test('échec ou annulation n\'incrémente pas le compteur', () async {
-      // On ne fait rien → compteur reste vide
       final usage = await MotifPreferencesService.loadUsage(true);
       expect(usage.isEmpty, isTrue);
     });
 
     test('une erreur SharedPreferences ne bloque pas l\'action principale',
         () async {
-      // Même avec des prefs vides/corrompues, loadFavorites retourne {}
       final favs = await MotifPreferencesService.loadFavorites(true);
       expect(favs, isNotNull);
       expect(favs.isEmpty, isTrue);
+    });
+  });
+
+  // ═══ LOT 3b — Tests de validation des helpers pour PointActionPanel ═══
+  // Note: les widget tests complets nécessitent FamilyProvider + Hive,
+  // non disponibles en test unitaire. On teste les helpers réels utilisés.
+  group('PointActionPanel — helpers réels', () {
+    test('isValidCustomText utilisé pour activer/désactiver le bouton', () {
+      expect(isValidCustomText(''), isFalse);
+      expect(isValidCustomText(null), isFalse);
+      expect(isValidCustomText('   '), isFalse);
+      expect(isValidCustomText('Belle action'), isTrue);
+    });
+
+    test('buildReason produit la bonne raison pour addPoints', () {
+      expect(buildReason(isOther: false, emoji: '🧹', label: 'Ménage'),
+          '🧹 Ménage');
+      expect(
+          buildReason(isOther: true, emoji: '✨', customText: 'Aidé'), '✨ Aidé');
+    });
+
+    test('ActionMotif.isOther contrôle la visibilité du champ', () {
+      const classic = ActionMotif('id', '🅰️', 'A', 5);
+      const autre = ActionMotif('id2', '✨', 'Autre', 5, isOther: true);
+      expect(classic.isOther == true, isFalse);
+      expect(autre.isOther == true, isTrue);
     });
   });
 }

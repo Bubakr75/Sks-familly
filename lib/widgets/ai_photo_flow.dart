@@ -88,6 +88,7 @@ Future<bool> startAiPhotoFlow(BuildContext context) async {
   // 4. Dialogue de confirmation (StatefulWidget pour garantir dispose)
   final dialogResult = await showDialog<bool>(
     context: context,
+    barrierDismissible: false,
     builder: (ctx) => _AiPhotoDialog(
       fp: fp,
       bytes: bytes,
@@ -168,7 +169,10 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
     );
 
     if (actualPoints == 0) {
-      if (mounted) Navigator.pop(context, false);
+      // 🔒 Ne pas fermer le dialogue : garder les valeurs, libérer _processing
+      if (mounted) {
+        setState(() => _processing = false);
+      }
       widget.messenger.showSnackBar(const SnackBar(
         content: Text('Cet enfant n\'a aucun point à retirer'),
         backgroundColor: Colors.orange,
@@ -204,6 +208,7 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
         content: Text('Erreur lors de l\'application des points'),
         backgroundColor: Colors.redAccent,
       ));
+      // Garder le dialogue ouvert pour réessayer
     } finally {
       if (mounted) setState(() => _processing = false);
     }
@@ -214,218 +219,220 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
     final children = widget.fp.children;
     final accent = _isBonus ? Colors.green : Colors.redAccent;
 
-    return AlertDialog(
-      backgroundColor: const Color(0xFF0F2620),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Row(children: [
-        Text('🤖', style: TextStyle(fontSize: 28)),
-        SizedBox(width: 8),
-        Text('Résultat IA',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ]),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Aperçu photo
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.memory(widget.bytes,
-                  height: 100, width: double.infinity, fit: BoxFit.cover),
-            ),
-            const SizedBox(height: 14),
-            // Toggle Bonus/Pénalité
-            Row(children: [
-              Expanded(
-                child: GestureDetector(
+    return PopScope(
+      canPop: !_processing,
+      child: AlertDialog(
+        backgroundColor: const Color(0xFF0F2620),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Text('🤖', style: TextStyle(fontSize: 28)),
+          SizedBox(width: 8),
+          Text('Résultat IA',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ]),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Aperçu photo
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.memory(widget.bytes,
+                    height: 100, width: double.infinity, fit: BoxFit.cover),
+              ),
+              const SizedBox(height: 14),
+              // Toggle Bonus/Pénalité
+              Row(children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _processing
+                        ? null
+                        : () => setState(() => _isBonus = true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _isBonus
+                            ? Colors.green.withValues(alpha: 0.2)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: _isBonus ? Colors.green : Colors.white12),
+                      ),
+                      child: Center(
+                          child: Text('✅ Bonus',
+                              style: TextStyle(
+                                  color:
+                                      _isBonus ? Colors.green : Colors.white54,
+                                  fontWeight: FontWeight.w600))),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _processing
+                        ? null
+                        : () => setState(() => _isBonus = false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: !_isBonus
+                            ? Colors.redAccent.withValues(alpha: 0.2)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color:
+                                !_isBonus ? Colors.redAccent : Colors.white12),
+                      ),
+                      child: Center(
+                          child: Text('⚠️ Pénalité',
+                              style: TextStyle(
+                                  color: !_isBonus
+                                      ? Colors.redAccent
+                                      : Colors.white54,
+                                  fontWeight: FontWeight.w600))),
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              // Montant modifiable (− / valeur / +)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: _processing
+                        ? null
+                        : () => setState(() {
+                              if (_points > 1) _points--;
+                            }),
+                    icon: const Icon(Icons.remove_circle_outline,
+                        color: Colors.white54),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text('${_isBonus ? "+" : "-"}$_points pts',
+                        style: TextStyle(
+                            color: accent,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                  IconButton(
+                    onPressed: _processing
+                        ? null
+                        : () => setState(() {
+                              if (_points < 999) _points++;
+                            }),
+                    icon: const Icon(Icons.add_circle_outline,
+                        color: Colors.white54),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // 📝 Explication IA modifiable
+              const Text('Explication proposée par l\'IA',
+                  style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              TextField(
+                controller: _reasonCtrl,
+                enabled: !_processing,
+                maxLength: 150,
+                maxLines: 3,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.06),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none),
+                  counterStyle:
+                      const TextStyle(color: Colors.white24, fontSize: 10),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const Text(
+                  'Tu peux corriger l\'explication si l\'IA s\'est trompée.',
+                  style: TextStyle(color: Colors.white38, fontSize: 11)),
+              const SizedBox(height: 16),
+              // Sélecteur enfant
+              const Text('Pour quel enfant ?',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              ...children.map((c) {
+                final isSelected = _selectedChildId == c.id;
+                return GestureDetector(
                   onTap: _processing
                       ? null
-                      : () => setState(() => _isBonus = true),
+                      : () => setState(() => _selectedChildId = c.id),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: _isBonus
-                          ? Colors.green.withValues(alpha: 0.2)
+                      color: isSelected
+                          ? accent.withValues(alpha: 0.15)
                           : Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: _isBonus ? Colors.green : Colors.white12),
+                          color: isSelected ? accent : Colors.white12,
+                          width: isSelected ? 1.5 : 1),
                     ),
-                    child: Center(
-                        child: Text('✅ Bonus',
-                            style: TextStyle(
-                                color:
-                                    _isBonus ? Colors.green : Colors.white54,
-                                fontWeight: FontWeight.w600))),
+                    child: Row(children: [
+                      Text(c.avatar.isNotEmpty ? c.avatar : '👤',
+                          style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(c.name,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      if (isSelected)
+                        Icon(Icons.check_circle_rounded,
+                            color: accent, size: 20),
+                    ]),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: GestureDetector(
-                  onTap: _processing
-                      ? null
-                      : () => setState(() => _isBonus = false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: !_isBonus
-                          ? Colors.redAccent.withValues(alpha: 0.2)
-                          : Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color:
-                              !_isBonus ? Colors.redAccent : Colors.white12),
-                    ),
-                    child: Center(
-                        child: Text('⚠️ Pénalité',
-                            style: TextStyle(
-                                color: !_isBonus
-                                    ? Colors.redAccent
-                                    : Colors.white54,
-                                fontWeight: FontWeight.w600))),
-                  ),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            // Montant modifiable (− / valeur / +)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: _processing
-                      ? null
-                      : () => setState(() {
-                            if (_points > 1) _points--;
-                          }),
-                  icon: const Icon(Icons.remove_circle_outline,
-                      color: Colors.white54),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text('${_isBonus ? "+" : "-"}$_points pts',
-                      style: TextStyle(
-                          color: accent,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800)),
-                ),
-                IconButton(
-                  onPressed: _processing
-                      ? null
-                      : () => setState(() {
-                            if (_points < 999) _points++;
-                          }),
-                  icon: const Icon(Icons.add_circle_outline,
-                      color: Colors.white54),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // 📝 Explication IA modifiable
-            const Text('Explication proposée par l\'IA',
-                style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _reasonCtrl,
-              enabled: !_processing,
-              maxLength: 150,
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.06),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none),
-                counterStyle:
-                    const TextStyle(color: Colors.white24, fontSize: 10),
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const Text(
-                'Tu peux corriger l\'explication si l\'IA s\'est trompée.',
-                style: TextStyle(color: Colors.white38, fontSize: 11)),
-            const SizedBox(height: 16),
-            // Sélecteur enfant
-            const Text('Pour quel enfant ?',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            ...children.map((c) {
-              final isSelected = _selectedChildId == c.id;
-              return GestureDetector(
-                onTap: _processing
-                    ? null
-                    : () => setState(() => _selectedChildId = c.id),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? accent.withValues(alpha: 0.15)
-                        : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: isSelected ? accent : Colors.white12,
-                        width: isSelected ? 1.5 : 1),
-                  ),
-                  child: Row(children: [
-                    Text(c.avatar.isNotEmpty ? c.avatar : '👤',
-                        style: const TextStyle(fontSize: 20)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(c.name,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    if (isSelected)
-                      Icon(Icons.check_circle_rounded,
-                          color: accent, size: 20),
-                  ]),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _processing
-              ? null
-              : () => Navigator.pop(context, false),
-          child: const Text('Annuler',
-              style: TextStyle(color: Colors.white54)),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: accent,
-            foregroundColor: Colors.white,
+                );
+              }),
+            ],
           ),
-          onPressed: _canConfirm ? _confirm : null,
-          child: _processing
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
-              : const Text('Confirmer',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: _processing ? null : () => Navigator.pop(context, false),
+            child:
+                const Text('Annuler', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: _canConfirm ? _confirm : null,
+            child: _processing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Text('Confirmer',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 }

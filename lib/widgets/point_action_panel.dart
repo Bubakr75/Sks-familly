@@ -4,6 +4,7 @@
 // Gère : sélection enfant, cartes de motifs, montant, aperçu, validation,
 // état de chargement, historique récent, animations.
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -104,10 +105,10 @@ class _PointActionPanelState extends State<PointActionPanel>
 
   Future<void> _loadPreferences() async {
     try {
-      final favs = await MotifPreferencesService.loadFavorites(
-          widget.config.isBonus);
-      final usage = await MotifPreferencesService.loadUsage(
-          widget.config.isBonus);
+      final favs =
+          await MotifPreferencesService.loadFavorites(widget.config.isBonus);
+      final usage =
+          await MotifPreferencesService.loadUsage(widget.config.isBonus);
       if (mounted) {
         setState(() {
           _favorites = favs;
@@ -135,7 +136,10 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   bool get _isValid =>
-      _selectedChildId != null && _selectedMotif != null && !_processing && _isMotifValid;
+      _selectedChildId != null &&
+      _selectedMotif != null &&
+      !_processing &&
+      _isMotifValid;
 
   /// Un motif classique est toujours valide. "Autre" nécessite un texte non vide.
   bool get _isMotifValid {
@@ -250,13 +254,12 @@ class _PointActionPanelState extends State<PointActionPanel>
         _selectedMotif = null;
         _customTextCtrl.clear();
         _customFocusNode.unfocus();
+        _processing = false;
       });
 
-      // 📊 Incrémenter le compteur d'utilisation après succès
+      // 📊 Incrémenter le compteur en arrière-plan (sans bloquer)
       if (!capturedMotif.isOther) {
-        await MotifPreferencesService.incrementUsage(
-            widget.config.isBonus, capturedMotif.id);
-        await _loadPreferences();
+        unawaited(_incrementAndReload(capturedMotif.id));
       }
     } catch (_) {
       if (!mounted) return;
@@ -267,6 +270,33 @@ class _PointActionPanelState extends State<PointActionPanel>
       ));
     } finally {
       if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  /// Tâche d'arrière-plan : incrémenter le compteur et recharger le tri.
+  Future<void> _incrementAndReload(String motifId) async {
+    try {
+      await MotifPreferencesService.incrementUsage(
+          widget.config.isBonus, motifId);
+      final favs =
+          await MotifPreferencesService.loadFavorites(widget.config.isBonus);
+      final usage =
+          await MotifPreferencesService.loadUsage(widget.config.isBonus);
+      if (mounted) {
+        setState(() {
+          _favorites = favs;
+          _usage = usage;
+          _sortedMotifs = MotifPreferencesService.sortMotifs(
+            motifs: widget.config.motifs,
+            getId: (m) => m.id,
+            isOther: (m) => m.isOther,
+            favorites: favs,
+            usage: usage,
+          );
+        });
+      }
+    } catch (_) {
+      // Ignorer silencieusement
     }
   }
 
@@ -320,6 +350,8 @@ class _PointActionPanelState extends State<PointActionPanel>
                             : () => setState(() {
                                   _selectedChildId = c.id;
                                   _selectedMotif = null;
+                                  _customTextCtrl.clear();
+                                  _customFocusNode.unfocus();
                                 }),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
@@ -409,10 +441,11 @@ class _PointActionPanelState extends State<PointActionPanel>
                                     ? null
                                     : () async {
                                         HapticFeedback.selectionClick();
-                                        final newFavs = await MotifPreferencesService
-                                            .toggleFavorite(
-                                                widget.config.isBonus,
-                                                motif.id);
+                                        final newFavs =
+                                            await MotifPreferencesService
+                                                .toggleFavorite(
+                                                    widget.config.isBonus,
+                                                    motif.id);
                                         if (mounted) {
                                           setState(() {
                                             _favorites = newFavs;
@@ -492,10 +525,11 @@ class _PointActionPanelState extends State<PointActionPanel>
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                          color: config.primaryColor, width: 2),
+                      borderSide:
+                          BorderSide(color: config.primaryColor, width: 2),
                     ),
-                    counterStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+                    counterStyle:
+                        const TextStyle(color: Colors.white24, fontSize: 11),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
