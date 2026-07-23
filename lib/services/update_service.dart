@@ -8,12 +8,15 @@ import 'package:open_filex/open_filex.dart';
 
 class UpdateService {
   static const String _repo = 'Bubakr75/Sks-familly';
-  static const String _apiUrl = 'https://api.github.com/repos/$_repo/releases/latest';
+  static const String _apiUrl =
+      'https://api.github.com/repos/$_repo/releases/latest';
 
   static Future<void> checkForUpdate(BuildContext context) async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
+      final currentVersion = packageInfo.buildNumber.isEmpty
+          ? packageInfo.version
+          : '${packageInfo.version}+${packageInfo.buildNumber}';
 
       final response = await http.get(
         Uri.parse(_apiUrl),
@@ -23,11 +26,12 @@ class UpdateService {
       if (response.statusCode != 200) return;
 
       final data = jsonDecode(response.body);
-      final latestTag = (data['tag_name'] as String?)?.replaceFirst('v', '') ?? '';
+      final latestTag =
+          (data['tag_name'] as String?)?.replaceFirst('v', '') ?? '';
 
       if (latestTag.isEmpty || latestTag == currentVersion) return;
 
-      if (!_isNewer(latestTag, currentVersion)) return;
+      if (!isNewerVersion(latestTag, currentVersion)) return;
 
       final assets = data['assets'] as List<dynamic>? ?? [];
       String? apkUrl;
@@ -45,11 +49,12 @@ class UpdateService {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
               Icon(Icons.system_update, color: Color(0xFF7C4DFF)),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text('Mise a jour', style: TextStyle(color: Colors.white)),
             ],
           ),
@@ -60,15 +65,18 @@ class UpdateService {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Plus tard', style: TextStyle(color: Colors.grey)),
+              child:
+                  const Text('Plus tard', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7C4DFF)),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7C4DFF)),
               onPressed: () {
                 Navigator.pop(ctx);
                 _downloadAndInstall(context, apkUrl!);
               },
-              child: const Text('Telecharger', style: TextStyle(color: Colors.white)),
+              child: const Text('Telecharger',
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -76,27 +84,55 @@ class UpdateService {
     } catch (_) {}
   }
 
-  static bool _isNewer(String latest, String current) {
-    final latestParts = latest.split('.').map(int.tryParse).toList();
-    final currentParts = current.split('.').map(int.tryParse).toList();
+  @visibleForTesting
+  static bool isNewerVersion(String latest, String current) {
+    final latestVersion = _parseVersion(latest);
+    final currentVersion = _parseVersion(current);
+
     for (var i = 0; i < 3; i++) {
-      final l = (i < latestParts.length ? latestParts[i] : 0) ?? 0;
-      final c = (i < currentParts.length ? currentParts[i] : 0) ?? 0;
-      if (l > c) return true;
-      if (l < c) return false;
+      final latestPart = latestVersion.$1[i];
+      final currentPart = currentVersion.$1[i];
+
+      if (latestPart > currentPart) return true;
+      if (latestPart < currentPart) return false;
     }
-    return false;
+
+    return latestVersion.$2 > currentVersion.$2;
   }
 
-  static Future<void> _downloadAndInstall(BuildContext context, String url) async {
+  static (List<int>, int) _parseVersion(String value) {
+    final normalized = value.trim().replaceFirst(RegExp(r'^v'), '');
+    final sections = normalized.split('+');
+
+    final versionParts = sections.first
+        .split('.')
+        .map((part) => int.tryParse(part) ?? 0)
+        .toList();
+
+    while (versionParts.length < 3) {
+      versionParts.add(0);
+    }
+
+    final buildNumber =
+        sections.length > 1 ? int.tryParse(sections[1]) ?? 0 : 0;
+
+    return (versionParts.take(3).toList(), buildNumber);
+  }
+
+  static Future<void> _downloadAndInstall(
+      BuildContext context, String url) async {
     final messenger = ScaffoldMessenger.of(context);
 
     messenger.showSnackBar(
       const SnackBar(
         content: Row(
           children: [
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-            const SizedBox(width: 12),
+            SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white)),
+            SizedBox(width: 12),
             Text('Telechargement en cours...'),
           ],
         ),
@@ -106,12 +142,15 @@ class UpdateService {
     );
 
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(minutes: 5));
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(minutes: 5));
 
       if (response.statusCode != 200) {
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
-          const SnackBar(content: Text('Erreur de telechargement'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Erreur de telechargement'),
+              backgroundColor: Colors.red),
         );
         return;
       }
@@ -124,7 +163,9 @@ class UpdateService {
 
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
-        const SnackBar(content: Text('Telechargement termine ! Installation...'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Telechargement termine ! Installation...'),
+            backgroundColor: Colors.green),
       );
 
       await OpenFilex.open(file.path);
