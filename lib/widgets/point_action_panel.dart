@@ -11,15 +11,19 @@ import '../providers/family_provider.dart';
 import '../models/child_model.dart';
 import '../models/history_entry.dart';
 import '../utils/checklist_helpers.dart';
+import '../utils/motif_helpers.dart';
+import '../services/motif_preferences_service.dart';
 
 /// Configuration d'un motif de bonus ou pénalité.
 class ActionMotif {
+  final String id;
   final String emoji;
   final String label;
   final int defaultPoints;
   final bool isOther;
 
   const ActionMotif(
+    this.id,
     this.emoji,
     this.label,
     this.defaultPoints, {
@@ -57,7 +61,8 @@ class PointActionConfig {
 }
 
 /// Panneau d'action partagé pour Bonus et Pénalité.
-/// Aucun TextField — le montant se modifie uniquement par boutons et presets.
+/// Le montant se modifie par boutons et presets. Le motif "Autre" permet
+/// un champ texte personnalisé pour décrire l'action précisément.
 class PointActionPanel extends StatefulWidget {
   final PointActionConfig config;
   const PointActionPanel({super.key, required this.config});
@@ -74,6 +79,11 @@ class _PointActionPanelState extends State<PointActionPanel>
   bool _processing = false;
   late AnimationController _celebrationController;
   late Animation<double> _celebrationAnim;
+  late TextEditingController _customTextCtrl;
+  late FocusNode _customFocusNode;
+  Set<String> _favorites = {};
+  Map<String, int> _usage = {};
+  List<ActionMotif> _sortedMotifs = [];
 
   @override
   void initState() {
@@ -86,23 +96,73 @@ class _PointActionPanelState extends State<PointActionPanel>
       parent: _celebrationController,
       curve: Curves.easeOut,
     );
+    _customTextCtrl = TextEditingController();
+    _customFocusNode = FocusNode();
+    _sortedMotifs = widget.config.motifs;
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final favs = await MotifPreferencesService.loadFavorites(
+          widget.config.isBonus);
+      final usage = await MotifPreferencesService.loadUsage(
+          widget.config.isBonus);
+      if (mounted) {
+        setState(() {
+          _favorites = favs;
+          _usage = usage;
+          _sortedMotifs = MotifPreferencesService.sortMotifs(
+            motifs: widget.config.motifs,
+            getId: (m) => m.id,
+            isOther: (m) => m.isOther,
+            favorites: favs,
+            usage: usage,
+          );
+        });
+      }
+    } catch (_) {
+      // Garder l'ordre par défaut silencieusement
+    }
   }
 
   @override
   void dispose() {
     _celebrationController.dispose();
+    _customTextCtrl.dispose();
+    _customFocusNode.dispose();
     super.dispose();
   }
 
   bool get _isValid =>
-      _selectedChildId != null && _selectedMotif != null && !_processing;
+      _selectedChildId != null && _selectedMotif != null && !_processing && _isMotifValid;
+
+  /// Un motif classique est toujours valide. "Autre" nécessite un texte non vide.
+  bool get _isMotifValid {
+    if (_selectedMotif == null) return false;
+    if (_selectedMotif!.isOther) {
+      return isValidCustomText(_customTextCtrl.text);
+    }
+    return true;
+  }
 
   void _selectMotif(ActionMotif motif) {
     setState(() {
       _selectedMotif = motif;
       _amount = motif.defaultPoints;
+      // Si on quitte "Autre", vider le texte et retirer le focus
+      if (!motif.isOther) {
+        _customTextCtrl.clear();
+        _customFocusNode.unfocus();
+      }
     });
     HapticFeedback.selectionClick();
+    // Si on sélectionne "Autre", donner le focus après le build
+    if (motif.isOther) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _customFocusNode.requestFocus();
+      });
+    }
   }
 
   void _adjustAmount(int delta) {
@@ -141,8 +201,14 @@ class _PointActionPanelState extends State<PointActionPanel>
 
     final messenger = ScaffoldMessenger.of(context);
     final childName = child?.name ?? '';
-    final capturedMotif = _selectedMotif!.label;
-    final capturedEmoji = _selectedMotif!.emoji;
+    final capturedMotif = _selectedMotif!;
+    // 🔒 Calculer la raison via helper
+    final reason = buildReason(
+      isOther: capturedMotif.isOther,
+      emoji: capturedMotif.emoji,
+      label: capturedMotif.label,
+      customText: _customTextCtrl.text,
+    );
 
     // 🔒 Montant réel via helper testable
     final actualAmount = actualPenaltyAmount(
@@ -155,7 +221,7 @@ class _PointActionPanelState extends State<PointActionPanel>
       await fp.addPoints(
         _selectedChildId!,
         actualAmount,
-        '$capturedEmoji $capturedMotif',
+        reason,
         category: widget.config.category,
         isBonus: widget.config.isBonus,
       );
@@ -179,10 +245,19 @@ class _PointActionPanelState extends State<PointActionPanel>
         duration: const Duration(seconds: 3),
       ));
 
-      // Reset partiel : garder l'enfant, effacer le motif
+      // Reset partiel : garder l'enfant, effacer le motif et le texte
       setState(() {
         _selectedMotif = null;
+        _customTextCtrl.clear();
+        _customFocusNode.unfocus();
       });
+
+      // 📊 Incrémenter le compteur d'utilisation après succès
+      if (!capturedMotif.isOther) {
+        await MotifPreferencesService.incrementUsage(
+            widget.config.isBonus, capturedMotif.id);
+        await _loadPreferences();
+      }
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(
@@ -305,8 +380,9 @@ class _PointActionPanelState extends State<PointActionPanel>
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: config.motifs.map((motif) {
+                children: _sortedMotifs.map((motif) {
                   final isSel = _selectedMotif?.label == motif.label;
+                  final isFav = _favorites.contains(motif.id);
                   return GestureDetector(
                     onTap: _processing ? null : () => _selectMotif(motif),
                     child: AnimatedContainer(
@@ -324,6 +400,48 @@ class _PointActionPanelState extends State<PointActionPanel>
                       ),
                       child: Column(
                         children: [
+                          // Étoile favori (sauf pour "Autre")
+                          if (!motif.isOther)
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: GestureDetector(
+                                onTap: _processing
+                                    ? null
+                                    : () async {
+                                        HapticFeedback.selectionClick();
+                                        final newFavs = await MotifPreferencesService
+                                            .toggleFavorite(
+                                                widget.config.isBonus,
+                                                motif.id);
+                                        if (mounted) {
+                                          setState(() {
+                                            _favorites = newFavs;
+                                            _sortedMotifs =
+                                                MotifPreferencesService
+                                                    .sortMotifs(
+                                              motifs: widget.config.motifs,
+                                              getId: (m) => m.id,
+                                              isOther: (m) => m.isOther,
+                                              favorites: _favorites,
+                                              usage: _usage,
+                                            );
+                                          });
+                                        }
+                                      },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Icon(
+                                    isFav
+                                        ? Icons.star_rounded
+                                        : Icons.star_border_rounded,
+                                    color: isFav
+                                        ? const Color(0xFFFFD54F)
+                                        : Colors.white24,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
                           Text(motif.emoji,
                               style: const TextStyle(fontSize: 28)),
                           const SizedBox(height: 6),
@@ -349,7 +467,42 @@ class _PointActionPanelState extends State<PointActionPanel>
                 }).toList(),
               ),
 
-              const SizedBox(height: 24),
+              // ── Champ texte pour motif "Autre" ──
+              if (_selectedMotif?.isOther == true) ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _customTextCtrl,
+                  focusNode: _customFocusNode,
+                  enabled: !_processing,
+                  maxLength: 100,
+                  maxLines: 2,
+                  textInputAction: TextInputAction.done,
+                  style: TextStyle(color: config.accentColor, fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: widget.config.isBonus
+                        ? 'Décris la bonne action…'
+                        : 'Décris le comportement…',
+                    hintStyle: const TextStyle(color: Colors.white24),
+                    filled: true,
+                    fillColor: config.primaryColor.withValues(alpha: 0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: config.primaryColor.withValues(alpha: 0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: config.primaryColor, width: 2),
+                    ),
+                    counterStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 24),
+              ] else ...[
+                const SizedBox(height: 24),
+              ],
 
               // ── Montant ──
               if (_selectedMotif != null) ...[
