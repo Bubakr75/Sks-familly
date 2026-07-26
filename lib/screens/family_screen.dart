@@ -5,6 +5,7 @@ import '../providers/family_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/family_join_panel.dart';
+import '../widgets/family_join_approval_panel.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'firebase_diagnostic_screen.dart';
 
@@ -528,9 +529,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       const SizedBox(height: 24),
 
                       // ─── Vue connectée ou non ──────────────
-                      if (isConnected)
-                        _buildConnectedView(primary)
-                      else ...[
+                      if (isConnected) ...[
+                        _buildConnectedView(primary),
+                        const SizedBox(height: 20),
+                        FamilyJoinApprovalPanel(
+                          familyId: provider.familyId!,
+                        ),
+                      ] else ...[
                         _buildCreateSection(primary),
                         const SizedBox(height: 20),
                         _buildJoinSection(),
