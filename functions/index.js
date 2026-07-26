@@ -16,6 +16,19 @@ exports.getFamilyJoinStatus = familyJoinFunctions.getFamilyJoinStatus;
 exports.approveFamilyJoin = familyJoinFunctions.approveFamilyJoin;
 exports.rejectFamilyJoin = familyJoinFunctions.rejectFamilyJoin;
 
+const {
+  createFamilyManagementFunctions,
+} = require("./family_management");
+
+const familyManagementFunctions = createFamilyManagementFunctions({
+  functions,
+  admin,
+  db,
+});
+
+exports.createFamily = familyManagementFunctions.createFamily;
+exports.changeFamilyCode = familyManagementFunctions.changeFamilyCode;
+
 // ===== HELPER : envoyer à toute la famille SAUF l'émetteur =====
 async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   const tokensSnap = await db
