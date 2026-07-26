@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -266,6 +267,15 @@ class FcmService {
 
       if (familyId == null || deviceId == null || token.isEmpty) return;
 
+      // 🔒 Sécurité : ne pas enregistrer le token sans UID Firebase Auth
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null || uid.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('FCM: utilisateur non authentifié, token non enregistré.');
+        }
+        return;
+      }
+
       tokenKey = '$familyId|$deviceId|$token';
 
       if (_lastSavedTokenKey == tokenKey) {
@@ -286,6 +296,7 @@ class FcmService {
           .set({
         'token': token,
         'deviceId': deviceId,
+        'uid': uid,
         'platform': _platformName,
         'updatedAt': FieldValue.serverTimestamp(),
       });

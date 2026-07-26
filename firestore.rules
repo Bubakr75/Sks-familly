@@ -80,9 +80,19 @@ service cloud.firestore {
       }
 
       // Tokens FCM
+      // 🔒 Lecture interdite depuis le client — seules les Cloud Functions
+      // (Firebase Admin) lisent les tokens pour envoyer les notifications.
+      // Écriture : un appareil ne peut enregistrer qu'un token avec son propre UID.
+      // Suppression : uniquement le propriétaire du token peut le supprimer.
+      // Firebase Admin contourne les règles pour nettoyer les tokens invalides.
       match /fcm_tokens/{deviceId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if false;
+        allow create: if isSignedIn() &&
+          request.resource.data.uid == request.auth.uid;
+        allow update: if isSignedIn() &&
+          request.resource.data.uid == request.auth.uid;
+        allow delete: if isSignedIn() &&
+          resource.data.uid == request.auth.uid;
       }
 
       // Profils parents
