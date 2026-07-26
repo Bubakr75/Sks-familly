@@ -20,6 +20,65 @@ import 'fcm_service.dart';
 
 class FirestoreService {
   @visibleForTesting
+  static Map<String, String?> buildApprovedLocalMembershipData({
+    required String familyId,
+    required String familyCode,
+    required String role,
+    String? childId,
+  }) {
+    final cleanFamilyId = familyId.trim();
+    final cleanCode = familyCode.trim().toUpperCase();
+    final cleanRole = role.trim().toLowerCase();
+    final cleanChildId = childId?.trim();
+
+    if (cleanFamilyId.isEmpty ||
+        cleanFamilyId.contains('/') ||
+        RegExp(r'[\u0000-\u001f]').hasMatch(cleanFamilyId)) {
+      throw ArgumentError.value(familyId, 'familyId', 'Identifiant invalide.');
+    }
+
+    if (cleanCode.length < 4 ||
+        cleanCode.length > 10 ||
+        !RegExp(r'^[A-Z0-9]+$').hasMatch(cleanCode)) {
+      throw ArgumentError.value(
+        familyCode,
+        'familyCode',
+        'Code famille invalide.',
+      );
+    }
+
+    if (cleanRole != 'parent' && cleanRole != 'child') {
+      throw ArgumentError.value(role, 'role', 'Rôle approuvé invalide.');
+    }
+
+    if (cleanRole == 'child') {
+      if (cleanChildId == null ||
+          cleanChildId.isEmpty ||
+          cleanChildId.contains('/') ||
+          RegExp(r'[\u0000-\u001f]').hasMatch(cleanChildId)) {
+        throw ArgumentError.value(
+          childId,
+          'childId',
+          'Profil enfant approuvé invalide.',
+        );
+      }
+    } else if (cleanChildId != null && cleanChildId.isNotEmpty) {
+      throw ArgumentError.value(
+        childId,
+        'childId',
+        'Un parent ne doit pas être rattaché à un profil enfant.',
+      );
+    }
+
+    return {
+      'family_id': cleanFamilyId,
+      'family_code': cleanCode,
+      'family_member_role': cleanRole,
+      'family_member_child_id':
+          cleanRole == 'child' ? cleanChildId : null,
+    };
+  }
+  @visibleForTesting
   static Map<String, dynamic> buildNewFamilyData({
     required String code,
     required String ownerUid,
@@ -60,6 +119,12 @@ class FirestoreService {
   String? _familyId;
   String? get familyId => _familyId;
   bool get isConnected => _familyId != null;
+
+  String? _memberRole;
+  String? get memberRole => _memberRole;
+
+  String? _memberChildId;
+  String? get memberChildId => _memberChildId;
 
   String? _deviceId;
   String get deviceId => _deviceId ?? 'unknown';
@@ -119,6 +184,8 @@ class FirestoreService {
 
       final prefs = await SharedPreferences.getInstance();
       _familyId = prefs.getString('family_id');
+      _memberRole = prefs.getString('family_member_role');
+      _memberChildId = prefs.getString('family_member_child_id');
       _deviceId = prefs.getString('device_id');
       if (_deviceId == null) {
         _deviceId = _generateDeviceId();
@@ -226,6 +293,10 @@ class FirestoreService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('family_id', _familyId!);
     await prefs.setString('family_code', code);
+    await prefs.setString('family_member_role', 'owner');
+    await prefs.remove('family_member_child_id');
+    _memberRole = 'owner';
+    _memberChildId = null;
     await FcmService().registerToken();
     _startListening();
     _startKeepAlive();
@@ -258,6 +329,85 @@ class FirestoreService {
     }
   }
 
+  Future<void> activateApprovedFamily({
+    required String familyId,
+    required String familyCode,
+    required String role,
+    String? childId,
+  }) async {
+    final membership = buildApprovedLocalMembershipData(
+      familyId: familyId,
+      familyCode: familyCode,
+      role: role,
+      childId: childId,
+    );
+
+    final approvedFamilyId = membership['family_id']!;
+    final approvedCode = membership['family_code']!;
+    final approvedRole = membership['family_member_role']!;
+    final approvedChildId = membership['family_member_child_id'];
+
+    if (_familyId != null && _familyId != approvedFamilyId) {
+      throw StateError(
+        'Cet appareil est déjà connecté à une autre famille.',
+      );
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+
+    final previousFamilyId = prefs.getString('family_id');
+    final previousFamilyCode = prefs.getString('family_code');
+    final previousRole = prefs.getString('family_member_role');
+    final previousChildId = prefs.getString('family_member_child_id');
+
+    Future<void> restorePreference(String key, String? value) async {
+      if (value == null) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setString(key, value);
+      }
+    }
+
+    Future<void> requireSet(String key, String value) async {
+      final saved = await prefs.setString(key, value);
+      if (!saved) {
+        throw StateError('Impossible d’enregistrer $key localement.');
+      }
+    }
+
+    try {
+      // family_id est volontairement écrit en dernier. Tant que cette clé
+      // n’existe pas, un redémarrage ne lance aucun listener familial.
+      await requireSet('family_member_role', approvedRole);
+
+      if (approvedChildId == null) {
+        await prefs.remove('family_member_child_id');
+      } else {
+        await requireSet('family_member_child_id', approvedChildId);
+      }
+
+      await requireSet('family_code', approvedCode);
+      await requireSet('family_id', approvedFamilyId);
+    } catch (_) {
+      await restorePreference('family_member_role', previousRole);
+      await restorePreference('family_member_child_id', previousChildId);
+      await restorePreference('family_code', previousFamilyCode);
+      await restorePreference('family_id', previousFamilyId);
+      rethrow;
+    }
+
+    _stopListening();
+    _stopKeepAlive();
+
+    _familyId = approvedFamilyId;
+    _memberRole = approvedRole;
+    _memberChildId = approvedChildId;
+
+    await FcmService().registerToken();
+    _startListening();
+    _startKeepAlive();
+  }
+
   Future<String?> getFamilyCode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('family_code');
@@ -267,9 +417,13 @@ class FirestoreService {
     _stopListening();
     _stopKeepAlive();
     _familyId = null;
+    _memberRole = null;
+    _memberChildId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('family_id');
     await prefs.remove('family_code');
+    await prefs.remove('family_member_role');
+    await prefs.remove('family_member_child_id');
   }
 
   // ─── Keep-alive ──────────────────────────────────────────────
