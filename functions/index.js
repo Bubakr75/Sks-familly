@@ -4,6 +4,18 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+const { createFamilyJoinFunctions } = require("./family_join");
+const familyJoinFunctions = createFamilyJoinFunctions({
+  functions,
+  admin,
+  db,
+});
+
+exports.requestFamilyJoin = familyJoinFunctions.requestFamilyJoin;
+exports.getFamilyJoinStatus = familyJoinFunctions.getFamilyJoinStatus;
+exports.approveFamilyJoin = familyJoinFunctions.approveFamilyJoin;
+exports.rejectFamilyJoin = familyJoinFunctions.rejectFamilyJoin;
+
 // ===== HELPER : envoyer à toute la famille SAUF l'émetteur =====
 async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   const tokensSnap = await db
