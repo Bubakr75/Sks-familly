@@ -84,7 +84,6 @@ class UpdateService {
     } catch (_) {}
   }
 
-  @visibleForTesting
   static bool isNewerVersion(String latest, String current) {
     final latestVersion = _parseVersion(latest);
     final currentVersion = _parseVersion(current);

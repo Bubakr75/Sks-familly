@@ -41,6 +41,7 @@ import 'screen_time_new_screen.dart';
 import 'daily_wheel_screen.dart';
 import '../widgets/animated_page_transition.dart';
 import '../widgets/transfer_points_sheet.dart';
+import '../widgets/update_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   final String parentName;
@@ -706,6 +707,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+            // ─── Bannière de mise à jour (Android uniquement) ───
+            const UpdateBanner(),
             // ─── CONTENU PRINCIPAL ───
             // Chaque écran gère son propre SafeArea
             Expanded(
