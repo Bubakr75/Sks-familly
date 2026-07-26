@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/family_join_panel.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'firebase_diagnostic_screen.dart';
 
@@ -16,11 +17,9 @@ class FamilyScreen extends StatefulWidget {
 class _FamilyScreenState extends State<FamilyScreen> {
   bool _isLoading = false;
   String? _familyCode;
-  final _joinController        = TextEditingController();
-  final _customCodeController  = TextEditingController();
+  final _customCodeController = TextEditingController();
   bool _useCustomCode = false;
 
-  final _joinFocusNode       = FocusNode();
   final _customCodeFocusNode = FocusNode();
 
   @override
@@ -31,15 +30,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   Future<void> _loadFamilyCode() async {
     final provider = context.read<FamilyProvider>();
-    final code     = provider.getFamilyCode();
+    final code = provider.getFamilyCode();
     if (mounted) setState(() => _familyCode = code.isNotEmpty ? code : null);
   }
 
   @override
   void dispose() {
-    _joinController.dispose();
     _customCodeController.dispose();
-    _joinFocusNode.dispose();
     _customCodeFocusNode.dispose();
     super.dispose();
   }
@@ -54,7 +51,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
         return;
       }
       if (customCode.length > 10) {
-        _showSnack('Le code ne doit pas dépasser 10 caractères.', isError: true);
+        _showSnack('Le code ne doit pas dépasser 10 caractères.',
+            isError: true);
         return;
       }
       if (!RegExp(r'^[A-Z0-9]+$').hasMatch(customCode)) {
@@ -65,40 +63,19 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final code = await context.read<FamilyProvider>().createFamily(customCode: customCode);
+      final code = await context
+          .read<FamilyProvider>()
+          .createFamily(customCode: customCode);
       if (!mounted) return;
-      setState(() { _familyCode = code; _isLoading = false; });
+      setState(() {
+        _familyCode = code;
+        _isLoading = false;
+      });
       _showSnack('🎉 Famille créée ! Code : $code');
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _showSnack('Erreur : $e', isError: true);
-    }
-  }
-
-  // ─── Rejoindre une famille ──────────────────────────────────
-  Future<void> _joinFamily() async {
-    final code = _joinController.text.trim().toUpperCase();
-    if (code.isEmpty || code.length < 4) {
-      _showSnack('Entrez un code famille (4 à 10 caractères).', isError: true);
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      final success = await context.read<FamilyProvider>().joinFamily(code);
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      if (success) {
-        setState(() => _familyCode = code);
-        _showSnack('✅ Connecté à la famille !');
-      } else {
-        _showSnack('Code introuvable. Vérifiez et réessayez.', isError: true);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      _showFirebaseErrorDialog('$e');
     }
   }
 
@@ -110,7 +87,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text('Se déconnecter ?'),
           ],
         ),
@@ -134,7 +111,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
       await context.read<FamilyProvider>().disconnectFamily();
       if (!mounted) return;
       setState(() {
-        _familyCode    = null;
+        _familyCode = null;
         _useCustomCode = false;
       });
       _showSnack('Déconnecté. Données locales conservées.');
@@ -157,7 +134,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         title: const Row(
           children: [
             Icon(Icons.edit_rounded, color: Colors.blue),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text('Modifier le code famille'),
           ],
         ),
@@ -206,15 +183,22 @@ class _FamilyScreenState extends State<FamilyScreen> {
           ),
         ],
       ),
-    ).then((v) { controller.dispose(); return v; });
+    ).then((v) {
+      controller.dispose();
+      return v;
+    });
 
     if (result == null || result.isEmpty || result == _familyCode) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
     try {
       await context.read<FamilyProvider>().changeFamilyCode(result);
       if (!mounted) return;
-      setState(() { _familyCode = result; _isLoading = false; });
+      setState(() {
+        _familyCode = result;
+        _isLoading = false;
+      });
       _showSnack('✅ Code changé en "$result" !');
     } catch (e) {
       if (!mounted) return;
@@ -228,48 +212,11 @@ class _FamilyScreenState extends State<FamilyScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: isError ? const Color(0xFFFF1744) : const Color(0xFF00C853),
+      backgroundColor:
+          isError ? const Color(0xFFFF1744) : const Color(0xFF00C853),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
-  }
-
-  // ─── Dialog erreur Firebase ─────────────────────────────────
-  void _showFirebaseErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.error_rounded, color: Color(0xFFFF1744)),
-            const SizedBox(width: 8),
-            Text('Erreur de connexion'),
-          ],
-        ),
-        content: Text(
-          error,
-          style: const TextStyle(fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const FirebaseDiagnosticScreen(),
-                ),
-              );
-            },
-            child: const Text('Diagnostic Firebase'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   // ─── TextField TV-compatible ────────────────────────────────
@@ -290,8 +237,11 @@ class _FamilyScreenState extends State<FamilyScreen> {
       focusNode: FocusNode(),
       onKeyEvent: (event) {
         if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.arrowDown) focusNode.nextFocus();
-          else if (event.logicalKey == LogicalKeyboardKey.arrowUp) focusNode.previousFocus();
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            focusNode.nextFocus();
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            focusNode.previousFocus();
+          }
         }
       },
       child: TextField(
@@ -314,7 +264,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
           suffixIcon: suffixIcon,
         ),
         inputFormatters: inputFormatters,
-        onSubmitted: (_) => onSubmitted != null ? onSubmitted() : focusNode.nextFocus(),
+        onSubmitted: (_) =>
+            onSubmitted != null ? onSubmitted() : focusNode.nextFocus(),
       ),
     );
   }
@@ -322,9 +273,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
   // ─── BUILD ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final provider    = context.watch<FamilyProvider>();
+    final provider = context.watch<FamilyProvider>();
     final isConnected = provider.isSyncEnabled;
-    final primary     = Theme.of(context).colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -377,7 +328,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                             ),
                           ),
                           const SizedBox(width: 14),
-                          Icon(Icons.cloud_sync_rounded, color: primary, size: 26),
+                          Icon(Icons.cloud_sync_rounded,
+                              color: primary, size: 26),
                           const SizedBox(width: 10),
                           Text(
                             'Synchronisation',
@@ -398,7 +350,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const FirebaseDiagnosticScreen(),
+                                builder: (_) =>
+                                    const FirebaseDiagnosticScreen(),
                               ),
                             ),
                             child: Container(
@@ -458,7 +411,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    isConnected ? 'Synchronisé ✅' : 'Mode local',
+                                    isConnected
+                                        ? 'Synchronisé ✅'
+                                        : 'Mode local',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
@@ -489,7 +444,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       else ...[
                         _buildCreateSection(primary),
                         const SizedBox(height: 20),
-                        _buildJoinSection(primary),
+                        _buildJoinSection(),
                       ],
 
                       const SizedBox(height: 24),
@@ -527,13 +482,17 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 onTap: _copyCode,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   decoration: BoxDecoration(
                     color: primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: primary.withValues(alpha: 0.3), width: 2),
+                    border: Border.all(
+                        color: primary.withValues(alpha: 0.3), width: 2),
                     boxShadow: [
-                      BoxShadow(color: primary.withValues(alpha: 0.15), blurRadius: 16),
+                      BoxShadow(
+                          color: primary.withValues(alpha: 0.15),
+                          blurRadius: 16),
                     ],
                   ),
                   child: Column(
@@ -545,7 +504,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                           fontWeight: FontWeight.w900,
                           color: primary,
                           shadows: [
-                            Shadow(color: primary.withValues(alpha: 0.5), blurRadius: 12),
+                            Shadow(
+                                color: primary.withValues(alpha: 0.5),
+                                blurRadius: 12),
                           ],
                         ),
                       ),
@@ -589,7 +550,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _disconnect,
-                  icon: const Icon(Icons.link_off_rounded, color: Colors.orange),
+                  icon:
+                      const Icon(Icons.link_off_rounded, color: Colors.orange),
                   label: const Text(
                     'Se déconnecter',
                     style: TextStyle(color: Colors.orange),
@@ -626,7 +588,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   shape: BoxShape.circle,
                   color: primary.withValues(alpha: 0.12),
                   boxShadow: [
-                    BoxShadow(color: primary.withValues(alpha: 0.15), blurRadius: 12),
+                    BoxShadow(
+                        color: primary.withValues(alpha: 0.15), blurRadius: 12),
                   ],
                 ),
                 child: Icon(Icons.group_add_rounded, color: primary, size: 32),
@@ -691,79 +654,17 @@ class _FamilyScreenState extends State<FamilyScreen> {
   }
 
   // ─── Section rejoindre ──────────────────────────────────────
-  Widget _buildJoinSection(Color primary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _neonLabel('Rejoindre une famille', Colors.orange),
-        const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(20),
-          borderRadius: 20,
-          glowColor: Colors.orange,
-          child: Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.orange.withValues(alpha: 0.12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.orange.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.people_rounded, color: Colors.orange, size: 32),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Entrez le code partagé par votre conjoint(e).',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 16),
-              _buildTvTextField(
-                controller: _joinController,
-                focusNode: _joinFocusNode,
-                hintText: 'CODE FAMILLE',
-                maxLength: 10,
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
-                ],
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.paste_rounded),
-                  tooltip: 'Coller',
-                  onPressed: () async {
-                    final data = await Clipboard.getData(Clipboard.kTextPlain);
-                    if (data?.text != null) {
-                      _joinController.text =
-                          data!.text!.toUpperCase().trim();
-                    }
-                  },
-                ),
-                onSubmitted: _joinFamily,
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _joinFamily,
-                  icon: const Icon(Icons.login_rounded),
-                  label: const Text('Rejoindre', style: TextStyle(fontSize: 16)),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+  Widget _buildJoinSection() {
+    return FamilyJoinPanel(
+      onActivated: (familyCode) {
+        if (!mounted) return;
+
+        setState(() {
+          _familyCode = familyCode;
+        });
+
+        _showSnack('✅ Connexion autorisée et activée !');
+      },
     );
   }
 
@@ -791,10 +692,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
           ),
           const SizedBox(height: 12),
           ...[
-            (Icons.looks_one_rounded,   'Un parent crée la famille'),
-            (Icons.looks_two_rounded,   'Il copie et partage le code'),
-            (Icons.looks_3_rounded,     'L\'autre parent colle le code'),
-            (Icons.looks_4_rounded,     'Les données se synchronisent en temps réel !'),
+            (Icons.looks_one_rounded, 'Un parent crée la famille'),
+            (Icons.looks_two_rounded, 'Il copie et partage le code'),
+            (Icons.looks_3_rounded, 'L\'autre parent colle le code'),
+            (
+              Icons.looks_4_rounded,
+              'Les données se synchronisent en temps réel !'
+            ),
           ].map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
