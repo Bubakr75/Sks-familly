@@ -189,7 +189,16 @@ class FamilyJoinService {
 
   Future<void> clearPendingRequest() async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(pendingPreferenceKey);
+    final removed = await preferences.remove(pendingPreferenceKey);
+
+    if (!removed && preferences.containsKey(pendingPreferenceKey)) {
+      throw const FamilyJoinException(
+        code: 'local-storage-failed',
+        message:
+            'La demande a été traitée, mais son état local n’a pas pu être '
+            'supprimé.',
+      );
+    }
   }
 
   static Map<String, dynamic> _asStringMap(Object? value) {
