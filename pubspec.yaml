@@ -58,6 +58,7 @@ dependencies:
   # Voix / Text-to-Speech
   flutter_tts: ^4.2.0
   audioplayers: ^6.1.0
+  cloud_functions: 5.6.2
 
 dev_dependencies:
   flutter_test:
