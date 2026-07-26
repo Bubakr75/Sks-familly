@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/child_model.dart';
 import '../models/history_entry.dart';
@@ -18,6 +19,38 @@ import '../utils/web_reconnect.dart';
 import 'fcm_service.dart';
 
 class FirestoreService {
+  @visibleForTesting
+  static Map<String, dynamic> buildNewFamilyData({
+    required String code,
+    required String ownerUid,
+    required Object createdAt,
+  }) {
+    return {
+      'code': code,
+      'createdAt': createdAt,
+      'memberCount': 1,
+      'ownerUid': ownerUid,
+      'schemaVersion': 2,
+      'migrationStatus': 'native',
+    };
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic> buildOwnerMemberData({
+    required String ownerUid,
+    required Object createdAt,
+    required Object approvedAt,
+  }) {
+    return {
+      'uid': ownerUid,
+      'role': 'owner',
+      'childId': null,
+      'active': true,
+      'createdAt': createdAt,
+      'approvedBy': ownerUid,
+      'approvedAt': approvedAt,
+    };
+  }
   static final FirestoreService _instance = FirestoreService._internal();
   factory FirestoreService() => _instance;
   FirestoreService._internal();
@@ -147,6 +180,15 @@ class FirestoreService {
   }
 
   Future<String> createFamily({String? customCode}) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw StateError(
+        'Aucun utilisateur Firebase Auth connecte. '
+        'Impossible de creer une famille.',
+      );
+    }
+    final ownerUid = currentUser.uid;
+
     String code;
     if (customCode != null && customCode.trim().length >= 4) {
       code = customCode.toUpperCase().trim();
@@ -155,12 +197,32 @@ class FirestoreService {
     } else {
       code = _generateFamilyCode();
     }
-    final docRef = await _db.collection('families').add({
-      'code': code,
-      'createdAt': FieldValue.serverTimestamp(),
-      'memberCount': 1,
-    });
-    _familyId = docRef.id;
+    final familyRef = _db.collection('families').doc();
+    final ownerMemberRef =
+        familyRef.collection('members').doc(ownerUid);
+
+    final batch = _db.batch();
+    batch.set(
+      familyRef,
+      buildNewFamilyData(
+        code: code,
+        ownerUid: ownerUid,
+        createdAt: FieldValue.serverTimestamp(),
+      ),
+    );
+    batch.set(
+      ownerMemberRef,
+      buildOwnerMemberData(
+        ownerUid: ownerUid,
+        createdAt: FieldValue.serverTimestamp(),
+        approvedAt: FieldValue.serverTimestamp(),
+      ),
+    );
+
+    await batch.commit();
+
+    // L'etat local n'est change qu'apres la reussite du batch.
+    _familyId = familyRef.id;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('family_id', _familyId!);
     await prefs.setString('family_code', code);
