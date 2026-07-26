@@ -115,6 +115,25 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if isSignedIn();
       }
+
+      // Demandes de rattachement d'appareils (sécurisé)
+      // 🔒 Seul le propriétaire de la famille peut lire ces demandes.
+      // Les écritures passent uniquement par les Cloud Functions (Firebase Admin).
+      match /join_requests/{requestId} {
+        allow read: if isSignedIn() &&
+          request.auth.uid ==
+            get(/databases/$(database)/documents/families/$(familyId)).data.ownerUid;
+        allow write: if false;
+      }
+
+      // Membres de la famille (sécurisé)
+      // 🔒 Seul le propriétaire peut gérer les membres.
+      match /members/{memberId} {
+        allow read: if isSignedIn() &&
+          request.auth.uid ==
+            get(/databases/$(database)/documents/families/$(familyId)).data.ownerUid;
+        allow write: if false;
+      }
     }
   }
 }
