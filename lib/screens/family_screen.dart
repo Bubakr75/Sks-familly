@@ -126,6 +126,95 @@ class _FamilyScreenState extends State<FamilyScreen> {
   }
 
   // ─── Changer le code ────────────────────────────────────────
+  Future<void> _showLegacyMigrationDialog() async {
+    final controller = TextEditingController();
+
+    final secret = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.security_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Expanded(child: Text('Sécuriser l’ancienne famille')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Saisissez le code temporaire de migration fourni par '
+              'l’administrateur. Il ne sera pas enregistré sur l’appareil.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              obscureText: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                labelText: 'Code temporaire',
+                prefixIcon: Icon(Icons.key_rounded),
+              ),
+              onSubmitted: (value) {
+                final cleanValue = value.trim();
+                if (cleanValue.isNotEmpty) {
+                  Navigator.pop(ctx, cleanValue);
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              final cleanValue = controller.text.trim();
+              if (cleanValue.isNotEmpty) {
+                Navigator.pop(ctx, cleanValue);
+              }
+            },
+            icon: const Icon(Icons.verified_user_rounded),
+            label: const Text('Migrer'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (secret == null || secret.isEmpty || !mounted) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final newCode =
+          await context.read<FamilyProvider>().migrateLegacyFamily(secret);
+
+      if (!mounted) return;
+
+      setState(() {
+        _familyCode = newCode;
+        _isLoading = false;
+      });
+
+      _showSnack(
+        'Famille sécurisée. Le nouveau code est $newCode.',
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+      _showSnack('Migration impossible : $error', isError: true);
+    }
+  }
+
   Future<void> _showChangeCodeDialog() async {
     final controller = TextEditingController(text: _familyCode);
     final result = await showDialog<String>(
@@ -541,6 +630,25 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   icon: const Icon(Icons.edit_rounded),
                   label: const Text('Modifier le code'),
                   style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _showLegacyMigrationDialog,
+                  icon: const Icon(
+                    Icons.security_rounded,
+                    color: Colors.orange,
+                  ),
+                  label: const Text(
+                    'Sécuriser une ancienne famille',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.orange),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),

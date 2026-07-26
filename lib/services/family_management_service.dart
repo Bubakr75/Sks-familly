@@ -77,6 +77,37 @@ class FamilyCodeChangeResult {
   }
 }
 
+class LegacyFamilyMigrationResult {
+  const LegacyFamilyMigrationResult({
+    required this.familyId,
+    required this.code,
+    required this.alreadyMigrated,
+  });
+
+  final String familyId;
+  final String code;
+  final bool alreadyMigrated;
+
+  factory LegacyFamilyMigrationResult.fromData(Object? data) {
+    final map = _asStringMap(data);
+    final familyId = _requiredIdentifier(map, 'familyId');
+    final code = _requiredFamilyCode(map, 'code');
+    final alreadyMigrated = map['alreadyMigrated'];
+
+    if (alreadyMigrated is! bool) {
+      throw const FormatException(
+        'alreadyMigrated doit être un booléen.',
+      );
+    }
+
+    return LegacyFamilyMigrationResult(
+      familyId: familyId,
+      code: code,
+      alreadyMigrated: alreadyMigrated,
+    );
+  }
+}
+
 class FamilyManagementService {
   FamilyManagementService({
     FirebaseFunctions? functions,
@@ -125,6 +156,60 @@ class FamilyManagementService {
       throw FamilyManagementException(
         code: 'invalid-response',
         message: 'Réponse de création invalide : ${error.message}',
+      );
+    }
+  }
+
+  Future<LegacyFamilyMigrationResult> migrateLegacyFamily({
+    required String familyId,
+    required String migrationSecret,
+  }) async {
+    final cleanFamilyId = _requiredIdentifier(
+      {'familyId': familyId},
+      'familyId',
+    );
+    final cleanSecret = migrationSecret.trim();
+
+    if (cleanSecret.isEmpty ||
+        cleanSecret.length > 512 ||
+        RegExp(r'[\u0000-\u001f]').hasMatch(cleanSecret)) {
+      throw const FamilyManagementException(
+        code: 'invalid-argument',
+        message: 'Le code temporaire de migration est invalide.',
+      );
+    }
+
+    try {
+      final callable = _functions.httpsCallable(
+        'migrateLegacyFamily',
+      );
+
+      final callableResult = await callable.call({
+        'familyId': cleanFamilyId,
+        'migrationSecret': cleanSecret,
+      });
+
+      final result = LegacyFamilyMigrationResult.fromData(
+        callableResult.data,
+      );
+
+      if (result.familyId != cleanFamilyId) {
+        throw const FormatException(
+          'La réponse concerne une autre famille.',
+        );
+      }
+
+      return result;
+    } on FirebaseFunctionsException catch (error) {
+      throw FamilyManagementException(
+        code: error.code,
+        message: error.message ?? _defaultMessageForCode(error.code),
+        details: error.details,
+      );
+    } on FormatException catch (error) {
+      throw FamilyManagementException(
+        code: 'invalid-response',
+        message: 'Réponse de migration invalide : ${error.message}',
       );
     }
   }
@@ -199,6 +284,9 @@ class FamilyManagementService {
 
   static String _defaultMessageForCode(String code) {
     return switch (code) {
+      'invalid-argument' => 'Le code temporaire de migration est invalide.',
+      'failed-precondition' =>
+        'Cette migration a expiré, a déjà été utilisée ou n’est plus autorisée.',
       'unauthenticated' => 'L’authentification Firebase est indisponible.',
       'already-exists' => 'Ce code famille est déjà utilisé.',
       'not-found' => 'Famille introuvable.',

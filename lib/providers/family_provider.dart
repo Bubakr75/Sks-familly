@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import '../models/child_model.dart';
 import '../models/goal_model.dart';
@@ -23,7 +22,6 @@ import '../models/wheel_segment.dart';
 import '../models/screen_time_account.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
-import '../services/notification_service.dart';
 import '../utils/image_compressor.dart';
 import '../services/voice_service.dart';
 import '../services/sound_service.dart';
@@ -267,7 +265,7 @@ class FamilyProvider extends ChangeNotifier {
   }
   List<ParentProfile>   get parentProfiles    => _parentProfiles;
   String?               get familyCode        => _familyCode;
-  String?               get familyId          => _familyCode;
+  String?               get familyId          => _firestore.familyId;
   bool                  get isSyncEnabled     => _firestore.isConnected;
 
   List<ChildModel> get childrenSorted {
@@ -688,6 +686,17 @@ class FamilyProvider extends ChangeNotifier {
     return ok;
   }
 
+  Future<String> migrateLegacyFamily(String migrationSecret) async {
+    final code = await _firestore.migrateLegacyFamily(
+      migrationSecret: migrationSecret,
+    );
+
+    _familyCode = code;
+    _setupFirestoreCallbacks();
+    notifyListeners();
+
+    return code;
+  }
   Future<void> disconnectFamily() async {
     await _firestore.disconnectFamily();
     _familyCode = null;

@@ -25,6 +25,7 @@ class FirestoreService {
     required String familyCode,
     required String role,
     String? childId,
+    bool allowOwner = false,
   }) {
     final cleanFamilyId = familyId.trim();
     final cleanCode = familyCode.trim().toUpperCase();
@@ -47,7 +48,9 @@ class FirestoreService {
       );
     }
 
-    if (cleanRole != 'parent' && cleanRole != 'child') {
+    final isAllowedOwner = allowOwner && cleanRole == 'owner';
+
+    if (!isAllowedOwner && cleanRole != 'parent' && cleanRole != 'child') {
       throw ArgumentError.value(role, 'role', 'Rôle approuvé invalide.');
     }
 
@@ -337,6 +340,32 @@ class FirestoreService {
     return result.code;
   }
 
+  Future<String> migrateLegacyFamily({
+    required String migrationSecret,
+  }) async {
+    final currentFamilyId = _familyId;
+
+    if (currentFamilyId == null) {
+      throw StateError(
+        'Aucune ancienne famille n’est active sur cet appareil.',
+      );
+    }
+
+    final result = await FamilyManagementService().migrateLegacyFamily(
+      familyId: currentFamilyId,
+      migrationSecret: migrationSecret,
+    );
+
+    await activateApprovedFamily(
+      familyId: result.familyId,
+      familyCode: result.code,
+      role: 'owner',
+      allowOwner: true,
+    );
+
+    return result.code;
+  }
+
   Future<bool> joinFamily(String code) async {
     try {
       final cleanCode = code.toUpperCase().trim();
@@ -368,12 +397,14 @@ class FirestoreService {
     required String familyCode,
     required String role,
     String? childId,
+    bool allowOwner = false,
   }) async {
     final membership = buildApprovedLocalMembershipData(
       familyId: familyId,
       familyCode: familyCode,
       role: role,
       childId: childId,
+      allowOwner: allowOwner,
     );
 
     final approvedFamilyId = membership['family_id']!;
