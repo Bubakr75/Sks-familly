@@ -29,6 +29,20 @@ const familyManagementFunctions = createFamilyManagementFunctions({
 exports.createFamily = familyManagementFunctions.createFamily;
 exports.changeFamilyCode = familyManagementFunctions.changeFamilyCode;
 
+const {
+  createLegacyFamilyMigrationFunctions,
+} = require("./legacy_family_migration");
+
+const legacyFamilyMigrationFunctions =
+  createLegacyFamilyMigrationFunctions({
+    functions,
+    admin,
+    db,
+  });
+
+exports.migrateLegacyFamily =
+  legacyFamilyMigrationFunctions.migrateLegacyFamily;
+
 // ===== HELPER : envoyer à toute la famille SAUF l'émetteur =====
 async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   const tokensSnap = await db
