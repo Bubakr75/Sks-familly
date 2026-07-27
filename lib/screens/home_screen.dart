@@ -29,6 +29,7 @@ import 'school_notes_weekly_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
 import 'balance_screen.dart'; // â† NOUVEAU
+import 'wallet_screen.dart';
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
@@ -942,6 +943,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           context, () => _showBonusPenaltyHistory(context));
                     },
                   ),
+                _drawerItem(
+                  label: 'Cagnotte SKS',
+                  icon: Icons.account_balance_wallet_rounded,
+                  color: EmeraldPalette.gold,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const WalletScreen()),
+                    );
+                  },
+                ),
 
                 // ═══ ⚖️ JUSTICE ═══
                 _drawerSectionHeader('⚖️ Justice'),

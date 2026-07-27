@@ -20,6 +20,7 @@ import '../models/reward_model.dart';
 import '../models/chore_model.dart';
 import '../models/wheel_segment.dart';
 import '../models/screen_time_account.dart';
+import '../models/sks_wallet.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../utils/image_compressor.dart';
@@ -66,6 +67,7 @@ class FamilyProvider extends ChangeNotifier {
   List<ChoreModel>      _chores = [];
   List<WheelSegment>    _wheelSegments = [];
   final Map<String, ScreenTimeAccount> _screenTimeAccounts = {};
+  final Map<String, SksWallet> _wallets = {};
   Timer? _overtimeTimer;
 
   // ─── Verrou anti-double-traitement pour les transferts ──────
@@ -149,6 +151,8 @@ class FamilyProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get purchases     => _purchases;
   List<ChoreModel>      get chores             => _chores;
   List<WheelSegment>    get wheelSegments      => _wheelSegments;
+  Map<String, SksWallet> get wallets =>
+      Map<String, SksWallet>.unmodifiable(_wallets);
 
   // ─── Getters Soldes boutique ──────────────────────────────────
   int    get saleDiscountPercent => _saleDiscountPercent;
@@ -266,6 +270,8 @@ class FamilyProvider extends ChangeNotifier {
   List<ParentProfile>   get parentProfiles    => _parentProfiles;
   String?               get familyCode        => _familyCode;
   String?               get familyId          => _firestore.familyId;
+  String?               get memberRole        => _firestore.memberRole;
+  String?               get memberChildId     => _firestore.memberChildId;
   bool                  get isSyncEnabled     => _firestore.isConnected;
 
   List<ChildModel> get childrenSorted {
@@ -459,6 +465,12 @@ class FamilyProvider extends ChangeNotifier {
       _history = _mergeWithPending(filtered, _history, (h) => h.id);
       _history.sort((a, b) => b.date.compareTo(a.date));
       _saveBoxFromList(_historyBox, _history, (e) => e.id, (e) => e.toMap());
+      notifyListeners();
+    };
+    _firestore.onWalletsChanged = (list) {
+      _wallets
+        ..clear()
+        ..addEntries(list.map((wallet) => MapEntry(wallet.childId, wallet)));
       notifyListeners();
     };
     _firestore.onGoalsChanged = (list, _) {
@@ -697,9 +709,33 @@ class FamilyProvider extends ChangeNotifier {
 
     return code;
   }
+
+  SksWallet getWalletForChild(String childId) =>
+      _wallets[childId] ?? SksWallet.empty(childId);
+
+  Stream<List<SksWalletOperation>> watchWalletOperations(String childId) =>
+      _firestore.watchWalletOperations(childId);
+
+  Future<SksWalletAdjustmentResult> adjustWallet({
+    required String childId,
+    required String type,
+    required int amount,
+    required String reason,
+    String? operationId,
+  }) {
+    return _firestore.adjustWallet(
+      childId: childId,
+      operationId: operationId ?? _uuid.v4(),
+      type: type,
+      amount: amount,
+      reason: reason,
+    );
+  }
+
   Future<void> disconnectFamily() async {
     await _firestore.disconnectFamily();
     _familyCode = null;
+    _wallets.clear();
     notifyListeners();
   }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/child_model.dart';
 import '../models/history_entry.dart';
@@ -14,6 +15,7 @@ import '../models/tribunal_model.dart';
 import '../models/badge_model.dart';
 import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
+import '../models/sks_wallet.dart';
 import '../utils/web_reconnect.dart';
 import 'fcm_service.dart';
 import 'family_management_service.dart';
@@ -148,6 +150,7 @@ class FirestoreService {
   StreamSubscription? _choresSub;
   StreamSubscription? _rewardsSub;
   StreamSubscription? _purchasesSub;
+  StreamSubscription? _walletsSub;
 
   Timer? _keepAliveTimer;
   DateTime _lastDataReceived = DateTime.now();
@@ -170,6 +173,7 @@ class FirestoreService {
   void Function(List<Map<String, dynamic>>)? onChoresChanged;
   void Function(List<Map<String, dynamic>>)? onRewardsChanged;
   void Function(List<Map<String, dynamic>>)? onPurchasesChanged;
+  void Function(List<SksWallet>)? onWalletsChanged;
 
   // ─── Init ────────────────────────────────────────────────────
   Future<void> init() async {
@@ -722,6 +726,30 @@ class FirestoreService {
       }).toList();
       onPurchasesChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
+    final wallets = fRef.collection('wallets');
+    if (_memberRole == 'child' && _memberChildId != null) {
+      _walletsSub = wallets.doc(_memberChildId).snapshots().listen((doc) {
+        _markDataReceived();
+        final list = <SksWallet>[];
+        if (doc.exists && doc.data() != null) {
+          final data = Map<String, dynamic>.from(doc.data()!);
+          data['childId'] = doc.id;
+          list.add(SksWallet.fromMap(data));
+        }
+        onWalletsChanged?.call(list);
+      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    } else {
+      _walletsSub = wallets.snapshots().listen((snapshot) {
+        _markDataReceived();
+        final list = snapshot.docs.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['childId'] = doc.id;
+          return SksWallet.fromMap(data);
+        }).toList();
+        onWalletsChanged?.call(list);
+      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }
   }
 
   void _stopListening() {
@@ -740,6 +768,7 @@ class FirestoreService {
     _choresSub?.cancel();
     _rewardsSub?.cancel();
     _purchasesSub?.cancel();
+    _walletsSub?.cancel();
     _childrenSub = null;
     _historySub = null;
     _goalsSub = null;
@@ -755,6 +784,48 @@ class FirestoreService {
     _choresSub = null;
     _rewardsSub = null;
     _purchasesSub = null;
+    _walletsSub = null;
+  }
+
+  Stream<List<SksWalletOperation>> watchWalletOperations(String childId) {
+    if (_familyId == null) return const Stream.empty();
+    return _db
+        .collection('families')
+        .doc(_familyId)
+        .collection('wallets')
+        .doc(childId)
+        .collection('operations')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = Map<String, dynamic>.from(doc.data());
+              data['id'] = doc.id;
+              return SksWalletOperation.fromMap(data);
+            }).toList());
+  }
+
+  Future<SksWalletAdjustmentResult> adjustWallet({
+    required String childId,
+    required String operationId,
+    required String type,
+    required int amount,
+    required String reason,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('adjustWallet')
+        .call(<String, dynamic>{
+      'familyId': currentFamilyId,
+      'childId': childId,
+      'operationId': operationId,
+      'type': type,
+      'amount': amount,
+      'reason': reason.trim(),
+    });
+    return SksWalletAdjustmentResult.fromData(result.data);
   }
 
   // ─── WRITE : Children ────────────────────────────────────────

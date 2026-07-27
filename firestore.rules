@@ -10,6 +10,37 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function activeFamilyMember(familyId) {
+      let member =
+        get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data;
+      return isSignedIn() &&
+        member.active == true &&
+        member.uid == request.auth.uid;
+    }
+
+    function isFamilyParent(familyId) {
+      let member =
+        get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data;
+      let family =
+        get(/databases/$(database)/documents/families/$(familyId)).data;
+      return activeFamilyMember(familyId) &&
+        (
+          member.role == 'parent' ||
+          (member.role == 'owner' && family.ownerUid == request.auth.uid)
+        );
+    }
+
+    function canReadChildWallet(familyId, childId) {
+      let member =
+        get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data;
+      return isFamilyParent(familyId) ||
+        (
+          activeFamilyMember(familyId) &&
+          member.role == 'child' &&
+          member.childId == childId
+        );
+    }
+
     // Familles
     match /families/{familyId} {
 
@@ -124,6 +155,20 @@ service cloud.firestore {
       match /purchases/{purchaseId} {
         allow read: if isSignedIn();
         allow write: if isSignedIn();
+      }
+
+      // Cagnotte SKS : lecture limitée à la famille, écriture exclusivement
+      // via la Cloud Function transactionnelle adjustWallet (Firebase Admin).
+      match /wallets/{childId} {
+        allow read: if canReadChildWallet(familyId, childId);
+        allow write: if false;
+
+        // Journal append-only depuis Flutter : aucune création, modification
+        // ou suppression directe n'est autorisée au client.
+        match /operations/{operationId} {
+          allow read: if canReadChildWallet(familyId, childId);
+          allow write: if false;
+        }
       }
 
       // Demandes de rattachement d'appareils (sécurisé)

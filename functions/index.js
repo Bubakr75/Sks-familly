@@ -29,6 +29,15 @@ const familyManagementFunctions = createFamilyManagementFunctions({
 exports.createFamily = familyManagementFunctions.createFamily;
 exports.changeFamilyCode = familyManagementFunctions.changeFamilyCode;
 
+const {createWalletFunctions} = require("./wallet");
+const walletFunctions = createWalletFunctions({
+  functions,
+  admin,
+  db,
+});
+
+exports.adjustWallet = walletFunctions.adjustWallet;
+
 const {
   createLegacyFamilyMigrationFunctions,
 } = require("./legacy_family_migration");
