@@ -2,73 +2,72 @@ name: Build Flutter APK v2
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.4'
-          channel: 'stable'
-
-      - name: Backup custom files
-        run: |
-          cp android/app/google-service.json /tmp/google-services.json 2>/dev/null || true
-          cp android/app/build.gradle.kts /tmp/build.gradle.kts
-          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
-          cp android/app/proguard-rules.pro /tmp/proguard-rules.pro 2>/dev/null || true
-          cp android/gradle.properties /tmp/gradle.properties 2>/dev/null || true
-
-      - name: Regenerate Android folder
-        run: |
-          rm -rf android
-          flutter create --platforms android --org com.bubakr --project-name sks_family .
-          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          cp /tmp/gradle.properties android/gradle.properties 2>/dev/null || true
+          flutter-version: "3.41.4"
+          channel: stable
+          cache: true
 
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/release-key.jks
-
-      - name: Enable desugaring
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          python3 - << 'PYEOF'
-          with open('android/app/build.gradle.kts', 'r') as f:
-              content = f.read()
-          if 'isCoreLibraryDesugaringEnabled' not in content:
-              content = content.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true')
-          if 'desugar_jdk_libs' not in content:
-              content += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
-          with open('android/app/build.gradle.kts', 'w') as f:
-              f.write(content)
-          print("Desugaring OK")
-          PYEOF
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/release-key.jks
+
+      - name: Decode Google services configuration
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$GOOGLE_SERVICES_JSON_BASE64"
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
 
       - name: Configure signing
+        shell: bash
+        env:
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "storePassword=SKS2026" > android/key.properties
-          echo "keyPassword=SKS2026" >> android/key.properties
-          echo "keyAlias=release" >> android/key.properties
-          echo "storeFile=../release-key.jks" >> android/key.properties
-          python3 - << 'PYEOF'
-          with open('android/app/build.gradle.kts', 'r') as f:
-              content = f.read()
-          header = "import java.util.Properties\nimport java.io.FileInputStream\nval keystoreProperties = Properties()\nval keystorePropertiesFile = rootProject.file(\"key.properties\")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\n\n"
-          if 'keystoreProperties' not in content:
-              content = header + content
-          sc = "\n    signingConfigs {\n        create(\"release\") {\n            keyAlias = keystoreProperties[\"keyAlias\"] as String?\n            keyPassword = keystoreProperties[\"keyPassword\"] as String?\n            storeFile = keystoreProperties[\"storeFile\"]?.let { file(it as String) }\n            storePassword = keystoreProperties[\"storePassword\"] as String?\n        }\n    }\n"
-          content = content.replace('    buildTypes {', sc + '    buildTypes {')
-          with open('android/app/build.gradle.kts', 'w') as f:
-              f.write(content)
-          print("Signing OK")
-          PYEOF
+          set -euo pipefail
+          test -n "$ANDROID_STORE_PASSWORD"
+          test -n "$ANDROID_KEY_PASSWORD"
+          {
+            printf 'storePassword=%s\n' "$ANDROID_STORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+            printf 'keyAlias=release\n'
+            printf 'storeFile=../release-key.jks\n'
+          } > android/key.properties
 
       - name: Inject Gemini API Key
         run: |
@@ -101,14 +100,26 @@ jobs:
       - name: Create missing asset folders
         run: mkdir -p assets/animations assets/images
 
-      - name: Inject service account
-        run: echo "${{ secrets.SERVICE_ACCOUNT_BASE64 }}" | base64 --decode > assets/service_account.json
-
       - name: Get dependencies
         run: flutter pub get
 
       - name: Generate app icons
         run: dart run flutter_launcher_icons
+
+      - name: Verify Android release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f android/app/build.gradle.kts
+          test -f android/app/src/main/AndroidManifest.xml
+          test -f android/app/proguard-rules.pro
+          test -f android/app/google-services.json
+          test -f android/key.properties
+          test -f android/release-key.jks
+          if find assets -type f -name 'service_account.json' -print -quit | grep -q .; then
+            echo "A service account file is present in assets."
+            exit 1
+          fi
 
       - name: Resolve app version
         id: app_version
@@ -123,7 +134,24 @@ jobs:
           echo "Version résolue : $VERSION_NAME+${{ github.run_number }}"
 
       - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons --build-name="${{ steps.app_version.outputs.name }}" --build-number="${{ github.run_number }}"
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build apk --release --no-tree-shake-icons \
+            --build-name="${{ steps.app_version.outputs.name }}" \
+            --build-number="${{ github.run_number }}" \
+            2>&1 | tee build-release.log
+
+      - name: Verify APK contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -f "$APK"
+          if unzip -Z1 "$APK" | grep -Eq '(^|/)(service_account\.json|release-key\.jks|key\.properties)$'; then
+            echo "A forbidden sensitive file is present in the APK."
+            exit 1
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
