@@ -240,9 +240,25 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             const fromRef = familyRef.collection("children").doc(op.childId);
             const toRef = familyRef.collection("children").doc(op.toChildId);
             const tradeRef = familyRef.collection("trades").doc(op.operationId);
-            const [fromSnap, toSnap] = await Promise.all([tx.get(fromRef), tx.get(toRef)]);
+            const immunitiesQuery = familyRef.collection("immunities")
+              .where("childId", "==", op.childId);
+            const [fromSnap, toSnap, immunitiesSnap] = await Promise.all([
+              tx.get(fromRef), tx.get(toRef), tx.get(immunitiesQuery),
+            ]);
             if (!fromSnap.exists || !toSnap.exists) {
               throw new HttpsError("not-found", "Enfant introuvable.");
+            }
+            const availableLines = immunitiesSnap.docs.reduce((total, doc) => {
+              const immunity = doc.data();
+              const lines = Number.isInteger(immunity.lines) ? immunity.lines : 0;
+              const used = Number.isInteger(immunity.usedLines) ? immunity.usedLines : 0;
+              return total + Math.max(0, lines - used);
+            }, 0);
+            if (availableLines < op.immunityLines) {
+              throw new HttpsError(
+                "failed-precondition",
+                "Lignes d'immunité insuffisantes."
+              );
             }
             const trade = {
               id: op.operationId,
@@ -282,7 +298,13 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             throw new HttpsError("permission-denied", "Compte non autorisé.");
           }
           const accountRef = familyRef.collection("screen_time_accounts").doc(op.childId);
-          const accountSnap = await tx.get(accountRef);
+          const childRef = familyRef.collection("children").doc(op.childId);
+          const [accountSnap, childSnap] = await Promise.all([
+            tx.get(accountRef), tx.get(childRef),
+          ]);
+          if (!childSnap.exists) {
+            throw new HttpsError("not-found", "Enfant introuvable.");
+          }
           const account = accountSnap.exists ? accountSnap.data() : {
             childId: op.childId, balanceMinutes: 0, totalEarned: 0,
             totalUsed: 0, sessionStart: null, sessionMinutes: 0,

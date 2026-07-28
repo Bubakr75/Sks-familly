@@ -52,3 +52,20 @@ test("les transitions d'échange sont strictes", () => {
   assert.equal(applyTradeTransition("accepted", "trade_service_done"), "service_done");
   assert.throws(() => applyTradeTransition("rejected", "trade_accept"), /INVALID_TRADE_TRANSITION/);
 });
+
+test("les lignes et descriptions d'échange sont bornées", () => {
+  const base = {
+    familyId: "f", operationId: "o", operation: "trade_create",
+    childId: "c1", toChildId: "c2", immunityLines: 1,
+    description: "Service",
+  };
+  assert.equal(normalizeSecureOperation(base).immunityLines, 1);
+  assert.throws(
+    () => normalizeSecureOperation({...base, immunityLines: 101}),
+    /INVALID_IMMUNITY_LINES/
+  );
+  assert.throws(
+    () => normalizeSecureOperation({...base, description: "x".repeat(301)}),
+    /INVALID_DESCRIPTION/
+  );
+});
