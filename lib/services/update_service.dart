@@ -1,16 +1,37 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
+
 import 'package:http/http.dart' as http;
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
+
+class AvailableUpdate {
+  final String currentVersion;
+  final String latestVersion;
+  final String apkUrl;
+
+  const AvailableUpdate({
+    required this.currentVersion,
+    required this.latestVersion,
+    required this.apkUrl,
+  });
+}
+
+enum UpdateInstallResult {
+  launched,
+  invalidUrl,
+  downloadFailed,
+  fileTooLarge,
+  storageUnavailable,
+  openFailed,
+}
 
 class UpdateService {
   static const String _repo = 'Bubakr75/Sks-familly';
   static const String officialApkName = 'app-release.apk';
   static const String _apiUrl =
       'https://api.github.com/repos/$_repo/releases/latest';
+  static const int maxApkBytes = 250 * 1024 * 1024;
 
   static String? officialApkUrl(Map<String, dynamic> release) {
     if (release['draft'] == true || release['prerelease'] == true) return null;
@@ -40,69 +61,100 @@ class UpdateService {
     return null;
   }
 
-  static Future<void> checkForUpdate(BuildContext context) async {
+  static AvailableUpdate? parseAvailableUpdate(
+    Map<String, dynamic> release,
+    String currentVersion,
+  ) {
+    final tag = release['tag_name'];
+    if (tag is! String) return null;
+    final latestVersion = tag.replaceFirst(RegExp(r'^v'), '');
+    final apkUrl = officialApkUrl(release);
+    if (apkUrl == null || !isNewerVersion(latestVersion, currentVersion)) {
+      return null;
+    }
+    return AvailableUpdate(
+      currentVersion: currentVersion,
+      latestVersion: latestVersion,
+      apkUrl: apkUrl,
+    );
+  }
+
+  static Future<AvailableUpdate?> findAvailableUpdate(
+    String currentVersion, {
+    http.Client? client,
+  }) async {
+    final uri = Uri.parse(_apiUrl);
+    final response = client == null
+        ? await http.get(
+            uri,
+            headers: const {'Accept': 'application/vnd.github.v3+json'},
+          ).timeout(const Duration(seconds: 10))
+        : await client.get(
+            uri,
+            headers: const {'Accept': 'application/vnd.github.v3+json'},
+          ).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) return null;
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) return null;
+    return parseAvailableUpdate(
+      Map<String, dynamic>.from(decoded),
+      currentVersion,
+    );
+  }
+
+  static Future<UpdateInstallResult> downloadAndInstall(
+    String url, {
+    http.Client? client,
+  }) async {
+    if (!_isOfficialDownloadUrl(url)) {
+      return UpdateInstallResult.invalidUrl;
+    }
     try {
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.buildNumber.isEmpty
-          ? packageInfo.version
-          : '${packageInfo.version}+${packageInfo.buildNumber}';
-
-      final response = await http.get(
-        Uri.parse(_apiUrl),
-        headers: {'Accept': 'application/vnd.github.v3+json'},
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode != 200) return;
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final latestTag =
-          (data['tag_name'] as String?)?.replaceFirst('v', '') ?? '';
-
-      if (latestTag.isEmpty || latestTag == currentVersion) return;
-
-      if (!isNewerVersion(latestTag, currentVersion)) return;
-
-      final apkUrl = officialApkUrl(data);
-
-      if (apkUrl == null || !context.mounted) return;
-
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.system_update, color: Color(0xFF7C4DFF)),
-              SizedBox(width: 10),
-              Text('Mise a jour', style: TextStyle(color: Colors.white)),
-            ],
-          ),
-          content: Text(
-            'Une nouvelle version ($latestTag) est disponible.\n\nVersion actuelle : $currentVersion\n\nVoulez-vous telecharger la mise a jour ?',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child:
-                  const Text('Plus tard', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C4DFF)),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _downloadAndInstall(context, apkUrl);
-              },
-              child: const Text('Telecharger',
-                  style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
+      final uri = Uri.parse(url);
+      final response = client == null
+          ? await http.get(uri).timeout(const Duration(minutes: 5))
+          : await client.get(uri).timeout(const Duration(minutes: 5));
+      if (response.statusCode != 200) {
+        return UpdateInstallResult.downloadFailed;
+      }
+      final announcedSize = int.tryParse(
+        response.headers['content-length'] ?? '',
       );
-    } catch (_) {}
+      if ((announcedSize != null && announcedSize > maxApkBytes) ||
+          response.bodyBytes.length > maxApkBytes) {
+        return UpdateInstallResult.fileTooLarge;
+      }
+
+      final directory = await getExternalStorageDirectory();
+      if (directory == null) {
+        return UpdateInstallResult.storageUnavailable;
+      }
+      final file = File(
+        '${directory.path}/com.bubakr.sks_family-update.apk',
+      );
+      await file.writeAsBytes(response.bodyBytes, flush: true);
+      final openResult = await OpenFilex.open(file.path);
+      return openResult.type == ResultType.done
+          ? UpdateInstallResult.launched
+          : UpdateInstallResult.openFailed;
+    } catch (_) {
+      return UpdateInstallResult.downloadFailed;
+    }
+  }
+
+  static bool _isOfficialDownloadUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host != 'github.com' ||
+        uri.query.isNotEmpty ||
+        uri.fragment.isNotEmpty) {
+      return false;
+    }
+    return RegExp(
+      r'^/Bubakr75/Sks-familly/releases/download/'
+      r'v\d+\.\d+\.\d+\+\d+/app-release\.apk$',
+    ).hasMatch(Uri.decodeComponent(uri.path));
   }
 
   static bool isNewerVersion(String latest, String current) {
@@ -137,63 +189,5 @@ class UpdateService {
         sections.length > 1 ? int.tryParse(sections[1]) ?? 0 : 0;
 
     return (versionParts.take(3).toList(), buildNumber);
-  }
-
-  static Future<void> _downloadAndInstall(
-      BuildContext context, String url) async {
-    final messenger = ScaffoldMessenger.of(context);
-
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white)),
-            SizedBox(width: 12),
-            Text('Telechargement en cours...'),
-          ],
-        ),
-        duration: Duration(minutes: 5),
-        backgroundColor: Color(0xFF7C4DFF),
-      ),
-    );
-
-    try {
-      final response =
-          await http.get(Uri.parse(url)).timeout(const Duration(minutes: 5));
-
-      if (response.statusCode != 200) {
-        messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(
-          const SnackBar(
-              content: Text('Erreur de telechargement'),
-              backgroundColor: Colors.red),
-        );
-        return;
-      }
-
-      final dir = await getExternalStorageDirectory();
-      // ⚠️ FIX : nom de fichier cohérent avec l'applicationId pour qu'Android
-      // reconnaisse la mise à jour comme une UPDATE (et non une nouvelle app).
-      final file = File('${dir!.path}/com.bubakr.sks_family-update.apk');
-      await file.writeAsBytes(response.bodyBytes);
-
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        const SnackBar(
-            content: Text('Telechargement termine ! Installation...'),
-            backgroundColor: Colors.green),
-      );
-
-      await OpenFilex.open(file.path);
-    } catch (e) {
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
-      );
-    }
   }
 }

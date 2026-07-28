@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -19,7 +19,6 @@ import 'screens/onboarding_screen.dart';
 import 'screens/profile_selection_screen.dart';
 import 'screens/intro_video_screen.dart';
 import 'services/notification_service.dart';
-import 'services/update_service.dart';
 import 'widgets/mode_indicator.dart';
 
 void main() {
@@ -86,9 +85,9 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
     // 2b. Voix TTS (non bloquant)
     try {
       await VoiceService().init().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => debugPrint('Voice init timeout'),
-      );
+            const Duration(seconds: 3),
+            onTimeout: () => debugPrint('Voice init timeout'),
+          );
     } catch (e) {
       if (kDebugMode) debugPrint('VoiceService init error: $e');
     }
@@ -106,8 +105,10 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
 
       // 3b. Crashlytics : capturer tous les plantages en production
       try {
-        await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
-        FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+        await FirebaseCrashlytics.instance
+            .setCrashlyticsCollectionEnabled(true);
+        FlutterError.onError =
+            FirebaseCrashlytics.instance.recordFlutterFatalError;
       } catch (e) {
         if (kDebugMode) debugPrint('Crashlytics init error: $e');
       }
@@ -124,18 +125,18 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
       // Authentification anonyme â€” OBLIGATOIRE avant Firestore (rÃ¨gles strictes)
       try {
         await AuthService().ensureConnected().timeout(
-          const Duration(seconds: 8),
-          onTimeout: () => debugPrint('Auth init timeout'),
-        );
+              const Duration(seconds: 8),
+              onTimeout: () => debugPrint('Auth init timeout'),
+            );
       } catch (e) {
         if (kDebugMode) debugPrint('AuthService init error: $e');
       }
 
       try {
         await FcmService().init().timeout(
-          const Duration(seconds: 6),
-          onTimeout: () => debugPrint('FCM init timeout'),
-        );
+              const Duration(seconds: 6),
+              onTimeout: () => debugPrint('FCM init timeout'),
+            );
       } catch (e) {
         if (kDebugMode) debugPrint('FcmService init error: $e');
       }
@@ -153,9 +154,9 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
 
     try {
       await _familyProvider.init().timeout(
-        const Duration(seconds: 8),
-        onTimeout: () => debugPrint('FamilyProvider init timeout'),
-      );
+            const Duration(seconds: 8),
+            onTimeout: () => debugPrint('FamilyProvider init timeout'),
+          );
     } catch (e) {
       if (kDebugMode) debugPrint('FamilyProvider init error: $e');
     }
@@ -166,9 +167,9 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
     if (firebaseReady) {
       try {
         await FcmService().registerToken().timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => debugPrint('FCM re-register timeout'),
-        );
+              const Duration(seconds: 5),
+              onTimeout: () => debugPrint('FCM re-register timeout'),
+            );
       } catch (e) {
         if (kDebugMode) debugPrint('FCM re-register error: $e');
       }
@@ -321,7 +322,6 @@ class _StartupRouterState extends State<_StartupRouter> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      UpdateService.checkForUpdate(context);
       try {
         context.read<FamilyProvider>().reconnectFirestore();
       } catch (e) {
@@ -335,5 +335,3 @@ class _StartupRouterState extends State<_StartupRouter> {
     return const ProfileSelectionScreen();
   }
 }
-
-

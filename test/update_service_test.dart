@@ -94,5 +94,31 @@ void main() {
       expect(UpdateService.officialApkUrl(release(name: 'debug.apk')), isNull);
       expect(UpdateService.officialApkUrl(release(tag: 'latest')), isNull);
     });
+
+    test('construit une mise à jour unique à afficher sur l’accueil', () {
+      final update = UpdateService.parseAvailableUpdate(
+        release(),
+        '4.8.0+499',
+      );
+      expect(update, isNotNull);
+      expect(update!.currentVersion, '4.8.0+499');
+      expect(update.latestVersion, '4.8.0+500');
+      expect(update.apkUrl, contains('/app-release.apk'));
+
+      expect(
+        UpdateService.parseAvailableUpdate(release(), '4.8.0+500'),
+        isNull,
+      );
+    });
+
+    test('refuse un téléchargement qui ne vient pas de la Release officielle',
+        () async {
+      expect(
+        await UpdateService.downloadAndInstall(
+          'https://example.com/app-release.apk',
+        ),
+        UpdateInstallResult.invalidUrl,
+      );
+    });
   });
 }

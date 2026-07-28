@@ -3,16 +3,12 @@
 // Bannière de mise à jour affichée sur l'accueil Android uniquement.
 // Vérifie la version GitHub et propose le téléchargement + installation.
 
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../services/update_service.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
 
 class UpdateBanner extends StatefulWidget {
   const UpdateBanner({super.key});
@@ -22,9 +18,7 @@ class UpdateBanner extends StatefulWidget {
 }
 
 class _UpdateBannerState extends State<UpdateBanner> {
-  String? _currentVersion;
-  String? _latestVersion;
-  String? _apkUrl;
+  AvailableUpdate? _update;
   bool _checking = true;
   bool _downloading = false;
 
@@ -41,31 +35,11 @@ class _UpdateBannerState extends State<UpdateBanner> {
           ? packageInfo.version
           : '${packageInfo.version}+${packageInfo.buildNumber}';
 
-      final response = await http.get(
-        Uri.parse(
-            'https://api.github.com/repos/Bubakr75/Sks-familly/releases/latest'),
-        headers: {'Accept': 'application/vnd.github.v3+json'},
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode != 200) {
-        if (mounted) setState(() => _checking = false);
-        return;
-      }
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final tag = (data['tag_name'] as String?).toString();
-      final latest = tag.replaceFirst('v', '');
-
-      final apkUrl = UpdateService.officialApkUrl(data);
-
-      final hasUpdate =
-          UpdateService.isNewerVersion(latest, current) && apkUrl != null;
+      final update = await UpdateService.findAvailableUpdate(current);
 
       if (mounted) {
         setState(() {
-          _currentVersion = current;
-          _latestVersion = hasUpdate ? latest : null;
-          _apkUrl = apkUrl;
+          _update = update;
           _checking = false;
         });
       }
@@ -75,30 +49,33 @@ class _UpdateBannerState extends State<UpdateBanner> {
   }
 
   Future<void> _downloadAndInstall() async {
-    if (_apkUrl == null || _downloading) return;
+    final update = _update;
+    if (update == null || _downloading) return;
     setState(() => _downloading = true);
     HapticFeedback.mediumImpact();
 
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      final response = await http.get(Uri.parse(_apkUrl!)).timeout(
-            const Duration(minutes: 5),
-          );
-
-      if (response.statusCode != 200) {
-        messenger.showSnackBar(const SnackBar(
-          content: Text('Échec du téléchargement'),
-          backgroundColor: Colors.redAccent,
-        ));
-        return;
+      final result = await UpdateService.downloadAndInstall(update.apkUrl);
+      if (result != UpdateInstallResult.launched) {
+        final message = switch (result) {
+          UpdateInstallResult.invalidUrl => 'Lien de mise à jour refusé',
+          UpdateInstallResult.fileTooLarge =>
+            'Fichier de mise à jour trop lourd',
+          UpdateInstallResult.storageUnavailable =>
+            'Stockage Android indisponible',
+          UpdateInstallResult.openFailed =>
+            'Impossible d’ouvrir l’installateur Android',
+          _ => 'Échec du téléchargement',
+        };
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
-
-      final dir = await getExternalStorageDirectory();
-      final file = File('${dir!.path}/com.bubakr.sks_family-update.apk');
-      await file.writeAsBytes(response.bodyBytes);
-
-      await OpenFilex.open(file.path);
     } catch (_) {
       messenger.showSnackBar(const SnackBar(
         content: Text('Erreur lors du téléchargement'),
@@ -113,7 +90,8 @@ class _UpdateBannerState extends State<UpdateBanner> {
   Widget build(BuildContext context) {
     // Masqué sur Web et iOS
     if (kIsWeb || !Platform.isAndroid) return const SizedBox.shrink();
-    if (_checking || _latestVersion == null) return const SizedBox.shrink();
+    final update = _update;
+    if (_checking || update == null) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -151,7 +129,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$_currentVersion → $_latestVersion',
+                  '${update.currentVersion} → ${update.latestVersion}',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 11,
