@@ -14,11 +14,22 @@ concurrency:
 
 jobs:
   build:
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      github.ref == 'refs/heads/feature/family-security-maintenance'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Guard manual test build
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/feature/family-security-maintenance"
+          test "$GITHUB_REF_NAME" != "main"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -70,6 +81,9 @@ jobs:
           } > android/key.properties
 
       - name: Inject Gemini API Key
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python3 - << 'PYEOF'
           import os
@@ -82,20 +96,16 @@ jobs:
               if skip_next:
                   skip_next = False
                   continue
-              # Ne remplacer QUE la déclaration : static const _apiKey =
               if 'static const _apiKey' in line and '=' in line:
                   new_lines.append("  static const _apiKey = '" + api_key + "';\n")
-                  # Si la ligne suivante contient defaultValue, la sauter
                   if i + 1 < len(lines) and 'defaultValue' in lines[i + 1]:
                       skip_next = True
               else:
                   new_lines.append(line)
           with open('lib/services/gemini_service.dart', 'w', encoding='utf-8') as f:
               f.writelines(new_lines)
-          print("Gemini key injected OK")
+          print("Gemini key injected")
           PYEOF
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Create missing asset folders
         run: mkdir -p assets/animations assets/images
@@ -121,17 +131,27 @@ jobs:
             exit 1
           fi
 
-      - name: Resolve app version
+      - name: Resolve and validate app version
         id: app_version
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           VERSION_NAME=$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' pubspec.yaml)
-          if [ -z "$VERSION_NAME" ]; then
-            echo "Version introuvable dans pubspec.yaml"
+          test -n "$VERSION_NAME"
+          LATEST_TAG=$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)
+          LATEST_CODE=${LATEST_TAG##*+}
+          if ! [[ "$LATEST_CODE" =~ ^[0-9]+$ ]]; then
+            echo "VersionCode officiel illisible."
+            exit 1
+          fi
+          if [ "${{ github.run_number }}" -le "$LATEST_CODE" ]; then
+            echo "Le versionCode doit être supérieur à la version officielle $LATEST_CODE."
             exit 1
           fi
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "Version résolue : $VERSION_NAME+${{ github.run_number }}"
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
       - name: Build Release APK
         shell: bash
@@ -139,7 +159,7 @@ jobs:
           set -o pipefail
           flutter build apk --release --no-tree-shake-icons \
             --build-name="${{ steps.app_version.outputs.name }}" \
-            --build-number="${{ github.run_number }}" \
+            --build-number="${{ steps.app_version.outputs.code }}" \
             2>&1 | tee build-release.log
 
       - name: Verify APK contents
@@ -148,17 +168,70 @@ jobs:
           set -euo pipefail
           APK=build/app/outputs/flutter-apk/app-release.apk
           test -f "$APK"
-          if unzip -Z1 "$APK" | grep -Eq '(^|/)(service_account\.json|release-key\.jks|key\.properties)$'; then
+          if unzip -Z1 "$APK" | grep -Eqi '(^|/)(service_account\.json|key\.properties|[^/]*\.(jks|keystore))$'; then
             echo "A forbidden sensitive file is present in the APK."
             exit 1
           fi
 
-      - name: Create GitHub Release
+      - name: Verify application ID and official signing certificate
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt -print | sort -V | tail -1)
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner -print | sort -V | tail -1)
+          test -n "$AAPT"
+          test -n "$APKSIGNER"
+          "$AAPT" dump badging "$APK" | grep -q "package: name='com.bubakr.sks_family'"
+
+          mkdir -p /tmp/official-apk
+          gh release download --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.apk' --dir /tmp/official-apk
+          OFFICIAL_APK=$(find /tmp/official-apk -maxdepth 1 -type f -name '*.apk' -print -quit)
+          test -n "$OFFICIAL_APK"
+
+          TEST_CERT=$("$APKSIGNER" verify --print-certs "$APK" \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+          OFFICIAL_CERT=$("$APKSIGNER" verify --print-certs "$OFFICIAL_APK" \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+          test -n "$TEST_CERT"
+          test -n "$OFFICIAL_CERT"
+          if [ "$TEST_CERT" != "$OFFICIAL_CERT" ]; then
+            echo "Le certificat de signature diffère de l'APK officiel."
+            exit 1
+          fi
+
+      - name: Prepare test APK name
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            "build/app/outputs/flutter-apk/SKS-Family-test-${{ steps.app_version.outputs.name }}-${{ steps.app_version.outputs.code }}.apk"
+
+      - name: Create GitHub Prerelease test
+        if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.app_version.outputs.name }}+${{ github.run_number }}
-          name: "Family Score v${{ steps.app_version.outputs.name }}+${{ github.run_number }}"
-          body: "Build #${{ github.run_number }}"
+          tag_name: test-v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}
+          name: "Test Android v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}"
+          body: "Prerelease de test de la branche feature/family-security-maintenance."
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          files: build/app/outputs/flutter-apk/SKS-Family-test-${{ steps.app_version.outputs.name }}-${{ steps.app_version.outputs.code }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create stable GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}
+          name: "Family Score v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}"
+          body: "Build #${{ steps.app_version.outputs.code }}"
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
