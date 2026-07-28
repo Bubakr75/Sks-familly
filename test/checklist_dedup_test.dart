@@ -209,11 +209,13 @@ void main() {
 
     test('un résultat failed ne doit pas ajouter à _validatedToday', () {
       final validatedToday = <String>{};
-      // Simule RequestResult.failed
-      final failed = true;
-      if (!failed) {
-        validatedToday.add('child-a');
+      void applyResult(bool failed) {
+        if (!failed) {
+          validatedToday.add('child-a');
+        }
       }
+
+      applyResult(true);
       expect(validatedToday.contains('child-a'), isFalse);
     });
   });

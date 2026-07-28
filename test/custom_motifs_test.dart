@@ -2,7 +2,6 @@
 // favoris/compteurs (LOT 3), et fluidité/tri stable.
 // Utilise les vrais helpers de production et SharedPreferences mock.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

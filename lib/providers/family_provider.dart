@@ -979,7 +979,9 @@ class FamilyProvider extends ChangeNotifier {
     _trades.removeWhere((t) => t.fromChildId == id || t.toChildId == id);
     final keysToRemove =
         _screenTimeBox.keys.where((k) => k.toString().startsWith(id)).toList();
-    for (final key in keysToRemove) await _screenTimeBox.delete(key);
+    for (final key in keysToRemove) {
+      await _screenTimeBox.delete(key);
+    }
     await _saveAllLocal();
     if (_firestore.isConnected) await _firestore.deleteChild(id);
     notifyListeners();
@@ -1025,7 +1027,9 @@ class FamilyProvider extends ChangeNotifier {
           h.category == 'punition' ||
           h.category == 'immunité' ||
           h.category == 'tribunal_vote' ||
-          h.category == 'tribunal_verdict') return false;
+          h.category == 'tribunal_verdict') {
+        return false;
+      }
       return h.date.isAfter(todayStart);
     }).length;
   }
@@ -1647,7 +1651,9 @@ class FamilyProvider extends ChangeNotifier {
           h.category == 'screen_time_bonus' ||
           h.category == 'saturday_rating' ||
           h.category == 'tribunal_vote' ||
-          h.category == 'tribunal_verdict') return false;
+          h.category == 'tribunal_verdict') {
+        return false;
+      }
       final entryDay = DateTime(h.date.year, h.date.month, h.date.day);
       return datesCochees.contains(entryDay);
     }).toList();
@@ -2637,7 +2643,7 @@ class FamilyProvider extends ChangeNotifier {
       childId: childId,
       requestedBy: child.name,
       text: onSale
-          ? '🛒 ${child.name} achète "${reward.title}" ($actualCost pts 🔥 -${_saleDiscountPercent}%)'
+          ? '🛒 ${child.name} achète "${reward.title}" ($actualCost pts 🔥 -$_saleDiscountPercent%)'
           : '🛒 ${child.name} achète "${reward.title}" ($actualCost pts)',
       amount: actualCost,
       extra: {
@@ -2656,7 +2662,7 @@ class FamilyProvider extends ChangeNotifier {
       childId: childId,
       points: actualCost,
       reason: onSale
-          ? '🛒 Achat boutique : ${reward.title} (-${_saleDiscountPercent}%)'
+          ? '🛒 Achat boutique : ${reward.title} (-$_saleDiscountPercent%)'
           : '🛒 Achat boutique : ${reward.title}',
       category: 'boutique',
       isBonus: false,
