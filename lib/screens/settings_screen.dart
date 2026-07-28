@@ -12,7 +12,6 @@ import '../widgets/animated_page_transition.dart';
 import 'family_screen.dart';
 import 'manage_children_screen.dart';
 import 'drawer_order_screen.dart';
-import 'family_backup_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key}); // ✅ super.key
@@ -24,7 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     with TickerProviderStateMixin {
   late AnimationController _sectionController;
   late AnimationController _dangerShakeController;
-  late Animation<double> _dangerShake;
+  late Animation<double>   _dangerShake;
   String _appVersion = '';
 
   @override
@@ -35,8 +34,9 @@ class _SettingsScreenState extends State<SettingsScreen>
       ..forward();
     _dangerShakeController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 500));
-    _dangerShake = Tween<double>(begin: 0, end: 12).animate(CurvedAnimation(
-        parent: _dangerShakeController, curve: Curves.elasticIn));
+    _dangerShake = Tween<double>(begin: 0, end: 12).animate(
+        CurvedAnimation(
+            parent: _dangerShakeController, curve: Curves.elasticIn));
 
     // ✅ Version récupérée dynamiquement
     PackageInfo.fromPlatform().then((info) {
@@ -59,7 +59,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     return AnimatedBuilder(
       animation: _sectionController,
       builder: (ctx, ch) {
-        final progress = ((_sectionController.value - delay) / (1.0 - delay))
+        final progress = ((_sectionController.value - delay) /
+                (1.0 - delay))
             .clamp(0.0, 1.0);
         final t = Curves.easeOutCubic.transform(progress);
         return Transform.translate(
@@ -74,9 +75,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   // ─── Dialog PIN ────────────────────────────────────────────
   void _showPinDialog() {
     final pinProvider = context.read<PinProvider>();
-    final ctrl = TextEditingController();
-    final isSet = pinProvider.isPinSet;
-    bool _obscure = true;
+    final ctrl        = TextEditingController();
+    final isSet       = pinProvider.isPinSet;
+    bool  _obscure    = true;
 
     showDialog(
       context: context,
@@ -101,21 +102,22 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: ctrl,
+                controller:  ctrl,
                 keyboardType: TextInputType.number,
-                obscureText: _obscure,
-                maxLength: 6,
-                autofocus: true,
-                textAlign: TextAlign.center,
+                obscureText:  _obscure,
+                maxLength:    6,
+                autofocus:    true,
+                textAlign:    TextAlign.center,
                 style: const TextStyle(fontSize: 24, letterSpacing: 8),
                 decoration: InputDecoration(
-                  hintText: '• • • •',
-                  counterText: '',
-                  suffixIcon: IconButton(
+                  hintText:     '• • • •',
+                  counterText:  '',
+                  suffixIcon:   IconButton(
                     icon: Icon(_obscure
                         ? Icons.visibility_off_rounded
                         : Icons.visibility_rounded),
-                    onPressed: () => setStateDialog(() => _obscure = !_obscure),
+                    onPressed: () =>
+                        setStateDialog(() => _obscure = !_obscure),
                   ),
                 ),
                 inputFormatters: [
@@ -181,15 +183,15 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (ctx) => Container(
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: 40, height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                   color: Colors.white24,
@@ -198,8 +200,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             const Text(
               '🎨 Couleur d\'accent',
               style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
+                  color:      Colors.white,
+                  fontSize:   20,
                   fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -209,7 +211,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               children: List.generate(
                 ThemeProvider.accentColors.length,
                 (i) {
-                  final color = ThemeProvider.accentColors[i];
+                  final color    = ThemeProvider.accentColors[i];
                   final selected = i == themeProvider.colorIndex;
                   return TvFocusWrapper(
                     onTap: () {
@@ -218,20 +220,18 @@ class _SettingsScreenState extends State<SettingsScreen>
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      width: 52,
+                      width:  52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
+                        color:  color,
+                        shape:  BoxShape.circle,
                         border: selected
                             ? Border.all(color: Colors.white, width: 3)
                             : null,
                         boxShadow: selected
-                            ? [
-                                BoxShadow(
-                                    color: color.withValues(alpha: 0.6),
-                                    blurRadius: 12)
-                              ]
+                            ? [BoxShadow(
+                                color:      color.withValues(alpha: 0.6),
+                                blurRadius: 12)]
                             : null,
                       ),
                       child: selected
@@ -248,8 +248,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             const Text(
               '🌃 Couleur de fond',
               style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+                  color:      Colors.white,
+                  fontSize:   16,
                   fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -268,20 +268,19 @@ class _SettingsScreenState extends State<SettingsScreen>
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      width: 52,
+                      width:  52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: bg['color'] as Color,
+                        color:  bg['color'] as Color,
                         borderRadius: BorderRadius.circular(12),
                         border: selected
                             ? Border.all(color: Colors.white, width: 2)
-                            : Border.all(color: Colors.white24, width: 1),
+                            : Border.all(
+                                color: Colors.white24, width: 1),
                         boxShadow: selected
-                            ? [
-                                BoxShadow(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    blurRadius: 8)
-                              ]
+                            ? [BoxShadow(
+                                color:      Colors.white.withValues(alpha: 0.2),
+                                blurRadius: 8)]
                             : null,
                       ),
                       child: selected
@@ -291,7 +290,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                               child: Text(
                                 (bg['label'] as String).substring(0, 2),
                                 style: const TextStyle(
-                                    color: Colors.white54, fontSize: 10),
+                                    color:    Colors.white54,
+                                    fontSize: 10),
                               ),
                             ),
                     ),
@@ -328,7 +328,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             child: const Text('Annuler'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade700),
             onPressed: () {
               context.read<FamilyProvider>().resetAllScores();
               Navigator.pop(ctx);
@@ -362,7 +363,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             child: const Text('Annuler'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade700),
             onPressed: () {
               context.read<FamilyProvider>().clearHistory();
               Navigator.pop(ctx);
@@ -383,7 +385,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       backgroundColor:
           isWarning ? Colors.orange.shade700 : Colors.green.shade700,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
   }
 
@@ -401,6 +404,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+
                   // ─── Header ──────────────────────────────
                   _animatedSection(
                     index: 0,
@@ -412,8 +416,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           child: Text(
                             'Réglages',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
+                              color:      Colors.white,
+                              fontSize:   28,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -438,7 +442,8 @@ class _SettingsScreenState extends State<SettingsScreen>
 
                   // ─── Apparence ───────────────────────────
                   _animatedSection(
-                      index: 1, child: _sectionTitle('🎨 Apparence')),
+                      index: 1,
+                      child: _sectionTitle('🎨 Apparence')),
                   _animatedSection(
                     index: 2,
                     child: GlassCard(
@@ -451,7 +456,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             iconColor: Colors.amberAccent,
                             title: 'Thème sombre',
                             trailing: Switch(
-                              value: theme.isDark,
+                              value:    theme.isDark,
                               onChanged: (_) => theme.toggle(),
                             ),
                           ),
@@ -459,19 +464,20 @@ class _SettingsScreenState extends State<SettingsScreen>
                           TvFocusWrapper(
                             onTap: _showColorPicker,
                             child: _settingRow(
-                              icon: Icons.palette_rounded,
+                              icon:      Icons.palette_rounded,
                               iconColor: primary,
-                              title: 'Couleur & fond',
+                              title:     'Couleur & fond',
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(
-                                    width: 24,
+                                    width:  24,
                                     height: 24,
                                     decoration: BoxDecoration(
-                                      color: primary,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white38),
+                                      color:  primary,
+                                      shape:  BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white38),
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -491,102 +497,74 @@ class _SettingsScreenState extends State<SettingsScreen>
                     index: 2,
                     child: GlassCard(
                       child: TvFocusWrapper(
-                        onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const DrawerOrderScreen())),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DrawerOrderScreen())),
                         child: _settingRow(
                           icon: Icons.sort_rounded,
                           iconColor: Colors.deepPurpleAccent,
                           title: 'Réorganiser le menu',
                           subtitle: 'Changer l\'ordre des onglets',
-                          trailing: const Icon(Icons.chevron_right,
-                              color: Colors.white38),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.white38),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   _animatedSection(
-                      index: 3, child: _sectionTitle('☁️ Cloud & Famille')),
+                      index: 3,
+                      child: _sectionTitle('☁️ Cloud & Famille')),
                   _animatedSection(
                     index: 3,
                     child: GlassCard(
                       child: TvFocusWrapper(
-                        onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const FamilyScreen())),
+                        onTap: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const FamilyScreen())),
                         child: _settingRow(
                           icon: Icons.sync_rounded,
                           iconColor: Colors.lightBlueAccent,
                           title: 'Synchronisation',
                           subtitle: 'Connexion familiale multi-appareils',
-                          trailing: const Icon(Icons.chevron_right,
-                              color: Colors.white38),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.white38),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   _animatedSection(
-                      index: 3, child: _sectionTitle('🔐 Sécurité')),
+                      index: 3,
+                      child: _sectionTitle('🔐 Sécurité')),
                   _animatedSection(
                     index: 4,
                     child: GlassCard(
-                      child: Column(
-                        children: [
-                          TvFocusWrapper(
-                            onTap: _showPinDialog,
-                            child: _settingRow(
-                              icon: Icons.lock_rounded,
-                              iconColor: Colors.cyanAccent,
-                              title: pin.isPinSet
-                                  ? 'Modifier le PIN'
-                                  : 'Créer un PIN',
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: (pin.isPinSet
-                                          ? Colors.greenAccent
-                                          : Colors.redAccent)
-                                      .withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  pin.isPinSet ? '🔒 Actif' : '🔓 Inactif',
-                                  style: TextStyle(
-                                    color: pin.isPinSet
-                                        ? Colors.greenAccent
-                                        : Colors.redAccent,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                      child: TvFocusWrapper(
+                        onTap: _showPinDialog,
+                        child: _settingRow(
+                          icon:      Icons.lock_rounded,
+                          iconColor: Colors.cyanAccent,
+                          title: pin.isPinSet
+                              ? 'Modifier le PIN'
+                              : 'Créer un PIN',
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: (pin.isPinSet
+                                      ? Colors.greenAccent
+                                      : Colors.redAccent)
+                                  .withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              pin.isPinSet ? '🔒 Actif' : '🔓 Inactif',
+                              style: TextStyle(
+                                color: pin.isPinSet
+                                    ? Colors.greenAccent
+                                    : Colors.redAccent,
+                                fontSize:   12,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          const Divider(color: Colors.white12),
-                          TvFocusWrapper(
-                            onTap: () => Navigator.push(
-                              context,
-                              SlidePageRoute(
-                                page: const FamilyBackupScreen(),
-                              ),
-                            ),
-                            child: _settingRow(
-                              icon: Icons.enhanced_encryption_rounded,
-                              iconColor: Colors.greenAccent,
-                              title: 'Sauvegarde familiale',
-                              subtitle: 'Export chiffré et restauration',
-                              trailing: const Icon(
-                                Icons.chevron_right,
-                                color: Colors.white38,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -594,7 +572,8 @@ class _SettingsScreenState extends State<SettingsScreen>
 
                   // ─── Famille ─────────────────────────────
                   _animatedSection(
-                      index: 5, child: _sectionTitle('👨‍👩‍👧‍👦 Famille')),
+                      index: 5,
+                      child: _sectionTitle('👨‍👩‍👧‍👦 Famille')),
                   _animatedSection(
                     index: 6,
                     child: GlassCard(
@@ -602,11 +581,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                         children: [
                           TvFocusWrapper(
                             onTap: () => Navigator.push(context,
-                                SlidePageRoute(page: const FamilyScreen())),
+                                SlidePageRoute(
+                                    page: const FamilyScreen())),
                             child: _settingRow(
-                              icon: Icons.sync_rounded,
+                              icon:      Icons.sync_rounded,
                               iconColor: Colors.purpleAccent,
-                              title: 'Synchronisation famille',
+                              title:     'Synchronisation famille',
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -628,14 +608,14 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ),
                           const Divider(color: Colors.white12),
                           TvFocusWrapper(
-                            onTap: () => Navigator.push(
-                                context,
+                            onTap: () => Navigator.push(context,
                                 SlidePageRoute(
-                                    page: const ManageChildrenScreen())),
+                                    page:
+                                        const ManageChildrenScreen())),
                             child: _settingRow(
-                              icon: Icons.people_rounded,
+                              icon:      Icons.people_rounded,
                               iconColor: Colors.orangeAccent,
-                              title: 'Gérer les enfants',
+                              title:     'Gérer les enfants',
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -645,12 +625,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                                     decoration: BoxDecoration(
                                       color: Colors.orangeAccent
                                           .withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius:
+                                          BorderRadius.circular(8),
                                     ),
                                     child: Text(
                                       '${fp.children.length}',
                                       style: const TextStyle(
-                                        color: Colors.orangeAccent,
+                                        color:      Colors.orangeAccent,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -670,7 +651,8 @@ class _SettingsScreenState extends State<SettingsScreen>
 
                   // ─── Zone dangereuse ─────────────────────
                   _animatedSection(
-                      index: 7, child: _sectionTitle('⚠️ Zone dangereuse')),
+                      index: 7,
+                      child: _sectionTitle('⚠️ Zone dangereuse')),
                   _animatedSection(
                     index: 8,
                     child: AnimatedBuilder(
@@ -678,9 +660,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                       builder: (ctx, child) => Transform.translate(
                         offset: Offset(
                           _dangerShake.value *
-                              ((_dangerShakeController.value * 10).toInt() %
-                                          2 ==
-                                      0
+                              ((_dangerShakeController.value * 10)
+                                          .toInt() %
+                                      2 ==
+                                  0
                                   ? 1
                                   : -1),
                           0,
@@ -693,7 +676,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             TvFocusWrapper(
                               onTap: _confirmResetScores,
                               child: _settingRow(
-                                icon: Icons.refresh_rounded,
+                                icon:      Icons.refresh_rounded,
                                 iconColor: Colors.orangeAccent,
                                 title: 'Remettre les scores à zéro',
                                 trailing: const Icon(
@@ -706,7 +689,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             TvFocusWrapper(
                               onTap: _confirmClearHistory,
                               child: _settingRow(
-                                icon: Icons.delete_forever_rounded,
+                                icon:      Icons.delete_forever_rounded,
                                 iconColor: Colors.redAccent,
                                 title: 'Effacer tout l\'historique',
                                 trailing: const Icon(
@@ -736,27 +719,29 @@ class _SettingsScreenState extends State<SettingsScreen>
         child: Text(
           text,
           style: const TextStyle(
-              color: Colors.white70, fontSize: 15, fontWeight: FontWeight.w600),
+              color:      Colors.white70,
+              fontSize:   15,
+              fontWeight: FontWeight.w600),
         ),
       );
 
   Widget _settingRow({
     required IconData icon,
-    required Color iconColor,
-    required String title,
+    required Color    iconColor,
+    required String   title,
     String? subtitle,
-    required Widget trailing,
+    required Widget   trailing,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
       child: Row(
         children: [
           Container(
-            width: 42,
+            width:  42,
             height: 42,
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+              color:         iconColor.withValues(alpha: 0.15),
+              borderRadius:  BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 22),
           ),
@@ -774,9 +759,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 12),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                   ),
                 ],
               ],
