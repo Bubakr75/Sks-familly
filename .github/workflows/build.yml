@@ -193,12 +193,38 @@ jobs:
           OFFICIAL_APK=$(find /tmp/official-apk -maxdepth 1 -type f -name '*.apk' -print -quit)
           test -n "$OFFICIAL_APK"
 
-          TEST_CERT=$("$APKSIGNER" verify --print-certs "$APK" \
-            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
-          OFFICIAL_CERT=$("$APKSIGNER" verify --print-certs "$OFFICIAL_APK" \
-            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
-          test -n "$TEST_CERT"
-          test -n "$OFFICIAL_CERT"
+          extract_cert_sha256() {
+            local apk_path="$1"
+            local apk_label="$2"
+            local apksigner_output
+            local digest
+
+            if ! apksigner_output=$("$APKSIGNER" verify --print-certs "$apk_path" 2>&1); then
+              echo "Erreur: apksigner n'a pas pu vérifier ${apk_label}." >&2
+              return 1
+            fi
+
+            digest=$(printf '%s\n' "$apksigner_output" \
+              | awk 'tolower($0) ~ /^[[:space:]]*signer #1 certificate sha-256 digest[[:space:]]*:/ {
+                  sub(/^[^:]*:[[:space:]]*/, "")
+                  print
+                  exit
+                }' \
+              | tr -d '[:space:]:' \
+              | tr '[:lower:]' '[:upper:]')
+
+            if [[ ! "$digest" =~ ^[0-9A-F]{64}$ ]]; then
+              echo "Erreur: impossible d'extraire une empreinte SHA-256 valide pour ${apk_label}." >&2
+              return 1
+            fi
+
+            printf '%s' "$digest"
+          }
+
+          TEST_CERT=$(extract_cert_sha256 "$APK" "l'APK de test")
+          OFFICIAL_CERT=$(extract_cert_sha256 "$OFFICIAL_APK" "l'APK officiel")
+          echo "Certificat APK test SHA-256: $TEST_CERT"
+          echo "Certificat APK officiel SHA-256: $OFFICIAL_CERT"
           if [ "$TEST_CERT" != "$OFFICIAL_CERT" ]; then
             echo "Le certificat de signature diffère de l'APK officiel."
             exit 1
