@@ -5,6 +5,10 @@
     "node": "20"
   },
   "main": "index.js",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 family_join.test.js family_management.test.js legacy_family_migration.test.js wallet.test.js",
+    "test:rules": "npx -y firebase-tools@latest emulators:exec --only firestore --project demo-sks-family \"node --test --test-concurrency=1 firestore_rules.test.js wallet_rules.test.js\""
+  },
   "dependencies": {
     "firebase-admin": "^12.0.0",
     "firebase-functions": "^5.0.0"

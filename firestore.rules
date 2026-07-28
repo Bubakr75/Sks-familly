@@ -2,193 +2,345 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 🔒 SÉCURITÉ : seuls les utilisateurs AUTHENTIFIÉS peuvent accéder aux données.
-    // L'auth anonyme est activée dans la console Firebase.
-    // Avant : allow if true → n'importe qui sur internet.
-    // Maintenant : allow if request.auth != null → protégé des attaques externes.
+    // Modèle d'autorisation :
+    // - l'identité et le rôle viennent exclusivement de members/{uid} ;
+    // - familyId est porté par le chemin, sans migration des documents métier ;
+    // - les opérations d'administration restent réservées aux Cloud Functions.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function activeFamilyMember(familyId) {
-      let member =
-        get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data;
+    function hasActiveMember(familyId) {
       return isSignedIn() &&
-        member.active == true &&
-        member.uid == request.auth.uid;
+        exists(
+          /databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)
+        );
+    }
+
+    function member(familyId) {
+      return get(
+        /databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)
+      ).data;
+    }
+
+    function activeFamilyMember(familyId) {
+      return hasActiveMember(familyId) &&
+        member(familyId).active == true &&
+        member(familyId).uid == request.auth.uid &&
+        (
+          member(familyId).role == 'parent' ||
+          (
+            member(familyId).role == 'child' &&
+            member(familyId).childId is string &&
+            member(familyId).childId.size() > 0
+          ) ||
+          (
+            member(familyId).role == 'owner' &&
+            get(
+              /databases/$(database)/documents/families/$(familyId)
+            ).data.ownerUid == request.auth.uid
+          )
+        );
+    }
+
+    function isFamilyOwner(familyId) {
+      return activeFamilyMember(familyId) &&
+        member(familyId).role == 'owner' &&
+        get(
+          /databases/$(database)/documents/families/$(familyId)
+        ).data.ownerUid == request.auth.uid;
     }
 
     function isFamilyParent(familyId) {
-      let member =
-        get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data;
-      let family =
-        get(/databases/$(database)/documents/families/$(familyId)).data;
       return activeFamilyMember(familyId) &&
         (
-          member.role == 'parent' ||
-          (member.role == 'owner' && family.ownerUid == request.auth.uid)
+          member(familyId).role == 'parent' ||
+          isFamilyOwner(familyId)
         );
+    }
+
+    function isFamilyChild(familyId) {
+      return activeFamilyMember(familyId) &&
+        member(familyId).role == 'child' &&
+        member(familyId).childId is string &&
+        member(familyId).childId.size() > 0;
     }
 
     function canReadChildWallet(familyId, childId) {
-      let member =
-        get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data;
       return isFamilyParent(familyId) ||
         (
-          activeFamilyMember(familyId) &&
-          member.role == 'child' &&
-          member.childId == childId
+          isFamilyChild(familyId) &&
+          member(familyId).childId == childId
         );
     }
 
-    // Familles
+    // Les modèles historiques sont souples. Cette borne empêche l'ajout d'un
+    // nombre déraisonnable de champs sans exiger de modifier les documents.
+    function isBoundedBusinessDocument(data) {
+      return data.keys().size() <= 80;
+    }
+
+    function isValidChildRequest(data, requestId) {
+      return data.keys().hasOnly([
+          'id',
+          'type',
+          'childId',
+          'requestedBy',
+          'text',
+          'amount',
+          'status',
+          'createdAt',
+          'extra',
+          'lastModifiedBy'
+        ]) &&
+        data.keys().hasAll([
+          'id',
+          'type',
+          'childId',
+          'requestedBy',
+          'text',
+          'amount',
+          'status',
+          'createdAt',
+          'extra'
+        ]) &&
+        data.id is string &&
+        data.id == requestId &&
+        data.id.size() > 0 &&
+        data.id.size() <= 128 &&
+        data.type is string &&
+        data.type.size() > 0 &&
+        data.type.size() <= 40 &&
+        data.childId is string &&
+        data.childId.size() > 0 &&
+        data.childId.size() <= 128 &&
+        data.requestedBy is string &&
+        data.requestedBy.size() > 0 &&
+        data.requestedBy.size() <= 120 &&
+        data.text is string &&
+        data.text.size() <= 2000 &&
+        data.amount is int &&
+        data.amount >= 0 &&
+        data.amount <= 100000 &&
+        data.status == 'pending' &&
+        data.createdAt is string &&
+        data.createdAt.size() >= 10 &&
+        data.createdAt.size() <= 40 &&
+        data.extra is map &&
+        data.extra.size() <= 20 &&
+        (
+          !('lastModifiedBy' in data) ||
+          (
+            data.lastModifiedBy is string &&
+            data.lastModifiedBy.size() <= 128
+          )
+        );
+    }
+
+    function isValidFcmToken(data, deviceId) {
+      return data.keys().hasOnly([
+          'token',
+          'deviceId',
+          'uid',
+          'platform',
+          'updatedAt'
+        ]) &&
+        data.keys().hasAll([
+          'token',
+          'deviceId',
+          'uid',
+          'platform',
+          'updatedAt'
+        ]) &&
+        data.token is string &&
+        data.token.size() > 0 &&
+        data.token.size() <= 4096 &&
+        data.deviceId is string &&
+        data.deviceId == deviceId &&
+        data.deviceId.size() > 0 &&
+        data.deviceId.size() <= 128 &&
+        data.uid is string &&
+        data.uid == request.auth.uid &&
+        data.platform is string &&
+        data.platform.size() > 0 &&
+        data.platform.size() <= 32 &&
+        data.updatedAt is timestamp;
+    }
+
     match /families/{familyId} {
+      // Création et administration via les callables de family_management.js.
+      allow read: if activeFamilyMember(familyId);
+      allow create, update, delete: if false;
 
-      // Document famille lui-même
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if false;
-
-      // Enfants
       match /children/{childId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Historique
       match /history/{entryId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Objectifs
       match /goals/{goalId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Punitions
       match /punishments/{punishmentId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Notes
       match /notes/{noteId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Immunites
       match /immunities/{immunityId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Echanges (trades)
+      // Les transitions enfant doivent migrer vers une callable transactionnelle.
       match /trades/{tradeId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Tribunal
+      // Les votes enfant sont bloqués tant qu'ils réécrivent le document entier.
       match /tribunal/{caseId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Badges personnalisés
       match /custom_badges/{badgeId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Temps d'écran
       match /screen_time/{key} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Tokens FCM
-      // 🔒 Lecture interdite depuis le client — seules les Cloud Functions
-      // (Firebase Admin) lisent les tokens pour envoyer les notifications.
-      // Écriture : un appareil ne peut enregistrer qu'un token avec son propre UID.
-      // Suppression : uniquement le propriétaire du token peut le supprimer.
-      // Firebase Admin contourne les règles pour nettoyer les tokens invalides.
+      // Le document contient à la fois le solde et la session : écriture parent
+      // seulement jusqu'à séparation du modèle ou ajout d'une callable.
+      match /screen_time_accounts/{childId} {
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
+      }
+
       match /fcm_tokens/{deviceId} {
         allow read: if false;
-        allow create: if isSignedIn() &&
-          request.resource.data.uid == request.auth.uid;
-        allow update: if isSignedIn() &&
-          request.resource.data.uid == request.auth.uid;
-        allow delete: if isSignedIn() &&
-          resource.data.uid == request.auth.uid;
+        allow create: if activeFamilyMember(familyId) &&
+          isValidFcmToken(request.resource.data, deviceId);
+        allow update: if activeFamilyMember(familyId) &&
+          resource.data.uid == request.auth.uid &&
+          resource.data.deviceId == deviceId &&
+          isValidFcmToken(request.resource.data, deviceId);
+        allow delete: if activeFamilyMember(familyId) &&
+          resource.data.uid == request.auth.uid &&
+          resource.data.deviceId == deviceId;
       }
 
-      // Profils parents
+      // Ces profils contiennent les données de récupération du PIN.
       match /parent_profiles/{profileId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if isFamilyParent(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Demandes enfants (validation parentale)
-      // ⚠️ IMPORTANT : la collection s'appelle 'requests' (pas 'pending_requests')
       match /requests/{requestId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create: if isValidChildRequest(
+            request.resource.data,
+            requestId
+          ) &&
+          (
+            isFamilyParent(familyId) ||
+            (
+              isFamilyChild(familyId) &&
+              member(familyId).childId == request.resource.data.childId
+            )
+          );
+        allow update: if isFamilyParent(familyId) &&
+          isValidChildRequest(request.resource.data, requestId);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Tâches (chores)
       match /chores/{choreId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Récompenses de la boutique
       match /rewards/{rewardId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Achats effectués dans la boutique
+      // Un achat enfant direct permettrait de forger prix, points et stock.
       match /purchases/{purchaseId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read: if activeFamilyMember(familyId);
+        allow create, update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data);
+        allow delete: if isFamilyParent(familyId);
       }
 
-      // Cagnotte SKS : lecture limitée à la famille, écriture exclusivement
-      // via la Cloud Function transactionnelle adjustWallet (Firebase Admin).
       match /wallets/{childId} {
         allow read: if canReadChildWallet(familyId, childId);
         allow write: if false;
 
-        // Journal append-only depuis Flutter : aucune création, modification
-        // ou suppression directe n'est autorisée au client.
         match /operations/{operationId} {
           allow read: if canReadChildWallet(familyId, childId);
           allow write: if false;
         }
       }
 
-      // Demandes de rattachement d'appareils (sécurisé)
-      // 🔒 Seul le propriétaire de la famille peut lire ces demandes.
-      // Les écritures passent uniquement par les Cloud Functions (Firebase Admin).
+      // Écriture exclusivement via les Cloud Functions de rattachement.
       match /join_requests/{requestId} {
-        allow read: if isSignedIn() &&
-          request.auth.uid ==
-            get(/databases/$(database)/documents/families/$(familyId)).data.ownerUid;
+        allow read: if isFamilyOwner(familyId);
         allow write: if false;
       }
 
-      // Membres de la famille (sécurisé)
-      // 🔒 Seul le propriétaire peut gérer les membres.
+      // L'autorité de rôle est écrite exclusivement par Firebase Admin.
       match /members/{memberId} {
-        allow read: if isSignedIn() &&
-          request.auth.uid ==
-            get(/databases/$(database)/documents/families/$(familyId)).data.ownerUid;
+        allow read: if isFamilyOwner(familyId);
         allow write: if false;
       }
+    }
+
+    // family_codes, join_rate_limits, legacy_family_migration_claims,
+    // _diagnostic_test et tout chemin non déclaré restent réservés au serveur.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
