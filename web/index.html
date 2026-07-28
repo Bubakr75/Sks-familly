@@ -81,6 +81,42 @@
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
     }
+
+    /* Invitation d'installation pour Chrome / Edge sur Android et ordinateur */
+    #pwa-install-banner {
+      position: fixed;
+      left: 12px; right: 12px;
+      bottom: 12px;
+      z-index: 101;
+      background: linear-gradient(135deg, #D4AF37, #F7E7A9);
+      color: #051410;
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    #pwa-install-banner.show { display: flex; }
+    #pwa-install-button {
+      margin-left: auto;
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 12px;
+      color: #FFFFFF;
+      background: #047857;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    #pwa-install-close {
+      border: 0;
+      background: transparent;
+      color: #051410;
+      font-size: 18px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -111,6 +147,12 @@
     <span>Sur iPhone : ouvrez ce site dans <b>Safari</b>, touchez <b>Partager</b> <span style="font-size:16px">âŽ‹</span>, puis <b>Sur l'Ã©cran d'accueil</b> et <b>Ajouter</b>. Ouvrez ensuite SKS Family depuis son icÃ´ne.</span>
     <button class="close" id="ios-banner-close">âœ•</button>
   </div>
+  <div id="pwa-install-banner">
+    <span class="emoji">📲</span>
+    <span>Installez SKS Family pour l’ouvrir comme une application.</span>
+    <button id="pwa-install-button">Installer</button>
+    <button id="pwa-install-close" aria-label="Fermer">✕</button>
+  </div>
 
   <!-- Flutter (bootstrap gÃ¨re le chargement de l'app) -->
   <script src="flutter_bootstrap.js" async></script>
@@ -122,7 +164,10 @@
     // ============================================================
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('firebase-messaging-sw.js')
+        navigator.serviceWorker.register(
+          'firebase-messaging-sw.js',
+          { scope: '/firebase-cloud-messaging-push-scope' }
+        )
           .then(function (reg) {
             console.log('[SW] Service worker enregistrÃ© :', reg.scope);
           })
@@ -177,8 +222,7 @@
             || window.navigator.standalone === true;
       }
       function isIOS() {
-        return /iphone|ipad|ipod/i.test(navigator.userAgent)
-            && !/crios|fxios/i.test(navigator.userAgent);
+        return /iphone|ipad|ipod/i.test(navigator.userAgent);
       }
 
       if (isIOS() && !isStandalone()) {
@@ -207,10 +251,46 @@
       window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferredPrompt = e;
+        try {
+          if (sessionStorage.getItem('sks_pwa_banner_dismissed') !== '1') {
+            var banner = document.getElementById('pwa-install-banner');
+            if (banner && !isStandalone()) banner.classList.add('show');
+          }
+        } catch (e) {}
       });
       window.addEventListener('appinstalled', function () {
         deferredPrompt = null;
+        var banner = document.getElementById('pwa-install-banner');
+        if (banner) banner.classList.remove('show');
       });
+
+      var installButton = document.getElementById('pwa-install-button');
+      if (installButton) {
+        installButton.addEventListener('click', async function () {
+          if (!deferredPrompt) return;
+          installButton.disabled = true;
+          try {
+            await deferredPrompt.prompt();
+            await deferredPrompt.userChoice;
+          } finally {
+            deferredPrompt = null;
+            installButton.disabled = false;
+            var banner = document.getElementById('pwa-install-banner');
+            if (banner) banner.classList.remove('show');
+          }
+        });
+      }
+
+      var installClose = document.getElementById('pwa-install-close');
+      if (installClose) {
+        installClose.addEventListener('click', function () {
+          try {
+            sessionStorage.setItem('sks_pwa_banner_dismissed', '1');
+          } catch (e) {}
+          var banner = document.getElementById('pwa-install-banner');
+          if (banner) banner.classList.remove('show');
+        });
+      }
     })();
   </script>
 </body>
