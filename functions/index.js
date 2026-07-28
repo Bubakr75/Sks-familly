@@ -39,6 +39,14 @@ const walletFunctions = createWalletFunctions({
 exports.adjustWallet = walletFunctions.adjustWallet;
 
 const {
+  createSecureChildOperationFunctions,
+} = require("./secure_child_operations");
+const secureChildOperationFunctions =
+  createSecureChildOperationFunctions({functions, admin, db});
+exports.performFamilyOperation =
+  secureChildOperationFunctions.performFamilyOperation;
+
+const {
   createLegacyFamilyMigrationFunctions,
 } = require("./legacy_family_migration");
 

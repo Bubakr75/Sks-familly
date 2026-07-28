@@ -828,6 +828,47 @@ class FirestoreService {
     return SksWalletAdjustmentResult.fromData(result.data);
   }
 
+  /// Exécute une opération sensible côté serveur.
+  ///
+  /// Le client ne transmet jamais de solde, de prix ni de rôle : la Function
+  /// les relit dans Firestore et applique l'opération dans une transaction.
+  Future<Map<String, dynamic>> performFamilyOperation({
+    required String operation,
+    required String operationId,
+    String? childId,
+    String? rewardId,
+    String? caseId,
+    String? tradeId,
+    String? toChildId,
+    String? vote,
+    int? minutes,
+    int? immunityLines,
+    String? description,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final payload = <String, dynamic>{
+      'familyId': currentFamilyId,
+      'operation': operation,
+      'operationId': operationId,
+      if (childId != null) 'childId': childId,
+      if (rewardId != null) 'rewardId': rewardId,
+      if (caseId != null) 'caseId': caseId,
+      if (tradeId != null) 'tradeId': tradeId,
+      if (toChildId != null) 'toChildId': toChildId,
+      if (vote != null) 'vote': vote,
+      if (minutes != null) 'minutes': minutes,
+      if (immunityLines != null) 'immunityLines': immunityLines,
+      if (description != null) 'description': description.trim(),
+    };
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('performFamilyOperation')
+        .call(payload);
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
   // ─── WRITE : Children ────────────────────────────────────────
   Future<void> saveChild(ChildModel child) async {
     if (_familyId == null) return;
