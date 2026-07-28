@@ -162,6 +162,14 @@ jobs:
             --build-number="${{ steps.app_version.outputs.code }}" \
             2>&1 | tee build-release.log
 
+      - name: Upload private APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SKS-Family-test-${{ steps.app_version.outputs.name }}-${{ steps.app_version.outputs.code }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Verify APK contents
         shell: bash
         run: |
@@ -193,36 +201,26 @@ jobs:
           OFFICIAL_APK=$(find /tmp/official-apk -maxdepth 1 -type f -name '*.apk' -print -quit)
           test -n "$OFFICIAL_APK"
 
-          extract_cert_sha256() {
+          source scripts/extract_apk_cert_sha256.sh
+
+          read_apk_cert_sha256() {
             local apk_path="$1"
             local apk_label="$2"
             local apksigner_output
-            local digest
 
             if ! apksigner_output=$("$APKSIGNER" verify --print-certs "$apk_path" 2>&1); then
               echo "Erreur: apksigner n'a pas pu vérifier ${apk_label}." >&2
               return 1
             fi
 
-            digest=$(printf '%s\n' "$apksigner_output" \
-              | awk 'tolower($0) ~ /^[[:space:]]*signer #1 certificate sha-256 digest[[:space:]]*:/ {
-                  sub(/^[^:]*:[[:space:]]*/, "")
-                  print
-                  exit
-                }' \
-              | tr -d '[:space:]:' \
-              | tr '[:lower:]' '[:upper:]')
-
-            if [[ ! "$digest" =~ ^[0-9A-F]{64}$ ]]; then
+            if ! extract_apk_cert_sha256 "$apksigner_output"; then
               echo "Erreur: impossible d'extraire une empreinte SHA-256 valide pour ${apk_label}." >&2
               return 1
             fi
-
-            printf '%s' "$digest"
           }
 
-          TEST_CERT=$(extract_cert_sha256 "$APK" "l'APK de test")
-          OFFICIAL_CERT=$(extract_cert_sha256 "$OFFICIAL_APK" "l'APK officiel")
+          TEST_CERT=$(read_apk_cert_sha256 "$APK" "l'APK de test")
+          OFFICIAL_CERT=$(read_apk_cert_sha256 "$OFFICIAL_APK" "l'APK officiel")
           echo "Certificat APK test SHA-256: $TEST_CERT"
           echo "Certificat APK officiel SHA-256: $OFFICIAL_CERT"
           if [ "$TEST_CERT" != "$OFFICIAL_CERT" ]; then
