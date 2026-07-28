@@ -56,17 +56,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
       final tag = (data['tag_name'] as String?).toString();
       final latest = tag.replaceFirst('v', '');
 
-      String? apkUrl;
-      final assets = data['assets'] as List?;
-      if (assets != null) {
-        for (final asset in assets) {
-          final name = asset['name'] as String?;
-          if (name != null && name.endsWith('.apk')) {
-            apkUrl = asset['browser_download_url'] as String?;
-            break;
-          }
-        }
-      }
+      final apkUrl = UpdateService.officialApkUrl(data);
 
       final hasUpdate =
           UpdateService.isNewerVersion(latest, current) && apkUrl != null;

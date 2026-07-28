@@ -6,6 +6,8 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="SKS Family - Application familiale de points et rÃ©compenses">
+  <meta name="application-name" content="SKS Family">
+  <meta name="format-detection" content="telephone=no">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <!-- iOS / Safari meta tags (requis pour Web Push sur iPhone 16.4+) -->
@@ -48,10 +50,6 @@
       transition: opacity 0.3s ease;
     }
     #loading.hidden { opacity: 0; pointer-events: none; }
-      margin-top: 26px;
-      animation: spin 0.9s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* BanniÃ¨re d'installation iOS */
     #ios-install-banner {
@@ -110,7 +108,7 @@
   <!-- BanniÃ¨re "Ajouter Ã  l'Ã©cran d'accueil" pour iOS -->
   <div id="ios-install-banner">
     <span class="emoji">ðŸ“²</span>
-    <span>Pour les notifications sur iPhone, ajoutez SKS Ã  l'Ã©cran d'accueil : <b>Partager</b> <span style="font-size:16px">âŽ‹</span> puis <b>Sur l'Ã©cran d'accueil</b></span>
+    <span>Sur iPhone : ouvrez ce site dans <b>Safari</b>, touchez <b>Partager</b> <span style="font-size:16px">âŽ‹</span>, puis <b>Sur l'Ã©cran d'accueil</b> et <b>Ajouter</b>. Ouvrez ensuite SKS Family depuis son icÃ´ne.</span>
     <button class="close" id="ios-banner-close">âœ•</button>
   </div>
 

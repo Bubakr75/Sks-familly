@@ -52,4 +52,47 @@ void main() {
       );
     });
   });
+
+  group('UpdateService.officialApkUrl', () {
+    Map<String, dynamic> release({
+      bool draft = false,
+      bool prerelease = false,
+      String tag = 'v4.8.0+500',
+      String name = 'app-release.apk',
+      String? url,
+    }) {
+      return {
+        'draft': draft,
+        'prerelease': prerelease,
+        'tag_name': tag,
+        'assets': [
+          {
+            'name': name,
+            'browser_download_url': url ??
+                'https://github.com/Bubakr75/Sks-familly/releases/download/$tag/$name',
+          },
+        ],
+      };
+    }
+
+    test('accepte uniquement l APK officiel de la Release publiée', () {
+      expect(UpdateService.officialApkUrl(release()), isNotNull);
+    });
+
+    test('refuse brouillons, préversions et URL externes', () {
+      expect(UpdateService.officialApkUrl(release(draft: true)), isNull);
+      expect(UpdateService.officialApkUrl(release(prerelease: true)), isNull);
+      expect(
+        UpdateService.officialApkUrl(
+          release(url: 'https://example.com/app-release.apk'),
+        ),
+        isNull,
+      );
+    });
+
+    test('refuse un nom ou un tag inattendu', () {
+      expect(UpdateService.officialApkUrl(release(name: 'debug.apk')), isNull);
+      expect(UpdateService.officialApkUrl(release(tag: 'latest')), isNull);
+    });
+  });
 }

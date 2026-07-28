@@ -1,12 +1,18 @@
 ﻿{
     "name": "SKS Family",
     "short_name": "SKS Family",
-    "start_url": ".",
+    "id": "/",
+    "lang": "fr-FR",
+    "dir": "ltr",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
+    "display_override": ["standalone", "minimal-ui"],
     "background_color": "#051410",
     "theme_color": "#00E676",
     "description": "Application familiale SKS - Gestion des scores et activités",
     "orientation": "portrait-primary",
+    "categories": ["family", "lifestyle", "productivity"],
     "prefer_related_applications": false,
     "icons": [
         {

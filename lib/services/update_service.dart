@@ -8,8 +8,37 @@ import 'package:open_filex/open_filex.dart';
 
 class UpdateService {
   static const String _repo = 'Bubakr75/Sks-familly';
+  static const String officialApkName = 'app-release.apk';
   static const String _apiUrl =
       'https://api.github.com/repos/$_repo/releases/latest';
+
+  static String? officialApkUrl(Map<String, dynamic> release) {
+    if (release['draft'] == true || release['prerelease'] == true) return null;
+    final tag = release['tag_name'] as String?;
+    if (tag == null || !RegExp(r'^v\d+\.\d+\.\d+\+\d+$').hasMatch(tag)) {
+      return null;
+    }
+
+    final assets = release['assets'];
+    if (assets is! List) return null;
+    for (final value in assets) {
+      if (value is! Map) continue;
+      final name = value['name'];
+      final url = value['browser_download_url'];
+      if (name != officialApkName || url is! String) continue;
+      final uri = Uri.tryParse(url);
+      if (uri == null ||
+          uri.scheme != 'https' ||
+          uri.host != 'github.com' ||
+          uri.query.isNotEmpty ||
+          uri.fragment.isNotEmpty) {
+        continue;
+      }
+      final expectedPath = '/$_repo/releases/download/$tag/$officialApkName';
+      if (Uri.decodeComponent(uri.path) == expectedPath) return url;
+    }
+    return null;
+  }
 
   static Future<void> checkForUpdate(BuildContext context) async {
     try {
@@ -25,7 +54,7 @@ class UpdateService {
 
       if (response.statusCode != 200) return;
 
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
       final latestTag =
           (data['tag_name'] as String?)?.replaceFirst('v', '') ?? '';
 
@@ -33,15 +62,7 @@ class UpdateService {
 
       if (!isNewerVersion(latestTag, currentVersion)) return;
 
-      final assets = data['assets'] as List<dynamic>? ?? [];
-      String? apkUrl;
-      for (final asset in assets) {
-        final name = asset['name'] as String? ?? '';
-        if (name.endsWith('.apk')) {
-          apkUrl = asset['browser_download_url'] as String?;
-          break;
-        }
-      }
+      final apkUrl = officialApkUrl(data);
 
       if (apkUrl == null || !context.mounted) return;
 
@@ -73,7 +94,7 @@ class UpdateService {
                   backgroundColor: const Color(0xFF7C4DFF)),
               onPressed: () {
                 Navigator.pop(ctx);
-                _downloadAndInstall(context, apkUrl!);
+                _downloadAndInstall(context, apkUrl);
               },
               child: const Text('Telecharger',
                   style: TextStyle(color: Colors.white)),
