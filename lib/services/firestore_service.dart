@@ -21,6 +21,27 @@ import 'fcm_service.dart';
 import 'family_management_service.dart';
 
 class FirestoreService {
+  static const walletFunctionsRegion = 'us-central1';
+
+  @visibleForTesting
+  static Map<String, dynamic> buildWalletAdjustmentPayload({
+    required String familyId,
+    required String childId,
+    required String operationId,
+    required String type,
+    required int amount,
+    required String reason,
+  }) {
+    return {
+      'familyId': familyId,
+      'childId': childId,
+      'operationId': operationId,
+      'type': type,
+      'amount': amount,
+      'reason': reason.trim(),
+    };
+  }
+
   @visibleForTesting
   static Map<String, String?> buildApprovedLocalMembershipData({
     required String familyId,
@@ -815,16 +836,16 @@ class FirestoreService {
     if (currentFamilyId == null) {
       throw StateError('Aucune famille connectée.');
     }
-    final result = await FirebaseFunctions.instance
-        .httpsCallable('adjustWallet')
-        .call(<String, dynamic>{
-      'familyId': currentFamilyId,
-      'childId': childId,
-      'operationId': operationId,
-      'type': type,
-      'amount': amount,
-      'reason': reason.trim(),
-    });
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('adjustWallet').call(buildWalletAdjustmentPayload(
+          familyId: currentFamilyId,
+          childId: childId,
+          operationId: operationId,
+          type: type,
+          amount: amount,
+          reason: reason,
+        ));
     return SksWalletAdjustmentResult.fromData(result.data);
   }
 

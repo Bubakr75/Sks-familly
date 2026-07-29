@@ -1,5 +1,4 @@
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -18,8 +17,49 @@ bool canManageSksWallet({
   return isParentMode && (memberRole == 'owner' || memberRole == 'parent');
 }
 
+@visibleForTesting
+String walletErrorMessage({
+  required String code,
+  String? serverMessage,
+}) {
+  final normalizedCode = code.trim().toLowerCase().replaceAll('_', '-');
+  final message = serverMessage?.trim() ?? '';
+  if (normalizedCode == 'not-found') {
+    if (message.toLowerCase().contains('famille') ||
+        message.toLowerCase().contains('enfant')) {
+      return message;
+    }
+    return 'La cagnotte n’est pas encore disponible sur le serveur. '
+        'La fonction sécurisée doit être mise en ligne.';
+  }
+  if (normalizedCode == 'permission-denied') {
+    return 'Vous n’avez pas l’autorisation de modifier cette cagnotte.';
+  }
+  if (normalizedCode == 'unauthenticated') {
+    return 'La connexion a expiré. Reconnectez-vous puis réessayez.';
+  }
+  if (normalizedCode == 'invalid-argument') {
+    return 'Le montant ou le motif est invalide.';
+  }
+  if (normalizedCode == 'failed-precondition') {
+    return message.isNotEmpty
+        ? message
+        : 'Le solde de la cagnotte est insuffisant.';
+  }
+  if (normalizedCode == 'already-exists') {
+    return 'Cette opération a déjà été enregistrée.';
+  }
+  if (normalizedCode == 'unavailable' ||
+      normalizedCode == 'deadline-exceeded') {
+    return 'Le service est momentanément indisponible. Réessayez dans un instant.';
+  }
+  return 'Impossible de modifier la cagnotte pour le moment.';
+}
+
 class WalletScreen extends StatefulWidget {
-  const WalletScreen({super.key});
+  final String? childId;
+
+  const WalletScreen({super.key, this.childId});
 
   @override
   State<WalletScreen> createState() => _WalletScreenState();
@@ -27,6 +67,12 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   String? _selectedChildId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedChildId = widget.childId;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,18 +110,25 @@ class _WalletScreenState extends State<WalletScreen> {
               child: Text('Aucun enfant disponible',
                   style: TextStyle(color: Colors.white54)),
             )
-          : Column(
-              children: [
-                if (visibleChildren.length > 1) _childSelector(visibleChildren),
-                _walletHeader(
-                  selectedChild,
-                  family.getWalletForChild(selectedChild.id),
-                  canManage,
-                ),
-                Expanded(
-                  child: _operationHistory(family, selectedChild.id),
-                ),
-              ],
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              child: Column(
+                key: ValueKey(selectedChild.id),
+                children: [
+                  if (visibleChildren.length > 1)
+                    _childSelector(visibleChildren),
+                  _walletHeader(
+                    selectedChild,
+                    family.getWalletForChild(selectedChild.id),
+                    canManage,
+                  ),
+                  Expanded(
+                    child: _operationHistory(family, selectedChild.id),
+                  ),
+                ],
+              ),
             ),
     );
   }
@@ -226,6 +279,8 @@ class _WalletScreenState extends State<WalletScreen> {
   ) async {
     final reasonController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final operationId =
+        context.read<FamilyProvider>().createWalletOperationId();
     var amount = 1;
     var submitting = false;
 
@@ -301,27 +356,62 @@ class _WalletScreenState extends State<WalletScreen> {
                                   type: type,
                                   amount: amount,
                                   reason: reasonController.text,
+                                  operationId: operationId,
                                 );
                             if (dialogContext.mounted) {
                               Navigator.pop(dialogContext);
+                            }
+                            if (mounted) {
+                              ScaffoldMessenger.of(this.context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Cagnotte mise à jour avec succès.'),
+                                  backgroundColor: EmeraldPalette.success,
+                                ),
+                              );
                             }
                           } on FirebaseFunctionsException catch (error) {
                             if (!dialogContext.mounted) return;
                             ScaffoldMessenger.of(this.context).showSnackBar(
                               SnackBar(
-                                content: Text(error.message ??
-                                    'Impossible de modifier la cagnotte'),
+                                content: Text(walletErrorMessage(
+                                  code: error.code,
+                                  serverMessage: error.message,
+                                )),
                                 backgroundColor: Colors.redAccent,
                               ),
                             );
                             setDialogState(() => submitting = false);
                           } catch (_) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(this.context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Impossible de modifier la cagnotte pour le moment.',
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
                             if (dialogContext.mounted) {
                               setDialogState(() => submitting = false);
                             }
                           }
                         },
-                  child: Text(submitting ? 'Validation...' : 'Valider'),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: submitting
+                        ? const SizedBox(
+                            key: ValueKey('wallet-submit-loading'),
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Valider',
+                            key: ValueKey('wallet-submit-label'),
+                          ),
+                  ),
                 ),
               ],
             );

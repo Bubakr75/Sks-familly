@@ -20,6 +20,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
 import 'timeline_screen.dart';
 import 'shop_screen.dart';
+import 'wallet_screen.dart';
 
 // ─── Arc screen-time ─────────────────────────────────────────
 class _ScreenTimePainter extends CustomPainter {
@@ -1168,7 +1169,64 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       ),
                     ],
                   ),
-                ),              ]),
+                ),
+                const SizedBox(height: 10),
+                InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => Navigator.of(context).push(
+                    PageRouteBuilder<void>(
+                      pageBuilder: (_, __, ___) =>
+                          WalletScreen(childId: child.id),
+                      transitionsBuilder: (_, animation, __, child) =>
+                          FadeTransition(opacity: animation, child: child),
+                      transitionDuration: const Duration(milliseconds: 240),
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: EmeraldPalette.gold.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: EmeraldPalette.gold.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_balance_wallet_rounded,
+                            color: EmeraldPalette.gold, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Cagnotte SKS',
+                                style: TextStyle(
+                                  color: EmeraldPalette.gold,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${fp.getWalletForChild(child.id).balance} points cagnotte · indépendants des points de comportement',
+                                style: const TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: EmeraldPalette.gold),
+                      ],
+                    ),
+                  ),
+                ),
+              ]),
             ),
           ),
         ),

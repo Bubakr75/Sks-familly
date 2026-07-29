@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:family_score/models/sks_wallet.dart';
 import 'package:family_score/screens/wallet_screen.dart';
+import 'package:family_score/services/firestore_service.dart';
 
 void main() {
   group('Modèles de cagnotte SKS', () {
@@ -69,6 +70,52 @@ void main() {
       expect(
         canManageSksWallet(memberRole: 'parent', isParentMode: false),
         isFalse,
+      );
+    });
+  });
+
+  group('Appel sécurisé de la cagnotte', () {
+    test('utilise la région et les paramètres attendus par adjustWallet', () {
+      expect(FirestoreService.walletFunctionsRegion, 'us-central1');
+      expect(
+        FirestoreService.buildWalletAdjustmentPayload(
+          familyId: 'family-1',
+          childId: 'child-1',
+          operationId: 'operation-1',
+          type: 'credit',
+          amount: 25,
+          reason: '  Argent de poche  ',
+        ),
+        {
+          'familyId': 'family-1',
+          'childId': 'child-1',
+          'operationId': 'operation-1',
+          'type': 'credit',
+          'amount': 25,
+          'reason': 'Argent de poche',
+        },
+      );
+    });
+
+    test('traduit les erreurs techniques en messages français', () {
+      expect(
+        walletErrorMessage(code: 'not_found'),
+        contains('fonction sécurisée'),
+      );
+      expect(
+        walletErrorMessage(code: 'permission-denied'),
+        contains('autorisation'),
+      );
+      expect(
+        walletErrorMessage(code: 'internal'),
+        'Impossible de modifier la cagnotte pour le moment.',
+      );
+      expect(
+        walletErrorMessage(
+          code: 'not-found',
+          serverMessage: 'Famille introuvable.',
+        ),
+        'Famille introuvable.',
       );
     });
   });

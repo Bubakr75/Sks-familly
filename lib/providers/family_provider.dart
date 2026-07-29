@@ -746,20 +746,32 @@ class FamilyProvider extends ChangeNotifier {
   Stream<List<SksWalletOperation>> watchWalletOperations(String childId) =>
       _firestore.watchWalletOperations(childId);
 
+  String createWalletOperationId() => _uuid.v4();
+
   Future<SksWalletAdjustmentResult> adjustWallet({
     required String childId,
     required String type,
     required int amount,
     required String reason,
     String? operationId,
-  }) {
-    return _firestore.adjustWallet(
+  }) async {
+    final result = await _firestore.adjustWallet(
       childId: childId,
       operationId: operationId ?? _uuid.v4(),
       type: type,
       amount: amount,
       reason: reason,
     );
+    final previous = getWalletForChild(childId);
+    final now = DateTime.now();
+    _wallets[childId] = SksWallet(
+      childId: childId,
+      balance: result.balance,
+      createdAt: previous.createdAt,
+      updatedAt: now,
+    );
+    notifyListeners();
+    return result;
   }
 
   Future<void> disconnectFamily() async {
