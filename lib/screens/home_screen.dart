@@ -6,6 +6,7 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../config/emerald_theme.dart';
 import '../utils/pin_guard.dart';
+import '../utils/home_tab_history.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -54,6 +55,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
+  final HomeTabHistory _tabHistory = HomeTabHistory();
   late AnimationController _navBarController;
   // 🔒 Onglets protégés : Bonus (1), Pénalité (3), Réglages (4)
   // Dashboard (0) reste visible aux enfants
@@ -102,12 +104,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final pinProvider = context.read<PinProvider>();
       if (pinProvider.isPinSet && !pinProvider.canPerformParentAction()) {
         PinGuard.guardAction(context, () {
-          setState(() => _currentIndex = index);
+          _selectTab(index);
         });
         return;
       }
     }
+    _selectTab(index);
+  }
+
+  void _selectTab(int index) {
+    if (index == _currentIndex) return;
+    _tabHistory.visit(index);
     setState(() => _currentIndex = index);
+  }
+
+  void _handleBack() {
+    final previousIndex = _tabHistory.back();
+    if (previousIndex != null) {
+      setState(() => _currentIndex = previousIndex);
+    }
   }
 
   /// Bouton central Photo IA — protégé par PinGuard, ne modifie pas l'index.
@@ -660,11 +675,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final isParent = context.watch<PinProvider>().isParentMode;
     final pinProvider = context.watch<PinProvider>();
     final familyProvider = context.watch<FamilyProvider>();
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
-      drawer: _buildDrawer(context, isParent),
-      body: AnimatedBackground(
+    return PopScope(
+      canPop: _tabHistory.canExit,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        drawer: _buildDrawer(context, isParent),
+        body: AnimatedBackground(
         child: Column(
           children: [
             // ─── BANDEAU DE MODE (Parent / Enfant) ───
@@ -739,7 +759,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
       // Bouton IA flottant 🤖 (overlay sur tout l'écran)
-      bottomNavigationBar: SlideTransition(
+        bottomNavigationBar: SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0, 1),
           end: Offset.zero,
@@ -847,6 +867,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
+        ),
         ),
       ),
     );
