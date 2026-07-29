@@ -9,7 +9,13 @@ import '../widgets/glass_card.dart';
 import '../services/gemini_service.dart';
 
 class PunishmentLinesScreen extends StatefulWidget {
-  const PunishmentLinesScreen({super.key});
+  final int initialTabIndex;
+
+  const PunishmentLinesScreen({
+    super.key,
+    this.initialTabIndex = 0,
+  }) : assert(initialTabIndex >= 0 && initialTabIndex < 2);
+
   @override
   State<PunishmentLinesScreen> createState() => _PunishmentLinesScreenState();
 }
@@ -26,7 +32,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      initialIndex: widget.initialTabIndex,
+      vsync: this,
+    );
   }
 
   @override
@@ -86,7 +96,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text('Punitions & Immunities', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const Text('Punitions & Immunités', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           actions: [
             IconButton(
               icon: const Icon(Icons.add_circle_rounded, color: Colors.redAccent, size: 28),
@@ -116,7 +126,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                   children: [
                     const Icon(Icons.shield_rounded, size: 16),
                     const SizedBox(width: 6),
-                    Text('Immunities ($totalImmunityLines)'),
+                    Text('Immunités ($totalImmunityLines)'),
                   ],
                 ),
               ),

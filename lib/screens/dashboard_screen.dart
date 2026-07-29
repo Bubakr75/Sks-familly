@@ -17,7 +17,6 @@ import '../config/emerald_theme.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
 import 'punishment_lines_screen.dart';
-import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'pending_requests_screen.dart';
@@ -445,16 +444,19 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildQuickActions(FamilyProvider fp) {
     final actions = [
-      _Act('Lignes Punition', Icons.menu_book_rounded, EmeraldPalette.error, () {
+      _Act('Lignes de punition', Icons.menu_book_rounded, EmeraldPalette.error, () {
         Navigator.push(
             context,
             SlidePageRoute(
                 page: const PunishmentLinesScreen(),
                 direction: SlideDirection.up));
       }),
-      _Act("Lignes d'Immunité", Icons.shield_rounded, EmeraldPalette.warning, () {
+      _Act("Lignes d'immunité", Icons.shield_rounded, EmeraldPalette.warning, () {
         Navigator.push(
-            context, SpinPageRoute(page: const ImmunityLinesScreen()));
+            context,
+            SlidePageRoute(
+                page: const PunishmentLinesScreen(initialTabIndex: 1),
+                direction: SlideDirection.up));
       }),
       _Act('Temps Écran', Icons.tv_rounded, EmeraldPalette.info, () {
         _showChildPickerForNav(fp, (childId) {

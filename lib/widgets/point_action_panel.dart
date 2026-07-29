@@ -300,6 +300,94 @@ class _PointActionPanelState extends State<PointActionPanel>
     }
   }
 
+  Widget _buildMotifCard(ActionMotif motif, {double? width}) {
+    final config = widget.config;
+    final isSel = _selectedMotif?.label == motif.label;
+    final isFav = _favorites.contains(motif.id);
+
+    return GestureDetector(
+      onTap: _processing ? null : () => _selectMotif(motif),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: width,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSel
+              ? config.primaryColor.withValues(alpha: 0.15)
+              : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSel ? config.primaryColor : Colors.white12,
+            width: isSel ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!motif.isOther)
+              Align(
+                alignment: Alignment.topRight,
+                child: GestureDetector(
+                  onTap: _processing
+                      ? null
+                      : () async {
+                          HapticFeedback.selectionClick();
+                          final newFavs =
+                              await MotifPreferencesService.toggleFavorite(
+                            widget.config.isBonus,
+                            motif.id,
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _favorites = newFavs;
+                              _sortedMotifs =
+                                  MotifPreferencesService.sortMotifs(
+                                motifs: widget.config.motifs,
+                                getId: (m) => m.id,
+                                isOther: (m) => m.isOther,
+                                favorites: _favorites,
+                                usage: _usage,
+                              );
+                            });
+                          }
+                        },
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Icon(
+                      isFav ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: isFav
+                          ? const Color(0xFFFFD54F)
+                          : Colors.white24,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            Text(motif.emoji, style: const TextStyle(fontSize: 28)),
+            const SizedBox(height: 6),
+            Text(
+              motif.label,
+              style: TextStyle(
+                color: isSel ? config.accentColor : Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${widget.config.isBonus ? "+" : "-"}${motif.defaultPoints} pts',
+              style: TextStyle(
+                color: config.primaryColor.withValues(alpha: 0.6),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fp = context.watch<FamilyProvider>();
@@ -409,96 +497,28 @@ class _PointActionPanelState extends State<PointActionPanel>
                       fontSize: 16,
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _sortedMotifs.map((motif) {
-                  final isSel = _selectedMotif?.label == motif.label;
-                  final isFav = _favorites.contains(motif.id);
-                  return GestureDetector(
-                    onTap: _processing ? null : () => _selectMotif(motif),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      width: motif.isOther ? double.infinity : 150,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isSel
-                            ? config.primaryColor.withValues(alpha: 0.15)
-                            : Colors.white.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: isSel ? config.primaryColor : Colors.white12,
-                            width: isSel ? 2 : 1),
-                      ),
-                      child: Column(
-                        children: [
-                          // Étoile favori (sauf pour "Autre")
-                          if (!motif.isOther)
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: GestureDetector(
-                                onTap: _processing
-                                    ? null
-                                    : () async {
-                                        HapticFeedback.selectionClick();
-                                        final newFavs =
-                                            await MotifPreferencesService
-                                                .toggleFavorite(
-                                                    widget.config.isBonus,
-                                                    motif.id);
-                                        if (mounted) {
-                                          setState(() {
-                                            _favorites = newFavs;
-                                            _sortedMotifs =
-                                                MotifPreferencesService
-                                                    .sortMotifs(
-                                              motifs: widget.config.motifs,
-                                              getId: (m) => m.id,
-                                              isOther: (m) => m.isOther,
-                                              favorites: _favorites,
-                                              usage: _usage,
-                                            );
-                                          });
-                                        }
-                                      },
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Icon(
-                                    isFav
-                                        ? Icons.star_rounded
-                                        : Icons.star_border_rounded,
-                                    color: isFav
-                                        ? const Color(0xFFFFD54F)
-                                        : Colors.white24,
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          Text(motif.emoji,
-                              style: const TextStyle(fontSize: 28)),
-                          const SizedBox(height: 6),
-                          Text(motif.label,
-                              style: TextStyle(
-                                  color: isSel
-                                      ? config.accentColor
-                                      : Colors.white70,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600),
-                              textAlign: TextAlign.center),
-                          const SizedBox(height: 2),
-                          Text(
-                              '${widget.config.isBonus ? "+" : "-"}${motif.defaultPoints} pts',
-                              style: TextStyle(
-                                  color: config.primaryColor
-                                      .withValues(alpha: 0.6),
-                                  fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+              SizedBox(
+                height: 146,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount:
+                      _sortedMotifs.where((motif) => !motif.isOther).length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (_, index) {
+                    final motifs = _sortedMotifs
+                        .where((motif) => !motif.isOther)
+                        .toList(growable: false);
+                    return _buildMotifCard(motifs[index], width: 150);
+                  },
+                ),
               ),
+              if (_sortedMotifs.any((motif) => motif.isOther)) ...[
+                const SizedBox(height: 10),
+                _buildMotifCard(
+                  _sortedMotifs.firstWhere((motif) => motif.isOther),
+                  width: double.infinity,
+                ),
+              ],
 
               // ── Champ texte pour motif "Autre" ──
               if (_selectedMotif?.isOther == true) ...[
