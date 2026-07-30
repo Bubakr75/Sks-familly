@@ -25,8 +25,6 @@ const FAMILY_A = "family-a";
 const FAMILY_B = "family-b";
 
 const parentWritableCollections = [
-  "children",
-  "history",
   "goals",
   "punishments",
   "notes",
@@ -39,6 +37,12 @@ const parentWritableCollections = [
   "chores",
   "rewards",
   "purchases",
+];
+
+const memberReadableCollections = [
+  "children",
+  "history",
+  ...parentWritableCollections,
 ];
 
 let testEnv;
@@ -124,7 +128,7 @@ async function seedFirestore() {
       {uid: "owner-b", role: "owner", active: true}
     );
 
-    for (const collectionName of parentWritableCollections) {
+    for (const collectionName of memberReadableCollections) {
       await setDoc(businessRef(db, collectionName), {
         seed: true,
         value: 1,
@@ -231,7 +235,7 @@ test("all direct client writes to family documents are denied", async () => {
   }
 });
 
-for (const collectionName of parentWritableCollections) {
+for (const collectionName of memberReadableCollections) {
   test(`${collectionName}: reads require an active coherent family member`, async () => {
     for (const uid of ["owner-a", "parent-a", "child-a"]) {
       const db = testEnv.authenticatedContext(uid).firestore();
@@ -262,6 +266,9 @@ for (const collectionName of parentWritableCollections) {
     );
   });
 
+}
+
+for (const collectionName of parentWritableCollections) {
   test(`${collectionName}: only parent and owner can write`, async () => {
     const parentDb = testEnv.authenticatedContext("parent-a").firestore();
     const ownerDb = testEnv.authenticatedContext("owner-a").firestore();
@@ -305,6 +312,45 @@ for (const collectionName of parentWritableCollections) {
     }
   });
 }
+
+test("children: direct balance changes are denied", async () => {
+  const parentDb = testEnv.authenticatedContext("parent-a").firestore();
+  await assertSucceeds(
+    setDoc(businessRef(parentDb, "children", "new-child"), {
+      id: "new-child",
+      name: "Enfant",
+      points: 0,
+    })
+  );
+  await assertFails(
+    setDoc(businessRef(parentDb, "children", "forged-child"), {
+      id: "forged-child",
+      name: "Enfant",
+      points: 999,
+    })
+  );
+  await assertFails(
+    updateDoc(businessRef(parentDb, "children"), {points: 999})
+  );
+});
+
+test("history: all direct writes are denied, including forged actors", async () => {
+  for (const uid of ["owner-a", "parent-a", "child-a", "outsider"]) {
+    const db = testEnv.authenticatedContext(uid).firestore();
+    await assertFails(
+      setDoc(businessRef(db, "history", `forged-${uid}`), {
+        actorUid: "victim",
+        actorDisplayName: "Faux parent",
+        actorRole: "owner",
+        points: 999,
+      })
+    );
+    await assertFails(
+      updateDoc(businessRef(db, "history"), {actorUid: uid})
+    );
+    await assertFails(deleteDoc(businessRef(db, "history")));
+  }
+});
 
 test("parent_profiles is restricted to parents and the real owner", async () => {
   for (const uid of ["owner-a", "parent-a"]) {

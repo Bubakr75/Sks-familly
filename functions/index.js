@@ -21,6 +21,13 @@ const familyInboxFunctions =
   createFamilyInboxFunctions({functions, admin, db});
 exports.markFamilyInboxRead = familyInboxFunctions.markFamilyInboxRead;
 
+const {createPointActionFunctions} = require("./point_actions");
+const pointActionFunctions =
+  createPointActionFunctions({functions, admin, db});
+exports.recordPointAction = pointActionFunctions.recordPointAction;
+exports.recordHistoryEvent = pointActionFunctions.recordHistoryEvent;
+exports.setMemberDisplayName = pointActionFunctions.setMemberDisplayName;
+
 const {
   createFamilyManagementFunctions,
 } = require("./family_management");

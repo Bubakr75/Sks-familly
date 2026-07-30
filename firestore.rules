@@ -178,16 +178,20 @@ service cloud.firestore {
 
       match /children/{childId} {
         allow read: if activeFamilyMember(familyId);
-        allow create, update: if isFamilyParent(familyId) &&
-          isBoundedBusinessDocument(request.resource.data);
+        allow create: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data) &&
+          request.resource.data.points == 0;
+        // Les soldes sont modifiés exclusivement par les Cloud Functions.
+        allow update: if isFamilyParent(familyId) &&
+          isBoundedBusinessDocument(request.resource.data) &&
+          request.resource.data.points == resource.data.points;
         allow delete: if isFamilyParent(familyId);
       }
 
       match /history/{entryId} {
         allow read: if activeFamilyMember(familyId);
-        allow create, update: if isFamilyParent(familyId) &&
-          isBoundedBusinessDocument(request.resource.data);
-        allow delete: if isFamilyParent(familyId);
+        // L'auteur et l'horodatage sont attribués par Firebase Admin.
+        allow create, update, delete: if false;
       }
 
       match /goals/{goalId} {

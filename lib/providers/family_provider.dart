@@ -325,6 +325,11 @@ class FamilyProvider extends ChangeNotifier {
       if (_firestore.isConnected) {
         _setupFirestoreCallbacks();
         _firestore.startRealtimeSync();
+        unawaited(
+          _firestore.syncMemberDisplayName(_currentParentName).catchError(
+                (_) {},
+              ),
+        );
       }
     } catch (e) {
       if (kDebugMode) debugPrint('Firestore init error: $e');
@@ -706,6 +711,9 @@ class FamilyProvider extends ChangeNotifier {
   void setCurrentParent(String name) {
     _currentParentName = name;
     _metaBox.put('current_parent', name);
+    if (_firestore.isConnected && name.trim().isNotEmpty) {
+      unawaited(_firestore.syncMemberDisplayName(name).catchError((_) {}));
+    }
     notifyListeners();
   }
 
@@ -1060,17 +1068,20 @@ class FamilyProvider extends ChangeNotifier {
   /// Ajoute un bonus cumulatif (auto-calcul du montant).
   /// Retourne le montant accordé pour l'afficher à l'utilisateur.
   Future<int> addQuickBonus(String childId, String reason,
-      {String? proofPhotoBase64}) async {
+      {String? photoStoragePath, String? actionId}) async {
     final amount = _calculateBonusAmount(childId);
     await addPoints(childId, amount, reason,
-        category: 'Bonus', isBonus: true, proofPhotoBase64: proofPhotoBase64);
+        category: 'Bonus',
+        isBonus: true,
+        photoStoragePath: photoStoragePath,
+        actionId: actionId);
     return amount;
   }
 
   /// Ajoute une pénalité cumulative (auto-calcul, jamais en dessous de 0).
   /// Retourne le montant retiré pour l'afficher.
   Future<int> addQuickPenalty(String childId, String reason,
-      {String? proofPhotoBase64}) async {
+      {String? photoStoragePath, String? actionId}) async {
     final child = getChild(childId);
     if (child == null) return 0;
     final amount = _calculatePenaltyAmount(childId);
@@ -1080,7 +1091,8 @@ class FamilyProvider extends ChangeNotifier {
     await addPoints(childId, actualAmount, reason,
         category: 'Pénalité',
         isBonus: false,
-        proofPhotoBase64: proofPhotoBase64);
+        photoStoragePath: photoStoragePath,
+        actionId: actionId);
     return actualAmount;
   }
 
@@ -1093,39 +1105,47 @@ class FamilyProvider extends ChangeNotifier {
     bool isBonus = true,
     String? proofPhoto,
     String? proofPhotoBase64,
+    String? photoStoragePath,
+    String? actionId,
     DateTime? date,
   }) async {
     final child = getChild(childId);
     if (child == null) return;
-    if (isBonus) {
-      child.points += points;
-    } else {
-      child.points -= points;
-      if (child.points < 0) child.points = 0;
+    if (!_firestore.isConnected) {
+      throw StateError(
+        'Connexion requise pour enregistrer une action de points.',
+      );
     }
-    // ✅ Marque l'enfant comme pending pour protéger ses points
-    _markPending(child.id);
-    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-    if (_firestore.isConnected) await _firestore.saveChild(child);
+    if ((proofPhoto ?? proofPhotoBase64) != null) {
+      throw ArgumentError(
+        'Les nouvelles preuves photo doivent être enregistrées dans Storage.',
+      );
+    }
 
-    final entry = HistoryEntry(
-      id: _uuid.v4(),
+    final safeActionId = actionId ?? _uuid.v4();
+    await _firestore.syncMemberDisplayName(_currentParentName);
+    final result = await _firestore.recordPointAction(
+      actionId: safeActionId,
       childId: childId,
-      points: points,
+      amount: points,
       reason: reason,
       category: category,
       isBonus: isBonus,
-      proofPhotoBase64: proofPhoto ?? proofPhotoBase64,
-      date: date,
-      actionBy: _currentParentName,
+      photoStoragePath: photoStoragePath,
     );
+    final newBalance = result['newBalance'];
+    final historyData = Map<String, dynamic>.from(result['history'] as Map);
+    final entry = HistoryEntry.fromMap(historyData);
+    child.points = newBalance is int ? newBalance : (newBalance as num).toInt();
+
+    // Le serveur est l'autorité ; le cache local ne sert qu'à l'affichage.
+    _markPending(child.id);
+    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     _markPending(entry.id);
+    _history.removeWhere((item) => item.id == entry.id);
     _history.insert(0, entry);
     await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
-    if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
 
-    await _checkBadgeUnlock(child);
-    await recalculateStreak(childId);
     // 🔊 Feedback sonore
     if (isBonus) {
       SoundService.playBonus();

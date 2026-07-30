@@ -24,6 +24,29 @@ class FirestoreService {
   static const walletFunctionsRegion = 'us-central1';
 
   @visibleForTesting
+  static Map<String, dynamic> buildPointActionPayload({
+    required String familyId,
+    required String actionId,
+    required String childId,
+    required int amount,
+    required String reason,
+    required String category,
+    required bool isBonus,
+    String? photoStoragePath,
+  }) {
+    return {
+      'familyId': familyId,
+      'actionId': actionId,
+      'childId': childId,
+      'amount': amount,
+      'reason': reason.trim(),
+      'category': category.trim(),
+      'isBonus': isBonus,
+      if (photoStoragePath != null) 'photoStoragePath': photoStoragePath,
+    };
+  }
+
+  @visibleForTesting
   static Map<String, dynamic> buildWalletAdjustmentPayload({
     required String familyId,
     required String childId,
@@ -855,6 +878,48 @@ class FirestoreService {
     });
   }
 
+  /// Enregistre une action de points dans une transaction côté serveur.
+  Future<Map<String, dynamic>> recordPointAction({
+    required String actionId,
+    required String childId,
+    required int amount,
+    required String reason,
+    required String category,
+    required bool isBonus,
+    String? photoStoragePath,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('recordPointAction').call(buildPointActionPayload(
+          familyId: currentFamilyId,
+          actionId: actionId,
+          childId: childId,
+          amount: amount,
+          reason: reason,
+          category: category,
+          isBonus: isBonus,
+          photoStoragePath: photoStoragePath,
+        ));
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  /// Synchronise le nom du membre authentifié avant une action sensible.
+  Future<void> syncMemberDisplayName(String displayName) async {
+    final currentFamilyId = _familyId;
+    final cleanName = displayName.trim();
+    if (currentFamilyId == null || cleanName.isEmpty) return;
+    await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('setMemberDisplayName').call({
+      'familyId': currentFamilyId,
+      'displayName': cleanName,
+    });
+  }
+
   Stream<List<SksWalletOperation>> watchWalletOperations(String childId) {
     if (_familyId == null) return const Stream.empty();
     return _db
@@ -1004,19 +1069,22 @@ class FirestoreService {
 
   // ─── WRITE : History ─────────────────────────────────────────
   Future<void> saveHistoryEntry(HistoryEntry entry) async {
-    if (_familyId == null) return;
-    try {
-      final data = entry.toMap();
-      data['deviceId'] = deviceId;
-      await _db
-          .collection('families')
-          .doc(_familyId)
-          .collection('history')
-          .doc(entry.id)
-          .set(data);
-    } catch (e) {
-      if (kDebugMode) debugPrint('saveHistoryEntry error: $e');
-    }
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) return;
+    await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('recordHistoryEvent').call({
+      'familyId': currentFamilyId,
+      'eventId': entry.id,
+      'childId': entry.childId,
+      'points': entry.points,
+      'reason': entry.reason,
+      'category': entry.category,
+      'isBonus': entry.isBonus,
+      if (entry.transferId != null) 'transferId': entry.transferId,
+      if (entry.counterpartyChildId != null)
+        'counterpartyChildId': entry.counterpartyChildId,
+    });
   }
 
   /// Écriture groupée atomique d'un transfert de points entre deux enfants.

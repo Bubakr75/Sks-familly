@@ -563,7 +563,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     points: entry.points,
                     isBonus: entry.isBonus,
                     date: entry.date,
-                    actionBy: entry.actionBy,
+                    actionBy: entry.displayActorName,
                     onTap: () {
                       if (child != null) {
                         Navigator.push(
