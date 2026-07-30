@@ -7,13 +7,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../providers/family_provider.dart';
-import '../models/child_model.dart';
-import '../models/history_entry.dart';
 import '../utils/checklist_helpers.dart';
 import '../utils/motif_helpers.dart';
 import '../services/motif_preferences_service.dart';
+import '../services/action_photo_service.dart';
+import '../services/storage_service.dart';
 
 /// Configuration d'un motif de bonus ou pénalité.
 class ActionMotif {
@@ -74,6 +76,8 @@ class PointActionPanel extends StatefulWidget {
 
 class _PointActionPanelState extends State<PointActionPanel>
     with SingleTickerProviderStateMixin {
+  static const _uuid = Uuid();
+
   String? _selectedChildId;
   ActionMotif? _selectedMotif;
   int _amount = 5;
@@ -85,6 +89,11 @@ class _PointActionPanelState extends State<PointActionPanel>
   Set<String> _favorites = {};
   Map<String, int> _usage = {};
   List<ActionMotif> _sortedMotifs = [];
+  final ActionPhotoService _photoService = ActionPhotoService();
+  final StorageService _storageService = StorageService();
+  ActionPhoto? _photo;
+  String? _actionId;
+  String? _uploadedPhotoPath;
 
   @override
   void initState() {
@@ -129,6 +138,12 @@ class _PointActionPanelState extends State<PointActionPanel>
 
   @override
   void dispose() {
+    final orphanPath = _uploadedPhotoPath;
+    if (orphanPath != null) {
+      unawaited(_storageService.deleteActionPhoto(orphanPath).catchError(
+            (_) {},
+          ));
+    }
     _celebrationController.dispose();
     _customTextCtrl.dispose();
     _customFocusNode.dispose();
@@ -183,6 +198,49 @@ class _PointActionPanelState extends State<PointActionPanel>
     HapticFeedback.selectionClick();
   }
 
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final photo = await _photoService.pickAndPrepare(source);
+      if (photo == null || !mounted) return;
+      final previousUpload = _uploadedPhotoPath;
+      if (previousUpload != null) {
+        await _storageService.deleteActionPhoto(previousUpload);
+        if (!mounted) return;
+      }
+      setState(() {
+        _photo = photo;
+        _actionId ??= _uuid.v4();
+        _uploadedPhotoPath = null;
+      });
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error.message),
+        backgroundColor: Colors.redAccent,
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Impossible de préparer cette photo. Réessaie.'),
+        backgroundColor: Colors.redAccent,
+      ));
+    }
+  }
+
+  void _removePhoto() {
+    final uploadedPath = _uploadedPhotoPath;
+    if (uploadedPath != null) {
+      unawaited(
+        _storageService.deleteActionPhoto(uploadedPath).catchError((_) {}),
+      );
+    }
+    setState(() {
+      _photo = null;
+      _uploadedPhotoPath = null;
+      _actionId = null;
+    });
+  }
+
   Future<void> _apply() async {
     if (!_isValid) return;
 
@@ -222,12 +280,30 @@ class _PointActionPanelState extends State<PointActionPanel>
     );
 
     try {
+      final actionId = _actionId ??= _uuid.v4();
+      var photoPath = _uploadedPhotoPath;
+      if (_photo != null && photoPath == null) {
+        final familyId = fp.familyId;
+        if (familyId == null) {
+          throw StateError('Connexion familiale indisponible.');
+        }
+        photoPath = await _storageService.uploadActionPhoto(
+          familyId: familyId,
+          actionId: actionId,
+          bytes: _photo!.bytes,
+          contentType: _photo!.contentType,
+          extension: _photo!.extension,
+        );
+        _uploadedPhotoPath = photoPath;
+      }
       await fp.addPoints(
         _selectedChildId!,
         actualAmount,
         reason,
         category: widget.config.category,
         isBonus: widget.config.isBonus,
+        actionId: actionId,
+        photoStoragePath: photoPath,
       );
 
       if (!mounted) return;
@@ -254,6 +330,9 @@ class _PointActionPanelState extends State<PointActionPanel>
         _selectedMotif = null;
         _customTextCtrl.clear();
         _customFocusNode.unfocus();
+        _photo = null;
+        _actionId = null;
+        _uploadedPhotoPath = null;
         _processing = false;
       });
 
@@ -355,9 +434,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                     padding: const EdgeInsets.only(bottom: 2),
                     child: Icon(
                       isFav ? Icons.star_rounded : Icons.star_border_rounded,
-                      color: isFav
-                          ? const Color(0xFFFFD54F)
-                          : Colors.white24,
+                      color: isFav ? const Color(0xFFFFD54F) : Colors.white24,
                       size: 18,
                     ),
                   ),
@@ -630,6 +707,77 @@ class _PointActionPanelState extends State<PointActionPanel>
                     );
                   }).toList(),
                 ),
+
+                const SizedBox(height: 20),
+
+                // ── Photo facultative ──
+                Text('Photo facultative',
+                    style: TextStyle(
+                        color: config.accentColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                if (_photo == null)
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _processing
+                            ? null
+                            : () => _pickPhoto(ImageSource.camera),
+                        icon: const Icon(Icons.photo_camera_rounded),
+                        label: const Text('Appareil photo'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _processing
+                            ? null
+                            : () => _pickPhoto(ImageSource.gallery),
+                        icon: const Icon(Icons.photo_library_rounded),
+                        label: const Text('Galerie'),
+                      ),
+                    ],
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            _photo!.bytes,
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: _processing
+                                  ? null
+                                  : () => _pickPhoto(ImageSource.gallery),
+                              icon: const Icon(Icons.swap_horiz_rounded),
+                              label: const Text('Remplacer'),
+                            ),
+                            TextButton.icon(
+                              onPressed: _processing ? null : _removePhoto,
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              label: const Text('Retirer'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
 
                 const SizedBox(height: 20),
 

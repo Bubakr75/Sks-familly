@@ -18,6 +18,7 @@ import '../config/emerald_theme.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/timeline_widget.dart';
+import '../widgets/history_proof_photo.dart';
 import 'timeline_screen.dart';
 import 'shop_screen.dart';
 import 'wallet_screen.dart';
@@ -1874,26 +1875,25 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 Text('$dateLabel à $timeLabel',
                     style: const TextStyle(
                         color: Colors.white38, fontSize: 11)),
-                if (e.actionBy != null && e.actionBy!.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  const Text('·',
-                      style: TextStyle(color: Colors.white24)),
-                  const SizedBox(width: 4),
-                  Text('par ${e.actionBy}',
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 11)),
-                ],
+                const SizedBox(width: 8),
+                const Text('·',
+                    style: TextStyle(color: Colors.white24)),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'par ${e.displayActorName}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white38, fontSize: 11),
+                  ),
+                ),
               ]),
               if (e.hasProofPhoto) ...[
                 const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    base64Decode(e.proofPhotoBase64!),
-                    height: 120,
-                    width:  double.infinity,
-                    fit:    BoxFit.cover,
-                  ),
+                HistoryProofPhoto(
+                  entry: e,
+                  height: 120,
+                  width: double.infinity,
                 ),
               ],
             ],

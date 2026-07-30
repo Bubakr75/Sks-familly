@@ -7,7 +7,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test --test-concurrency=1 family_join.test.js family_inbox.test.js family_management.test.js legacy_family_migration.test.js wallet.test.js secure_child_operations.test.js point_actions.test.js migration_dry_run.test.js",
-    "test:rules": "npx -y firebase-tools@latest emulators:exec --only firestore --project demo-sks-family \"node --test --test-concurrency=1 firestore_rules.test.js wallet_rules.test.js\"",
+    "test:rules": "npx -y firebase-tools@latest emulators:exec --only firestore,storage --project demo-sks-family \"node --test --test-concurrency=1 firestore_rules.test.js wallet_rules.test.js storage_rules.test.js\"",
     "migration:dry-run": "node migration_dry_run.js --dry-run"
   },
   "dependencies": {

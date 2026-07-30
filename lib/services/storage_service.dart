@@ -13,18 +13,55 @@
 //   families/{familyId}/punishments/{punishmentId}/photo_{index}.jpg
 
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StorageService {
+  static const int maxActionPhotoBytes = 5 * 1024 * 1024;
+  static const Set<String> actionPhotoContentTypes = {
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+  };
   static final StorageService _instance = StorageService._internal();
   factory StorageService() => _instance;
   StorageService._internal();
 
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  /// Enregistre une preuve sous un chemin non choisi par l'utilisateur.
+  /// Le chemin, et non une URL publique, est conservé dans l'historique.
+  Future<String> uploadActionPhoto({
+    required String familyId,
+    required String actionId,
+    required Uint8List bytes,
+    required String contentType,
+    required String extension,
+  }) async {
+    if (bytes.length > maxActionPhotoBytes ||
+        !actionPhotoContentTypes.contains(contentType) ||
+        !const {'jpg', 'png', 'webp'}.contains(extension)) {
+      throw ArgumentError('Photo invalide ou supérieure à 5 Mo.');
+    }
+    final path = 'families/$familyId/actions/$actionId/proof.$extension';
+    await _storage.ref(path).putData(
+          bytes,
+          SettableMetadata(
+            contentType: contentType,
+            cacheControl: 'private,max-age=3600',
+          ),
+        );
+    return path;
+  }
+
+  /// Télécharge une preuve en appliquant Firebase Auth et Storage Rules.
+  Future<Uint8List?> readActionPhoto(String storagePath) {
+    return _storage.ref(storagePath).getData(maxActionPhotoBytes);
+  }
+
+  Future<void> deleteActionPhoto(String storagePath) {
+    return _storage.ref(storagePath).delete();
+  }
 
   /// Upload une photo (base64) vers Storage et renvoie l'URL de téléchargement.
   /// Retourne null si l'upload échoue.

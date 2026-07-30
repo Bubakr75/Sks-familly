@@ -1,16 +1,92 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // 🔒 Sécurité : seuls les utilisateurs authentifiés peuvent accéder aux photos
-    function isSignedIn() {
-      return request.auth != null;
+    function memberPath(familyId) {
+      return /databases/(default)/documents/families/$(familyId)/members/$(request.auth.uid);
     }
 
-    // Photos organisées par famille
-    match /families/{familyId}/{allPaths=**} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+    function isActiveMember(familyId) {
+      return request.auth != null &&
+        firestore.exists(memberPath(familyId)) &&
+        firestore.get(memberPath(familyId)).data.uid == request.auth.uid &&
+        firestore.get(memberPath(familyId)).data.active == true;
+    }
+
+    function isAuthorizedParent(familyId) {
+      return isActiveMember(familyId) &&
+        (
+          firestore.get(memberPath(familyId)).data.role == 'parent' ||
+          (
+            firestore.get(memberPath(familyId)).data.role == 'owner' &&
+            firestore.get(
+              /databases/(default)/documents/families/$(familyId)
+            ).data.ownerUid == request.auth.uid
+          )
+        );
+    }
+
+    function isValidImage() {
+      return request.resource.size <= 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    function actionIsPending(familyId, actionId) {
+      return !firestore.exists(
+        /databases/(default)/documents/families/$(familyId)/history/$(actionId)
+      );
+    }
+
+    function fileNameMatchesType(fileName) {
+      return
+        (
+          fileName.matches('.*\\.jpg') &&
+          request.resource.contentType == 'image/jpeg'
+        ) ||
+        (
+          fileName.matches('.*\\.png') &&
+          request.resource.contentType == 'image/png'
+        ) ||
+        (
+          fileName.matches('.*\\.webp') &&
+          request.resource.contentType == 'image/webp'
+        );
+    }
+
+    match /families/{familyId}/actions/{actionId}/{fileName} {
+      allow read: if isActiveMember(familyId);
+      allow create, update: if isAuthorizedParent(familyId) &&
+        actionIsPending(familyId, actionId) &&
+        fileName.matches('proof\\.(jpg|png|webp)') &&
+        isValidImage() &&
+        fileNameMatchesType(fileName);
+      allow delete: if isAuthorizedParent(familyId) &&
+        actionIsPending(familyId, actionId);
+    }
+
+    // Compatibilité des photos existantes, avec les mêmes contrôles familiaux.
+    match /families/{familyId}/children/{childId}/{fileName} {
+      allow read: if isActiveMember(familyId);
+      allow create, update: if isAuthorizedParent(familyId) &&
+        isValidImage() && fileNameMatchesType(fileName);
+      allow delete: if isAuthorizedParent(familyId);
+    }
+
+    match /families/{familyId}/parents/{profileId}/{fileName} {
+      allow read: if isActiveMember(familyId);
+      allow create, update: if isAuthorizedParent(familyId) &&
+        isValidImage() && fileNameMatchesType(fileName);
+      allow delete: if isAuthorizedParent(familyId);
+    }
+
+    match /families/{familyId}/punishments/{punishmentId}/{fileName} {
+      allow read: if isActiveMember(familyId);
+      allow create, update: if isAuthorizedParent(familyId) &&
+        isValidImage() && fileNameMatchesType(fileName);
+      allow delete: if isAuthorizedParent(familyId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
