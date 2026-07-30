@@ -18,6 +18,7 @@ class FamilyScreen extends StatefulWidget {
 class _FamilyScreenState extends State<FamilyScreen> {
   bool _isLoading = false;
   String? _familyCode;
+  bool _isFamilyCodeVisible = false;
   final _customCodeController = TextEditingController();
   bool _useCustomCode = false;
 
@@ -553,6 +554,41 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   // ─── Vue connectée ──────────────────────────────────────────
   Widget _buildConnectedView(Color primary) {
+    final role = context.read<FamilyProvider>().memberRole;
+    final canManageCode =
+        role == 'owner' || role == 'manager' || role == 'familyAdmin';
+
+    if (!canManageCode) {
+      final message = role == 'child'
+          ? 'Le code familial n’est pas accessible depuis un profil enfant.'
+          : 'Code masqué — réservé au propriétaire ou gestionnaire';
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _neonLabel('Code famille', primary),
+          const SizedBox(height: 8),
+          GlassCard(
+            padding: const EdgeInsets.all(20),
+            borderRadius: 20,
+            glowColor: primary,
+            child: Column(
+              children: [
+                const Icon(Icons.lock_rounded, size: 38),
+                const SizedBox(height: 12),
+                Text(message, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _disconnect,
+                  icon: const Icon(Icons.link_off_rounded),
+                  label: const Text('Se déconnecter'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -573,7 +609,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
               // Affichage du code
               TvFocusWrapper(
-                onTap: _copyCode,
+                onTap: _isFamilyCodeVisible ? _copyCode : null,
                 child: Container(
                   width: double.infinity,
                   padding:
@@ -592,7 +628,11 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   child: Column(
                     children: [
                       Text(
-                        _familyCode ?? '...',
+                        _familyCode == null
+                            ? 'Code indisponible'
+                            : _isFamilyCodeVisible
+                                ? _familyCode!
+                                : '••••••',
                         style: TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.w900,
@@ -606,7 +646,11 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Appuyez pour copier',
+                        _familyCode == null
+                            ? 'Réessayez après avoir vérifié la connexion'
+                            : _isFamilyCodeVisible
+                                ? 'Appuyez pour copier'
+                                : 'Code masqué',
                         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
@@ -619,10 +663,39 @@ class _FamilyScreenState extends State<FamilyScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _copyCode,
+                  onPressed: _familyCode == null
+                      ? null
+                      : () {
+                          setState(() {
+                            _isFamilyCodeVisible = !_isFamilyCodeVisible;
+                          });
+                        },
+                  icon: Icon(
+                    _isFamilyCodeVisible
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                  ),
+                  label: Text(
+                    _isFamilyCodeVisible
+                        ? 'Masquer le code'
+                        : 'Afficher le code',
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed:
+                      _isFamilyCodeVisible && _familyCode != null
+                          ? _copyCode
+                          : null,
                   icon: const Icon(Icons.copy_rounded),
                   label: const Text('Copier le code'),
-                  style: FilledButton.styleFrom(
+                  style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
@@ -769,14 +842,23 @@ class _FamilyScreenState extends State<FamilyScreen> {
   // ─── Section rejoindre ──────────────────────────────────────
   Widget _buildJoinSection() {
     return FamilyJoinPanel(
-      onActivated: (familyCode) {
+      onActivated: ({
+        required familyId,
+        required familyCode,
+        required role,
+        childId,
+      }) async {
+        await context.read<FamilyProvider>().finalizeApprovedFamily(
+              familyId: familyId,
+              familyCode: familyCode,
+              role: role,
+              childId: childId,
+            );
         if (!mounted) return;
-
         setState(() {
-          _familyCode = familyCode;
+          _familyCode = context.read<FamilyProvider>().familyCode;
         });
-
-        _showSnack('✅ Connexion autorisée et activée !');
+        _showSnack('Connexion autorisée, famille chargée.');
       },
     );
   }

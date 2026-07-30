@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,13 +16,14 @@ class FamilyJoinPanel extends StatefulWidget {
     super.key,
   });
 
-  final ValueChanged<String> onActivated;
+  final ApprovedFamilyActivator onActivated;
 
   @override
   State<FamilyJoinPanel> createState() => _FamilyJoinPanelState();
 }
 
-class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
+class _FamilyJoinPanelState extends State<FamilyJoinPanel>
+    with WidgetsBindingObserver {
   final FamilyJoinService _joinService = FamilyJoinService();
   final FamilyJoinCoordinator _coordinator = FamilyJoinCoordinator();
 
@@ -34,18 +37,33 @@ class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
   bool _isBusy = false;
   bool _isLoadingPending = true;
   String? _errorMessage;
+  Timer? _resumeTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadPendingRequest();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _resumeTimer?.cancel();
     _codeController.dispose();
     _childNameController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _pending != null && !_isBusy) {
+      _resumeTimer?.cancel();
+      _resumeTimer = Timer(
+        const Duration(milliseconds: 500),
+        _checkAuthorization,
+      );
+    }
   }
 
   Future<void> _loadPendingRequest() async {
@@ -59,6 +77,13 @@ class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
         _lastStatus = pending == null ? null : FamilyJoinStatus.pending;
         _isLoadingPending = false;
       });
+      if (pending != null) {
+        _resumeTimer?.cancel();
+        _resumeTimer = Timer(
+          const Duration(milliseconds: 300),
+          _checkAuthorization,
+        );
+      }
     } catch (error) {
       if (!mounted) return;
 
@@ -145,7 +170,9 @@ class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
     });
 
     try {
-      final result = await _coordinator.checkAndActivatePendingRequest();
+      final result = await _coordinator.checkAndActivatePendingRequest(
+        activateApprovedFamily: widget.onActivated,
+      );
 
       if (!mounted) return;
 
@@ -159,15 +186,11 @@ class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
       }
 
       if (result.isApproved) {
-        final familyCode = pending.familyCode;
-
         setState(() {
           _pending = null;
           _lastStatus = FamilyJoinStatus.approved;
           _isBusy = false;
         });
-
-        widget.onActivated(familyCode);
         return;
       }
 
@@ -180,6 +203,12 @@ class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
 
       setState(() {
         _errorMessage = _messageForError(error);
+        if (error is FamilyJoinException &&
+            (error.code == 'memberMissing' ||
+                error.code == 'memberRoleMismatch' ||
+                error.code == 'memberChildMismatch')) {
+          _lastStatus = FamilyJoinStatus.accepted;
+        }
         _isBusy = false;
       });
     }
@@ -401,13 +430,19 @@ class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
   Widget _buildPendingView() {
     final pending = _pending!;
     final rejected = _lastStatus == FamilyJoinStatus.rejected;
+    final finalizing = _lastStatus == FamilyJoinStatus.accepted ||
+        _lastStatus == FamilyJoinStatus.approved;
     final color = rejected ? const Color(0xFFFF5252) : Colors.orange;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _label(
-          rejected ? 'Demande refusée' : 'Autorisation en attente',
+          rejected
+              ? 'Demande refusée'
+              : finalizing
+                  ? 'Accès familial en préparation'
+                  : 'Autorisation en attente',
           color,
         ),
         const SizedBox(height: 8),
@@ -426,7 +461,10 @@ class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
               Text(
                 rejected
                     ? 'Le parent a refusé cette demande.'
-                    : 'La demande a été envoyée au parent de la famille.',
+                    : finalizing
+                        ? 'L’approbation est valide. Finalise maintenant le '
+                            'chargement de la famille.'
+                        : 'La demande a été envoyée au parent de la famille.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
@@ -468,7 +506,11 @@ class _FamilyJoinPanelState extends State<FamilyJoinPanel> {
                           )
                         : const Icon(Icons.refresh_rounded),
                     label: Text(
-                      _isBusy ? 'Vérification...' : 'Vérifier l’autorisation',
+                      _isBusy
+                          ? 'Finalisation...'
+                          : finalizing
+                              ? 'Finaliser la synchronisation'
+                              : 'Vérifier l’autorisation',
                     ),
                     style: FilledButton.styleFrom(
                       backgroundColor: color,

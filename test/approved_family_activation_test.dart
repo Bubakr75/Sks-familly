@@ -12,7 +12,7 @@ void main() {
 
       expect(data, {
         'family_id': 'family-1',
-        'family_code': 'ABCD12',
+        'family_code': null,
         'family_member_role': 'parent',
         'family_member_child_id': null,
       });

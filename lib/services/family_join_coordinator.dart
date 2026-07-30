@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import '../models/family_join_request.dart';
 import 'family_join_service.dart';
-import 'firestore_service.dart';
 
 typedef ApprovedFamilyActivator = Future<void> Function({
   required String familyId,
@@ -16,12 +15,9 @@ typedef PendingFamilyJoinClearer = Future<void> Function();
 class FamilyJoinCoordinator {
   FamilyJoinCoordinator({
     FamilyJoinService? joinService,
-    FirestoreService? firestoreService,
-  })  : _joinService = joinService ?? FamilyJoinService(),
-        _firestoreService = firestoreService ?? FirestoreService();
+  }) : _joinService = joinService ?? FamilyJoinService();
 
   final FamilyJoinService _joinService;
-  final FirestoreService _firestoreService;
 
   /// Vérifie la demande locale actuellement en attente.
   ///
@@ -29,21 +25,29 @@ class FamilyJoinCoordinator {
   /// - Ne modifie rien pour un statut pending ou rejected.
   /// - Active la famille pour un statut approved.
   /// - Supprime la demande locale uniquement après l'activation complète.
-  Future<FamilyJoinStatusResult?> checkAndActivatePendingRequest() async {
+  Future<FamilyJoinStatusResult?> checkAndActivatePendingRequest({
+    required ApprovedFamilyActivator activateApprovedFamily,
+  }) async {
     final pending = await _joinService.loadPendingRequest();
 
     if (pending == null) {
       return null;
     }
 
-    final status = await _joinService.getFamilyJoinStatus(
+    var status = await _joinService.getFamilyJoinStatus(
       familyId: pending.familyId,
     );
+
+    if (status.canRetryFinalization) {
+      status = await _joinService.finalizeFamilyJoin(
+        familyId: pending.familyId,
+      );
+    }
 
     await applyStatus(
       pending: pending,
       status: status,
-      activateApprovedFamily: _firestoreService.activateApprovedFamily,
+      activateApprovedFamily: activateApprovedFamily,
       clearPendingRequest: _joinService.clearPendingRequest,
     );
 
@@ -68,6 +72,22 @@ class FamilyJoinCoordinator {
       // La demande reste disponible localement pour que l'interface puisse
       // afficher pending ou rejected et laisser l'utilisateur décider.
       return;
+    }
+
+    if (!status.canActivate) {
+      final message = switch (status.activationState) {
+        FamilyJoinActivationState.memberInactive =>
+          'L’accès familial a été désactivé.',
+        FamilyJoinActivationState.memberUidMismatch =>
+          'Le membre familial contient une identité incohérente.',
+        FamilyJoinActivationState.requestInvalid =>
+          'La demande historique est incomplète.',
+        _ => 'L’accès familial est encore en préparation.',
+      };
+      throw FamilyJoinException(
+        code: status.activationState.name,
+        message: message,
+      );
     }
 
     final approvedRole = status.role;

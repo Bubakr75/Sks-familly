@@ -13,6 +13,7 @@ const familyJoinFunctions = createFamilyJoinFunctions({
 
 exports.requestFamilyJoin = familyJoinFunctions.requestFamilyJoin;
 exports.getFamilyJoinStatus = familyJoinFunctions.getFamilyJoinStatus;
+exports.finalizeFamilyJoin = familyJoinFunctions.finalizeFamilyJoin;
 exports.approveFamilyJoin = familyJoinFunctions.approveFamilyJoin;
 exports.rejectFamilyJoin = familyJoinFunctions.rejectFamilyJoin;
 

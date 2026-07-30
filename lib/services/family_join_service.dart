@@ -138,6 +138,43 @@ class FamilyJoinService {
     }
   }
 
+  Future<FamilyJoinStatusResult> finalizeFamilyJoin({
+    required String familyId,
+  }) async {
+    final normalizedFamilyId = _requiredText(
+      familyId,
+      field: 'Identifiant de la famille',
+      maximumLength: 200,
+    );
+
+    try {
+      final callable = _functions.httpsCallable('finalizeFamilyJoin');
+      final callableResult = await callable.call({
+        'familyId': normalizedFamilyId,
+      });
+      final result = FamilyJoinStatusResult.fromMap(
+        _asStringMap(callableResult.data),
+      );
+      if (result.familyId != normalizedFamilyId || !result.canActivate) {
+        throw const FormatException(
+          'La finalisation du rattachement est incomplète.',
+        );
+      }
+      return result;
+    } on FirebaseFunctionsException catch (error) {
+      throw FamilyJoinException(
+        code: error.code,
+        message: error.message ?? _defaultMessageForCode(error.code),
+        details: error.details,
+      );
+    } on FormatException catch (error) {
+      throw FamilyJoinException(
+        code: 'invalid-response',
+        message: 'Réponse de finalisation invalide : ${error.message}',
+      );
+    }
+  }
+
   Future<FamilyJoinStatusResult?> checkPendingRequest() async {
     final pending = await loadPendingRequest();
 

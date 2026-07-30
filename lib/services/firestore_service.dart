@@ -121,7 +121,7 @@ class FirestoreService {
 
     return {
       'family_id': cleanFamilyId,
-      'family_code': cleanCode,
+      'family_code': isAllowedOwner ? cleanCode : null,
       'family_member_role': cleanRole,
       'family_member_child_id': cleanRole == 'child' ? cleanChildId : null,
     };
@@ -463,7 +463,7 @@ class FirestoreService {
     );
 
     final approvedFamilyId = membership['family_id']!;
-    final approvedCode = membership['family_code']!;
+    final approvedCode = membership['family_code'];
     final approvedRole = membership['family_member_role']!;
     final approvedChildId = membership['family_member_child_id'];
 
@@ -506,7 +506,11 @@ class FirestoreService {
         await requireSet('family_member_child_id', approvedChildId);
       }
 
-      await requireSet('family_code', approvedCode);
+      if (approvedCode == null) {
+        await prefs.remove('family_code');
+      } else {
+        await requireSet('family_code', approvedCode);
+      }
       await requireSet('family_id', approvedFamilyId);
     } catch (_) {
       await restorePreference('family_member_role', previousRole);
@@ -526,6 +530,30 @@ class FirestoreService {
     await FcmService().registerToken();
     _startListening();
     _startKeepAlive();
+  }
+
+  Future<void> verifyApprovedFamilyAccess(String familyId) async {
+    final cleanFamilyId = familyId.trim();
+    if (cleanFamilyId.isEmpty ||
+        cleanFamilyId.contains('/') ||
+        RegExp(r'[\u0000-\u001f]').hasMatch(cleanFamilyId)) {
+      throw ArgumentError.value(
+        familyId,
+        'familyId',
+        'Identifiant familial invalide.',
+      );
+    }
+
+    const server = GetOptions(source: Source.server);
+    final familyRef = _db.collection('families').doc(cleanFamilyId);
+    final familySnapshot = await familyRef.get(server);
+    if (!familySnapshot.exists) {
+      throw StateError('La famille approuvée est introuvable.');
+    }
+
+    // Cette lecture vérifie aussi que les règles reconnaissent déjà le membre
+    // actif avant toute persistance locale.
+    await familyRef.collection('children').limit(1).get(server);
   }
 
   Future<String?> getFamilyCode() async {
@@ -1730,7 +1758,7 @@ class FirestoreService {
   }
 
   // ─── Force refresh ───────────────────────────────────────────
-  Future<void> forceRefresh() async {
+  Future<void> forceRefresh({bool throwOnError = false}) async {
     if (_familyId == null) return;
     try {
       final fRef = _db.collection('families').doc(_familyId);
@@ -1838,6 +1866,7 @@ class FirestoreService {
       _markDataReceived();
     } catch (e) {
       if (kDebugMode) debugPrint('forceRefresh error: $e');
+      if (throwOnError) rethrow;
       reconnect();
     }
   }

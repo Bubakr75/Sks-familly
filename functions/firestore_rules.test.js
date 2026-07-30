@@ -561,7 +561,7 @@ test("FCM tokens require active membership and a coherent immutable UID", async 
   }
 });
 
-test("join_requests are visible to active parents while members stay owner-only", async () => {
+test("join requests stay parent-only while a member can read only itself", async () => {
   const ownerDb = testEnv.authenticatedContext("owner-a").firestore();
   await assertSucceeds(
     getDoc(businessRef(ownerDb, "join_requests", "join-1"))
@@ -580,7 +580,13 @@ test("join_requests are visible to active parents while members stay owner-only"
   await assertSucceeds(
     getDocs(familyCollectionRef(parentDb, "join_requests"))
   );
-  await assertFails(getDoc(businessRef(parentDb, "members", "parent-a")));
+  await assertSucceeds(
+    getDoc(businessRef(parentDb, "members", "parent-a"))
+  );
+  await assertFails(
+    getDoc(businessRef(parentDb, "members", "owner-a"))
+  );
+  await assertFails(getDocs(familyCollectionRef(parentDb, "members")));
 
   for (const context of [
     testEnv.unauthenticatedContext(),

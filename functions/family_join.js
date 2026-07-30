@@ -108,6 +108,102 @@ function buildApprovedMemberData({
   };
 }
 
+function inspectApprovedMembership({
+  requesterUid,
+  requestData,
+  memberData,
+}) {
+  if (!requestData || requestData.requesterUid !== requesterUid) {
+    return {
+      ready: false,
+      activationState: "request-invalid",
+      role: null,
+      childId: null,
+    };
+  }
+
+  const requestStatus = requestData && requestData.status;
+  const accepted = requestStatus === "accepted" || requestStatus === "approved";
+
+  if (!accepted) {
+    return {
+      ready: false,
+      activationState: "approval-pending",
+      role: null,
+      childId: null,
+    };
+  }
+
+  if (!memberData) {
+    return {
+      ready: false,
+      activationState: "member-missing",
+      role: null,
+      childId: null,
+    };
+  }
+
+  if (memberData.uid !== requesterUid) {
+    return {
+      ready: false,
+      activationState: "member-uid-mismatch",
+      role: null,
+      childId: null,
+    };
+  }
+
+  if (memberData.active !== true) {
+    return {
+      ready: false,
+      activationState: "member-inactive",
+      role: null,
+      childId: null,
+    };
+  }
+
+  let requestedRole;
+  try {
+    requestedRole = normalizeJoinRole(requestData.requestedRole);
+  } catch (_) {
+    return {
+      ready: false,
+      activationState: "request-invalid",
+      role: null,
+      childId: null,
+    };
+  }
+
+  if (memberData.role !== requestedRole) {
+    return {
+      ready: false,
+      activationState: "member-role-mismatch",
+      role: null,
+      childId: null,
+    };
+  }
+
+  const selectedChildId = requestData.selectedChildId || null;
+  if (
+    (requestedRole === "child" &&
+      (!selectedChildId || memberData.childId !== selectedChildId)) ||
+    (requestedRole === "parent" && memberData.childId != null)
+  ) {
+    return {
+      ready: false,
+      activationState: "member-child-mismatch",
+      role: null,
+      childId: null,
+    };
+  }
+
+  return {
+    ready: true,
+    activationState: "ready",
+    role: requestedRole,
+    childId: requestedRole === "child" ? selectedChildId : null,
+  };
+}
+
 function createFamilyJoinFunctions({ functions, admin, db }) {
   const HttpsError = functions.https.HttpsError;
   const fieldValue = admin.firestore.FieldValue;
@@ -383,18 +479,174 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
           ? memberSnapshot.data()
           : null;
 
+        const membership = inspectApprovedMembership({
+          requesterUid,
+          requestData,
+          memberData,
+        });
+
         return {
           familyId,
           status: requestData.status || "pending",
-          role:
-            memberData && memberData.active === true
-              ? memberData.role || null
-              : null,
-          childId:
-            memberData && memberData.active === true
-              ? memberData.childId || null
-              : null,
+          activationState: membership.activationState,
+          memberReady: membership.ready,
+          role: membership.role,
+          childId: membership.childId,
         };
+      } catch (error) {
+        throw toHttpsError(error);
+      }
+    }
+  );
+
+  const finalizeFamilyJoin = functions.https.onCall(
+    async (data, context) => {
+      try {
+        const requesterUid = requireAuth(context);
+        const familyId = cleanDocumentId(
+          data && data.familyId,
+          "family_id"
+        );
+        const familyRef = db.collection("families").doc(familyId);
+        const requestRef = familyRef
+          .collection("join_requests")
+          .doc(requesterUid);
+        const memberRef = familyRef
+          .collection("members")
+          .doc(requesterUid);
+
+        const result = await db.runTransaction(async (transaction) => {
+          const familySnapshot = await transaction.get(familyRef);
+          const requestSnapshot = await transaction.get(requestRef);
+          const memberSnapshot = await transaction.get(memberRef);
+
+          if (!familySnapshot.exists || !requestSnapshot.exists) {
+            throw new HttpsError(
+              "not-found",
+              "Famille ou demande de rattachement introuvable."
+            );
+          }
+
+          const family = familySnapshot.data();
+          const request = requestSnapshot.data();
+          if (request.requesterUid !== requesterUid) {
+            throw new HttpsError(
+              "permission-denied",
+              "La demande ne correspond pas au compte authentifie."
+            );
+          }
+
+          if (!["accepted", "approved"].includes(request.status)) {
+            throw new HttpsError(
+              "failed-precondition",
+              "L'approbation est encore en cours."
+            );
+          }
+
+          const requestedRole = normalizeJoinRole(request.requestedRole);
+          const reviewerUid = request.reviewedBy;
+          if (!reviewerUid || reviewerUid === requesterUid) {
+            throw new HttpsError(
+              "failed-precondition",
+              "La preuve d'approbation est incomplete."
+            );
+          }
+
+          const reviewerSnapshot = await transaction.get(
+            familyRef.collection("members").doc(reviewerUid)
+          );
+          const reviewer = reviewerSnapshot.exists
+            ? reviewerSnapshot.data()
+            : null;
+          const reviewerAuthorized =
+            reviewer &&
+            reviewer.uid === reviewerUid &&
+            reviewer.active === true &&
+            (
+              (
+                reviewer.role === "owner" &&
+                family.ownerUid === reviewerUid
+              ) ||
+              reviewer.role === "manager" ||
+              reviewer.role === "familyAdmin"
+            );
+
+          if (!reviewerAuthorized) {
+            throw new HttpsError(
+              "permission-denied",
+              "L'approbation ne peut pas etre prouvee."
+            );
+          }
+
+          const selectedChildId =
+            requestedRole === "child"
+              ? cleanDocumentId(request.selectedChildId, "child_id")
+              : null;
+          if (requestedRole === "child") {
+            const childSnapshot = await transaction.get(
+              familyRef.collection("children").doc(selectedChildId)
+            );
+            if (!childSnapshot.exists) {
+              throw new HttpsError(
+                "not-found",
+                "Le profil enfant approuve n'existe plus."
+              );
+            }
+          }
+
+          const existing = memberSnapshot.exists
+            ? memberSnapshot.data()
+            : null;
+          if (existing && existing.uid && existing.uid !== requesterUid) {
+            throw new HttpsError(
+              "permission-denied",
+              "Le membre existant contient une identite incoherente."
+            );
+          }
+          if (existing && existing.active === false) {
+            throw new HttpsError(
+              "permission-denied",
+              "Le membre a ete desactive."
+            );
+          }
+
+          const timestamp = fieldValue.serverTimestamp();
+          const wasActive = existing && existing.active === true;
+          transaction.set(
+            memberRef,
+            buildApprovedMemberData({
+              requesterUid,
+              requestedRole,
+              childId: selectedChildId,
+              approvedBy: reviewerUid,
+              createdAt: existing && existing.createdAt
+                ? existing.createdAt
+                : timestamp,
+            }),
+            {merge: true}
+          );
+          transaction.update(requestRef, {
+            status: "accepted",
+            updatedAt: timestamp,
+            finalizedAt: timestamp,
+          });
+          if (!wasActive) {
+            transaction.update(familyRef, {
+              memberCount: fieldValue.increment(1),
+            });
+          }
+
+          return {
+            familyId,
+            status: "accepted",
+            activationState: "ready",
+            memberReady: true,
+            role: requestedRole,
+            childId: selectedChildId,
+          };
+        });
+
+        return result;
       } catch (error) {
         throw toHttpsError(error);
       }
@@ -767,6 +1019,7 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
   return {
     requestFamilyJoin,
     getFamilyJoinStatus,
+    finalizeFamilyJoin,
     approveFamilyJoin,
     rejectFamilyJoin,
   };
@@ -779,5 +1032,6 @@ module.exports = {
   cleanDocumentId,
   buildJoinRequestData,
   buildApprovedMemberData,
+  inspectApprovedMembership,
   createFamilyJoinFunctions,
 };

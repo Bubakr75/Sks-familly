@@ -9,6 +9,7 @@ const {
   cleanDocumentId,
   buildJoinRequestData,
   buildApprovedMemberData,
+  inspectApprovedMembership,
 } = require("./family_join");
 
 test("normalizes a valid family code", () => {
@@ -100,4 +101,63 @@ test("a parent member never receives a childId", () => {
 
   assert.equal(data.role, "parent");
   assert.equal(data.childId, null);
+});
+
+test("an accepted request is ready only with the exact active member", () => {
+  const requestData = {
+    requesterUid: "uid-parent",
+    requestedRole: "parent",
+    status: "accepted",
+    selectedChildId: null,
+  };
+  assert.deepEqual(
+    inspectApprovedMembership({
+      requesterUid: "uid-parent",
+      requestData,
+      memberData: {
+        uid: "uid-parent",
+        role: "parent",
+        active: true,
+        childId: null,
+      },
+    }),
+    {
+      ready: true,
+      activationState: "ready",
+      role: "parent",
+      childId: null,
+    }
+  );
+  assert.equal(
+    inspectApprovedMembership({
+      requesterUid: "uid-parent",
+      requestData,
+      memberData: null,
+    }).activationState,
+    "member-missing"
+  );
+  assert.equal(
+    inspectApprovedMembership({
+      requesterUid: "uid-parent",
+      requestData,
+      memberData: {
+        uid: "another-uid",
+        role: "parent",
+        active: true,
+      },
+    }).activationState,
+    "member-uid-mismatch"
+  );
+  assert.equal(
+    inspectApprovedMembership({
+      requesterUid: "uid-parent",
+      requestData,
+      memberData: {
+        uid: "uid-parent",
+        role: "parent",
+        active: false,
+      },
+    }).activationState,
+    "member-inactive"
+  );
 });

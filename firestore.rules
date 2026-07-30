@@ -473,7 +473,13 @@ service cloud.firestore {
 
       // L'autorité de rôle est écrite exclusivement par Firebase Admin.
       match /members/{memberId} {
-        allow read: if isFamilyOwner(familyId);
+        allow get: if isFamilyOwner(familyId) ||
+          (
+            isSignedIn() &&
+            memberId == request.auth.uid &&
+            resource.data.uid == request.auth.uid
+          );
+        allow list: if isFamilyOwner(familyId);
         allow write: if false;
       }
     }

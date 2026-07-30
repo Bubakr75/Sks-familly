@@ -747,6 +747,71 @@ class FamilyProvider extends ChangeNotifier {
     return ok;
   }
 
+  Future<void> finalizeApprovedFamily({
+    required String familyId,
+    required String familyCode,
+    required String role,
+    String? childId,
+  }) async {
+    await _firestore.verifyApprovedFamilyAccess(familyId);
+
+    // Les callbacks doivent être prêts avant le démarrage des listeners.
+    _setupFirestoreCallbacks();
+    await _clearFamilyScopedCache();
+
+    try {
+      await _firestore.activateApprovedFamily(
+        familyId: familyId,
+        familyCode: familyCode,
+        role: role,
+        childId: childId,
+      );
+      await _firestore.forceRefresh(throwOnError: true);
+      _familyCode = role == 'owner' || role == 'manager'
+          ? familyCode.trim().toUpperCase()
+          : null;
+      notifyListeners();
+    } catch (_) {
+      await _firestore.disconnectFamily();
+      _familyCode = null;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> _clearFamilyScopedCache() async {
+    _children.clear();
+    _history.clear();
+    _goals.clear();
+    _notes.clear();
+    _punishments.clear();
+    _immunities.clear();
+    _trades.clear();
+    _tribunalCases.clear();
+    _customBadges.clear();
+    _pendingRequests.clear();
+    _pendingJoinRequests.clear();
+    _parentProfiles.clear();
+    _purchases.clear();
+    _wallets.clear();
+
+    await Future.wait([
+      _childrenBox.clear(),
+      _historyBox.clear(),
+      _goalsBox.clear(),
+      _notesBox.clear(),
+      _punishmentsBox.clear(),
+      _immunitiesBox.clear(),
+      _tradesBox.clear(),
+      _tribunalBox.clear(),
+      _badgesBox.clear(),
+      _requestsBox.clear(),
+      _parentProfilesBox.clear(),
+      _purchasesBox.clear(),
+      _screenTimeBox.clear(),
+    ]);
+  }
+
   Future<String> migrateLegacyFamily(String migrationSecret) async {
     final code = await _firestore.migrateLegacyFamily(
       migrationSecret: migrationSecret,

@@ -44,6 +44,33 @@ enum FamilyJoinStatus {
   }
 }
 
+enum FamilyJoinActivationState {
+  approvalPending,
+  memberMissing,
+  memberInactive,
+  memberUidMismatch,
+  memberRoleMismatch,
+  memberChildMismatch,
+  requestInvalid,
+  ready;
+
+  static FamilyJoinActivationState fromWire(Object? value) {
+    return switch (value) {
+      'approval-pending' => FamilyJoinActivationState.approvalPending,
+      'member-missing' => FamilyJoinActivationState.memberMissing,
+      'member-inactive' => FamilyJoinActivationState.memberInactive,
+      'member-uid-mismatch' => FamilyJoinActivationState.memberUidMismatch,
+      'member-role-mismatch' => FamilyJoinActivationState.memberRoleMismatch,
+      'member-child-mismatch' => FamilyJoinActivationState.memberChildMismatch,
+      'request-invalid' => FamilyJoinActivationState.requestInvalid,
+      'ready' => FamilyJoinActivationState.ready,
+      _ => throw const FormatException(
+          'État de finalisation du rattachement invalide.',
+        ),
+    };
+  }
+}
+
 class FamilyJoinRequestResult {
   const FamilyJoinRequestResult({
     required this.familyId,
@@ -97,17 +124,22 @@ class FamilyJoinStatusResult {
   const FamilyJoinStatusResult({
     required this.familyId,
     required this.status,
+    this.activationState = FamilyJoinActivationState.ready,
+    this.memberReady = true,
     this.role,
     this.childId,
   });
 
   final String familyId;
   final FamilyJoinStatus status;
+  final FamilyJoinActivationState activationState;
+  final bool memberReady;
   final FamilyJoinRole? role;
   final String? childId;
 
   bool get isApproved =>
-      status == FamilyJoinStatus.approved || status == FamilyJoinStatus.accepted;
+      status == FamilyJoinStatus.approved ||
+      status == FamilyJoinStatus.accepted;
   bool get isRejected =>
       status == FamilyJoinStatus.rejected || status == FamilyJoinStatus.refused;
   bool get isPending =>
@@ -115,10 +147,28 @@ class FamilyJoinStatusResult {
       status == FamilyJoinStatus.sending ||
       status == FamilyJoinStatus.sent ||
       status == FamilyJoinStatus.received;
+  bool get canActivate =>
+      isApproved &&
+      memberReady &&
+      activationState == FamilyJoinActivationState.ready;
+  bool get canRetryFinalization =>
+      isApproved &&
+      (activationState == FamilyJoinActivationState.memberMissing ||
+          activationState == FamilyJoinActivationState.memberRoleMismatch ||
+          activationState == FamilyJoinActivationState.memberChildMismatch);
 
   factory FamilyJoinStatusResult.fromMap(Map<String, dynamic> map) {
     final familyId = _requiredString(map, 'familyId');
     final status = FamilyJoinStatus.fromWire(map['status']);
+    final approvedStatus = status == FamilyJoinStatus.approved ||
+        status == FamilyJoinStatus.accepted;
+    final activationState = FamilyJoinActivationState.fromWire(
+      map['activationState'] ?? (approvedStatus ? 'ready' : 'approval-pending'),
+    );
+    final rawMemberReady = map['memberReady'];
+    final memberReady = rawMemberReady is bool
+        ? rawMemberReady
+        : activationState == FamilyJoinActivationState.ready;
 
     final rawRole = map['role'];
     final role = rawRole == null ? null : FamilyJoinRole.fromWire(rawRole);
@@ -126,18 +176,22 @@ class FamilyJoinStatusResult {
     final rawChildId = map['childId'];
     final childId = rawChildId == null ? null : _requiredString(map, 'childId');
 
-    final approvedStatus = status == FamilyJoinStatus.approved ||
-        status == FamilyJoinStatus.accepted;
-    if (approvedStatus && role == null) {
+    if (approvedStatus && memberReady && role == null) {
       throw const FormatException(
-        'Une approbation sans membre actif est invalide.',
+        'Une approbation finalisée sans membre actif est invalide.',
       );
     }
 
-    if (!approvedStatus &&
+    if ((!approvedStatus || !memberReady) &&
         (role != null || childId != null)) {
       throw const FormatException(
-        'Une demande non approuvée ne doit pas activer de membre.',
+        'Une demande non finalisée ne doit pas activer de membre.',
+      );
+    }
+
+    if (memberReady != (activationState == FamilyJoinActivationState.ready)) {
+      throw const FormatException(
+        'L’état du membre et la finalisation sont incohérents.',
       );
     }
 
@@ -156,6 +210,8 @@ class FamilyJoinStatusResult {
     return FamilyJoinStatusResult(
       familyId: familyId,
       status: status,
+      activationState: activationState,
+      memberReady: memberReady,
       role: role,
       childId: childId,
     );
