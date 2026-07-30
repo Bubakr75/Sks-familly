@@ -1,6 +1,11 @@
 "use strict";
 
 const crypto = require("crypto");
+const {
+  requireAuthenticatedUid,
+  isAuthenticatedFamilyOwner,
+  applyFamilyOwnerRepair,
+} = require("./family_owner_authorization");
 
 const FAMILY_CODE_PATTERN = /^[A-Z0-9]{4,10}$/;
 const DOCUMENT_ID_PATTERN = /^[^/]{1,200}$/;
@@ -296,7 +301,10 @@ function createFamilyManagementFunctions({
   const changeFamilyCode = functions.https.onCall(
     async (data, context) => {
       try {
-        const ownerUid = requireAuth(context);
+        const ownerUid = requireAuthenticatedUid(
+          context,
+          HttpsError
+        );
         const familyId = cleanManagedDocumentId(
           data && data.familyId
         );
@@ -318,22 +326,31 @@ function createFamilyManagementFunctions({
           }
 
           const family = familySnapshot.data();
-          const owner = ownerSnapshot.exists
-            ? ownerSnapshot.data()
-            : null;
-
-          if (
-            family.ownerUid !== ownerUid ||
-            !owner ||
-            owner.active !== true ||
-            owner.role !== "owner"
-          ) {
-            throw new Error("OWNER_REQUIRED");
-          }
+          const ownerAuthorization = isAuthenticatedFamilyOwner({
+            context,
+            familySnapshot,
+            memberSnapshot: ownerSnapshot,
+            HttpsError,
+            allowRepair: true,
+          });
 
           const oldCode = normalizeManagedFamilyCode(family.code);
 
           if (oldCode === newCode) {
+            if (ownerAuthorization.repair) {
+              const repairTimestamp = fieldValue.serverTimestamp();
+              applyFamilyOwnerRepair({
+                transaction,
+                memberRef: ownerRef,
+                authorization: ownerAuthorization,
+                timestamp: repairTimestamp,
+              });
+              console.warn("Family owner membership repaired", {
+                reason: ownerAuthorization.diagnosticCode,
+                familyFormat: ownerAuthorization.familyFormat,
+              });
+            }
+
             return {
               familyId,
               code: newCode,
@@ -376,6 +393,19 @@ function createFamilyManagementFunctions({
 
           const oldCodeSnapshot = await transaction.get(oldCodeRef);
           const timestamp = fieldValue.serverTimestamp();
+
+          if (ownerAuthorization.repair) {
+            applyFamilyOwnerRepair({
+              transaction,
+              memberRef: ownerRef,
+              authorization: ownerAuthorization,
+              timestamp,
+            });
+            console.warn("Family owner membership repaired", {
+              reason: ownerAuthorization.diagnosticCode,
+              familyFormat: ownerAuthorization.familyFormat,
+            });
+          }
 
           transaction.set(
             newCodeRef,

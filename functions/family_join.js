@@ -1,5 +1,11 @@
 "use strict";
 
+const {
+  requireAuthenticatedUid,
+  isAuthenticatedFamilyOwner,
+  applyFamilyOwnerRepair,
+} = require("./family_owner_authorization");
+
 const JOIN_WINDOW_MS = 15 * 60 * 1000;
 const JOIN_MAX_ATTEMPTS = 10;
 const JOIN_BLOCK_MS = 30 * 60 * 1000;
@@ -398,7 +404,10 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
   const approveFamilyJoin = functions.https.onCall(
     async (data, context) => {
       try {
-        const reviewerUid = requireAuth(context);
+        const reviewerUid = requireAuthenticatedUid(
+          context,
+          HttpsError
+        );
         const familyId = cleanDocumentId(
           data && data.familyId,
           "family_id"
@@ -430,7 +439,7 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
           .collection("members")
           .doc(requesterUid);
 
-        const approvedRole = await db.runTransaction(
+        const approval = await db.runTransaction(
           async (transaction) => {
             const familySnapshot = await transaction.get(familyRef);
             const reviewerSnapshot = await transaction.get(reviewerRef);
@@ -450,37 +459,9 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
               : null;
             const request = requestSnapshot.data();
 
-            const reviewerIsOwner =
-              family.ownerUid === reviewerUid &&
-              reviewer &&
-              reviewer.active === true &&
-              reviewer.role === "owner";
-
-            const reviewerIsParent =
-              reviewer &&
-              reviewer.active === true &&
-              (reviewer.role === "owner" ||
-                reviewer.role === "parent");
-
-            if (!reviewerIsParent) {
-              throw new HttpsError(
-                "permission-denied",
-                "Seul un parent autorise peut traiter cette demande."
-              );
-            }
-
             if (
-              request.requesterUid !== requesterUid ||
-              !["pending", "sent", "received"].includes(request.status)
+              request.requesterUid !== requesterUid
             ) {
-              if (
-                ["approved", "accepted"].includes(request.status) &&
-                memberSnapshot.exists &&
-                memberSnapshot.data().active === true
-              ) {
-                return memberSnapshot.data().role;
-              }
-
               throw new HttpsError(
                 "failed-precondition",
                 "Cette demande ne peut plus etre approuvee."
@@ -490,12 +471,75 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             const requestedRole = normalizeJoinRole(
               request.requestedRole
             );
+            const pendingRequest =
+              ["pending", "sent", "received"].includes(request.status);
+            const alreadyApproved =
+              ["approved", "accepted"].includes(request.status) &&
+              memberSnapshot.exists &&
+              memberSnapshot.data().active === true &&
+              memberSnapshot.data().uid === requesterUid &&
+              memberSnapshot.data().role === requestedRole;
 
-            if (requestedRole === "parent" && !reviewerIsOwner) {
+            if (!pendingRequest && !alreadyApproved) {
               throw new HttpsError(
-                "permission-denied",
-                "Seul le proprietaire peut autoriser un autre parent."
+                "failed-precondition",
+                "Cette demande ne peut plus etre approuvee."
               );
+            }
+
+            let ownerAuthorization = null;
+
+            if (requestedRole === "parent") {
+              ownerAuthorization = isAuthenticatedFamilyOwner({
+                context,
+                familySnapshot,
+                memberSnapshot: reviewerSnapshot,
+                HttpsError,
+                allowRepair: true,
+              });
+            } else {
+              const reviewerIsParent =
+                reviewer &&
+                reviewer.uid === reviewerUid &&
+                reviewer.active === true &&
+                (
+                  reviewer.role === "parent" ||
+                  (
+                    reviewer.role === "owner" &&
+                    family.ownerUid === reviewerUid
+                  )
+                );
+
+              if (!reviewerIsParent) {
+                throw new HttpsError(
+                  "permission-denied",
+                  "Seul un parent autorise peut traiter cette demande."
+                );
+              }
+            }
+
+            if (alreadyApproved) {
+              if (ownerAuthorization && ownerAuthorization.repair) {
+                const repairTimestamp = fieldValue.serverTimestamp();
+                applyFamilyOwnerRepair({
+                  transaction,
+                  memberRef: reviewerRef,
+                  authorization: ownerAuthorization,
+                  timestamp: repairTimestamp,
+                });
+                console.warn("Family owner membership repaired", {
+                  reason: ownerAuthorization.diagnosticCode,
+                  familyFormat: ownerAuthorization.familyFormat,
+                });
+              }
+
+              return {
+                role: requestedRole,
+                childId:
+                  requestedRole === "child"
+                    ? memberSnapshot.data().childId || null
+                    : null,
+              };
             }
 
             let childSnapshot = null;
@@ -521,6 +565,20 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             }
 
             const timestamp = fieldValue.serverTimestamp();
+
+            if (ownerAuthorization && ownerAuthorization.repair) {
+              applyFamilyOwnerRepair({
+                transaction,
+                memberRef: reviewerRef,
+                authorization: ownerAuthorization,
+                timestamp,
+              });
+              console.warn("Family owner membership repaired", {
+                reason: ownerAuthorization.diagnosticCode,
+                familyFormat: ownerAuthorization.familyFormat,
+              });
+            }
+
             const wasActive =
               memberSnapshot.exists &&
               memberSnapshot.data().active === true;
@@ -551,7 +609,11 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
               });
             }
 
-            return requestedRole;
+            return {
+              role: requestedRole,
+              childId:
+                requestedRole === "child" ? selectedChildId : null,
+            };
           }
         );
 
@@ -559,9 +621,8 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
           familyId,
           requesterUid,
           status: "accepted",
-          role: approvedRole,
-          childId:
-            approvedRole === "child" ? selectedChildId : null,
+          role: approval.role,
+          childId: approval.childId,
         };
       } catch (error) {
         throw toHttpsError(error);
@@ -572,7 +633,10 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
   const rejectFamilyJoin = functions.https.onCall(
     async (data, context) => {
       try {
-        const reviewerUid = requireAuth(context);
+        const reviewerUid = requireAuthenticatedUid(
+          context,
+          HttpsError
+        );
         const familyId = cleanDocumentId(
           data && data.familyId,
           "family_id"
@@ -615,36 +679,49 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             : null;
           const request = requestSnapshot.data();
 
-          const reviewerIsOwner =
-            family.ownerUid === reviewerUid &&
-            reviewer &&
-            reviewer.active === true &&
-            reviewer.role === "owner";
+          let ownerAuthorization = null;
 
-          const reviewerIsParent =
-            reviewer &&
-            reviewer.active === true &&
-            (reviewer.role === "owner" ||
-              reviewer.role === "parent");
+          if (request.requestedRole === "parent") {
+            ownerAuthorization = isAuthenticatedFamilyOwner({
+              context,
+              familySnapshot,
+              memberSnapshot: reviewerSnapshot,
+              HttpsError,
+              allowRepair: true,
+            });
+          } else {
+            const reviewerIsParent =
+              reviewer &&
+              reviewer.uid === reviewerUid &&
+              reviewer.active === true &&
+              (
+                reviewer.role === "parent" ||
+                (
+                  reviewer.role === "owner" &&
+                  family.ownerUid === reviewerUid
+                )
+              );
 
-          if (!reviewerIsParent) {
-            throw new HttpsError(
-              "permission-denied",
-              "Seul un parent autorise peut traiter cette demande."
-            );
+            if (!reviewerIsParent) {
+              throw new HttpsError(
+                "permission-denied",
+                "Seul un parent autorise peut traiter cette demande."
+              );
+            }
           }
 
-          if (
-            request.requestedRole === "parent" &&
-            !reviewerIsOwner
-          ) {
-            throw new HttpsError(
-              "permission-denied",
-              "Seul le proprietaire peut refuser une demande parent."
-            );
+          if (["rejected", "refused"].includes(request.status)) {
+            if (ownerAuthorization && ownerAuthorization.repair) {
+              const repairTimestamp = fieldValue.serverTimestamp();
+              applyFamilyOwnerRepair({
+                transaction,
+                memberRef: reviewerRef,
+                authorization: ownerAuthorization,
+                timestamp: repairTimestamp,
+              });
+            }
+            return;
           }
-
-          if (["rejected", "refused"].includes(request.status)) return;
 
           if (!["pending", "sent", "received"].includes(request.status)) {
             throw new HttpsError(
@@ -654,6 +731,19 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
           }
 
           const timestamp = fieldValue.serverTimestamp();
+
+          if (ownerAuthorization && ownerAuthorization.repair) {
+            applyFamilyOwnerRepair({
+              transaction,
+              memberRef: reviewerRef,
+              authorization: ownerAuthorization,
+              timestamp,
+            });
+            console.warn("Family owner membership repaired", {
+              reason: ownerAuthorization.diagnosticCode,
+              familyFormat: ownerAuthorization.familyFormat,
+            });
+          }
 
           transaction.update(requestRef, {
             status: "refused",
