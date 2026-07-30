@@ -74,12 +74,13 @@ function buildJoinRequestData({
       requestedRole === "child" ? requestedChildName : null,
     deviceId,
     deviceName,
-    status: "pending",
+    status: "sent",
     createdAt,
     updatedAt: createdAt,
     reviewedBy: null,
     reviewedAt: null,
     selectedChildId: null,
+    readBy: [],
   };
 }
 
@@ -302,9 +303,14 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
 
           if (
             existingRequest.exists &&
-            existingRequest.data().status === "pending"
+            ["pending", "sent", "received"].includes(
+              existingRequest.data().status
+            )
           ) {
-            return { alreadyPending: true };
+            return {
+              alreadyPending: true,
+              requestedRole: existingRequest.data().requestedRole,
+            };
           }
 
           const timestamp = fieldValue.serverTimestamp();
@@ -321,14 +327,15 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             })
           );
 
-          return { alreadyPending: false };
+          return { alreadyPending: false, requestedRole };
         });
 
         return {
           familyId,
           requestId: requesterUid,
-          status: "pending",
+          status: "sent",
           alreadyPending: result.alreadyPending,
+          requestedRole: result.requestedRole,
         };
       } catch (error) {
         throw toHttpsError(error);
@@ -464,10 +471,10 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
 
             if (
               request.requesterUid !== requesterUid ||
-              request.status !== "pending"
+              !["pending", "sent", "received"].includes(request.status)
             ) {
               if (
-                request.status === "approved" &&
+                ["approved", "accepted"].includes(request.status) &&
                 memberSnapshot.exists &&
                 memberSnapshot.data().active === true
               ) {
@@ -530,7 +537,7 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             );
 
             transaction.update(requestRef, {
-              status: "approved",
+              status: "accepted",
               selectedChildId:
                 requestedRole === "child" ? selectedChildId : null,
               reviewedBy: reviewerUid,
@@ -551,7 +558,7 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
         return {
           familyId,
           requesterUid,
-          status: "approved",
+          status: "accepted",
           role: approvedRole,
           childId:
             approvedRole === "child" ? selectedChildId : null,
@@ -637,9 +644,9 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             );
           }
 
-          if (request.status === "rejected") return;
+          if (["rejected", "refused"].includes(request.status)) return;
 
-          if (request.status !== "pending") {
+          if (!["pending", "sent", "received"].includes(request.status)) {
             throw new HttpsError(
               "failed-precondition",
               "Cette demande ne peut plus etre refusee."
@@ -649,7 +656,7 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
           const timestamp = fieldValue.serverTimestamp();
 
           transaction.update(requestRef, {
-            status: "rejected",
+            status: "refused",
             reviewedBy: reviewerUid,
             reviewedAt: timestamp,
             updatedAt: timestamp,
@@ -659,7 +666,7 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
         return {
           familyId,
           requesterUid,
-          status: "rejected",
+          status: "refused",
         };
       } catch (error) {
         throw toHttpsError(error);

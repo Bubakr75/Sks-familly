@@ -166,6 +166,7 @@ class FirestoreService {
   StreamSubscription? _tribunalSub;
   StreamSubscription? _badgesSub;
   StreamSubscription? _requestsSub;
+  StreamSubscription? _joinRequestsSub;
   StreamSubscription? _screenTimeSub;
   StreamSubscription? _parentProfilesSub;
   StreamSubscription? _choresSub;
@@ -189,6 +190,7 @@ class FirestoreService {
   void Function(List<TribunalCase>)? onTribunalChanged;
   void Function(List<BadgeModel>)? onBadgesChanged;
   void Function(List<PendingRequest>)? onRequestsChanged;
+  void Function(List<Map<String, dynamic>>)? onJoinRequestsChanged;
   void Function(Map<String, dynamic>)? onScreenTimeChanged;
   void Function(List<ParentProfile>)? onParentProfilesChanged;
   void Function(List<Map<String, dynamic>>)? onChoresChanged;
@@ -229,9 +231,14 @@ class FirestoreService {
       _startWebLifecycleHandlers();
 
       if (_familyId != null) {
-        await FcmService().registerToken();
-        _startListening();
-        _startKeepAlive();
+        // Le push n'est qu'une alerte : il ne doit jamais retarder les
+        // listeners Firestore Web qui alimentent la boîte de réception.
+        // Android conserve son initialisation historique, déjà fiable.
+        if (kIsWeb) {
+          unawaited(FcmService().registerToken());
+        } else {
+          await FcmService().registerToken();
+        }
       }
     } catch (e) {
       if (kDebugMode) debugPrint('FirestoreService init error: $e');
@@ -680,7 +687,12 @@ class FirestoreService {
       onBadgesChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
 
-    _requestsSub = fRef.collection('requests').snapshots().listen((s) {
+    Query<Map<String, dynamic>> requestsQuery = fRef.collection('requests');
+    if (_memberRole == 'child' && _memberChildId != null) {
+      requestsQuery = requestsQuery.where('childId', isEqualTo: _memberChildId);
+    }
+    _requestsSub = requestsQuery.snapshots().listen((s) {
+      _markDataReceived();
       // 🔔 Ne garder que les demandes "pending" pour le badge cloche
       final list = s.docs
           .map((doc) {
@@ -688,10 +700,28 @@ class FirestoreService {
             d['id'] = doc.id;
             return PendingRequest.fromMap(d);
           })
-          .where((r) => r.status == 'pending')
+          .where((r) => r.isPending)
           .toList();
       onRequestsChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
+    if (_memberRole == 'owner' || _memberRole == 'parent') {
+      _joinRequestsSub =
+          fRef.collection('join_requests').snapshots().listen((snapshot) {
+        _markDataReceived();
+        final list = snapshot.docs.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['id'] = doc.id;
+          return data;
+        }).where((data) {
+          final status = data['status']?.toString() ?? '';
+          return status == 'pending' ||
+              status == 'sent' ||
+              status == 'received';
+        }).toList();
+        onJoinRequestsChanged?.call(list);
+      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }
 
     _screenTimeSub = fRef.collection('screen_time').snapshots().listen((s) {
       _markDataReceived();
@@ -784,6 +814,7 @@ class FirestoreService {
     _tribunalSub?.cancel();
     _badgesSub?.cancel();
     _requestsSub?.cancel();
+    _joinRequestsSub?.cancel();
     _screenTimeSub?.cancel();
     _parentProfilesSub?.cancel();
     _choresSub?.cancel();
@@ -800,12 +831,28 @@ class FirestoreService {
     _tribunalSub = null;
     _badgesSub = null;
     _requestsSub = null;
+    _joinRequestsSub = null;
     _screenTimeSub = null;
     _parentProfilesSub = null;
     _choresSub = null;
     _rewardsSub = null;
     _purchasesSub = null;
     _walletsSub = null;
+  }
+
+  void startRealtimeSync() {
+    if (_familyId == null) return;
+    _stopListening();
+    _startListening();
+    _startKeepAlive();
+  }
+
+  Future<void> markFamilyInboxRead() async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) return;
+    await FirebaseFunctions.instance.httpsCallable('markFamilyInboxRead').call({
+      'familyId': currentFamilyId,
+    });
   }
 
   Stream<List<SksWalletOperation>> watchWalletOperations(String childId) {

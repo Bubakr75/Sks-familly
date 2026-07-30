@@ -10,21 +10,27 @@ void main() {
       rules = File('firestore.rules').readAsStringSync();
     });
 
-    test('les deux collections sont réservées au propriétaire réel', () {
-      for (final path in [
-        'match /join_requests/{requestId}',
-        'match /members/{memberId}',
-      ]) {
-        final start = rules.indexOf(path);
-        expect(start, greaterThanOrEqualTo(0));
-        final nextMatch = rules.indexOf('\n      match /', start + path.length);
-        final block = rules.substring(
-          start,
-          nextMatch == -1 ? rules.length : nextMatch,
-        );
-        expect(block, contains('isFamilyOwner(familyId)'));
-        expect(block, contains('allow write: if false'));
-      }
+    String ruleBlock(String path) {
+      final start = rules.indexOf(path);
+      expect(start, greaterThanOrEqualTo(0));
+      final nextMatch = rules.indexOf('\n      match /', start + path.length);
+      return rules.substring(
+        start,
+        nextMatch == -1 ? rules.length : nextMatch,
+      );
+    }
+
+    test('la boîte de demandes est lisible par les parents actifs', () {
+      final block = ruleBlock('match /join_requests/{requestId}');
+      expect(block, contains('isFamilyParent(familyId)'));
+      expect(block, contains('requestId == request.auth.uid'));
+      expect(block, contains('allow write: if false'));
+    });
+
+    test('les membres restent réservés au propriétaire réel', () {
+      final block = ruleBlock('match /members/{memberId}');
+      expect(block, contains('isFamilyOwner(familyId)'));
+      expect(block, contains('allow write: if false'));
     });
   });
 

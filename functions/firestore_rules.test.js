@@ -71,6 +71,7 @@ function requestData(id, childId = "child-1", overrides = {}) {
     status: "pending",
     createdAt: "2026-07-28T12:00:00.000Z",
     extra: {},
+    readBy: [],
     lastModifiedBy: "device-test",
     ...overrides,
   };
@@ -348,6 +349,10 @@ test("parent_profiles is restricted to parents and the real owner", async () => 
 test("requests allows only a child own pending create and parent management", async () => {
   const childDb = testEnv.authenticatedContext("child-a").firestore();
   const parentDb = testEnv.authenticatedContext("parent-a").firestore();
+  await assertSucceeds(getDoc(businessRef(childDb, "requests", "request-1")));
+  await assertFails(
+    getDoc(businessRef(childDb, "requests", "request-other-child"))
+  );
 
   await assertSucceeds(
     setDoc(
@@ -456,7 +461,7 @@ test("FCM tokens require active membership and a coherent immutable UID", async 
   }
 });
 
-test("join_requests and members are readable only by the real owner", async () => {
+test("join_requests are visible to active parents while members stay owner-only", async () => {
   const ownerDb = testEnv.authenticatedContext("owner-a").firestore();
   await assertSucceeds(
     getDoc(businessRef(ownerDb, "join_requests", "join-1"))
@@ -468,10 +473,17 @@ test("join_requests and members are readable only by the real owner", async () =
     getDoc(businessRef(ownerDb, "members", "parent-a"))
   );
   await assertSucceeds(getDocs(familyCollectionRef(ownerDb, "members")));
+  const parentDb = testEnv.authenticatedContext("parent-a").firestore();
+  await assertSucceeds(
+    getDoc(businessRef(parentDb, "join_requests", "join-1"))
+  );
+  await assertSucceeds(
+    getDocs(familyCollectionRef(parentDb, "join_requests"))
+  );
+  await assertFails(getDoc(businessRef(parentDb, "members", "parent-a")));
 
   for (const context of [
     testEnv.unauthenticatedContext(),
-    testEnv.authenticatedContext("parent-a"),
     testEnv.authenticatedContext("child-a"),
     testEnv.authenticatedContext("owner-b"),
     testEnv.authenticatedContext("outsider"),

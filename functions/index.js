@@ -16,6 +16,11 @@ exports.getFamilyJoinStatus = familyJoinFunctions.getFamilyJoinStatus;
 exports.approveFamilyJoin = familyJoinFunctions.approveFamilyJoin;
 exports.rejectFamilyJoin = familyJoinFunctions.rejectFamilyJoin;
 
+const {createFamilyInboxFunctions} = require("./family_inbox");
+const familyInboxFunctions =
+  createFamilyInboxFunctions({functions, admin, db});
+exports.markFamilyInboxRead = familyInboxFunctions.markFamilyInboxRead;
+
 const {
   createFamilyManagementFunctions,
 } = require("./family_management");

@@ -71,6 +71,7 @@ class FamilyJoinService {
       final callableResult = await callable.call(payload);
       final result = FamilyJoinRequestResult.fromMap(
         _asStringMap(callableResult.data),
+        fallbackRequestedRole: requestedRole,
       );
 
       await savePendingRequest(
@@ -78,7 +79,7 @@ class FamilyJoinService {
           familyId: result.familyId,
           familyCode: normalizedCode,
           requestId: result.requestId,
-          requestedRole: requestedRole,
+          requestedRole: result.requestedRole,
         ),
       );
 

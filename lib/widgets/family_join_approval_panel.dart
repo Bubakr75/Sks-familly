@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/family_provider.dart';
 
 class FamilyJoinApprovalPanel extends StatelessWidget {
   const FamilyJoinApprovalPanel({
@@ -14,6 +16,7 @@ class FamilyJoinApprovalPanel extends StatelessWidget {
     required BuildContext context,
     required String requesterUid,
     required bool approve,
+    String? childId,
   }) async {
     try {
       final functionName = approve ? 'approveFamilyJoin' : 'rejectFamilyJoin';
@@ -25,6 +28,7 @@ class FamilyJoinApprovalPanel extends StatelessWidget {
       await callable.call({
         'familyId': familyId,
         'requesterUid': requesterUid,
+        if (childId != null) 'childId': childId,
       });
 
       if (!context.mounted) return;
@@ -53,13 +57,39 @@ class FamilyJoinApprovalPanel extends StatelessWidget {
     }
   }
 
+  Future<void> _approveChild(
+    BuildContext context,
+    String requesterUid,
+  ) async {
+    final children = context.read<FamilyProvider>().children;
+    if (children.isEmpty) return;
+    final childId = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('Choisir le profil enfant'),
+        children: children
+            .map((child) => SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, child.id),
+                  child: Text('${child.avatar} ${child.name}'),
+                ))
+            .toList(),
+      ),
+    );
+    if (childId == null || !context.mounted) return;
+    await _review(
+      context: context,
+      requesterUid: requesterUid,
+      approve: true,
+      childId: childId,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final requests = FirebaseFirestore.instance
         .collection('families')
         .doc(familyId)
         .collection('join_requests')
-        .where('status', isEqualTo: 'pending')
         .snapshots();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -86,7 +116,12 @@ class FamilyJoinApprovalPanel extends StatelessWidget {
           );
         }
 
-        final documents = snapshot.data!.docs;
+        const activeStatuses = {'pending', 'sending', 'sent', 'received'};
+        final documents = snapshot.data!.docs.where((document) {
+          final status =
+              (document.data()['status'] as String? ?? 'pending').toLowerCase();
+          return activeStatuses.contains(status);
+        }).toList();
 
         if (documents.isEmpty) {
           return const SizedBox.shrink();
@@ -154,7 +189,7 @@ class FamilyJoinApprovalPanel extends StatelessWidget {
                                         requesterUid: document.id,
                                         approve: true,
                                       )
-                                  : null,
+                                  : () => _approveChild(context, document.id),
                               icon: const Icon(Icons.check_rounded),
                               label: const Text('Approuver'),
                             ),

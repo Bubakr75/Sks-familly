@@ -91,7 +91,8 @@ service cloud.firestore {
           'status',
           'createdAt',
           'extra',
-          'lastModifiedBy'
+          'lastModifiedBy',
+          'readBy'
         ]) &&
         data.keys().hasAll([
           'id',
@@ -102,7 +103,8 @@ service cloud.firestore {
           'amount',
           'status',
           'createdAt',
-          'extra'
+          'extra',
+          'readBy'
         ]) &&
         data.id is string &&
         data.id == requestId &&
@@ -128,6 +130,8 @@ service cloud.firestore {
         data.createdAt.size() <= 40 &&
         data.extra is map &&
         data.extra.size() <= 20 &&
+        data.readBy is list &&
+        data.readBy.size() == 0 &&
         (
           !('lastModifiedBy' in data) ||
           (
@@ -275,7 +279,11 @@ service cloud.firestore {
       }
 
       match /requests/{requestId} {
-        allow read: if activeFamilyMember(familyId);
+        allow read: if isFamilyParent(familyId) ||
+          (
+            isFamilyChild(familyId) &&
+            resource.data.childId == member(familyId).childId
+          );
         allow create: if isValidChildRequest(
             request.resource.data,
             requestId
@@ -326,7 +334,12 @@ service cloud.firestore {
 
       // Écriture exclusivement via les Cloud Functions de rattachement.
       match /join_requests/{requestId} {
-        allow read: if isFamilyOwner(familyId);
+        allow read: if isFamilyParent(familyId) ||
+          (
+            isSignedIn() &&
+            requestId == request.auth.uid &&
+            resource.data.requesterUid == request.auth.uid
+          );
         allow write: if false;
       }
 

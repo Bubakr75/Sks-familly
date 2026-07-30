@@ -48,7 +48,8 @@ test("builds a pending child request without child data access", () => {
   assert.equal(data.requesterUid, "uid-child");
   assert.equal(data.requestedRole, "child");
   assert.equal(data.requestedChildName, "Adam");
-  assert.equal(data.status, "pending");
+  assert.equal(data.status, "sent");
+  assert.deepEqual(data.readBy, []);
   assert.equal(data.selectedChildId, null);
   assert.equal(data.createdAt, timestamp);
 });

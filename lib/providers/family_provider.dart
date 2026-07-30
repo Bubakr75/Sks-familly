@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/child_model.dart';
@@ -62,6 +63,7 @@ class FamilyProvider extends ChangeNotifier {
   List<ParentProfile> _parentProfiles = [];
   List<TradeModel> _trades = [];
   List<PendingRequest> _pendingRequests = [];
+  List<Map<String, dynamic>> _pendingJoinRequests = [];
   List<RewardModel> _rewards = [];
   List<Map<String, dynamic>> _purchases = [];
   List<ChoreModel> _chores = [];
@@ -150,6 +152,8 @@ class FamilyProvider extends ChangeNotifier {
   List<BadgeModel> get customBadges => _customBadges;
   List<TradeModel> get trades => _trades;
   List<PendingRequest> get pendingRequests => _pendingRequests;
+  List<Map<String, dynamic>> get pendingJoinRequests =>
+      List.unmodifiable(_pendingJoinRequests);
   List<RewardModel> get rewards => _rewards;
   List<Map<String, dynamic>> get purchases => _purchases;
   List<ChoreModel> get chores => _chores;
@@ -318,7 +322,10 @@ class FamilyProvider extends ChangeNotifier {
     try {
       await _firestore.init();
       _familyCode = await _firestore.getFamilyCode();
-      if (_firestore.isConnected) _setupFirestoreCallbacks();
+      if (_firestore.isConnected) {
+        _setupFirestoreCallbacks();
+        _firestore.startRealtimeSync();
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('Firestore init error: $e');
     }
@@ -529,6 +536,10 @@ class FamilyProvider extends ChangeNotifier {
           _mergeWithPending(filtered, _pendingRequests, (r) => r.id);
       _saveBoxFromList(
           _requestsBox, _pendingRequests, (e) => e.id, (e) => e.toMap());
+      notifyListeners();
+    };
+    _firestore.onJoinRequestsChanged = (list) {
+      _pendingJoinRequests = list;
       notifyListeners();
     };
     _firestore.onTribunalChanged = (list) {
@@ -2368,7 +2379,26 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // ─── Demandes en attente (validation parentale) ────────────
-  int get pendingRequestsCount => _pendingRequests.length;
+  int get pendingRequestsCount =>
+      _pendingRequests.length + _pendingJoinRequests.length;
+
+  int get unreadRequestsCount {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final childUnread =
+        _pendingRequests.where((request) => request.isUnreadFor(uid)).length;
+    final joinUnread = _pendingJoinRequests.where((request) {
+      final readBy = request['readBy'];
+      return uid != null &&
+          uid.isNotEmpty &&
+          (readBy is! List || !readBy.contains(uid));
+    }).length;
+    return childUnread + joinUnread;
+  }
+
+  Future<void> markFamilyInboxRead() async {
+    if (!_firestore.isConnected) return;
+    await _firestore.markFamilyInboxRead();
+  }
 
   Future<RequestResult> createRequest({
     required String type,

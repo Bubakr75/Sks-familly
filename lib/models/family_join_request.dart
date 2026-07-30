@@ -14,6 +14,13 @@ enum FamilyJoinRole {
 }
 
 enum FamilyJoinStatus {
+  sending,
+  sent,
+  received,
+  accepted,
+  refused,
+  expired,
+  error,
   pending,
   approved,
   rejected;
@@ -25,6 +32,13 @@ enum FamilyJoinStatus {
       'pending' => FamilyJoinStatus.pending,
       'approved' => FamilyJoinStatus.approved,
       'rejected' => FamilyJoinStatus.rejected,
+      'sending' => FamilyJoinStatus.sending,
+      'sent' => FamilyJoinStatus.sent,
+      'received' => FamilyJoinStatus.received,
+      'accepted' => FamilyJoinStatus.accepted,
+      'refused' => FamilyJoinStatus.refused,
+      'expired' => FamilyJoinStatus.expired,
+      'error' => FamilyJoinStatus.error,
       _ => throw const FormatException('Statut de connexion invalide.'),
     };
   }
@@ -36,20 +50,30 @@ class FamilyJoinRequestResult {
     required this.requestId,
     required this.status,
     required this.alreadyPending,
+    required this.requestedRole,
   });
 
   final String familyId;
   final String requestId;
   final FamilyJoinStatus status;
   final bool alreadyPending;
+  final FamilyJoinRole requestedRole;
 
-  factory FamilyJoinRequestResult.fromMap(Map<String, dynamic> map) {
+  factory FamilyJoinRequestResult.fromMap(
+    Map<String, dynamic> map, {
+    FamilyJoinRole fallbackRequestedRole = FamilyJoinRole.parent,
+  }) {
     final familyId = _requiredString(map, 'familyId');
     final requestId = _requiredString(map, 'requestId');
     final status = FamilyJoinStatus.fromWire(map['status']);
     final alreadyPending = map['alreadyPending'];
+    final requestedRole = map['requestedRole'] == null
+        ? fallbackRequestedRole
+        : FamilyJoinRole.fromWire(map['requestedRole']);
 
-    if (status != FamilyJoinStatus.pending) {
+    if (status != FamilyJoinStatus.pending &&
+        status != FamilyJoinStatus.sent &&
+        status != FamilyJoinStatus.received) {
       throw const FormatException(
         'Une nouvelle demande doit avoir le statut pending.',
       );
@@ -64,6 +88,7 @@ class FamilyJoinRequestResult {
       requestId: requestId,
       status: status,
       alreadyPending: alreadyPending,
+      requestedRole: requestedRole,
     );
   }
 }
@@ -81,9 +106,15 @@ class FamilyJoinStatusResult {
   final FamilyJoinRole? role;
   final String? childId;
 
-  bool get isApproved => status == FamilyJoinStatus.approved;
-  bool get isRejected => status == FamilyJoinStatus.rejected;
-  bool get isPending => status == FamilyJoinStatus.pending;
+  bool get isApproved =>
+      status == FamilyJoinStatus.approved || status == FamilyJoinStatus.accepted;
+  bool get isRejected =>
+      status == FamilyJoinStatus.rejected || status == FamilyJoinStatus.refused;
+  bool get isPending =>
+      status == FamilyJoinStatus.pending ||
+      status == FamilyJoinStatus.sending ||
+      status == FamilyJoinStatus.sent ||
+      status == FamilyJoinStatus.received;
 
   factory FamilyJoinStatusResult.fromMap(Map<String, dynamic> map) {
     final familyId = _requiredString(map, 'familyId');
@@ -95,13 +126,15 @@ class FamilyJoinStatusResult {
     final rawChildId = map['childId'];
     final childId = rawChildId == null ? null : _requiredString(map, 'childId');
 
-    if (status == FamilyJoinStatus.approved && role == null) {
+    final approvedStatus = status == FamilyJoinStatus.approved ||
+        status == FamilyJoinStatus.accepted;
+    if (approvedStatus && role == null) {
       throw const FormatException(
         'Une approbation sans membre actif est invalide.',
       );
     }
 
-    if (status != FamilyJoinStatus.approved &&
+    if (!approvedStatus &&
         (role != null || childId != null)) {
       throw const FormatException(
         'Une demande non approuvée ne doit pas activer de membre.',

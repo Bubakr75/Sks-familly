@@ -70,16 +70,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 800),
     )..forward();
     // Quand on tape sur une notif de demande, ouvrir l'écran des demandes
-    FcmService.onOpenRequest = () {
+    FcmService.setInboxOpenHandler(() {
       if (!mounted) return;
+      final provider = context.read<FamilyProvider>();
+      provider.markFamilyInboxRead().catchError((_) {});
       Navigator.push(context,
           MaterialPageRoute(builder: (_) => const PendingRequestsScreen()));
-    };
+    });
   }
 
   @override
   void dispose() {
-    FcmService.onOpenRequest = null;
+    FcmService.setInboxOpenHandler(null);
     _navBarController.dispose();
     super.dispose();
   }

@@ -357,11 +357,15 @@ class EmeraldHeader extends StatelessWidget {
                 Text(
                   title,
                   style: EmeraldTypography.display.copyWith(fontSize: 28),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: EmeraldTypography.caption.copyWith(fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

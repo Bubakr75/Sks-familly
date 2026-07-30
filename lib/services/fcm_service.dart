@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -27,6 +28,7 @@ class FcmService {
   /// La cle contient la famille et l'appareil afin qu'un changement de
   /// famille ne bloque pas l'enregistrement du meme token FCM.
   String? _lastSavedTokenKey;
+  static bool _pendingInboxOpen = false;
 
   String get _platformName {
     if (kIsWeb) return 'web';
@@ -137,9 +139,7 @@ class FcmService {
       }
       // Navigation : si c'est une demande, ouvrir l'écran des demandes
       final type = message.data['type']?.toString() ?? '';
-      if (type.startsWith('request') && onOpenRequest != null) {
-        onOpenRequest!();
-      }
+      _openInboxForType(type);
     });
 
     final initialMessage = await _messaging.getInitialMessage();
@@ -149,16 +149,34 @@ class FcmService {
             'App opened from notification: ${initialMessage.notification?.title}');
       }
       final type = initialMessage.data['type']?.toString() ?? '';
-      if (type.startsWith('request') && onOpenRequest != null) {
-        // Léger délai pour laisser l'app s'initialiser
-        Future.delayed(const Duration(milliseconds: 800), onOpenRequest!);
-      }
+      _openInboxForType(type);
     }
   }
 
   /// Callback appelé quand l'utilisateur ouvre une notification de demande.
   /// Doit être branché par le HomeScreen pour naviguer vers PendingRequestsScreen.
   static void Function()? onOpenRequest;
+
+  static bool _isInboxType(String type) =>
+      type.startsWith('request') || type == 'join_request';
+
+  static void _openInboxForType(String type) {
+    if (!_isInboxType(type)) return;
+    final callback = onOpenRequest;
+    if (callback == null) {
+      _pendingInboxOpen = true;
+      return;
+    }
+    callback();
+  }
+
+  static void setInboxOpenHandler(void Function()? handler) {
+    onOpenRequest = handler;
+    if (handler != null && _pendingInboxOpen) {
+      _pendingInboxOpen = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => handler());
+    }
+  }
 
   NotificationType _getNotificationType(String type) {
     switch (type) {
