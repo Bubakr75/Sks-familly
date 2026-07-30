@@ -66,6 +66,14 @@ service cloud.firestore {
         member(familyId).childId.size() > 0;
     }
 
+    // Fenêtre transitoire pour l'APK +505. Elle conserve uniquement les
+    // écritures historiques indispensables, dans la famille authentifiée.
+    // À partir du 1er octobre 2026, seules les Functions serveur restent
+    // autorisées pour les soldes et l'historique.
+    function legacyCompatibilityWindow() {
+      return request.time < timestamp.date(2026, 10, 1);
+    }
+
     function canReadChildWallet(familyId, childId) {
       return isFamilyParent(familyId) ||
         (
@@ -78,6 +86,102 @@ service cloud.firestore {
     // nombre déraisonnable de champs sans exiger de modifier les documents.
     function isBoundedBusinessDocument(data) {
       return data.keys().size() <= 80;
+    }
+
+    function isLegacyPointUpdate(data) {
+      return legacyCompatibilityWindow() &&
+        data.keys().size() <= 24 &&
+        data.points is int &&
+        data.points >= 0 &&
+        data.points <= 10000000 &&
+        data.diff(resource.data).affectedKeys().hasOnly([
+          'points',
+          'lastModifiedBy'
+        ]) &&
+        (
+          !('lastModifiedBy' in data) ||
+          (
+            data.lastModifiedBy is string &&
+            data.lastModifiedBy.size() <= 128
+          )
+        );
+    }
+
+    function isValidLegacyHistory(data, entryId) {
+      return legacyCompatibilityWindow() &&
+        data.keys().hasOnly([
+          'id',
+          'childId',
+          'points',
+          'reason',
+          'category',
+          'date',
+          'isBonus',
+          'proofPhotoBase64',
+          'actionBy',
+          'transferId',
+          'counterpartyChildId',
+          'deviceId'
+        ]) &&
+        data.keys().hasAll([
+          'id',
+          'childId',
+          'points',
+          'reason',
+          'category',
+          'date',
+          'isBonus',
+          'proofPhotoBase64',
+          'actionBy',
+          'deviceId'
+        ]) &&
+        data.id is string &&
+        data.id == entryId &&
+        data.id.size() > 0 &&
+        data.id.size() <= 128 &&
+        data.childId is string &&
+        data.childId.size() > 0 &&
+        data.childId.size() <= 128 &&
+        data.points is int &&
+        data.points >= 0 &&
+        data.points <= 100000 &&
+        data.reason is string &&
+        data.reason.size() > 0 &&
+        data.reason.size() <= 500 &&
+        data.category is string &&
+        data.category.size() > 0 &&
+        data.category.size() <= 80 &&
+        data.date is string &&
+        data.date.size() >= 10 &&
+        data.date.size() <= 40 &&
+        data.isBonus is bool &&
+        data.proofPhotoBase64 == null &&
+        (
+          data.actionBy == null ||
+          (
+            data.actionBy is string &&
+            data.actionBy.size() <= 80
+          )
+        ) &&
+        data.deviceId is string &&
+        data.deviceId.size() > 0 &&
+        data.deviceId.size() <= 128 &&
+        (
+          !('transferId' in data) ||
+          (
+            data.transferId is string &&
+            data.transferId.size() > 0 &&
+            data.transferId.size() <= 128
+          )
+        ) &&
+        (
+          !('counterpartyChildId' in data) ||
+          (
+            data.counterpartyChildId is string &&
+            data.counterpartyChildId.size() > 0 &&
+            data.counterpartyChildId.size() <= 128
+          )
+        );
     }
 
     function isValidChildRequest(data, requestId) {
@@ -103,8 +207,7 @@ service cloud.firestore {
           'amount',
           'status',
           'createdAt',
-          'extra',
-          'readBy'
+          'extra'
         ]) &&
         data.id is string &&
         data.id == requestId &&
@@ -130,8 +233,13 @@ service cloud.firestore {
         data.createdAt.size() <= 40 &&
         data.extra is map &&
         data.extra.size() <= 20 &&
-        data.readBy is list &&
-        data.readBy.size() == 0 &&
+        (
+          !('readBy' in data) ||
+          (
+            data.readBy is list &&
+            data.readBy.size() == 0
+          )
+        ) &&
         (
           !('lastModifiedBy' in data) ||
           (
@@ -184,14 +292,21 @@ service cloud.firestore {
         // Les soldes sont modifiés exclusivement par les Cloud Functions.
         allow update: if isFamilyParent(familyId) &&
           isBoundedBusinessDocument(request.resource.data) &&
-          request.resource.data.points == resource.data.points;
+          (
+            request.resource.data.points == resource.data.points ||
+            isLegacyPointUpdate(request.resource.data)
+          );
         allow delete: if isFamilyParent(familyId);
       }
 
       match /history/{entryId} {
         allow read: if activeFamilyMember(familyId);
         // L'auteur et l'horodatage sont attribués par Firebase Admin.
-        allow create, update, delete: if false;
+        // Compatibilité +505 : création legacy strictement bornée, sans photo
+        // base64 et sans champs d'identité serveur.
+        allow create: if isFamilyParent(familyId) &&
+          isValidLegacyHistory(request.resource.data, entryId);
+        allow update, delete: if false;
       }
 
       match /goals/{goalId} {
@@ -283,7 +398,16 @@ service cloud.firestore {
       }
 
       match /requests/{requestId} {
-        allow read: if isFamilyParent(familyId) ||
+        allow get: if isFamilyParent(familyId) ||
+          (
+            isFamilyChild(familyId) &&
+            resource.data.childId == member(familyId).childId
+          );
+        allow list: if isFamilyParent(familyId) ||
+          (
+            legacyCompatibilityWindow() &&
+            activeFamilyMember(familyId)
+          ) ||
           (
             isFamilyChild(familyId) &&
             resource.data.childId == member(familyId).childId

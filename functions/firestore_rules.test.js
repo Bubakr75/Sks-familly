@@ -138,6 +138,17 @@ async function seedFirestore() {
         {seed: true, value: 2}
       );
     }
+    await setDoc(businessRef(db, "children"), {
+      id: "document-1",
+      name: "Enfant",
+      avatar: "",
+      photoBase64: "",
+      points: 10,
+      level: 1,
+      badgeIds: [],
+      createdAt: "2026-07-28T12:00:00.000Z",
+      lastModifiedBy: "device-seed",
+    });
 
     await setDoc(
       businessRef(db, "parent_profiles"),
@@ -313,7 +324,7 @@ for (const collectionName of parentWritableCollections) {
   });
 }
 
-test("children: direct balance changes are denied", async () => {
+test("children: +505 balance compatibility is narrow and parent-only", async () => {
   const parentDb = testEnv.authenticatedContext("parent-a").firestore();
   await assertSucceeds(
     setDoc(businessRef(parentDb, "children", "new-child"), {
@@ -329,12 +340,55 @@ test("children: direct balance changes are denied", async () => {
       points: 999,
     })
   );
+  await assertSucceeds(
+    updateDoc(businessRef(parentDb, "children"), {
+      points: 9,
+      lastModifiedBy: "legacy-device",
+    })
+  );
   await assertFails(
-    updateDoc(businessRef(parentDb, "children"), {points: 999})
+    updateDoc(businessRef(parentDb, "children"), {
+      points: 999,
+      name: "Altération",
+      lastModifiedBy: "legacy-device",
+    })
+  );
+  const childDb = testEnv.authenticatedContext("child-a").firestore();
+  await assertFails(
+    updateDoc(businessRef(childDb, "children"), {points: 8})
   );
 });
 
-test("history: all direct writes are denied, including forged actors", async () => {
+test("history: +505 creates are strict and server actor fields cannot be forged", async () => {
+  const parentDb = testEnv.authenticatedContext("parent-a").firestore();
+  await assertSucceeds(
+    setDoc(businessRef(parentDb, "history", "legacy-valid"), {
+      id: "legacy-valid",
+      childId: "child-1",
+      points: 5,
+      reason: "Ancienne action compatible",
+      category: "Bonus",
+      date: "2026-07-28T12:00:00.000Z",
+      isBonus: true,
+      proofPhotoBase64: null,
+      actionBy: "Parent",
+      deviceId: "legacy-device",
+    })
+  );
+  await assertFails(
+    setDoc(businessRef(parentDb, "history", "legacy-base64"), {
+      id: "legacy-base64",
+      childId: "child-1",
+      points: 5,
+      reason: "Photo interdite",
+      category: "Bonus",
+      date: "2026-07-28T12:00:00.000Z",
+      isBonus: true,
+      proofPhotoBase64: "data:image/jpeg;base64,AAAA",
+      actionBy: "Parent",
+      deviceId: "legacy-device",
+    })
+  );
   for (const uid of ["owner-a", "parent-a", "child-a", "outsider"]) {
     const db = testEnv.authenticatedContext(uid).firestore();
     await assertFails(
