@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  FAMILY_PERMISSIONS,
+  authorizeFamilyPermission,
+} = require("./family_access_control");
+
 const ACTIVE_STATUSES = new Set(["pending", "sent", "received"]);
 
 function isActiveInboxStatus(value) {
@@ -28,19 +33,16 @@ function createFamilyInboxFunctions({functions, admin, db}) {
       familyRef.get(),
       familyRef.collection("members").doc(uid).get(),
     ]);
-    const family = familySnap.exists ? familySnap.data() : null;
-    const member = memberSnap.exists ? memberSnap.data() : null;
-    const isOwner = member && member.active === true &&
-      member.uid === uid && member.role === "owner" &&
-      family && family.ownerUid === uid;
-    const isParent = member && member.active === true &&
-      member.uid === uid && member.role === "parent";
-    if (!isOwner && !isParent) {
-      throw new HttpsError(
-        "permission-denied",
-        "Seul un parent actif peut lire cette boîte."
-      );
-    }
+    const authorization = authorizeFamilyPermission({
+      context,
+      familySnapshot: familySnap,
+      memberSnapshot: memberSnap,
+      HttpsError,
+      permission: FAMILY_PERMISSIONS.READ_INBOX,
+    });
+    const canManageJoins =
+      authorization.role === "owner" ||
+      authorization.role === "manager";
 
     const [requests, joins] = await Promise.all([
       familyRef.collection("requests").limit(200).get(),
@@ -48,7 +50,10 @@ function createFamilyInboxFunctions({functions, admin, db}) {
     ]);
     const batch = db.batch();
     let updated = 0;
-    for (const document of [...requests.docs, ...joins.docs]) {
+    const documents = canManageJoins
+      ? [...requests.docs, ...joins.docs]
+      : requests.docs;
+    for (const document of documents) {
       const record = document.data();
       if (!isActiveInboxStatus(record.status)) continue;
       const patch = {

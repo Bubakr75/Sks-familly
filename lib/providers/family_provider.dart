@@ -23,6 +23,7 @@ import '../models/wheel_segment.dart';
 import '../models/screen_time_account.dart';
 import '../models/sks_wallet.dart';
 import '../services/firestore_service.dart';
+import '../services/family_manager_service.dart';
 import '../services/storage_service.dart';
 import '../utils/image_compressor.dart';
 import '../services/voice_service.dart';
@@ -866,6 +867,20 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   String getFamilyCode() => _familyCode ?? '';
+
+  Future<void> refreshFamilyAccessContext() async {
+    final currentFamilyId = _firestore.familyId;
+    if (currentFamilyId == null) return;
+    final access =
+        await FamilyManagerService().getAccessContext(currentFamilyId);
+    await _firestore.applyServerAccessContext(
+      familyId: access.familyId,
+      role: access.role,
+      familyCode: access.code,
+    );
+    _familyCode = access.code;
+    notifyListeners();
+  }
 
   Future<void> changeFamilyCode(String newCode) async {
     if (!_firestore.isConnected) {

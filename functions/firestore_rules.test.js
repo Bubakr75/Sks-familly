@@ -107,6 +107,7 @@ async function seedFirestore() {
 
     const familyAMembers = [
       ["owner-a", {uid: "owner-a", role: "owner", active: true}],
+      ["manager-a", {uid: "manager-a", role: "manager", active: true}],
       ["parent-a", {uid: "parent-a", role: "parent", active: true}],
       [
         "child-a",
@@ -561,7 +562,7 @@ test("FCM tokens require active membership and a coherent immutable UID", async 
   }
 });
 
-test("join requests stay parent-only while a member can read only itself", async () => {
+test("join requests stay owner/manager-only while a member reads itself", async () => {
   const ownerDb = testEnv.authenticatedContext("owner-a").firestore();
   await assertSucceeds(
     getDoc(businessRef(ownerDb, "join_requests", "join-1"))
@@ -573,11 +574,28 @@ test("join requests stay parent-only while a member can read only itself", async
     getDoc(businessRef(ownerDb, "members", "parent-a"))
   );
   await assertSucceeds(getDocs(familyCollectionRef(ownerDb, "members")));
-  const parentDb = testEnv.authenticatedContext("parent-a").firestore();
+  const managerDb = testEnv.authenticatedContext("manager-a", {
+    email_verified: true,
+    firebase: {sign_in_provider: "password"},
+  }).firestore();
   await assertSucceeds(
-    getDoc(businessRef(parentDb, "join_requests", "join-1"))
+    getDoc(businessRef(managerDb, "join_requests", "join-1"))
   );
   await assertSucceeds(
+    getDocs(familyCollectionRef(managerDb, "join_requests"))
+  );
+  await assertSucceeds(
+    getDoc(businessRef(managerDb, "members", "manager-a"))
+  );
+  await assertFails(
+    getDoc(businessRef(managerDb, "members", "owner-a"))
+  );
+  await assertFails(getDocs(familyCollectionRef(managerDb, "members")));
+  const parentDb = testEnv.authenticatedContext("parent-a").firestore();
+  await assertFails(
+    getDoc(businessRef(parentDb, "join_requests", "join-1"))
+  );
+  await assertFails(
     getDocs(familyCollectionRef(parentDb, "join_requests"))
   );
   await assertSucceeds(
@@ -590,6 +608,7 @@ test("join requests stay parent-only while a member can read only itself", async
 
   for (const context of [
     testEnv.unauthenticatedContext(),
+    testEnv.authenticatedContext("manager-a"),
     testEnv.authenticatedContext("child-a"),
     testEnv.authenticatedContext("owner-b"),
     testEnv.authenticatedContext("outsider"),

@@ -29,6 +29,8 @@ service cloud.firestore {
         member(familyId).uid == request.auth.uid &&
         (
           member(familyId).role == 'parent' ||
+          member(familyId).role == 'manager' ||
+          member(familyId).role == 'familyAdmin' ||
           (
             member(familyId).role == 'child' &&
             member(familyId).childId is string &&
@@ -55,7 +57,19 @@ service cloud.firestore {
       return activeFamilyMember(familyId) &&
         (
           member(familyId).role == 'parent' ||
+          member(familyId).role == 'manager' ||
+          member(familyId).role == 'familyAdmin' ||
           isFamilyOwner(familyId)
+        );
+    }
+
+    function isFamilyManager(familyId) {
+      return activeFamilyMember(familyId) &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.firebase.sign_in_provider != 'anonymous' &&
+        (
+          member(familyId).role == 'manager' ||
+          member(familyId).role == 'familyAdmin'
         );
     }
 
@@ -462,7 +476,8 @@ service cloud.firestore {
 
       // Écriture exclusivement via les Cloud Functions de rattachement.
       match /join_requests/{requestId} {
-        allow read: if isFamilyParent(familyId) ||
+        allow read: if isFamilyOwner(familyId) ||
+          isFamilyManager(familyId) ||
           (
             isSignedIn() &&
             requestId == request.auth.uid &&

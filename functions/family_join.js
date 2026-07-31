@@ -2,9 +2,12 @@
 
 const {
   requireAuthenticatedUid,
-  isAuthenticatedFamilyOwner,
   applyFamilyOwnerRepair,
 } = require("./family_owner_authorization");
+const {
+  FAMILY_PERMISSIONS,
+  authorizeFamilyPermission,
+} = require("./family_access_control");
 
 const JOIN_WINDOW_MS = 15 * 60 * 1000;
 const JOIN_MAX_ATTEMPTS = 10;
@@ -739,36 +742,16 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
               );
             }
 
-            let ownerAuthorization = null;
-
-            if (requestedRole === "parent") {
-              ownerAuthorization = isAuthenticatedFamilyOwner({
-                context,
-                familySnapshot,
-                memberSnapshot: reviewerSnapshot,
-                HttpsError,
-                allowRepair: true,
-              });
-            } else {
-              const reviewerIsParent =
-                reviewer &&
-                reviewer.uid === reviewerUid &&
-                reviewer.active === true &&
-                (
-                  reviewer.role === "parent" ||
-                  (
-                    reviewer.role === "owner" &&
-                    family.ownerUid === reviewerUid
-                  )
-                );
-
-              if (!reviewerIsParent) {
-                throw new HttpsError(
-                  "permission-denied",
-                  "Seul un parent autorise peut traiter cette demande."
-                );
-              }
-            }
+            const permissionAuthorization = authorizeFamilyPermission({
+              context,
+              familySnapshot,
+              memberSnapshot: reviewerSnapshot,
+              HttpsError,
+              permission: FAMILY_PERMISSIONS.MANAGE_JOIN_REQUESTS,
+              allowOwnerRepair: true,
+            });
+            const ownerAuthorization =
+              permissionAuthorization.ownerAuthorization;
 
             if (alreadyApproved) {
               if (ownerAuthorization && ownerAuthorization.repair) {
@@ -931,36 +914,16 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             : null;
           const request = requestSnapshot.data();
 
-          let ownerAuthorization = null;
-
-          if (request.requestedRole === "parent") {
-            ownerAuthorization = isAuthenticatedFamilyOwner({
-              context,
-              familySnapshot,
-              memberSnapshot: reviewerSnapshot,
-              HttpsError,
-              allowRepair: true,
-            });
-          } else {
-            const reviewerIsParent =
-              reviewer &&
-              reviewer.uid === reviewerUid &&
-              reviewer.active === true &&
-              (
-                reviewer.role === "parent" ||
-                (
-                  reviewer.role === "owner" &&
-                  family.ownerUid === reviewerUid
-                )
-              );
-
-            if (!reviewerIsParent) {
-              throw new HttpsError(
-                "permission-denied",
-                "Seul un parent autorise peut traiter cette demande."
-              );
-            }
-          }
+          const permissionAuthorization = authorizeFamilyPermission({
+            context,
+            familySnapshot,
+            memberSnapshot: reviewerSnapshot,
+            HttpsError,
+            permission: FAMILY_PERMISSIONS.MANAGE_JOIN_REQUESTS,
+            allowOwnerRepair: true,
+          });
+          const ownerAuthorization =
+            permissionAuthorization.ownerAuthorization;
 
           if (["rejected", "refused"].includes(request.status)) {
             if (ownerAuthorization && ownerAuthorization.repair) {

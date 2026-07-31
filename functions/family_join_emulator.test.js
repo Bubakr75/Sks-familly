@@ -10,6 +10,9 @@ const {
 const {
   createFamilyJoinFunctions,
 } = require("./family_join");
+const {
+  FAMILY_ACCESS_CODES,
+} = require("./family_access_control");
 
 const PROJECT_ID = "demo-sks-family";
 
@@ -198,7 +201,74 @@ test("parent actif refusé", async () => {
       },
       {auth: {uid: seeded.reviewerUid}}
     ),
-    OWNER_AUTH_CODES.OWNER_UID_MISMATCH
+    FAMILY_ACCESS_CODES.ROLE_FORBIDDEN
+  );
+});
+
+test("gestionnaire durable vérifié autorisé", async () => {
+  const seeded = await seedApproval({
+    label: "verified-manager",
+    ownerUid: "owner-a",
+    reviewerUid: "manager-a",
+    reviewerMember: {
+      uid: "manager-a",
+      role: "manager",
+      active: true,
+    },
+  });
+
+  await approveFamilyJoin(
+    {
+      familyId: seeded.familyId,
+      requesterUid: seeded.requesterUid,
+    },
+    {
+      auth: {
+        uid: seeded.reviewerUid,
+        token: {
+          email_verified: true,
+          firebase: {sign_in_provider: "password"},
+        },
+      },
+    }
+  );
+
+  const member = await seeded.familyRef
+    .collection("members")
+    .doc(seeded.requesterUid)
+    .get();
+  assert.equal(member.data().active, true);
+});
+
+test("gestionnaire anonyme refusé", async () => {
+  const seeded = await seedApproval({
+    label: "anonymous-manager",
+    ownerUid: "owner-a",
+    reviewerUid: "manager-a",
+    reviewerMember: {
+      uid: "manager-a",
+      role: "manager",
+      active: true,
+    },
+  });
+
+  await expectOwnerRefusal(
+    approveFamilyJoin(
+      {
+        familyId: seeded.familyId,
+        requesterUid: seeded.requesterUid,
+      },
+      {
+        auth: {
+          uid: seeded.reviewerUid,
+          token: {
+            email_verified: false,
+            firebase: {sign_in_provider: "anonymous"},
+          },
+        },
+      }
+    ),
+    FAMILY_ACCESS_CODES.MANAGER_IDENTITY_NOT_DURABLE
   );
 });
 
@@ -266,7 +336,7 @@ test("propriétaire d'une autre famille refusé", async () => {
       },
       {auth: {uid: seeded.reviewerUid}}
     ),
-    OWNER_AUTH_CODES.OWNER_UID_MISMATCH
+    FAMILY_ACCESS_CODES.ROLE_FORBIDDEN
   );
 });
 
@@ -293,7 +363,7 @@ test("tentative d'usurpation du rôle envoyée par le client refusée", async ()
       },
       {auth: {uid: seeded.reviewerUid}}
     ),
-    OWNER_AUTH_CODES.OWNER_UID_MISMATCH
+    FAMILY_ACCESS_CODES.ROLE_FORBIDDEN
   );
 });
 

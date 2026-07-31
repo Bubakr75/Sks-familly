@@ -6,6 +6,10 @@ const {
   isAuthenticatedFamilyOwner,
   applyFamilyOwnerRepair,
 } = require("./family_owner_authorization");
+const {
+  FAMILY_PERMISSIONS,
+  authorizeFamilyPermission,
+} = require("./family_access_control");
 
 const FAMILY_CODE_PATTERN = /^[A-Z0-9]{4,10}$/;
 const DOCUMENT_ID_PATTERN = /^[^/]{1,200}$/;
@@ -301,7 +305,7 @@ function createFamilyManagementFunctions({
   const changeFamilyCode = functions.https.onCall(
     async (data, context) => {
       try {
-        const ownerUid = requireAuthenticatedUid(
+        const authenticatedUid = requireAuthenticatedUid(
           context,
           HttpsError
         );
@@ -313,35 +317,38 @@ function createFamilyManagementFunctions({
         );
 
         const familyRef = db.collection("families").doc(familyId);
-        const ownerRef = familyRef
+        const memberRef = familyRef
           .collection("members")
-          .doc(ownerUid);
+          .doc(authenticatedUid);
 
         return await db.runTransaction(async (transaction) => {
           const familySnapshot = await transaction.get(familyRef);
-          const ownerSnapshot = await transaction.get(ownerRef);
+          const memberSnapshot = await transaction.get(memberRef);
 
           if (!familySnapshot.exists) {
             throw new Error("FAMILY_NOT_FOUND");
           }
 
           const family = familySnapshot.data();
-          const ownerAuthorization = isAuthenticatedFamilyOwner({
+          const permissionAuthorization = authorizeFamilyPermission({
             context,
             familySnapshot,
-            memberSnapshot: ownerSnapshot,
+            memberSnapshot,
             HttpsError,
+            permission: FAMILY_PERMISSIONS.MANAGE_FAMILY_CODE,
             allowRepair: true,
           });
+          const ownerAuthorization =
+            permissionAuthorization.ownerAuthorization;
 
           const oldCode = normalizeManagedFamilyCode(family.code);
 
           if (oldCode === newCode) {
-            if (ownerAuthorization.repair) {
+            if (ownerAuthorization && ownerAuthorization.repair) {
               const repairTimestamp = fieldValue.serverTimestamp();
               applyFamilyOwnerRepair({
                 transaction,
-                memberRef: ownerRef,
+                memberRef,
                 authorization: ownerAuthorization,
                 timestamp: repairTimestamp,
               });
@@ -394,10 +401,10 @@ function createFamilyManagementFunctions({
           const oldCodeSnapshot = await transaction.get(oldCodeRef);
           const timestamp = fieldValue.serverTimestamp();
 
-          if (ownerAuthorization.repair) {
+          if (ownerAuthorization && ownerAuthorization.repair) {
             applyFamilyOwnerRepair({
               transaction,
-              memberRef: ownerRef,
+              memberRef,
               authorization: ownerAuthorization,
               timestamp,
             });
@@ -412,7 +419,7 @@ function createFamilyManagementFunctions({
             buildFamilyCodeIndexData({
               familyId,
               code: newCode,
-              ownerUid,
+              ownerUid: family.ownerUid,
               timestamp,
             })
           );

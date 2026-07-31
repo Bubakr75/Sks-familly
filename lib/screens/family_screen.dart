@@ -8,6 +8,7 @@ import '../widgets/family_join_panel.dart';
 import '../widgets/family_join_approval_panel.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'account_security_screen.dart';
+import 'family_managers_screen.dart';
 import 'firebase_diagnostic_screen.dart';
 
 class FamilyScreen extends StatefulWidget {
@@ -33,6 +34,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   Future<void> _loadFamilyCode() async {
     final provider = context.read<FamilyProvider>();
+    if (provider.isSyncEnabled) {
+      try {
+        await provider.refreshFamilyAccessContext();
+      } catch (_) {
+        // Le code reste masqué si le serveur ne confirme pas l'autorisation.
+      }
+    }
     final code = provider.getFamilyCode();
     if (mounted) setState(() => _familyCode = code.isNotEmpty ? code : null);
   }
@@ -555,10 +563,14 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       // ─── Vue connectée ou non ──────────────
                       if (isConnected) ...[
                         _buildConnectedView(primary),
-                        const SizedBox(height: 20),
-                        FamilyJoinApprovalPanel(
-                          familyId: provider.familyId!,
-                        ),
+                        if (provider.memberRole == 'owner' ||
+                            provider.memberRole == 'manager' ||
+                            provider.memberRole == 'familyAdmin') ...[
+                          const SizedBox(height: 20),
+                          FamilyJoinApprovalPanel(
+                            familyId: provider.familyId!,
+                          ),
+                        ],
                       ] else ...[
                         _buildCreateSection(primary),
                         const SizedBox(height: 20),
@@ -723,6 +735,27 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+              if (context.read<FamilyProvider>().memberRole == 'owner') ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FamilyManagersScreen(
+                          familyId: context.read<FamilyProvider>().familyId!,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.admin_panel_settings_rounded),
+                    label: const Text('Gérer les gestionnaires'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(

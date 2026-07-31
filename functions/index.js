@@ -5,6 +5,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const { createFamilyJoinFunctions } = require("./family_join");
+const { createFamilyManagerFunctions } = require("./family_managers");
 const familyJoinFunctions = createFamilyJoinFunctions({
   functions,
   admin,
@@ -16,6 +17,17 @@ exports.getFamilyJoinStatus = familyJoinFunctions.getFamilyJoinStatus;
 exports.finalizeFamilyJoin = familyJoinFunctions.finalizeFamilyJoin;
 exports.approveFamilyJoin = familyJoinFunctions.approveFamilyJoin;
 exports.rejectFamilyJoin = familyJoinFunctions.rejectFamilyJoin;
+
+const familyManagerFunctions = createFamilyManagerFunctions({
+  functions,
+  admin,
+  db,
+});
+exports.listFamilyManagers = familyManagerFunctions.listFamilyManagers;
+exports.setFamilyManager = familyManagerFunctions.setFamilyManager;
+exports.revokeFamilyManager = familyManagerFunctions.revokeFamilyManager;
+exports.getFamilyAccessContext =
+  familyManagerFunctions.getFamilyAccessContext;
 
 const {createFamilyInboxFunctions} = require("./family_inbox");
 const familyInboxFunctions =

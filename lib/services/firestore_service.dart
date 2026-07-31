@@ -561,6 +561,33 @@ class FirestoreService {
     return prefs.getString('family_code');
   }
 
+  Future<void> applyServerAccessContext({
+    required String familyId,
+    required String role,
+    String? familyCode,
+  }) async {
+    if (_familyId != familyId) {
+      throw StateError('Le contexte concerne une autre famille.');
+    }
+    if (!['owner', 'manager', 'parent', 'child'].contains(role)) {
+      throw ArgumentError.value(role, 'role', 'Rôle familial invalide.');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final roleSaved = await prefs.setString('family_member_role', role);
+    if (!roleSaved) {
+      throw StateError('Impossible d’enregistrer le rôle familial.');
+    }
+    if (familyCode == null) {
+      await prefs.remove('family_code');
+    } else {
+      final codeSaved = await prefs.setString('family_code', familyCode);
+      if (!codeSaved) {
+        throw StateError('Impossible d’enregistrer le code familial.');
+      }
+    }
+    _memberRole = role;
+  }
+
   Future<void> disconnectFamily() async {
     _stopListening();
     _stopKeepAlive();
