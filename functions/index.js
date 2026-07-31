@@ -114,7 +114,7 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
 
   const tokens = [];
   tokensSnap.docs.forEach((doc) => {
-    if (doc.id !== senderDeviceId) {
+    if (doc.id !== senderDeviceId && doc.data().disabled !== true) {
       const token = doc.data().token;
       if (token) tokens.push(token);
     }
@@ -181,7 +181,7 @@ async function sendToFamilySilent(familyId, senderDeviceId, type, data) {
 
   const tokens = [];
   tokensSnap.docs.forEach((doc) => {
-    if (doc.id !== senderDeviceId) {
+    if (doc.id !== senderDeviceId && doc.data().disabled !== true) {
       const token = doc.data().token;
       if (token) tokens.push(token);
     }
@@ -612,6 +612,7 @@ exports.onJoinRequestCreated = functions.firestore
         const data = doc.data();
         if (doc.id !== requesterDeviceId &&
             data.uid === ownerUid &&
+            data.disabled !== true &&
             data.token) {
           tokens.push(data.token);
         }

@@ -1,6 +1,9 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const {
+  isDurableVerifiedAuth,
+} = require("./family_access_control");
 
 const ID = /^[^/\u0000-\u001f]{1,128}$/;
 const PHOTO_PATH =
@@ -97,13 +100,23 @@ function normalizeHistoryEvent(data) {
   };
 }
 
-function resolveActor({uid, family, member}) {
+function resolveActor({
+  uid,
+  family,
+  member,
+  managerDurableVerified = false,
+}) {
   if (!member || member.active !== true || member.uid !== uid) return null;
   let role = null;
   if (member.role === "owner" && family && family.ownerUid === uid) {
     role = "owner";
   } else if (member.role === "parent") {
     role = "parent";
+  } else if (
+    ["manager", "familyAdmin"].includes(member.role) &&
+    managerDurableVerified
+  ) {
+    role = "manager";
   }
   if (!role) return null;
   const rawName = typeof member.displayName === "string"
@@ -214,6 +227,7 @@ function createPointActionFunctions({functions, admin, db}) {
           uid,
           family: familySnap.data(),
           member: memberSnap.exists ? memberSnap.data() : null,
+          managerDurableVerified: isDurableVerifiedAuth(context),
         });
         if (!actor) {
           throw new HttpsError(
@@ -304,6 +318,7 @@ function createPointActionFunctions({functions, admin, db}) {
           uid,
           family: familySnap.data(),
           member: memberSnap.exists ? memberSnap.data() : null,
+          managerDurableVerified: isDurableVerifiedAuth(context),
         });
         if (!actor) {
           throw new HttpsError("permission-denied", "Parent actif requis.");
@@ -363,6 +378,7 @@ function createPointActionFunctions({functions, admin, db}) {
         uid,
         family: familySnap.exists ? familySnap.data() : null,
         member: memberSnap.exists ? memberSnap.data() : null,
+        managerDurableVerified: isDurableVerifiedAuth(context),
       });
       if (!actor) {
         throw new HttpsError("permission-denied", "Parent actif requis.");

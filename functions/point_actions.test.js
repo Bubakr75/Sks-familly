@@ -89,6 +89,26 @@ test("l'auteur vient exclusivement du membre actif", () => {
     family: {},
     member: {uid: "uid-parent", active: false, role: "parent"},
   }), null);
+  assert.equal(resolveActor({
+    uid: "uid-manager",
+    family: {ownerUid: "uid-owner"},
+    member: {uid: "uid-manager", active: true, role: "manager"},
+  }), null);
+  assert.deepEqual(resolveActor({
+    uid: "uid-manager",
+    family: {ownerUid: "uid-owner"},
+    member: {
+      uid: "uid-manager",
+      active: true,
+      role: "manager",
+      displayName: "Gestionnaire",
+    },
+    managerDurableVerified: true,
+  }), {
+    actorUid: "uid-manager",
+    actorDisplayName: "Gestionnaire",
+    actorRole: "manager",
+  });
 });
 
 test("un événement historique ignore les champs d'auteur du client", () => {
