@@ -7,13 +7,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../providers/family_provider.dart';
-import '../models/child_model.dart';
-import '../models/history_entry.dart';
 import '../utils/checklist_helpers.dart';
 import '../utils/motif_helpers.dart';
 import '../services/motif_preferences_service.dart';
+import '../services/action_photo_service.dart';
+import '../services/point_action_submission_service.dart';
+import '../services/storage_service.dart';
+import 'point_action_feedback.dart';
 
 /// Configuration d'un motif de bonus ou pénalité.
 class ActionMotif {
@@ -74,6 +78,8 @@ class PointActionPanel extends StatefulWidget {
 
 class _PointActionPanelState extends State<PointActionPanel>
     with SingleTickerProviderStateMixin {
+  static const _uuid = Uuid();
+
   String? _selectedChildId;
   ActionMotif? _selectedMotif;
   int _amount = 5;
@@ -85,6 +91,15 @@ class _PointActionPanelState extends State<PointActionPanel>
   Set<String> _favorites = {};
   Map<String, int> _usage = {};
   List<ActionMotif> _sortedMotifs = [];
+  final ActionPhotoService _photoService = ActionPhotoService();
+  final StorageService _storageService = StorageService();
+  final PointActionSubmissionCoordinator _submissionCoordinator =
+      PointActionSubmissionCoordinator();
+  ActionPhoto? _photo;
+  String? _actionId;
+  String? _uploadedPhotoPath;
+  bool _retryStateUncertain = false;
+  bool _serverSubmissionStarted = false;
 
   @override
   void initState() {
@@ -129,6 +144,14 @@ class _PointActionPanelState extends State<PointActionPanel>
 
   @override
   void dispose() {
+    final orphanPath = _uploadedPhotoPath;
+    if (orphanPath != null &&
+        !_retryStateUncertain &&
+        !_serverSubmissionStarted) {
+      unawaited(_storageService.deleteActionPhoto(orphanPath).catchError(
+            (_) {},
+          ));
+    }
     _celebrationController.dispose();
     _customTextCtrl.dispose();
     _customFocusNode.dispose();
@@ -140,6 +163,7 @@ class _PointActionPanelState extends State<PointActionPanel>
       _selectedMotif != null &&
       !_processing &&
       _isMotifValid;
+  bool get _editingLocked => _processing || _retryStateUncertain;
 
   /// Un motif classique est toujours valide. "Autre" nécessite un texte non vide.
   bool get _isMotifValid {
@@ -151,6 +175,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   void _selectMotif(ActionMotif motif) {
+    if (_editingLocked) return;
     setState(() {
       _selectedMotif = motif;
       _amount = motif.defaultPoints;
@@ -170,6 +195,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   void _adjustAmount(int delta) {
+    if (_editingLocked) return;
     setState(() {
       _amount = (_amount + delta).clamp(1, 999);
     });
@@ -177,23 +203,80 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   void _setAmount(int value) {
+    if (_editingLocked) return;
     setState(() {
       _amount = value.clamp(1, 999);
     });
     HapticFeedback.selectionClick();
   }
 
+  Future<void> _pickPhoto(ImageSource source) async {
+    if (_processing || _retryStateUncertain) return;
+    try {
+      final photo = await _photoService.pickAndPrepare(source);
+      if (photo == null || !mounted) return;
+      final previousUpload = _uploadedPhotoPath;
+      if (previousUpload != null) {
+        await _storageService.deleteActionPhoto(previousUpload);
+        if (!mounted) return;
+      }
+      setState(() {
+        _photo = photo;
+        _actionId ??= _uuid.v4();
+        _uploadedPhotoPath = null;
+      });
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error.message),
+        backgroundColor: Colors.redAccent,
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Impossible de préparer cette photo. Réessaie.'),
+        backgroundColor: Colors.redAccent,
+      ));
+    }
+  }
+
+  void _removePhoto() {
+    if (_processing || _retryStateUncertain) return;
+    final uploadedPath = _uploadedPhotoPath;
+    if (uploadedPath != null) {
+      unawaited(
+        _storageService.deleteActionPhoto(uploadedPath).catchError((_) {}),
+      );
+    }
+    setState(() {
+      _photo = null;
+      _uploadedPhotoPath = null;
+      _actionId = null;
+    });
+  }
+
   Future<void> _apply() async {
-    if (!_isValid) return;
+    if (_processing || !_isValid) return;
 
     final fp = context.read<FamilyProvider>();
-    final child = fp.getChild(_selectedChildId!);
+    final messenger = ScaffoldMessenger.of(context);
+    final capturedChildId = _selectedChildId!;
+    final child = fp.getChild(capturedChildId);
+    if (child == null) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text(
+          'L’enfant sélectionné n’est plus disponible. Choisissez-le à nouveau.',
+        ),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
 
-    // 🔒 Pour une pénalité avec solde nul : aucune action
-    if (!widget.config.isBonus && (child == null || child.points <= 0)) {
+    if (!widget.config.isBonus && child.points <= 0) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Cet enfant n\'a aucun point à retirer'),
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Cet enfant n’a aucun point à retirer'),
         backgroundColor: Colors.orange,
         behavior: SnackBarBehavior.floating,
       ));
@@ -203,74 +286,133 @@ class _PointActionPanelState extends State<PointActionPanel>
     setState(() => _processing = true);
     HapticFeedback.mediumImpact();
 
-    final messenger = ScaffoldMessenger.of(context);
-    final childName = child?.name ?? '';
+    // Toutes les valeurs sont figées avant le premier await.
+    final childName = child.name;
     final capturedMotif = _selectedMotif!;
-    // 🔒 Calculer la raison via helper
+    final capturedAmount = _amount;
+    final capturedIsBonus = widget.config.isBonus;
+    final capturedCategory = widget.config.category;
+    final capturedPhoto = _photo;
+    final capturedFamilyId = fp.familyId;
+    final actionId = _actionId ??= _uuid.v4();
     final reason = buildReason(
       isOther: capturedMotif.isOther,
       emoji: capturedMotif.emoji,
       label: capturedMotif.label,
       customText: _customTextCtrl.text,
     );
-
-    // 🔒 Montant réel via helper testable
     final actualAmount = actualPenaltyAmount(
-      requested: _amount,
-      balance: child!.points,
-      isBonus: widget.config.isBonus,
+      requested: capturedAmount,
+      balance: child.points,
+      isBonus: capturedIsBonus,
     );
 
-    try {
-      await fp.addPoints(
-        _selectedChildId!,
-        actualAmount,
-        reason,
-        category: widget.config.category,
-        isBonus: widget.config.isBonus,
-      );
-
-      if (!mounted) return;
-
-      // Animation de célébration
-      if (!MediaQuery.of(context).disableAnimations) {
-        _celebrationController.forward().then((_) {
-          if (mounted) _celebrationController.reset();
-        });
-      }
-
-      HapticFeedback.heavyImpact();
-      messenger.showSnackBar(SnackBar(
-        content: Text(widget.config.successMessage
-            .replaceAll('{name}', childName)
-            .replaceAll('{amount}', '$actualAmount')),
-        backgroundColor: widget.config.primaryColor,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ));
-
-      // Reset partiel : garder l'enfant, effacer le motif et le texte
-      setState(() {
-        _selectedMotif = null;
-        _customTextCtrl.clear();
-        _customFocusNode.unfocus();
-        _processing = false;
-      });
-
-      // 📊 Incrémenter le compteur en arrière-plan (sans bloquer)
-      if (!capturedMotif.isOther) {
-        unawaited(_incrementAndReload(capturedMotif.id));
-      }
-    } catch (_) {
-      if (!mounted) return;
-      messenger.showSnackBar(SnackBar(
-        content: Text('Erreur lors de l\'application des points'),
-        backgroundColor: Colors.redAccent,
+    if (actualAmount < 1) {
+      setState(() => _processing = false);
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Aucun point ne peut être appliqué.'),
+        backgroundColor: Colors.orange,
         behavior: SnackBarBehavior.floating,
       ));
-    } finally {
-      if (mounted) setState(() => _processing = false);
+      return;
     }
+
+    final result = await _submissionCoordinator.submit(
+      draft: PointActionDraft(
+        actionId: actionId,
+        childId: capturedChildId,
+        amount: actualAmount,
+        reason: reason,
+        category: capturedCategory,
+        isBonus: capturedIsBonus,
+        hasPhoto: capturedPhoto != null,
+      ),
+      existingPhotoStoragePath: _uploadedPhotoPath,
+      uploadPhoto: () async {
+        if (capturedPhoto == null || capturedFamilyId == null) {
+          throw StateError('Connexion familiale indisponible.');
+        }
+        final path = await _storageService.uploadActionPhoto(
+          familyId: capturedFamilyId,
+          actionId: actionId,
+          bytes: capturedPhoto.bytes,
+          contentType: capturedPhoto.contentType,
+          extension: capturedPhoto.extension,
+        );
+        if (!mounted) {
+          await _storageService.deleteActionPhoto(path).catchError((_) {});
+          throw StateError('Le panneau a été fermé avant la validation.');
+        }
+        _uploadedPhotoPath = path;
+        return path;
+      },
+      deletePhoto: _storageService.deleteActionPhoto,
+      recordAction: (photoStoragePath) async {
+        _serverSubmissionStarted = true;
+        final entry = await fp.addPoints(
+          capturedChildId,
+          actualAmount,
+          reason,
+          category: capturedCategory,
+          isBonus: capturedIsBonus,
+          actionId: actionId,
+          photoStoragePath: photoStoragePath,
+        );
+        return entry.points;
+      },
+    );
+
+    _serverSubmissionStarted = false;
+    if (!mounted) return;
+    if (result.duplicateIgnored) {
+      setState(() => _processing = false);
+      return;
+    }
+
+    if (!result.success) {
+      setState(() {
+        _processing = false;
+        _retryStateUncertain = result.retryStateUncertain;
+        _uploadedPhotoPath = result.photoStoragePath;
+      });
+      showPointActionFailure(
+        messenger: messenger,
+        message: result.errorMessage!,
+      );
+      return;
+    }
+
+    final appliedAmount = result.appliedAmount!;
+    setState(() {
+      _selectedMotif = null;
+      _customTextCtrl.clear();
+      _customFocusNode.unfocus();
+      _photo = null;
+      _actionId = null;
+      _uploadedPhotoPath = null;
+      _retryStateUncertain = false;
+      _processing = false;
+    });
+
+    if (!MediaQuery.of(context).disableAnimations) {
+      unawaited(_celebrationController.forward().then((_) {
+        if (mounted) _celebrationController.reset();
+      }));
+    }
+    HapticFeedback.heavyImpact();
+    showPointActionSuccess(
+      messenger: messenger,
+      message: widget.config.successMessage
+          .replaceAll('{name}', childName)
+          .replaceAll('{amount}', '$appliedAmount'),
+      color: widget.config.primaryColor,
+    );
+
+    if (!capturedMotif.isOther) {
+      unawaited(_incrementAndReload(capturedMotif.id));
+    }
+
+    await closePointActionPanelAfterSuccess(context);
   }
 
   /// Tâche d'arrière-plan : incrémenter le compteur et recharger le tri.
@@ -298,6 +440,92 @@ class _PointActionPanelState extends State<PointActionPanel>
     } catch (_) {
       // Ignorer silencieusement
     }
+  }
+
+  Widget _buildMotifCard(ActionMotif motif, {double? width}) {
+    final config = widget.config;
+    final isSel = _selectedMotif?.label == motif.label;
+    final isFav = _favorites.contains(motif.id);
+
+    return GestureDetector(
+      onTap: _editingLocked ? null : () => _selectMotif(motif),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: width,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSel
+              ? config.primaryColor.withValues(alpha: 0.15)
+              : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSel ? config.primaryColor : Colors.white12,
+            width: isSel ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!motif.isOther)
+              Align(
+                alignment: Alignment.topRight,
+                child: GestureDetector(
+                  onTap: _editingLocked
+                      ? null
+                      : () async {
+                          HapticFeedback.selectionClick();
+                          final newFavs =
+                              await MotifPreferencesService.toggleFavorite(
+                            widget.config.isBonus,
+                            motif.id,
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _favorites = newFavs;
+                              _sortedMotifs =
+                                  MotifPreferencesService.sortMotifs(
+                                motifs: widget.config.motifs,
+                                getId: (m) => m.id,
+                                isOther: (m) => m.isOther,
+                                favorites: _favorites,
+                                usage: _usage,
+                              );
+                            });
+                          }
+                        },
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Icon(
+                      isFav ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: isFav ? const Color(0xFFFFD54F) : Colors.white24,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            Text(motif.emoji, style: const TextStyle(fontSize: 28)),
+            const SizedBox(height: 6),
+            Text(
+              motif.label,
+              style: TextStyle(
+                color: isSel ? config.accentColor : Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${widget.config.isBonus ? "+" : "-"}${motif.defaultPoints} pts',
+              style: TextStyle(
+                color: config.primaryColor.withValues(alpha: 0.6),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -345,7 +573,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                       final c = children[i];
                       final isSel = c.id == _selectedChildId;
                       return GestureDetector(
-                        onTap: _processing
+                        onTap: _editingLocked
                             ? null
                             : () => setState(() {
                                   _selectedChildId = c.id;
@@ -409,96 +637,28 @@ class _PointActionPanelState extends State<PointActionPanel>
                       fontSize: 16,
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _sortedMotifs.map((motif) {
-                  final isSel = _selectedMotif?.label == motif.label;
-                  final isFav = _favorites.contains(motif.id);
-                  return GestureDetector(
-                    onTap: _processing ? null : () => _selectMotif(motif),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      width: motif.isOther ? double.infinity : 150,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isSel
-                            ? config.primaryColor.withValues(alpha: 0.15)
-                            : Colors.white.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: isSel ? config.primaryColor : Colors.white12,
-                            width: isSel ? 2 : 1),
-                      ),
-                      child: Column(
-                        children: [
-                          // Étoile favori (sauf pour "Autre")
-                          if (!motif.isOther)
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: GestureDetector(
-                                onTap: _processing
-                                    ? null
-                                    : () async {
-                                        HapticFeedback.selectionClick();
-                                        final newFavs =
-                                            await MotifPreferencesService
-                                                .toggleFavorite(
-                                                    widget.config.isBonus,
-                                                    motif.id);
-                                        if (mounted) {
-                                          setState(() {
-                                            _favorites = newFavs;
-                                            _sortedMotifs =
-                                                MotifPreferencesService
-                                                    .sortMotifs(
-                                              motifs: widget.config.motifs,
-                                              getId: (m) => m.id,
-                                              isOther: (m) => m.isOther,
-                                              favorites: _favorites,
-                                              usage: _usage,
-                                            );
-                                          });
-                                        }
-                                      },
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Icon(
-                                    isFav
-                                        ? Icons.star_rounded
-                                        : Icons.star_border_rounded,
-                                    color: isFav
-                                        ? const Color(0xFFFFD54F)
-                                        : Colors.white24,
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          Text(motif.emoji,
-                              style: const TextStyle(fontSize: 28)),
-                          const SizedBox(height: 6),
-                          Text(motif.label,
-                              style: TextStyle(
-                                  color: isSel
-                                      ? config.accentColor
-                                      : Colors.white70,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600),
-                              textAlign: TextAlign.center),
-                          const SizedBox(height: 2),
-                          Text(
-                              '${widget.config.isBonus ? "+" : "-"}${motif.defaultPoints} pts',
-                              style: TextStyle(
-                                  color: config.primaryColor
-                                      .withValues(alpha: 0.6),
-                                  fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+              SizedBox(
+                height: 146,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount:
+                      _sortedMotifs.where((motif) => !motif.isOther).length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (_, index) {
+                    final motifs = _sortedMotifs
+                        .where((motif) => !motif.isOther)
+                        .toList(growable: false);
+                    return _buildMotifCard(motifs[index], width: 150);
+                  },
+                ),
               ),
+              if (_sortedMotifs.any((motif) => motif.isOther)) ...[
+                const SizedBox(height: 10),
+                _buildMotifCard(
+                  _sortedMotifs.firstWhere((motif) => motif.isOther),
+                  width: double.infinity,
+                ),
+              ],
 
               // ── Champ texte pour motif "Autre" ──
               if (_selectedMotif?.isOther == true) ...[
@@ -506,7 +666,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                 TextField(
                   controller: _customTextCtrl,
                   focusNode: _customFocusNode,
-                  enabled: !_processing,
+                  enabled: !_editingLocked,
                   maxLength: 100,
                   maxLines: 2,
                   textInputAction: TextInputAction.done,
@@ -550,7 +710,8 @@ class _PointActionPanelState extends State<PointActionPanel>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      onPressed: _processing ? null : () => _adjustAmount(-1),
+                      onPressed:
+                          _editingLocked ? null : () => _adjustAmount(-1),
                       icon: const Icon(Icons.remove_circle_outline,
                           color: Colors.white54, size: 36),
                     ),
@@ -573,7 +734,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                     ),
                     const SizedBox(width: 16),
                     IconButton(
-                      onPressed: _processing ? null : () => _adjustAmount(1),
+                      onPressed: _editingLocked ? null : () => _adjustAmount(1),
                       icon: const Icon(Icons.add_circle_outline,
                           color: Colors.white54, size: 36),
                     ),
@@ -585,7 +746,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                   spacing: 8,
                   children: [1, 2, 3, 5, 10].map((v) {
                     return GestureDetector(
-                      onTap: _processing ? null : () => _setAmount(v),
+                      onTap: _editingLocked ? null : () => _setAmount(v),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 6),
@@ -610,6 +771,77 @@ class _PointActionPanelState extends State<PointActionPanel>
                     );
                   }).toList(),
                 ),
+
+                const SizedBox(height: 20),
+
+                // ── Photo facultative ──
+                Text('Photo facultative',
+                    style: TextStyle(
+                        color: config.accentColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                if (_photo == null)
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _editingLocked
+                            ? null
+                            : () => _pickPhoto(ImageSource.camera),
+                        icon: const Icon(Icons.photo_camera_rounded),
+                        label: const Text('Appareil photo'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _editingLocked
+                            ? null
+                            : () => _pickPhoto(ImageSource.gallery),
+                        icon: const Icon(Icons.photo_library_rounded),
+                        label: const Text('Galerie'),
+                      ),
+                    ],
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            _photo!.bytes,
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: _editingLocked
+                                  ? null
+                                  : () => _pickPhoto(ImageSource.gallery),
+                              icon: const Icon(Icons.swap_horiz_rounded),
+                              label: const Text('Remplacer'),
+                            ),
+                            TextButton.icon(
+                              onPressed: _editingLocked ? null : _removePhoto,
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              label: const Text('Retirer'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
 
                 const SizedBox(height: 20),
 
@@ -692,7 +924,11 @@ class _PointActionPanelState extends State<PointActionPanel>
                         strokeWidth: 2, color: Colors.white))
                 : Icon(config.buttonIcon),
             label: Text(
-              _processing ? 'Enregistrement...' : config.buttonText,
+              _processing
+                  ? 'Enregistrement...'
+                  : _retryStateUncertain
+                      ? 'Réessayer sans doublon'
+                      : config.buttonText,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),

@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,15 +23,28 @@ class FcmService {
   /// Device ID local (pour ignorer nos propres notifications = anti-dédoublement).
   String? _localDeviceId;
 
+  /// Dernier token enregistre pendant cette session.
+  ///
+  /// La cle contient la famille et l'appareil afin qu'un changement de
+  /// famille ne bloque pas l'enregistrement du meme token FCM.
+  String? _lastSavedTokenKey;
+  static bool _pendingInboxOpen = false;
+
   String get _platformName {
     if (kIsWeb) return 'web';
     switch (defaultTargetPlatform) {
-      case TargetPlatform.android: return 'android';
-      case TargetPlatform.iOS: return 'ios';
-      case TargetPlatform.macOS: return 'macos';
-      case TargetPlatform.windows: return 'windows';
-      case TargetPlatform.linux: return 'linux';
-      case TargetPlatform.fuchsia: return 'fuchsia';
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.iOS:
+        return 'ios';
+      case TargetPlatform.macOS:
+        return 'macos';
+      case TargetPlatform.windows:
+        return 'windows';
+      case TargetPlatform.linux:
+        return 'linux';
+      case TargetPlatform.fuchsia:
+        return 'fuchsia';
     }
   }
 
@@ -43,9 +58,13 @@ class FcmService {
     } catch (_) {}
 
     final settings = await _messaging.requestPermission(
-      alert: true, badge: true, sound: true,
-      criticalAlert: false, announcement: false,
-      carPlay: false, provisional: false,
+      alert: true,
+      badge: true,
+      sound: true,
+      criticalAlert: false,
+      announcement: false,
+      carPlay: false,
+      provisional: false,
     );
 
     if (kDebugMode) {
@@ -72,7 +91,9 @@ class FcmService {
       // 🔑 ANTI-DÉDOUBLEMENT : si le message provient de NOTRE propre appareil,
       // on ignore l'overlay (notre action locale l'a déjà affiché).
       final sender = message.data['sender']?.toString() ?? '';
-      if (_localDeviceId != null && sender.isNotEmpty && sender == _localDeviceId) {
+      if (_localDeviceId != null &&
+          sender.isNotEmpty &&
+          sender == _localDeviceId) {
         if (kDebugMode) debugPrint('FCM: message ignoré (notre propre action)');
         return;
       }
@@ -84,7 +105,10 @@ class FcmService {
       final notification = message.notification;
 
       if (isSilent || notification == null) {
-        if (kDebugMode) debugPrint('FCM: notif silencieuse (${message.data['type']}) — pas de bannière');
+        if (kDebugMode) {
+          debugPrint(
+              'FCM: notif silencieuse (${message.data['type']}) — pas de bannière');
+        }
         return;
       }
 
@@ -110,28 +134,49 @@ class FcmService {
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      if (kDebugMode) debugPrint('Notification tapped: ${message.notification?.title}');
+      if (kDebugMode) {
+        debugPrint('Notification tapped: ${message.notification?.title}');
+      }
       // Navigation : si c'est une demande, ouvrir l'écran des demandes
       final type = message.data['type']?.toString() ?? '';
-      if (type.startsWith('request') && onOpenRequest != null) {
-        onOpenRequest!();
-      }
+      _openInboxForType(type);
     });
 
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
-      if (kDebugMode) debugPrint('App opened from notification: ${initialMessage.notification?.title}');
-      final type = initialMessage.data['type']?.toString() ?? '';
-      if (type.startsWith('request') && onOpenRequest != null) {
-        // Léger délai pour laisser l'app s'initialiser
-        Future.delayed(const Duration(milliseconds: 800), onOpenRequest!);
+      if (kDebugMode) {
+        debugPrint(
+            'App opened from notification: ${initialMessage.notification?.title}');
       }
+      final type = initialMessage.data['type']?.toString() ?? '';
+      _openInboxForType(type);
     }
   }
 
   /// Callback appelé quand l'utilisateur ouvre une notification de demande.
   /// Doit être branché par le HomeScreen pour naviguer vers PendingRequestsScreen.
   static void Function()? onOpenRequest;
+
+  static bool _isInboxType(String type) =>
+      type.startsWith('request') || type == 'join_request';
+
+  static void _openInboxForType(String type) {
+    if (!_isInboxType(type)) return;
+    final callback = onOpenRequest;
+    if (callback == null) {
+      _pendingInboxOpen = true;
+      return;
+    }
+    callback();
+  }
+
+  static void setInboxOpenHandler(void Function()? handler) {
+    onOpenRequest = handler;
+    if (handler != null && _pendingInboxOpen) {
+      _pendingInboxOpen = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => handler());
+    }
+  }
 
   NotificationType _getNotificationType(String type) {
     switch (type) {
@@ -184,7 +229,6 @@ class FcmService {
     // (au 1er lancement, device_id n'existait pas pendant init())
     await refreshLocalDeviceId();
     await _saveToken();
-    await _saveToken();
   }
 
   Future<void> _saveToken() async {
@@ -232,11 +276,35 @@ class FcmService {
   }
 
   Future<void> _saveTokenToFirestore(String token) async {
+    String? tokenKey;
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final familyId = prefs.getString('family_id');
       final deviceId = prefs.getString('device_id');
-      if (familyId == null || deviceId == null) return;
+
+      if (familyId == null || deviceId == null || token.isEmpty) return;
+
+      // 🔒 Sécurité : ne pas enregistrer le token sans UID Firebase Auth
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null || uid.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('FCM: utilisateur non authentifié, token non enregistré.');
+        }
+        return;
+      }
+
+      tokenKey = '$familyId|$deviceId|$token';
+
+      if (_lastSavedTokenKey == tokenKey) {
+        if (kDebugMode) {
+          debugPrint('FCM: token deja enregistre pour cet appareil.');
+        }
+        return;
+      }
+
+      // Reserver la cle avant l'ecriture bloque deux appels simultanes.
+      _lastSavedTokenKey = tokenKey;
 
       await _db
           .collection('families')
@@ -246,13 +314,23 @@ class FcmService {
           .set({
         'token': token,
         'deviceId': deviceId,
+        'uid': uid,
         'platform': _platformName,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      if (kDebugMode) debugPrint('FCM token saved for $deviceId ($_platformName)');
+      if (kDebugMode) {
+        debugPrint('FCM token saved for $deviceId ($_platformName)');
+      }
     } catch (e) {
-      if (kDebugMode) debugPrint('Save FCM token error: $e');
+      // Une ecriture en echec doit pouvoir etre retentee.
+      if (_lastSavedTokenKey == tokenKey) {
+        _lastSavedTokenKey = null;
+      }
+
+      if (kDebugMode) {
+        debugPrint('Save FCM token error: $e');
+      }
     }
   }
 }

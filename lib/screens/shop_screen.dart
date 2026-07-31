@@ -12,6 +12,7 @@ import '../models/child_model.dart';
 import '../models/reward_model.dart';
 import '../config/emerald_theme.dart';
 import '../utils/image_cache.dart';
+import 'wallet_screen.dart';
 
 // Pixel transparent 1x1 pour le fallback
 final kTransparentPixel = Uint8List.fromList([
@@ -49,6 +50,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _selectedChildId = widget.childId;
     _staggerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -187,6 +189,64 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
+
+            if (child != null)
+              SliverToBoxAdapter(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () => _openWallet(child),
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: EmeraldPalette.gold.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: EmeraldPalette.gold.withValues(alpha: 0.28),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_balance_wallet_rounded,
+                            color: EmeraldPalette.gold),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Cagnotte SKS',
+                                style: TextStyle(
+                                  color: EmeraldPalette.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${fp.getWalletForChild(child.id).balance} points cagnotte · solde indépendant',
+                                style: const TextStyle(
+                                  color: EmeraldPalette.gold,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Consulter le solde et l’historique',
+                                style: TextStyle(
+                                  color: EmeraldPalette.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: EmeraldPalette.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // ─── BANNIÈRE SOLDES ───
             if (fp.isSaleActive)
@@ -331,6 +391,25 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _openWallet(ChildModel child) {
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        pageBuilder: (_, __, ___) => WalletScreen(childId: child.id),
+        transitionsBuilder: (_, animation, __, child) {
+          final offset = Tween<Offset>(
+            begin: const Offset(0, 0.04),
+            end: Offset.zero,
+          ).animate(animation);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(position: offset, child: child),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 260),
+      ),
+    );
+  }
+
   void _showPurchaseDialog(BuildContext context, FamilyProvider fp, ChildModel child, RewardModel reward) {
     final actualCost = fp.salePrice(reward.cost);
     final isOnSale = fp.isSaleActive && actualCost < reward.cost;
@@ -402,6 +481,16 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
           ],
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openWallet(child);
+            },
+            icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
+            label: Text(
+              'Cagnotte ${fp.getWalletForChild(child.id).balance}',
+            ),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Annuler', style: TextStyle(color: EmeraldPalette.textSecondary)),

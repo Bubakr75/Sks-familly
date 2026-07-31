@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/pending_request.dart';
+import '../widgets/family_join_approval_panel.dart';
 
 class PendingRequestsScreen extends StatelessWidget {
   const PendingRequestsScreen({super.key});
@@ -51,13 +53,31 @@ class PendingRequestsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Demandes à valider'),
       ),
-      body: Consumer<FamilyProvider>(
-        builder: (context, fp, _) {
-          // 🔒 Trier par createdAt décroissant sans modifier la liste du provider
-          final requests = List<PendingRequest>.from(fp.pendingRequests)
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          if (requests.isEmpty) {
-            return const Center(
+      body: SafeArea(
+        top: false,
+        left: kIsWeb,
+        right: kIsWeb,
+        bottom: kIsWeb,
+        child: Consumer<FamilyProvider>(
+          builder: (context, fp, _) {
+            // 🔒 Trier par createdAt décroissant sans modifier la liste du provider
+            final requests = List<PendingRequest>.from(fp.pendingRequests)
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            final joinPanel =
+                (fp.memberRole == 'owner' || fp.memberRole == 'parent') &&
+                        fp.familyId != null
+                    ? FamilyJoinApprovalPanel(familyId: fp.familyId!)
+                    : null;
+            return Column(
+              children: [
+                if (joinPanel != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                    child: joinPanel,
+                  ),
+                Expanded(
+                  child: requests.isEmpty
+                      ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -68,9 +88,8 @@ class PendingRequestsScreen extends StatelessWidget {
                       style: TextStyle(fontSize: 16)),
                 ],
               ),
-            );
-          }
-          return ListView.builder(
+                        )
+                      : ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: requests.length,
             itemBuilder: (context, index) {
@@ -174,8 +193,12 @@ class PendingRequestsScreen extends StatelessWidget {
                 ),
               );
             },
-          );
-        },
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

@@ -4,6 +4,104 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+const { createFamilyJoinFunctions } = require("./family_join");
+const { createFamilyManagerFunctions } = require("./family_managers");
+const familyJoinFunctions = createFamilyJoinFunctions({
+  functions,
+  admin,
+  db,
+});
+
+exports.requestFamilyJoin = familyJoinFunctions.requestFamilyJoin;
+exports.getFamilyJoinStatus = familyJoinFunctions.getFamilyJoinStatus;
+exports.finalizeFamilyJoin = familyJoinFunctions.finalizeFamilyJoin;
+exports.approveFamilyJoin = familyJoinFunctions.approveFamilyJoin;
+exports.rejectFamilyJoin = familyJoinFunctions.rejectFamilyJoin;
+
+const familyManagerFunctions = createFamilyManagerFunctions({
+  functions,
+  admin,
+  db,
+});
+exports.listFamilyManagers = familyManagerFunctions.listFamilyManagers;
+exports.setFamilyManager = familyManagerFunctions.setFamilyManager;
+exports.revokeFamilyManager = familyManagerFunctions.revokeFamilyManager;
+exports.getFamilyAccessContext =
+  familyManagerFunctions.getFamilyAccessContext;
+
+const {
+  createFamilyOwnershipFunctions,
+} = require("./family_ownership");
+const familyOwnershipFunctions = createFamilyOwnershipFunctions({
+  functions,
+  admin,
+  db,
+});
+exports.transferFamilyOwnership =
+  familyOwnershipFunctions.transferFamilyOwnership;
+exports.generateFamilyRecoveryCode =
+  familyOwnershipFunctions.generateFamilyRecoveryCode;
+exports.revokeFamilyRecoveryCode =
+  familyOwnershipFunctions.revokeFamilyRecoveryCode;
+exports.recoverFamilyOwnership =
+  familyOwnershipFunctions.recoverFamilyOwnership;
+
+const {createFamilyInboxFunctions} = require("./family_inbox");
+const familyInboxFunctions =
+  createFamilyInboxFunctions({functions, admin, db});
+exports.markFamilyInboxRead = familyInboxFunctions.markFamilyInboxRead;
+
+const {createPointActionFunctions} = require("./point_actions");
+const pointActionFunctions =
+  createPointActionFunctions({functions, admin, db});
+exports.recordPointAction = pointActionFunctions.recordPointAction;
+exports.recordHistoryEvent = pointActionFunctions.recordHistoryEvent;
+exports.setMemberDisplayName = pointActionFunctions.setMemberDisplayName;
+
+const {
+  createFamilyManagementFunctions,
+} = require("./family_management");
+
+const familyManagementFunctions = createFamilyManagementFunctions({
+  functions,
+  admin,
+  db,
+});
+
+exports.createFamily = familyManagementFunctions.createFamily;
+exports.changeFamilyCode = familyManagementFunctions.changeFamilyCode;
+
+const {createWalletFunctions} = require("./wallet");
+const walletFunctions = createWalletFunctions({
+  functions,
+  admin,
+  db,
+});
+
+exports.adjustWallet = walletFunctions.adjustWallet;
+
+const {
+  createSecureChildOperationFunctions,
+} = require("./secure_child_operations");
+const secureChildOperationFunctions =
+  createSecureChildOperationFunctions({functions, admin, db});
+exports.performFamilyOperation =
+  secureChildOperationFunctions.performFamilyOperation;
+
+const {
+  createLegacyFamilyMigrationFunctions,
+} = require("./legacy_family_migration");
+
+const legacyFamilyMigrationFunctions =
+  createLegacyFamilyMigrationFunctions({
+    functions,
+    admin,
+    db,
+  });
+
+exports.migrateLegacyFamily =
+  legacyFamilyMigrationFunctions.migrateLegacyFamily;
+
 // ===== HELPER : envoyer à toute la famille SAUF l'émetteur =====
 async function sendToFamily(familyId, senderDeviceId, title, body, data) {
   const tokensSnap = await db
@@ -16,7 +114,7 @@ async function sendToFamily(familyId, senderDeviceId, title, body, data) {
 
   const tokens = [];
   tokensSnap.docs.forEach((doc) => {
-    if (doc.id !== senderDeviceId) {
+    if (doc.id !== senderDeviceId && doc.data().disabled !== true) {
       const token = doc.data().token;
       if (token) tokens.push(token);
     }
@@ -83,7 +181,7 @@ async function sendToFamilySilent(familyId, senderDeviceId, type, data) {
 
   const tokens = [];
   tokensSnap.docs.forEach((doc) => {
-    if (doc.id !== senderDeviceId) {
+    if (doc.id !== senderDeviceId && doc.data().disabled !== true) {
       const token = doc.data().token;
       if (token) tokens.push(token);
     }
@@ -464,3 +562,113 @@ exports.onNoteCreated = functions.firestore
   });
 
 // Note : onCustomBadgeCreated supprimé — pas besoin de notifier pour un badge personnalisé
+
+// ===== 9. DEMANDES DE RATTACHEMENT D'APPAREIL (join_requests) =====
+// 🔔 Notifie uniquement le propriétaire de la famille quand un nouvel
+// appareil demande à rejoindre. Utilise la même fonction sendToFamily
+// mais cible spécifiquement le ownerUid.
+exports.onJoinRequestCreated = functions.firestore
+  .document("families/{familyId}/join_requests/{requestId}")
+  .onCreate(async (snap, context) => {
+    const req = snap.data();
+    const familyId = context.params.familyId;
+
+    try {
+      // Lire le ownerUid de la famille
+      const familySnap = await db
+        .collection("families")
+        .doc(familyId)
+        .get();
+
+      if (!familySnap.exists) {
+        console.log("onJoinRequestCreated: famille introuvable");
+        return;
+      }
+
+      const ownerUid = familySnap.data().ownerUid;
+      if (!ownerUid) {
+        console.log("onJoinRequestCreated: pas de ownerUid sur la famille");
+        return;
+      }
+
+      // Récupérer les tokens FCM du propriétaire uniquement
+      const tokensSnap = await db
+        .collection("families")
+        .doc(familyId)
+        .collection("fcm_tokens")
+        .get();
+
+      if (tokensSnap.empty) {
+        console.log("onJoinRequestCreated: aucun token FCM trouvé");
+        return;
+      }
+
+      // 🔒 Filtrer : uniquement les tokens dont uid == ownerUid
+      // Ignore les anciens tokens sans uid (pas de migration).
+      // Exclut aussi l'appareil demandeur.
+      const requesterDeviceId = req.deviceId || "";
+      const tokens = [];
+      tokensSnap.docs.forEach((doc) => {
+        const data = doc.data();
+        if (doc.id !== requesterDeviceId &&
+            data.uid === ownerUid &&
+            data.disabled !== true &&
+            data.token) {
+          tokens.push(data.token);
+        }
+      });
+
+      if (tokens.length === 0) {
+        console.log("onJoinRequestCreated: aucun token destinataire");
+        return;
+      }
+
+      const role = req.requestedRole || "parent";
+      const deviceName = req.deviceName || "un nouvel appareil";
+
+      const title = "📱 Nouvelle demande de rattachement";
+      const body =
+        deviceName + " demande à rejoindre la famille en tant que " + role + ".";
+
+      const message = {
+        notification: { title, body },
+        data: {
+          sender: requesterDeviceId,
+          type: "join_request",
+          requestId: context.params.requestId,
+          familyId: familyId,
+        },
+        android: {
+          notification: {
+            channelId: "sks_family_channel",
+            icon: "@mipmap/ic_launcher",
+            sound: "default",
+            priority: "high",
+          },
+        },
+        webpush: {
+          headers: { Urgency: "high" },
+          notification: {
+            title: title,
+            body: body,
+            icon: "/icons/Icon-192.png",
+            badge: "/icons/Icon-192.png",
+            requireInteraction: true,
+          },
+          fcmOptions: { link: "https://sks-familly-3f205.web.app" },
+        },
+        tokens: tokens,
+      };
+
+      const response = await admin.messaging().sendEachForMulticast(message);
+      console.log(
+        "onJoinRequestCreated: envoyé à " +
+          response.successCount +
+          "/" +
+          tokens.length +
+          " appareils"
+      );
+    } catch (e) {
+      console.error("onJoinRequestCreated error:", e);
+    }
+  });

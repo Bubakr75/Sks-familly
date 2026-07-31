@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/child_model.dart';
 import '../models/history_entry.dart';
@@ -14,10 +15,151 @@ import '../models/tribunal_model.dart';
 import '../models/badge_model.dart';
 import '../models/pending_request.dart';
 import '../models/parent_profile.dart';
+import '../models/sks_wallet.dart';
 import '../utils/web_reconnect.dart';
 import 'fcm_service.dart';
+import 'family_management_service.dart';
 
 class FirestoreService {
+  static const walletFunctionsRegion = 'us-central1';
+
+  @visibleForTesting
+  static Map<String, dynamic> buildPointActionPayload({
+    required String familyId,
+    required String actionId,
+    required String childId,
+    required int amount,
+    required String reason,
+    required String category,
+    required bool isBonus,
+    String? photoStoragePath,
+  }) {
+    return {
+      'familyId': familyId,
+      'actionId': actionId,
+      'childId': childId,
+      'amount': amount,
+      'reason': reason.trim(),
+      'category': category.trim(),
+      'isBonus': isBonus,
+      if (photoStoragePath != null) 'photoStoragePath': photoStoragePath,
+    };
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic> buildWalletAdjustmentPayload({
+    required String familyId,
+    required String childId,
+    required String operationId,
+    required String type,
+    required int amount,
+    required String reason,
+  }) {
+    return {
+      'familyId': familyId,
+      'childId': childId,
+      'operationId': operationId,
+      'type': type,
+      'amount': amount,
+      'reason': reason.trim(),
+    };
+  }
+
+  @visibleForTesting
+  static Map<String, String?> buildApprovedLocalMembershipData({
+    required String familyId,
+    required String familyCode,
+    required String role,
+    String? childId,
+    bool allowOwner = false,
+  }) {
+    final cleanFamilyId = familyId.trim();
+    final cleanCode = familyCode.trim().toUpperCase();
+    final cleanRole = role.trim().toLowerCase();
+    final cleanChildId = childId?.trim();
+
+    if (cleanFamilyId.isEmpty ||
+        cleanFamilyId.contains('/') ||
+        RegExp(r'[\u0000-\u001f]').hasMatch(cleanFamilyId)) {
+      throw ArgumentError.value(familyId, 'familyId', 'Identifiant invalide.');
+    }
+
+    if (cleanCode.length < 4 ||
+        cleanCode.length > 10 ||
+        !RegExp(r'^[A-Z0-9]+$').hasMatch(cleanCode)) {
+      throw ArgumentError.value(
+        familyCode,
+        'familyCode',
+        'Code famille invalide.',
+      );
+    }
+
+    final isAllowedOwner = allowOwner && cleanRole == 'owner';
+
+    if (!isAllowedOwner && cleanRole != 'parent' && cleanRole != 'child') {
+      throw ArgumentError.value(role, 'role', 'Rôle approuvé invalide.');
+    }
+
+    if (cleanRole == 'child') {
+      if (cleanChildId == null ||
+          cleanChildId.isEmpty ||
+          cleanChildId.contains('/') ||
+          RegExp(r'[\u0000-\u001f]').hasMatch(cleanChildId)) {
+        throw ArgumentError.value(
+          childId,
+          'childId',
+          'Profil enfant approuvé invalide.',
+        );
+      }
+    } else if (cleanChildId != null && cleanChildId.isNotEmpty) {
+      throw ArgumentError.value(
+        childId,
+        'childId',
+        'Un parent ne doit pas être rattaché à un profil enfant.',
+      );
+    }
+
+    return {
+      'family_id': cleanFamilyId,
+      'family_code': isAllowedOwner ? cleanCode : null,
+      'family_member_role': cleanRole,
+      'family_member_child_id': cleanRole == 'child' ? cleanChildId : null,
+    };
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic> buildNewFamilyData({
+    required String code,
+    required String ownerUid,
+    required Object createdAt,
+  }) {
+    return {
+      'code': code,
+      'createdAt': createdAt,
+      'memberCount': 1,
+      'ownerUid': ownerUid,
+      'schemaVersion': 2,
+      'migrationStatus': 'native',
+    };
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic> buildOwnerMemberData({
+    required String ownerUid,
+    required Object createdAt,
+    required Object approvedAt,
+  }) {
+    return {
+      'uid': ownerUid,
+      'role': 'owner',
+      'childId': null,
+      'active': true,
+      'createdAt': createdAt,
+      'approvedBy': ownerUid,
+      'approvedAt': approvedAt,
+    };
+  }
+
   static final FirestoreService _instance = FirestoreService._internal();
   factory FirestoreService() => _instance;
   FirestoreService._internal();
@@ -27,6 +169,12 @@ class FirestoreService {
   String? _familyId;
   String? get familyId => _familyId;
   bool get isConnected => _familyId != null;
+
+  String? _memberRole;
+  String? get memberRole => _memberRole;
+
+  String? _memberChildId;
+  String? get memberChildId => _memberChildId;
 
   String? _deviceId;
   String get deviceId => _deviceId ?? 'unknown';
@@ -41,30 +189,37 @@ class FirestoreService {
   StreamSubscription? _tribunalSub;
   StreamSubscription? _badgesSub;
   StreamSubscription? _requestsSub;
+  StreamSubscription? _joinRequestsSub;
   StreamSubscription? _screenTimeSub;
   StreamSubscription? _parentProfilesSub;
   StreamSubscription? _choresSub;
   StreamSubscription? _rewardsSub;
   StreamSubscription? _purchasesSub;
+  StreamSubscription? _walletsSub;
 
   Timer? _keepAliveTimer;
   DateTime _lastDataReceived = DateTime.now();
 
-  void Function(List<ChildModel>, List<Map<String, dynamic>>)? onChildrenChanged;
-  void Function(List<HistoryEntry>, List<Map<String, dynamic>>)? onHistoryChanged;
+  void Function(List<ChildModel>, List<Map<String, dynamic>>)?
+      onChildrenChanged;
+  void Function(List<HistoryEntry>, List<Map<String, dynamic>>)?
+      onHistoryChanged;
   void Function(List<GoalModel>, List<Map<String, dynamic>>)? onGoalsChanged;
-  void Function(List<PunishmentLines>, List<Map<String, dynamic>>)? onPunishmentsChanged;
+  void Function(List<PunishmentLines>, List<Map<String, dynamic>>)?
+      onPunishmentsChanged;
   void Function(List<NoteModel>)? onNotesChanged;
   void Function(List<ImmunityLines>)? onImmunitiesChanged;
   void Function(List<TradeModel>)? onTradesChanged;
   void Function(List<TribunalCase>)? onTribunalChanged;
   void Function(List<BadgeModel>)? onBadgesChanged;
   void Function(List<PendingRequest>)? onRequestsChanged;
+  void Function(List<Map<String, dynamic>>)? onJoinRequestsChanged;
   void Function(Map<String, dynamic>)? onScreenTimeChanged;
   void Function(List<ParentProfile>)? onParentProfilesChanged;
   void Function(List<Map<String, dynamic>>)? onChoresChanged;
   void Function(List<Map<String, dynamic>>)? onRewardsChanged;
   void Function(List<Map<String, dynamic>>)? onPurchasesChanged;
+  void Function(List<SksWallet>)? onWalletsChanged;
 
   // ─── Init ────────────────────────────────────────────────────
   Future<void> init() async {
@@ -86,6 +241,8 @@ class FirestoreService {
 
       final prefs = await SharedPreferences.getInstance();
       _familyId = prefs.getString('family_id');
+      _memberRole = prefs.getString('family_member_role');
+      _memberChildId = prefs.getString('family_member_child_id');
       _deviceId = prefs.getString('device_id');
       if (_deviceId == null) {
         _deviceId = _generateDeviceId();
@@ -97,9 +254,14 @@ class FirestoreService {
       _startWebLifecycleHandlers();
 
       if (_familyId != null) {
-        await FcmService().registerToken();
-        _startListening();
-        _startKeepAlive();
+        // Le push n'est qu'une alerte : il ne doit jamais retarder les
+        // listeners Firestore Web qui alimentent la boîte de réception.
+        // Android conserve son initialisation historique, déjà fiable.
+        if (kIsWeb) {
+          unawaited(FcmService().registerToken());
+        } else {
+          await FcmService().registerToken();
+        }
       }
     } catch (e) {
       if (kDebugMode) debugPrint('FirestoreService init error: $e');
@@ -130,44 +292,133 @@ class FirestoreService {
     return List.generate(16, (_) => chars[rng.nextInt(chars.length)]).join();
   }
 
-  String _generateFamilyCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rng = Random.secure();
-    return List.generate(6, (_) => chars[rng.nextInt(chars.length)]).join();
-  }
-
-  // ─── Code famille ────────────────────────────────────────────
-  Future<bool> isCodeAvailable(String code) async {
-    final query = await _db
-        .collection('families')
-        .where('code', isEqualTo: code.toUpperCase().trim())
-        .limit(1)
-        .get();
-    return query.docs.isEmpty;
-  }
+  static const _pendingFamilyCreationIdKey = 'pending_family_creation_id_v1';
 
   Future<String> createFamily({String? customCode}) async {
-    String code;
-    if (customCode != null && customCode.trim().length >= 4) {
-      code = customCode.toUpperCase().trim();
-      final available = await isCodeAvailable(code);
-      if (!available) throw Exception('Ce code est déjà utilisé.');
-    } else {
-      code = _generateFamilyCode();
-    }
-    final docRef = await _db.collection('families').add({
-      'code': code,
-      'createdAt': FieldValue.serverTimestamp(),
-      'memberCount': 1,
-    });
-    _familyId = docRef.id;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('family_id', _familyId!);
-    await prefs.setString('family_code', code);
+
+    var familyId = prefs.getString(
+      _pendingFamilyCreationIdKey,
+    );
+
+    if (familyId == null || familyId.trim().isEmpty) {
+      familyId = _db.collection('families').doc().id;
+
+      final pendingSaved = await prefs.setString(
+        _pendingFamilyCreationIdKey,
+        familyId,
+      );
+
+      if (!pendingSaved) {
+        throw StateError(
+          'Impossible de préparer la création localement.',
+        );
+      }
+    }
+
+    final result = await FamilyManagementService().createFamily(
+      familyId: familyId,
+      customCode: customCode,
+    );
+
+    final previousFamilyId = prefs.getString('family_id');
+    final previousFamilyCode = prefs.getString('family_code');
+    final previousRole = prefs.getString(
+      'family_member_role',
+    );
+    final previousChildId = prefs.getString(
+      'family_member_child_id',
+    );
+
+    Future<void> restorePreference(
+      String key,
+      String? value,
+    ) async {
+      if (value == null) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setString(key, value);
+      }
+    }
+
+    Future<void> requireSet(
+      String key,
+      String value,
+    ) async {
+      final saved = await prefs.setString(key, value);
+
+      if (!saved) {
+        throw StateError(
+          'Impossible d’enregistrer $key localement.',
+        );
+      }
+    }
+
+    try {
+      await requireSet('family_member_role', 'owner');
+      await prefs.remove('family_member_child_id');
+      await requireSet('family_code', result.code);
+
+      // family_id reste volontairement la dernière clé
+      // d’activation écrite.
+      await requireSet('family_id', result.familyId);
+    } catch (_) {
+      await restorePreference(
+        'family_member_role',
+        previousRole,
+      );
+      await restorePreference(
+        'family_member_child_id',
+        previousChildId,
+      );
+      await restorePreference(
+        'family_code',
+        previousFamilyCode,
+      );
+      await restorePreference(
+        'family_id',
+        previousFamilyId,
+      );
+      rethrow;
+    }
+
+    _familyId = result.familyId;
+    _memberRole = 'owner';
+    _memberChildId = null;
+
+    await prefs.remove(_pendingFamilyCreationIdKey);
+
     await FcmService().registerToken();
     _startListening();
     _startKeepAlive();
-    return code;
+
+    return result.code;
+  }
+
+  Future<String> migrateLegacyFamily({
+    required String migrationSecret,
+  }) async {
+    final currentFamilyId = _familyId;
+
+    if (currentFamilyId == null) {
+      throw StateError(
+        'Aucune ancienne famille n’est active sur cet appareil.',
+      );
+    }
+
+    final result = await FamilyManagementService().migrateLegacyFamily(
+      familyId: currentFamilyId,
+      migrationSecret: migrationSecret,
+    );
+
+    await activateApprovedFamily(
+      familyId: result.familyId,
+      familyCode: result.code,
+      role: 'owner',
+      allowOwner: true,
+    );
+
+    return result.code;
   }
 
   Future<bool> joinFamily(String code) async {
@@ -186,7 +437,7 @@ class FirestoreService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('family_id', _familyId!);
       await prefs.setString('family_code', cleanCode);
-    await FcmService().registerToken();
+      await FcmService().registerToken();
       _startListening();
       _startKeepAlive();
       return true;
@@ -196,18 +447,158 @@ class FirestoreService {
     }
   }
 
+  Future<void> activateApprovedFamily({
+    required String familyId,
+    required String familyCode,
+    required String role,
+    String? childId,
+    bool allowOwner = false,
+  }) async {
+    final membership = buildApprovedLocalMembershipData(
+      familyId: familyId,
+      familyCode: familyCode,
+      role: role,
+      childId: childId,
+      allowOwner: allowOwner,
+    );
+
+    final approvedFamilyId = membership['family_id']!;
+    final approvedCode = membership['family_code'];
+    final approvedRole = membership['family_member_role']!;
+    final approvedChildId = membership['family_member_child_id'];
+
+    if (_familyId != null && _familyId != approvedFamilyId) {
+      throw StateError(
+        'Cet appareil est déjà connecté à une autre famille.',
+      );
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+
+    final previousFamilyId = prefs.getString('family_id');
+    final previousFamilyCode = prefs.getString('family_code');
+    final previousRole = prefs.getString('family_member_role');
+    final previousChildId = prefs.getString('family_member_child_id');
+
+    Future<void> restorePreference(String key, String? value) async {
+      if (value == null) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setString(key, value);
+      }
+    }
+
+    Future<void> requireSet(String key, String value) async {
+      final saved = await prefs.setString(key, value);
+      if (!saved) {
+        throw StateError('Impossible d’enregistrer $key localement.');
+      }
+    }
+
+    try {
+      // family_id est volontairement écrit en dernier. Tant que cette clé
+      // n’existe pas, un redémarrage ne lance aucun listener familial.
+      await requireSet('family_member_role', approvedRole);
+
+      if (approvedChildId == null) {
+        await prefs.remove('family_member_child_id');
+      } else {
+        await requireSet('family_member_child_id', approvedChildId);
+      }
+
+      if (approvedCode == null) {
+        await prefs.remove('family_code');
+      } else {
+        await requireSet('family_code', approvedCode);
+      }
+      await requireSet('family_id', approvedFamilyId);
+    } catch (_) {
+      await restorePreference('family_member_role', previousRole);
+      await restorePreference('family_member_child_id', previousChildId);
+      await restorePreference('family_code', previousFamilyCode);
+      await restorePreference('family_id', previousFamilyId);
+      rethrow;
+    }
+
+    _stopListening();
+    _stopKeepAlive();
+
+    _familyId = approvedFamilyId;
+    _memberRole = approvedRole;
+    _memberChildId = approvedChildId;
+
+    await FcmService().registerToken();
+    _startListening();
+    _startKeepAlive();
+  }
+
+  Future<void> verifyApprovedFamilyAccess(String familyId) async {
+    final cleanFamilyId = familyId.trim();
+    if (cleanFamilyId.isEmpty ||
+        cleanFamilyId.contains('/') ||
+        RegExp(r'[\u0000-\u001f]').hasMatch(cleanFamilyId)) {
+      throw ArgumentError.value(
+        familyId,
+        'familyId',
+        'Identifiant familial invalide.',
+      );
+    }
+
+    const server = GetOptions(source: Source.server);
+    final familyRef = _db.collection('families').doc(cleanFamilyId);
+    final familySnapshot = await familyRef.get(server);
+    if (!familySnapshot.exists) {
+      throw StateError('La famille approuvée est introuvable.');
+    }
+
+    // Cette lecture vérifie aussi que les règles reconnaissent déjà le membre
+    // actif avant toute persistance locale.
+    await familyRef.collection('children').limit(1).get(server);
+  }
+
   Future<String?> getFamilyCode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('family_code');
+  }
+
+  Future<void> applyServerAccessContext({
+    required String familyId,
+    required String role,
+    String? familyCode,
+  }) async {
+    if (_familyId != familyId) {
+      throw StateError('Le contexte concerne une autre famille.');
+    }
+    if (!['owner', 'manager', 'parent', 'child'].contains(role)) {
+      throw ArgumentError.value(role, 'role', 'Rôle familial invalide.');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final roleSaved = await prefs.setString('family_member_role', role);
+    if (!roleSaved) {
+      throw StateError('Impossible d’enregistrer le rôle familial.');
+    }
+    if (familyCode == null) {
+      await prefs.remove('family_code');
+    } else {
+      final codeSaved = await prefs.setString('family_code', familyCode);
+      if (!codeSaved) {
+        throw StateError('Impossible d’enregistrer le code familial.');
+      }
+    }
+    _memberRole = role;
   }
 
   Future<void> disconnectFamily() async {
     _stopListening();
     _stopKeepAlive();
     _familyId = null;
+    _memberRole = null;
+    _memberChildId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('family_id');
     await prefs.remove('family_code');
+    await prefs.remove('family_member_role');
+    await prefs.remove('family_member_child_id');
   }
 
   // ─── Keep-alive ──────────────────────────────────────────────
@@ -241,7 +632,9 @@ class FirestoreService {
         .doc(_familyId)
         .get()
         .then((_) {})
-        .catchError((_) { reconnect(); });
+        .catchError((_) {
+      reconnect();
+    });
   }
 
   void _markDataReceived() => _lastDataReceived = DateTime.now();
@@ -372,15 +765,41 @@ class FirestoreService {
       onBadgesChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
 
-    _requestsSub = fRef.collection('requests').snapshots().listen((s) {
+    Query<Map<String, dynamic>> requestsQuery = fRef.collection('requests');
+    if (_memberRole == 'child' && _memberChildId != null) {
+      requestsQuery = requestsQuery.where('childId', isEqualTo: _memberChildId);
+    }
+    _requestsSub = requestsQuery.snapshots().listen((s) {
+      _markDataReceived();
       // 🔔 Ne garder que les demandes "pending" pour le badge cloche
-      final list = s.docs.map((doc) {
-        final d = Map<String, dynamic>.from(doc.data());
-        d['id'] = doc.id;
-        return PendingRequest.fromMap(d);
-      }).where((r) => r.status == 'pending').toList();
+      final list = s.docs
+          .map((doc) {
+            final d = Map<String, dynamic>.from(doc.data());
+            d['id'] = doc.id;
+            return PendingRequest.fromMap(d);
+          })
+          .where((r) => r.isPending)
+          .toList();
       onRequestsChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
+    if (_memberRole == 'owner' || _memberRole == 'parent') {
+      _joinRequestsSub =
+          fRef.collection('join_requests').snapshots().listen((snapshot) {
+        _markDataReceived();
+        final list = snapshot.docs.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['id'] = doc.id;
+          return data;
+        }).where((data) {
+          final status = data['status']?.toString() ?? '';
+          return status == 'pending' ||
+              status == 'sent' ||
+              status == 'received';
+        }).toList();
+        onJoinRequestsChanged?.call(list);
+      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }
 
     _screenTimeSub = fRef.collection('screen_time').snapshots().listen((s) {
       _markDataReceived();
@@ -392,7 +811,8 @@ class FirestoreService {
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
 
     // ─── Profils parents ───
-    _parentProfilesSub = fRef.collection('parent_profiles').snapshots().listen((s) {
+    _parentProfilesSub =
+        fRef.collection('parent_profiles').snapshots().listen((s) {
       _markDataReceived();
       final list = s.docs.map((doc) {
         final d = Map<String, dynamic>.from(doc.data());
@@ -435,6 +855,30 @@ class FirestoreService {
       }).toList();
       onPurchasesChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+
+    final wallets = fRef.collection('wallets');
+    if (_memberRole == 'child' && _memberChildId != null) {
+      _walletsSub = wallets.doc(_memberChildId).snapshots().listen((doc) {
+        _markDataReceived();
+        final list = <SksWallet>[];
+        if (doc.exists && doc.data() != null) {
+          final data = Map<String, dynamic>.from(doc.data()!);
+          data['childId'] = doc.id;
+          list.add(SksWallet.fromMap(data));
+        }
+        onWalletsChanged?.call(list);
+      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    } else {
+      _walletsSub = wallets.snapshots().listen((snapshot) {
+        _markDataReceived();
+        final list = snapshot.docs.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['childId'] = doc.id;
+          return SksWallet.fromMap(data);
+        }).toList();
+        onWalletsChanged?.call(list);
+      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }
   }
 
   void _stopListening() {
@@ -448,11 +892,13 @@ class FirestoreService {
     _tribunalSub?.cancel();
     _badgesSub?.cancel();
     _requestsSub?.cancel();
+    _joinRequestsSub?.cancel();
     _screenTimeSub?.cancel();
     _parentProfilesSub?.cancel();
     _choresSub?.cancel();
     _rewardsSub?.cancel();
     _purchasesSub?.cancel();
+    _walletsSub?.cancel();
     _childrenSub = null;
     _historySub = null;
     _goalsSub = null;
@@ -463,11 +909,152 @@ class FirestoreService {
     _tribunalSub = null;
     _badgesSub = null;
     _requestsSub = null;
+    _joinRequestsSub = null;
     _screenTimeSub = null;
     _parentProfilesSub = null;
     _choresSub = null;
     _rewardsSub = null;
     _purchasesSub = null;
+    _walletsSub = null;
+  }
+
+  void startRealtimeSync() {
+    if (_familyId == null) return;
+    _stopListening();
+    _startListening();
+    _startKeepAlive();
+  }
+
+  Future<void> markFamilyInboxRead() async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) return;
+    await FirebaseFunctions.instance.httpsCallable('markFamilyInboxRead').call({
+      'familyId': currentFamilyId,
+    });
+  }
+
+  /// Enregistre une action de points dans une transaction côté serveur.
+  Future<Map<String, dynamic>> recordPointAction({
+    required String actionId,
+    required String childId,
+    required int amount,
+    required String reason,
+    required String category,
+    required bool isBonus,
+    String? photoStoragePath,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('recordPointAction').call(buildPointActionPayload(
+          familyId: currentFamilyId,
+          actionId: actionId,
+          childId: childId,
+          amount: amount,
+          reason: reason,
+          category: category,
+          isBonus: isBonus,
+          photoStoragePath: photoStoragePath,
+        ));
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  /// Synchronise le nom du membre authentifié avant une action sensible.
+  Future<void> syncMemberDisplayName(String displayName) async {
+    final currentFamilyId = _familyId;
+    final cleanName = displayName.trim();
+    if (currentFamilyId == null || cleanName.isEmpty) return;
+    await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('setMemberDisplayName').call({
+      'familyId': currentFamilyId,
+      'displayName': cleanName,
+    });
+  }
+
+  Stream<List<SksWalletOperation>> watchWalletOperations(String childId) {
+    if (_familyId == null) return const Stream.empty();
+    return _db
+        .collection('families')
+        .doc(_familyId)
+        .collection('wallets')
+        .doc(childId)
+        .collection('operations')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = Map<String, dynamic>.from(doc.data());
+              data['id'] = doc.id;
+              return SksWalletOperation.fromMap(data);
+            }).toList());
+  }
+
+  Future<SksWalletAdjustmentResult> adjustWallet({
+    required String childId,
+    required String operationId,
+    required String type,
+    required int amount,
+    required String reason,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('adjustWallet').call(buildWalletAdjustmentPayload(
+          familyId: currentFamilyId,
+          childId: childId,
+          operationId: operationId,
+          type: type,
+          amount: amount,
+          reason: reason,
+        ));
+    return SksWalletAdjustmentResult.fromData(result.data);
+  }
+
+  /// Exécute une opération sensible côté serveur.
+  ///
+  /// Le client ne transmet jamais de solde, de prix ni de rôle : la Function
+  /// les relit dans Firestore et applique l'opération dans une transaction.
+  Future<Map<String, dynamic>> performFamilyOperation({
+    required String operation,
+    required String operationId,
+    String? childId,
+    String? rewardId,
+    String? caseId,
+    String? tradeId,
+    String? toChildId,
+    String? vote,
+    int? minutes,
+    int? immunityLines,
+    String? description,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final payload = <String, dynamic>{
+      'familyId': currentFamilyId,
+      'operation': operation,
+      'operationId': operationId,
+      if (childId != null) 'childId': childId,
+      if (rewardId != null) 'rewardId': rewardId,
+      if (caseId != null) 'caseId': caseId,
+      if (tradeId != null) 'tradeId': tradeId,
+      if (toChildId != null) 'toChildId': toChildId,
+      if (vote != null) 'vote': vote,
+      if (minutes != null) 'minutes': minutes,
+      if (immunityLines != null) 'immunityLines': immunityLines,
+      if (description != null) 'description': description.trim(),
+    };
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('performFamilyOperation')
+        .call(payload);
+    return Map<String, dynamic>.from(result.data as Map);
   }
 
   // ─── WRITE : Children ────────────────────────────────────────
@@ -537,19 +1124,22 @@ class FirestoreService {
 
   // ─── WRITE : History ─────────────────────────────────────────
   Future<void> saveHistoryEntry(HistoryEntry entry) async {
-    if (_familyId == null) return;
-    try {
-      final data = entry.toMap();
-      data['deviceId'] = deviceId;
-      await _db
-          .collection('families')
-          .doc(_familyId)
-          .collection('history')
-          .doc(entry.id)
-          .set(data);
-    } catch (e) {
-      if (kDebugMode) debugPrint('saveHistoryEntry error: $e');
-    }
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) return;
+    await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('recordHistoryEvent').call({
+      'familyId': currentFamilyId,
+      'eventId': entry.id,
+      'childId': entry.childId,
+      'points': entry.points,
+      'reason': entry.reason,
+      'category': entry.category,
+      'isBonus': entry.isBonus,
+      if (entry.transferId != null) 'transferId': entry.transferId,
+      if (entry.counterpartyChildId != null)
+        'counterpartyChildId': entry.counterpartyChildId,
+    });
   }
 
   /// Écriture groupée atomique d'un transfert de points entre deux enfants.
@@ -880,7 +1470,12 @@ class FirestoreService {
   Future<void> saveReward(Map<String, dynamic> data, String id) async {
     if (_familyId == null) return;
     try {
-      await _db.collection('families').doc(_familyId).collection('rewards').doc(id).set(data);
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('rewards')
+          .doc(id)
+          .set(data);
     } catch (e) {
       if (kDebugMode) debugPrint('saveReward error: $e');
     }
@@ -911,8 +1506,14 @@ class FirestoreService {
     if (_familyId == null) return;
     try {
       // 🔒 Utilise un ID stable (défini par l'appelant) au lieu de .add()
-      final purchaseId = data['id'] as String? ?? 'purch_${DateTime.now().millisecondsSinceEpoch}';
-      await _db.collection('families').doc(_familyId).collection('purchases').doc(purchaseId).set(data);
+      final purchaseId = data['id'] as String? ??
+          'purch_${DateTime.now().millisecondsSinceEpoch}';
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('purchases')
+          .doc(purchaseId)
+          .set(data);
     } catch (e) {
       if (kDebugMode) debugPrint('savePurchase error: $e');
     }
@@ -922,7 +1523,12 @@ class FirestoreService {
   Future<void> saveChore(Map<String, dynamic> data, String id) async {
     if (_familyId == null) return;
     try {
-      await _db.collection('families').doc(_familyId).collection('chores').doc(id).set(data);
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('chores')
+          .doc(id)
+          .set(data);
     } catch (e) {
       if (kDebugMode) debugPrint('saveChore error: $e');
     }
@@ -931,17 +1537,28 @@ class FirestoreService {
   Future<void> deleteChore(String id) async {
     if (_familyId == null) return;
     try {
-      await _db.collection('families').doc(_familyId).collection('chores').doc(id).delete();
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('chores')
+          .doc(id)
+          .delete();
     } catch (e) {
       if (kDebugMode) debugPrint('deleteChore error: $e');
     }
   }
 
   // ─── SCREEN TIME ACCOUNTS ───────────────────────────────────
-  Future<void> saveScreenTimeAccount(String childId, Map<String, dynamic> data) async {
+  Future<void> saveScreenTimeAccount(
+      String childId, Map<String, dynamic> data) async {
     if (_familyId == null) return;
     try {
-      await _db.collection('families').doc(_familyId).collection('screen_time_accounts').doc(childId).set(data);
+      await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('screen_time_accounts')
+          .doc(childId)
+          .set(data);
     } catch (e) {
       if (kDebugMode) debugPrint('saveScreenTimeAccount error: $e');
     }
@@ -950,7 +1567,11 @@ class FirestoreService {
   Future<List<Map<String, dynamic>>> loadScreenTimeAccounts() async {
     if (_familyId == null) return [];
     try {
-      final snap = await _db.collection('families').doc(_familyId).collection('screen_time_accounts').get();
+      final snap = await _db
+          .collection('families')
+          .doc(_familyId)
+          .collection('screen_time_accounts')
+          .get();
       return snap.docs.map((doc) {
         final d = Map<String, dynamic>.from(doc.data());
         d['childId'] = doc.id;
@@ -983,25 +1604,30 @@ class FirestoreService {
 
   // ─── Changement de code ──────────────────────────────────────
   Future<void> changeFamilyCode(String newCode) async {
-    if (_familyId == null) throw Exception('Non connecté.');
-    final cleanCode = newCode.toUpperCase().trim();
-    if (cleanCode.length < 4 || cleanCode.length > 10) {
-      throw Exception('Le code doit avoir entre 4 et 10 caractères.');
+    final familyId = _familyId;
+
+    if (familyId == null) {
+      throw StateError('Non connecté.');
     }
-    final query = await _db
-        .collection('families')
-        .where('code', isEqualTo: cleanCode)
-        .limit(1)
-        .get();
-    if (query.docs.isNotEmpty && query.docs.first.id != _familyId) {
-      throw Exception('Ce code est déjà utilisé par une autre famille.');
-    }
-    await _db
-        .collection('families')
-        .doc(_familyId)
-        .update({'code': cleanCode});
+
+    final result = await FamilyManagementService().changeFamilyCode(
+      familyId: familyId,
+      newCode: newCode,
+    );
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('family_code', cleanCode);
+    final saved = await prefs.setString(
+      'family_code',
+      result.code,
+    );
+
+    if (!saved) {
+      throw StateError(
+        'Le code a été modifié sur le serveur, mais pas '
+        'sur cet appareil.',
+      );
+    }
+
     await FcmService().registerToken();
   }
 
@@ -1159,7 +1785,7 @@ class FirestoreService {
   }
 
   // ─── Force refresh ───────────────────────────────────────────
-  Future<void> forceRefresh() async {
+  Future<void> forceRefresh({bool throwOnError = false}) async {
     if (_familyId == null) return;
     try {
       final fRef = _db.collection('families').doc(_familyId);
@@ -1267,6 +1893,7 @@ class FirestoreService {
       _markDataReceived();
     } catch (e) {
       if (kDebugMode) debugPrint('forceRefresh error: $e');
+      if (throwOnError) rethrow;
       reconnect();
     }
   }
@@ -1302,17 +1929,3 @@ class FirestoreService {
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

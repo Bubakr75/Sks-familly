@@ -5,6 +5,7 @@
 // =============================================================================
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -13,11 +14,11 @@ import '../models/child_model.dart';
 import '../models/trade_model.dart';
 import '../models/history_entry.dart';
 import '../utils/image_cache.dart';
+import '../utils/family_inbox_visibility.dart';
 import '../config/emerald_theme.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../widgets/animated_page_transition.dart';
 import 'punishment_lines_screen.dart';
-import 'immunity_lines_screen.dart';
 import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'pending_requests_screen.dart';
@@ -25,6 +26,7 @@ import 'tribunal_screen.dart';
 import 'screen_time_new_screen.dart';
 import 'multi_child_evaluation_screen.dart';
 import '../widgets/transfer_points_sheet.dart';
+import '../widgets/family_inbox_bell.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -124,6 +126,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         final activeTrades = fp.trades.where((t) => t.isActive).toList();
         _cachedHistory = fp.history;
 
+        final canUseInbox = shouldShowFamilyInbox(
+          isWeb: kIsWeb,
+          memberRole: fp.memberRole,
+          androidParentMode: context.watch<PinProvider>().isParentMode,
+        );
         return EmeraldBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
@@ -137,7 +144,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     _AnimatedFade(
                       animation: _headerAnim,
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: EmeraldHeader(
@@ -148,9 +155,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                               onActionTap: () => Scaffold.of(context).openDrawer(),
                             ),
                           ),
-                          // Bouton demandes (badge cloche) — visible en mode parent
-                          if (context.watch<PinProvider>().isParentMode)
+                          if (canUseInbox) ...[
+                            if (kIsWeb) const SizedBox(width: 8),
                             _buildRequestsButton(fp),
+                          ],
                         ],
                       ),
                     ),
@@ -288,6 +296,22 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   // Bouton demandes (cloche + badge) — visible en mode parent
   Widget _buildRequestsButton(FamilyProvider fp) {
+    if (!kIsWeb) return _buildAndroidRequestsButton(fp);
+    return FamilyInboxBell(
+      unreadCount: fp.unreadRequestsCount,
+      onTap: () async {
+        try {
+          await fp.markFamilyInboxRead();
+        } catch (_) {}
+        if (!mounted) return;
+        await Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const PendingRequestsScreen()));
+      },
+    );
+  }
+
+  /// Conserve strictement le comportement Android historique.
+  Widget _buildAndroidRequestsButton(FamilyProvider fp) {
     final pendingCount = fp.pendingRequestsCount;
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 16),
@@ -445,16 +469,19 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildQuickActions(FamilyProvider fp) {
     final actions = [
-      _Act('Lignes Punition', Icons.menu_book_rounded, EmeraldPalette.error, () {
+      _Act('Lignes de punition', Icons.menu_book_rounded, EmeraldPalette.error, () {
         Navigator.push(
             context,
             SlidePageRoute(
                 page: const PunishmentLinesScreen(),
                 direction: SlideDirection.up));
       }),
-      _Act("Lignes d'Immunité", Icons.shield_rounded, EmeraldPalette.warning, () {
+      _Act("Lignes d'immunité", Icons.shield_rounded, EmeraldPalette.warning, () {
         Navigator.push(
-            context, SpinPageRoute(page: const ImmunityLinesScreen()));
+            context,
+            SlidePageRoute(
+                page: const PunishmentLinesScreen(initialTabIndex: 1),
+                direction: SlideDirection.up));
       }),
       _Act('Temps Écran', Icons.tv_rounded, EmeraldPalette.info, () {
         _showChildPickerForNav(fp, (childId) {
@@ -536,7 +563,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     points: entry.points,
                     isBonus: entry.isBonus,
                     date: entry.date,
-                    actionBy: entry.actionBy,
+                    actionBy: entry.displayActorName,
                     onTap: () {
                       if (child != null) {
                         Navigator.push(

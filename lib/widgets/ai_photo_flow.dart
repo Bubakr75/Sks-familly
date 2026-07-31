@@ -5,14 +5,17 @@
 //
 // Étapes : photo → analyse IA → dialogue (type modifiable, enfant, points -/+, raison modifiable) → confirmation.
 
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../providers/family_provider.dart';
+import '../services/action_photo_service.dart';
 import '../services/gemini_service.dart';
+import '../services/storage_service.dart';
 import '../utils/checklist_helpers.dart';
 
 /// Lance le flow Photo IA complet.
@@ -133,6 +136,8 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
   late TextEditingController _reasonCtrl;
   String? _selectedChildId;
   bool _processing = false;
+  final String _actionId = const Uuid().v4();
+  String? _uploadedPhotoPath;
 
   @override
   void initState() {
@@ -144,6 +149,12 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
 
   @override
   void dispose() {
+    final orphanPath = _uploadedPhotoPath;
+    if (orphanPath != null) {
+      unawaited(
+        StorageService().deleteActionPhoto(orphanPath).catchError((_) {}),
+      );
+    }
     _reasonCtrl.dispose();
     super.dispose();
   }
@@ -181,16 +192,36 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
     }
 
     try {
+      var photoPath = _uploadedPhotoPath;
+      if (photoPath == null) {
+        final familyId = widget.fp.familyId;
+        if (familyId == null) {
+          throw StateError('Connexion familiale indisponible.');
+        }
+        final photo = await ActionPhotoService().prepare(
+          base64Decode(widget.base64Photo),
+        );
+        photoPath = await StorageService().uploadActionPhoto(
+          familyId: familyId,
+          actionId: _actionId,
+          bytes: photo.bytes,
+          contentType: photo.contentType,
+          extension: photo.extension,
+        );
+        _uploadedPhotoPath = photoPath;
+      }
       await widget.fp.addPoints(
         capturedChildId,
         actualPoints,
         capturedReason,
         category: capturedIsBonus ? 'Bonus' : 'Pénalité',
         isBonus: capturedIsBonus,
-        proofPhotoBase64: widget.base64Photo,
+        actionId: _actionId,
+        photoStoragePath: photoPath,
       );
 
       if (!mounted) return;
+      _uploadedPhotoPath = null;
       Navigator.pop(context, true);
 
       HapticFeedback.heavyImpact();

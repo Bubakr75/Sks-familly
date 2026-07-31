@@ -6,6 +6,7 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../config/emerald_theme.dart';
 import '../utils/pin_guard.dart';
+import '../utils/home_tab_history.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -29,6 +30,7 @@ import 'school_notes_weekly_screen.dart';
 import 'punishment_lines_screen.dart';
 import 'immunity_lines_screen.dart';
 import 'balance_screen.dart'; // â† NOUVEAU
+import 'wallet_screen.dart';
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
 import 'family_screen.dart';
@@ -41,6 +43,7 @@ import 'screen_time_new_screen.dart';
 import 'daily_wheel_screen.dart';
 import '../widgets/animated_page_transition.dart';
 import '../widgets/transfer_points_sheet.dart';
+import '../widgets/update_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   final String parentName;
@@ -52,6 +55,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
+  final HomeTabHistory _tabHistory = HomeTabHistory();
   late AnimationController _navBarController;
   // 🔒 Onglets protégés : Bonus (1), Pénalité (3), Réglages (4)
   // Dashboard (0) reste visible aux enfants
@@ -66,16 +70,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 800),
     )..forward();
     // Quand on tape sur une notif de demande, ouvrir l'écran des demandes
-    FcmService.onOpenRequest = () {
+    FcmService.setInboxOpenHandler(() {
       if (!mounted) return;
+      final provider = context.read<FamilyProvider>();
+      provider.markFamilyInboxRead().catchError((_) {});
       Navigator.push(context,
           MaterialPageRoute(builder: (_) => const PendingRequestsScreen()));
-    };
+    });
   }
 
   @override
   void dispose() {
-    FcmService.onOpenRequest = null;
+    FcmService.setInboxOpenHandler(null);
     _navBarController.dispose();
     super.dispose();
   }
@@ -100,12 +106,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final pinProvider = context.read<PinProvider>();
       if (pinProvider.isPinSet && !pinProvider.canPerformParentAction()) {
         PinGuard.guardAction(context, () {
-          setState(() => _currentIndex = index);
+          _selectTab(index);
         });
         return;
       }
     }
+    _selectTab(index);
+  }
+
+  void _selectTab(int index) {
+    if (index == _currentIndex) return;
+    _tabHistory.visit(index);
     setState(() => _currentIndex = index);
+  }
+
+  void _handleBack() {
+    final previousIndex = _tabHistory.back();
+    if (previousIndex != null) {
+      setState(() => _currentIndex = previousIndex);
+    }
   }
 
   /// Bouton central Photo IA — protégé par PinGuard, ne modifie pas l'index.
@@ -658,11 +677,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final isParent = context.watch<PinProvider>().isParentMode;
     final pinProvider = context.watch<PinProvider>();
     final familyProvider = context.watch<FamilyProvider>();
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
-      drawer: _buildDrawer(context, isParent),
-      body: AnimatedBackground(
+    return PopScope(
+      canPop: _tabHistory.canExit,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        drawer: _buildDrawer(context, isParent),
+        body: AnimatedBackground(
         child: Column(
           children: [
             // ─── BANDEAU DE MODE (Parent / Enfant) ───
@@ -706,6 +730,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+            // ─── Bannière de mise à jour (Android uniquement) ───
+            const UpdateBanner(),
             // ─── CONTENU PRINCIPAL ───
             // Chaque écran gère son propre SafeArea
             Expanded(
@@ -735,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
       // Bouton IA flottant 🤖 (overlay sur tout l'écran)
-      bottomNavigationBar: SlideTransition(
+        bottomNavigationBar: SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0, 1),
           end: Offset.zero,
@@ -844,6 +870,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
+        ),
       ),
     );
   }
@@ -939,6 +966,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           context, () => _showBonusPenaltyHistory(context));
                     },
                   ),
+                _drawerItem(
+                  label: 'Cagnotte SKS',
+                  icon: Icons.account_balance_wallet_rounded,
+                  color: EmeraldPalette.gold,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SlidePageRoute(page: const WalletScreen()),
+                    );
+                  },
+                ),
 
                 // ═══ ⚖️ JUSTICE ═══
                 _drawerSectionHeader('⚖️ Justice'),

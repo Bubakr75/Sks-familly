@@ -4,6 +4,7 @@ import '../providers/family_provider.dart';
 import '../models/history_entry.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/history_proof_photo.dart';
 
 class HistoryScreen extends StatefulWidget {
   final String childId;
@@ -143,6 +144,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ),
           const SizedBox(width: 12),
+          if (entry.hasProofPhoto) ...[
+            HistoryProofPhoto(entry: entry),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,16 +172,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       style: const TextStyle(
                           color: Colors.white38, fontSize: 11),
                     ),
-                    if (entry.actionBy != null &&
-                        entry.actionBy!.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      const Icon(Icons.person_outline,
-                          color: Colors.white24, size: 12),
-                      const SizedBox(width: 2),
-                      Text(entry.actionBy!,
-                          style: const TextStyle(
-                              color: Colors.white24, fontSize: 11)),
-                    ],
+                    const SizedBox(width: 8),
+                    const Icon(Icons.person_outline,
+                        color: Colors.white24, size: 12),
+                    const SizedBox(width: 2),
+                    Flexible(
+                      child: Text(
+                        entry.displayActorName,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white24, fontSize: 11),
+                      ),
+                    ),
                   ],
                 ),
               ],

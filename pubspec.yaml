@@ -1,7 +1,7 @@
-﻿name: family_score
+name: family_score
 description: "SKS Family - Systeme de points et recompenses pour la famille"
 publish_to: 'none'
-version: 4.8.0+378
+version: 4.8.0+499
 
 environment:
   sdk: '>=3.3.0 <4.0.0'   # âœ… CORRIGÃ‰
@@ -58,6 +58,7 @@ dependencies:
   # Voix / Text-to-Speech
   flutter_tts: ^4.2.0
   audioplayers: ^6.1.0
+  cloud_functions: 5.6.2
 
 dev_dependencies:
   flutter_test:

@@ -8,6 +8,7 @@ class PendingRequest {
   String status;      // 'pending' | 'approved' | 'rejected'
   DateTime createdAt;
   Map<String, dynamic> extra; // donnees additionnelles (tribunal, etc.)
+  List<String> readBy;
 
   PendingRequest({
     required this.id,
@@ -19,8 +20,19 @@ class PendingRequest {
     this.status = 'pending',
     DateTime? createdAt,
     Map<String, dynamic>? extra,
+    List<String>? readBy,
   })  : createdAt = createdAt ?? DateTime.now(),
-        extra = extra ?? {};
+        extra = extra ?? {},
+        readBy = readBy ?? [];
+
+  bool get isPending =>
+      status == 'pending' ||
+      status == 'sending' ||
+      status == 'sent' ||
+      status == 'received';
+
+  bool isUnreadFor(String? uid) =>
+      uid != null && uid.isNotEmpty && !readBy.contains(uid);
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -32,6 +44,7 @@ class PendingRequest {
         'status': status,
         'createdAt': createdAt.toIso8601String(),
         'extra': extra,
+        'readBy': readBy,
       };
 
   factory PendingRequest.fromMap(Map<String, dynamic> map) => PendingRequest(
@@ -48,5 +61,8 @@ class PendingRequest {
         extra: map['extra'] != null
             ? Map<String, dynamic>.from(map['extra'])
             : {},
+        readBy: map['readBy'] is List
+            ? List<String>.from(map['readBy'])
+            : const [],
       );
 }

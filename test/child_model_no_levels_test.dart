@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/models/child_model.dart';
+import 'package:family_score/models/child_model.dart';
 
 void main() {
   group('Niveau dormant', () {
