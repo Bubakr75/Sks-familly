@@ -9,6 +9,7 @@ import '../widgets/family_join_approval_panel.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'account_security_screen.dart';
 import 'family_managers_screen.dart';
+import 'family_ownership_screen.dart';
 import 'firebase_diagnostic_screen.dart';
 
 class FamilyScreen extends StatefulWidget {
@@ -749,6 +750,25 @@ class _FamilyScreenState extends State<FamilyScreen> {
                     ),
                     icon: const Icon(Icons.admin_panel_settings_rounded),
                     label: const Text('Gérer les gestionnaires'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FamilyOwnershipScreen(
+                          familyId: context.read<FamilyProvider>().familyId!,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.swap_horiz_rounded),
+                    label: const Text('Propriété et récupération'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),

@@ -184,6 +184,8 @@ class AuthService {
           password: _validatePassword(password),
         ),
       );
+      // Force un nouveau jeton : le serveur peut alors vérifier auth_time.
+      await user.getIdToken(true);
     } on FirebaseAuthException catch (error) {
       throw _mapError(error);
     }

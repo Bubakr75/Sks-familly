@@ -29,6 +29,23 @@ exports.revokeFamilyManager = familyManagerFunctions.revokeFamilyManager;
 exports.getFamilyAccessContext =
   familyManagerFunctions.getFamilyAccessContext;
 
+const {
+  createFamilyOwnershipFunctions,
+} = require("./family_ownership");
+const familyOwnershipFunctions = createFamilyOwnershipFunctions({
+  functions,
+  admin,
+  db,
+});
+exports.transferFamilyOwnership =
+  familyOwnershipFunctions.transferFamilyOwnership;
+exports.generateFamilyRecoveryCode =
+  familyOwnershipFunctions.generateFamilyRecoveryCode;
+exports.revokeFamilyRecoveryCode =
+  familyOwnershipFunctions.revokeFamilyRecoveryCode;
+exports.recoverFamilyOwnership =
+  familyOwnershipFunctions.recoverFamilyOwnership;
+
 const {createFamilyInboxFunctions} = require("./family_inbox");
 const familyInboxFunctions =
   createFamilyInboxFunctions({functions, admin, db});
