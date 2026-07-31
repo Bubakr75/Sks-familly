@@ -7,6 +7,7 @@ import '../widgets/animated_background.dart';
 import '../widgets/family_join_panel.dart';
 import '../widgets/family_join_approval_panel.dart';
 import '../widgets/tv_focus_wrapper.dart';
+import 'account_security_screen.dart';
 import 'firebase_diagnostic_screen.dart';
 
 class FamilyScreen extends StatefulWidget {
@@ -441,6 +442,28 @@ class _FamilyScreenState extends State<FamilyScreen> {
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
+                                builder: (_) => const AccountSecurityScreen(),
+                              ),
+                            ),
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.06),
+                              ),
+                              child: Icon(
+                                Icons.verified_user_rounded,
+                                color: primary,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TvFocusWrapper(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
                                 builder: (_) =>
                                     const FirebaseDiagnosticScreen(),
                               ),
@@ -689,10 +712,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed:
-                      _isFamilyCodeVisible && _familyCode != null
-                          ? _copyCode
-                          : null,
+                  onPressed: _isFamilyCodeVisible && _familyCode != null
+                      ? _copyCode
+                      : null,
                   icon: const Icon(Icons.copy_rounded),
                   label: const Text('Copier le code'),
                   style: OutlinedButton.styleFrom(
