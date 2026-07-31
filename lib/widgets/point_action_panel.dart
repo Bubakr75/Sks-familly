@@ -100,6 +100,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   String? _uploadedPhotoPath;
   bool _retryStateUncertain = false;
   bool _serverSubmissionStarted = false;
+  late final TextEditingController _amountTextCtrl;
 
   @override
   void initState() {
@@ -114,6 +115,7 @@ class _PointActionPanelState extends State<PointActionPanel>
     );
     _customTextCtrl = TextEditingController();
     _customFocusNode = FocusNode();
+    _amountTextCtrl = TextEditingController(text: _amount.toString());
     _sortedMotifs = widget.config.motifs;
     _loadPreferences();
   }
@@ -155,6 +157,7 @@ class _PointActionPanelState extends State<PointActionPanel>
     _celebrationController.dispose();
     _customTextCtrl.dispose();
     _customFocusNode.dispose();
+    _amountTextCtrl.dispose();
     super.dispose();
   }
 
@@ -162,8 +165,14 @@ class _PointActionPanelState extends State<PointActionPanel>
       _selectedChildId != null &&
       _selectedMotif != null &&
       !_processing &&
-      _isMotifValid;
+      _isMotifValid &&
+      _isAmountValid;
   bool get _editingLocked => _processing || _retryStateUncertain;
+
+  bool get _isAmountValid {
+    final value = int.tryParse(_amountTextCtrl.text);
+    return value != null && value >= 1 && value <= 999;
+  }
 
   /// Un motif classique est toujours valide. "Autre" nécessite un texte non vide.
   bool get _isMotifValid {
@@ -178,7 +187,8 @@ class _PointActionPanelState extends State<PointActionPanel>
     if (_editingLocked) return;
     setState(() {
       _selectedMotif = motif;
-      _amount = motif.defaultPoints;
+      _amount = motif.defaultPoints.clamp(1, 999);
+      _syncAmountText();
       // Si on quitte "Autre", vider le texte et retirer le focus
       if (!motif.isOther) {
         _customTextCtrl.clear();
@@ -194,10 +204,20 @@ class _PointActionPanelState extends State<PointActionPanel>
     }
   }
 
+  void _syncAmountText() {
+    final value = _amount.toString();
+    if (_amountTextCtrl.text == value) return;
+    _amountTextCtrl.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+  }
+
   void _adjustAmount(int delta) {
     if (_editingLocked) return;
     setState(() {
       _amount = (_amount + delta).clamp(1, 999);
+      _syncAmountText();
     });
     HapticFeedback.selectionClick();
   }
@@ -206,6 +226,7 @@ class _PointActionPanelState extends State<PointActionPanel>
     if (_editingLocked) return;
     setState(() {
       _amount = value.clamp(1, 999);
+      _syncAmountText();
     });
     HapticFeedback.selectionClick();
   }
@@ -725,12 +746,54 @@ class _PointActionPanelState extends State<PointActionPanel>
                         border: Border.all(
                             color: config.primaryColor.withValues(alpha: 0.3)),
                       ),
-                      child: Text(
-                          '${widget.config.isBonus ? "+" : "-"}$_amount',
-                          style: TextStyle(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.config.isBonus ? '+' : '-',
+                            style: TextStyle(
                               color: config.primaryColor,
                               fontSize: 32,
-                              fontWeight: FontWeight.w900)),
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          SizedBox(
+                            width: 72,
+                            child: TextField(
+                              controller: _amountTextCtrl,
+                              enabled: !_editingLocked,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              maxLength: 3,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              style: TextStyle(
+                                color: config.primaryColor,
+                                fontSize: 32,
+                                fontWeight: FontWeight.w900,
+                              ),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: InputBorder.none,
+                                counterText: '',
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                              onChanged: (text) {
+                                final value = int.tryParse(text);
+                                if (value == null ||
+                                    value < 1 ||
+                                    value > 999) {
+                                  setState(() {});
+                                  return;
+                                }
+                                setState(() => _amount = value);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 16),
                     IconButton(

@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,8 +16,37 @@ import 'package:uuid/uuid.dart';
 import '../providers/family_provider.dart';
 import '../services/action_photo_service.dart';
 import '../services/gemini_service.dart';
+import '../services/point_action_submission_service.dart';
 import '../services/storage_service.dart';
 import '../utils/checklist_helpers.dart';
+
+String _aiPhotoErrorMessage(Object error) {
+  if (error is FirebaseException &&
+      error.plugin.toLowerCase().contains('storage')) {
+    switch (error.code.toLowerCase()) {
+      case 'unauthenticated':
+        return 'Votre session Firebase a expir?. Reconnectez-vous puis r?essayez.';
+      case 'unauthorized':
+      case 'permission-denied':
+        return 'La photo ne peut pas ?tre enregistr?e : v?rifiez que ce compte est parent de cette famille.';
+      case 'object-not-found':
+        return 'La photo envoy?e est introuvable. Reprenez la photo puis r?essayez.';
+      case 'quota-exceeded':
+        return 'Le stockage des photos est momentan?ment indisponible.';
+      case 'retry-limit-exceeded':
+      case 'cancelled':
+      case 'canceled':
+        return 'L?envoi de la photo a ?t? interrompu. Vous pouvez r?essayer.';
+    }
+  }
+  if (error is FormatException) {
+    return error.message.toString();
+  }
+  if (error is ArgumentError) {
+    return 'La photo ou le montant est invalide.';
+  }
+  return describePointActionFailure(error).message;
+}
 
 /// Lance le flow Photo IA complet.
 /// Retourne true si des points ont été appliqués, false sinon.
@@ -133,6 +163,7 @@ class _AiPhotoDialog extends StatefulWidget {
 class _AiPhotoDialogState extends State<_AiPhotoDialog> {
   late bool _isBonus;
   late int _points;
+  late TextEditingController _pointsCtrl;
   late TextEditingController _reasonCtrl;
   String? _selectedChildId;
   bool _processing = false;
@@ -144,6 +175,7 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
     super.initState();
     _isBonus = widget.initialIsBonus;
     _points = widget.initialPoints;
+    _pointsCtrl = TextEditingController(text: '$_points');
     _reasonCtrl = TextEditingController(text: widget.initialReason);
   }
 
@@ -155,13 +187,37 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
         StorageService().deleteActionPhoto(orphanPath).catchError((_) {}),
       );
     }
+    _pointsCtrl.dispose();
     _reasonCtrl.dispose();
     super.dispose();
   }
 
   bool get _reasonValid => _reasonCtrl.text.trim().isNotEmpty;
+
+  bool get _pointsValid {
+    final value = int.tryParse(_pointsCtrl.text.trim());
+    return value != null && value >= 1 && value <= 999;
+  }
+
   bool get _canConfirm =>
-      _selectedChildId != null && !_processing && _reasonValid;
+      _selectedChildId != null &&
+      !_processing &&
+      _reasonValid &&
+      _pointsValid;
+
+  void _setPoints(int value) {
+    final normalized = value.clamp(1, 999);
+    final normalizedText = '$normalized';
+    setState(() {
+      _points = normalized;
+      _pointsCtrl.value = TextEditingValue(
+        text: normalizedText,
+        selection: TextSelection.collapsed(
+          offset: normalizedText.length,
+        ),
+      );
+    });
+  }
 
   Future<void> _confirm() async {
     if (!_canConfirm) return;
@@ -173,8 +229,9 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
     final childName = widget.fp.getChild(capturedChildId)?.name ?? '';
     final child = widget.fp.getChild(capturedChildId);
     final capturedReason = _reasonCtrl.text.trim();
+    final requestedPoints = int.parse(_pointsCtrl.text.trim());
     final actualPoints = actualPenaltyAmount(
-      requested: _points,
+      requested: requestedPoints,
       balance: child?.points ?? 0,
       isBonus: capturedIsBonus,
     );
@@ -233,13 +290,15 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
       ));
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
-      widget.messenger.showSnackBar(const SnackBar(
-        content: Text('Erreur lors de l\'application des points'),
+      widget.messenger.showSnackBar(SnackBar(
+        content: Text(_aiPhotoErrorMessage(error)),
         backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
       ));
-      // Garder le dialogue ouvert pour réessayer
+      // Garder le dialogue ouvert pour r?essayer.
     } finally {
       if (mounted) setState(() => _processing = false);
     }
@@ -329,40 +388,90 @@ class _AiPhotoDialogState extends State<_AiPhotoDialog> {
                 ),
               ]),
               const SizedBox(height: 12),
-              // Montant modifiable (− / valeur / +)
+              // Montant modifiable : boutons rapides ou saisie directe.
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    onPressed: _processing
-                        ? null
-                        : () => setState(() {
-                              if (_points > 1) _points--;
-                            }),
-                    icon: const Icon(Icons.remove_circle_outline,
-                        color: Colors.white54),
+                    onPressed:
+                        _processing ? null : () => _setPoints(_points - 1),
+                    icon: const Icon(
+                      Icons.remove_circle_outline,
+                      color: Colors.white54,
+                    ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    width: 130,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: accent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text('${_isBonus ? "+" : "-"}$_points pts',
-                        style: TextStyle(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _isBonus ? '+' : '-',
+                          style: TextStyle(
                             color: accent,
                             fontSize: 20,
-                            fontWeight: FontWeight.w800)),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          width: 55,
+                          child: TextField(
+                            controller: _pointsCtrl,
+                            enabled: !_processing,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(3),
+                            ],
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            onChanged: (value) {
+                              final parsed = int.tryParse(value);
+                              if (parsed != null && parsed >= 1) {
+                                setState(() {
+                                  _points = parsed.clamp(1, 999);
+                                });
+                              } else {
+                                setState(() {});
+                              }
+                            },
+                          ),
+                        ),
+                        Text(
+                          'pts',
+                          style: TextStyle(
+                            color: accent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   IconButton(
-                    onPressed: _processing
-                        ? null
-                        : () => setState(() {
-                              if (_points < 999) _points++;
-                            }),
-                    icon: const Icon(Icons.add_circle_outline,
-                        color: Colors.white54),
+                    onPressed:
+                        _processing ? null : () => _setPoints(_points + 1),
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      color: Colors.white54,
+                    ),
                   ),
                 ],
               ),

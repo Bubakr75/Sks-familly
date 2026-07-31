@@ -400,10 +400,18 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             currentMember.exists &&
             currentMember.data().active === true
           ) {
-            throw new HttpsError(
-              "already-exists",
-              "Cet appareil appartient deja a cette famille."
-            );
+            const activeMember = currentMember.data();
+            const activeRequestedRole =
+              activeMember.role === "child" ? "child" : "parent";
+
+            // Le compte appartient deja a cette famille. Retourner un resultat
+            // compatible avec le client afin qu'il restaure son acces local,
+            // sans creer une nouvelle demande et sans nouvelle approbation.
+            return {
+              alreadyPending: true,
+              alreadyMember: true,
+              requestedRole: activeRequestedRole,
+            };
           }
 
           if (
@@ -471,6 +479,40 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
         ]);
 
         if (!requestSnapshot.exists) {
+          const existingMember = memberSnapshot.exists
+            ? memberSnapshot.data()
+            : null;
+          const existingRole =
+            existingMember && existingMember.role === "child"
+              ? "child"
+              : "parent";
+          const existingChildId =
+            existingRole === "child" &&
+            existingMember &&
+            typeof existingMember.childId === "string" &&
+            existingMember.childId.trim().length > 0
+              ? existingMember.childId.trim()
+              : null;
+
+          // Recuperation d'un acces local perdu apres une deconnexion :
+          // seul le membre Firebase authentifie, deja actif dans cette
+          // famille, peut restaurer son propre rattachement.
+          if (
+            existingMember &&
+            existingMember.active === true &&
+            existingMember.uid === requesterUid &&
+            (existingRole !== "child" || existingChildId)
+          ) {
+            return {
+              familyId,
+              status: "approved",
+              activationState: "ready",
+              memberReady: true,
+              role: existingRole,
+              childId: existingChildId,
+            };
+          }
+
           throw new HttpsError(
             "not-found",
             "Demande de connexion introuvable."

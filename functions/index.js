@@ -46,6 +46,16 @@ exports.revokeFamilyRecoveryCode =
 exports.recoverFamilyOwnership =
   familyOwnershipFunctions.recoverFamilyOwnership;
 
+const {
+  createFamilyOwnershipDiagnosticFunctions,
+} = require("./family_ownership_diagnostic");
+const familyOwnershipDiagnosticFunctions =
+  createFamilyOwnershipDiagnosticFunctions({functions, db});
+exports.getFamilyOwnershipDiagnostic =
+  familyOwnershipDiagnosticFunctions.getFamilyOwnershipDiagnostic;
+exports.prepareHistoricalOwnerMigrationDryRun =
+  familyOwnershipDiagnosticFunctions.prepareHistoricalOwnerMigrationDryRun;
+
 const {createFamilyInboxFunctions} = require("./family_inbox");
 const familyInboxFunctions =
   createFamilyInboxFunctions({functions, admin, db});

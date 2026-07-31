@@ -55,6 +55,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
+  bool _openingFamilyInbox = false;
   final HomeTabHistory _tabHistory = HomeTabHistory();
   late AnimationController _navBarController;
   // 🔒 Onglets protégés : Bonus (1), Pénalité (3), Réglages (4)
@@ -70,13 +71,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 800),
     )..forward();
     // Quand on tape sur une notif de demande, ouvrir l'écran des demandes
-    FcmService.setInboxOpenHandler(() {
-      if (!mounted) return;
+    FcmService.setInboxOpenHandler(_openFamilyInbox);
+  }
+
+  Future<void> _openFamilyInbox() async {
+    if (!mounted || _openingFamilyInbox) return;
+    _openingFamilyInbox = true;
+    try {
       final provider = context.read<FamilyProvider>();
+      final navigation = Navigator.push<void>(
+        context,
+        MaterialPageRoute(builder: (_) => const PendingRequestsScreen()),
+      );
       provider.markFamilyInboxRead().catchError((_) {});
-      Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const PendingRequestsScreen()));
-    });
+      await navigation;
+    } finally {
+      _openingFamilyInbox = false;
+    }
   }
 
   @override

@@ -187,3 +187,37 @@ test("never allows a negative wallet balance", () => {
     /INSUFFICIENT_BALANCE/
   );
 });
+
+
+test("wallet credit atomically consumes child behavior points", () => {
+  const {
+    calculateChildPointsAfterWalletCredit,
+  } = require("./wallet");
+
+  assert.equal(
+    calculateChildPointsAfterWalletCredit({
+      currentChildPoints: 25,
+      type: "credit",
+      amount: 10,
+    }),
+    15
+  );
+
+  assert.equal(
+    calculateChildPointsAfterWalletCredit({
+      currentChildPoints: 25,
+      type: "debit",
+      amount: 10,
+    }),
+    25
+  );
+
+  assert.throws(
+    () => calculateChildPointsAfterWalletCredit({
+      currentChildPoints: 5,
+      type: "credit",
+      amount: 10,
+    }),
+    /INSUFFICIENT_CHILD_POINTS/
+  );
+});

@@ -83,9 +83,10 @@ function buildWalletOperationData({
   operation,
   actorUid,
   balanceAfter,
+  childPointsAfter,
   timestamp,
 }) {
-  return {
+  const data = {
     childId: operation.childId,
     type: operation.type,
     amount: operation.amount,
@@ -98,6 +99,10 @@ function buildWalletOperationData({
     balanceAfter,
     createdAt: timestamp,
   };
+  if (Number.isInteger(childPointsAfter)) {
+    data.childPointsAfter = childPointsAfter;
+  }
+  return data;
 }
 
 function isMatchingWalletOperation({
@@ -126,6 +131,21 @@ function calculateWalletBalance({
       : currentBalance - amount;
   if (balance < 0) throw new Error("INSUFFICIENT_BALANCE");
   return balance;
+}
+
+function calculateChildPointsAfterWalletCredit({
+  currentChildPoints,
+  type,
+  amount,
+}) {
+  if (type !== "credit") return currentChildPoints;
+  if (!Number.isInteger(currentChildPoints) || currentChildPoints < 0) {
+    throw new Error("INVALID_CHILD_POINTS_BALANCE");
+  }
+  if (currentChildPoints < amount) {
+    throw new Error("INSUFFICIENT_CHILD_POINTS");
+  }
+  return currentChildPoints - amount;
 }
 
 function createWalletFunctions({
@@ -158,6 +178,12 @@ function createWalletFunctions({
       return new HttpsError(
         "failed-precondition",
         "Le solde de la cagnotte est insuffisant."
+      );
+    }
+    if (error && error.message === "INSUFFICIENT_CHILD_POINTS") {
+      return new HttpsError(
+        "failed-precondition",
+        "Le solde de points de l'enfant est insuffisant."
       );
     }
     if (error && error.message === "IDEMPOTENCY_CONFLICT") {
@@ -265,6 +291,12 @@ function createWalletFunctions({
             type: operation.type,
             amount: operation.amount,
           });
+          const childData = childSnapshot.data() || {};
+          const childPointsAfter = calculateChildPointsAfterWalletCredit({
+            currentChildPoints: childData.points,
+            type: operation.type,
+            amount: operation.amount,
+          });
 
           const timestamp = fieldValue.serverTimestamp();
           const walletData = {
@@ -281,12 +313,16 @@ function createWalletFunctions({
             walletData,
             {merge: true}
           );
+          if (operation.type === "credit") {
+            transaction.update(childRef, {points: childPointsAfter});
+          }
           transaction.create(
             operationRef,
             buildWalletOperationData({
               operation,
               actorUid,
               balanceAfter: balance,
+              childPointsAfter,
               timestamp,
             })
           );
@@ -294,6 +330,7 @@ function createWalletFunctions({
           return {
             operationId: operation.operationId,
             balance,
+            childPoints: childPointsAfter,
             idempotent: false,
           };
         });
@@ -313,5 +350,6 @@ module.exports = {
   buildWalletOperationData,
   isMatchingWalletOperation,
   calculateWalletBalance,
+  calculateChildPointsAfterWalletCredit,
   createWalletFunctions,
 };
