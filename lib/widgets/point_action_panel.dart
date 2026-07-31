@@ -15,7 +15,9 @@ import '../utils/checklist_helpers.dart';
 import '../utils/motif_helpers.dart';
 import '../services/motif_preferences_service.dart';
 import '../services/action_photo_service.dart';
+import '../services/point_action_submission_service.dart';
 import '../services/storage_service.dart';
+import 'point_action_feedback.dart';
 
 /// Configuration d'un motif de bonus ou pénalité.
 class ActionMotif {
@@ -91,9 +93,13 @@ class _PointActionPanelState extends State<PointActionPanel>
   List<ActionMotif> _sortedMotifs = [];
   final ActionPhotoService _photoService = ActionPhotoService();
   final StorageService _storageService = StorageService();
+  final PointActionSubmissionCoordinator _submissionCoordinator =
+      PointActionSubmissionCoordinator();
   ActionPhoto? _photo;
   String? _actionId;
   String? _uploadedPhotoPath;
+  bool _retryStateUncertain = false;
+  bool _serverSubmissionStarted = false;
 
   @override
   void initState() {
@@ -139,7 +145,9 @@ class _PointActionPanelState extends State<PointActionPanel>
   @override
   void dispose() {
     final orphanPath = _uploadedPhotoPath;
-    if (orphanPath != null) {
+    if (orphanPath != null &&
+        !_retryStateUncertain &&
+        !_serverSubmissionStarted) {
       unawaited(_storageService.deleteActionPhoto(orphanPath).catchError(
             (_) {},
           ));
@@ -155,6 +163,7 @@ class _PointActionPanelState extends State<PointActionPanel>
       _selectedMotif != null &&
       !_processing &&
       _isMotifValid;
+  bool get _editingLocked => _processing || _retryStateUncertain;
 
   /// Un motif classique est toujours valide. "Autre" nécessite un texte non vide.
   bool get _isMotifValid {
@@ -166,6 +175,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   void _selectMotif(ActionMotif motif) {
+    if (_editingLocked) return;
     setState(() {
       _selectedMotif = motif;
       _amount = motif.defaultPoints;
@@ -185,6 +195,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   void _adjustAmount(int delta) {
+    if (_editingLocked) return;
     setState(() {
       _amount = (_amount + delta).clamp(1, 999);
     });
@@ -192,6 +203,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   void _setAmount(int value) {
+    if (_editingLocked) return;
     setState(() {
       _amount = value.clamp(1, 999);
     });
@@ -199,6 +211,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
+    if (_processing || _retryStateUncertain) return;
     try {
       final photo = await _photoService.pickAndPrepare(source);
       if (photo == null || !mounted) return;
@@ -228,6 +241,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   void _removePhoto() {
+    if (_processing || _retryStateUncertain) return;
     final uploadedPath = _uploadedPhotoPath;
     if (uploadedPath != null) {
       unawaited(
@@ -242,16 +256,27 @@ class _PointActionPanelState extends State<PointActionPanel>
   }
 
   Future<void> _apply() async {
-    if (!_isValid) return;
+    if (_processing || !_isValid) return;
 
     final fp = context.read<FamilyProvider>();
-    final child = fp.getChild(_selectedChildId!);
+    final messenger = ScaffoldMessenger.of(context);
+    final capturedChildId = _selectedChildId!;
+    final child = fp.getChild(capturedChildId);
+    if (child == null) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text(
+          'L’enfant sélectionné n’est plus disponible. Choisissez-le à nouveau.',
+        ),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
 
-    // 🔒 Pour une pénalité avec solde nul : aucune action
-    if (!widget.config.isBonus && (child == null || child.points <= 0)) {
+    if (!widget.config.isBonus && child.points <= 0) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Cet enfant n\'a aucun point à retirer'),
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Cet enfant n’a aucun point à retirer'),
         backgroundColor: Colors.orange,
         behavior: SnackBarBehavior.floating,
       ));
@@ -261,95 +286,133 @@ class _PointActionPanelState extends State<PointActionPanel>
     setState(() => _processing = true);
     HapticFeedback.mediumImpact();
 
-    final messenger = ScaffoldMessenger.of(context);
-    final childName = child?.name ?? '';
+    // Toutes les valeurs sont figées avant le premier await.
+    final childName = child.name;
     final capturedMotif = _selectedMotif!;
-    // 🔒 Calculer la raison via helper
+    final capturedAmount = _amount;
+    final capturedIsBonus = widget.config.isBonus;
+    final capturedCategory = widget.config.category;
+    final capturedPhoto = _photo;
+    final capturedFamilyId = fp.familyId;
+    final actionId = _actionId ??= _uuid.v4();
     final reason = buildReason(
       isOther: capturedMotif.isOther,
       emoji: capturedMotif.emoji,
       label: capturedMotif.label,
       customText: _customTextCtrl.text,
     );
-
-    // 🔒 Montant réel via helper testable
     final actualAmount = actualPenaltyAmount(
-      requested: _amount,
-      balance: child!.points,
-      isBonus: widget.config.isBonus,
+      requested: capturedAmount,
+      balance: child.points,
+      isBonus: capturedIsBonus,
     );
 
-    try {
-      final actionId = _actionId ??= _uuid.v4();
-      var photoPath = _uploadedPhotoPath;
-      if (_photo != null && photoPath == null) {
-        final familyId = fp.familyId;
-        if (familyId == null) {
+    if (actualAmount < 1) {
+      setState(() => _processing = false);
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Aucun point ne peut être appliqué.'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
+    final result = await _submissionCoordinator.submit(
+      draft: PointActionDraft(
+        actionId: actionId,
+        childId: capturedChildId,
+        amount: actualAmount,
+        reason: reason,
+        category: capturedCategory,
+        isBonus: capturedIsBonus,
+        hasPhoto: capturedPhoto != null,
+      ),
+      existingPhotoStoragePath: _uploadedPhotoPath,
+      uploadPhoto: () async {
+        if (capturedPhoto == null || capturedFamilyId == null) {
           throw StateError('Connexion familiale indisponible.');
         }
-        photoPath = await _storageService.uploadActionPhoto(
-          familyId: familyId,
+        final path = await _storageService.uploadActionPhoto(
+          familyId: capturedFamilyId,
           actionId: actionId,
-          bytes: _photo!.bytes,
-          contentType: _photo!.contentType,
-          extension: _photo!.extension,
+          bytes: capturedPhoto.bytes,
+          contentType: capturedPhoto.contentType,
+          extension: capturedPhoto.extension,
         );
-        _uploadedPhotoPath = photoPath;
-      }
-      await fp.addPoints(
-        _selectedChildId!,
-        actualAmount,
-        reason,
-        category: widget.config.category,
-        isBonus: widget.config.isBonus,
-        actionId: actionId,
-        photoStoragePath: photoPath,
-      );
+        if (!mounted) {
+          await _storageService.deleteActionPhoto(path).catchError((_) {});
+          throw StateError('Le panneau a été fermé avant la validation.');
+        }
+        _uploadedPhotoPath = path;
+        return path;
+      },
+      deletePhoto: _storageService.deleteActionPhoto,
+      recordAction: (photoStoragePath) async {
+        _serverSubmissionStarted = true;
+        final entry = await fp.addPoints(
+          capturedChildId,
+          actualAmount,
+          reason,
+          category: capturedCategory,
+          isBonus: capturedIsBonus,
+          actionId: actionId,
+          photoStoragePath: photoStoragePath,
+        );
+        return entry.points;
+      },
+    );
 
-      if (!mounted) return;
-
-      // Animation de célébration
-      if (!MediaQuery.of(context).disableAnimations) {
-        _celebrationController.forward().then((_) {
-          if (mounted) _celebrationController.reset();
-        });
-      }
-
-      HapticFeedback.heavyImpact();
-      messenger.showSnackBar(SnackBar(
-        content: Text(widget.config.successMessage
-            .replaceAll('{name}', childName)
-            .replaceAll('{amount}', '$actualAmount')),
-        backgroundColor: widget.config.primaryColor,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ));
-
-      // Reset partiel : garder l'enfant, effacer le motif et le texte
-      setState(() {
-        _selectedMotif = null;
-        _customTextCtrl.clear();
-        _customFocusNode.unfocus();
-        _photo = null;
-        _actionId = null;
-        _uploadedPhotoPath = null;
-        _processing = false;
-      });
-
-      // 📊 Incrémenter le compteur en arrière-plan (sans bloquer)
-      if (!capturedMotif.isOther) {
-        unawaited(_incrementAndReload(capturedMotif.id));
-      }
-    } catch (_) {
-      if (!mounted) return;
-      messenger.showSnackBar(SnackBar(
-        content: Text('Erreur lors de l\'application des points'),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ));
-    } finally {
-      if (mounted) setState(() => _processing = false);
+    _serverSubmissionStarted = false;
+    if (!mounted) return;
+    if (result.duplicateIgnored) {
+      setState(() => _processing = false);
+      return;
     }
+
+    if (!result.success) {
+      setState(() {
+        _processing = false;
+        _retryStateUncertain = result.retryStateUncertain;
+        _uploadedPhotoPath = result.photoStoragePath;
+      });
+      showPointActionFailure(
+        messenger: messenger,
+        message: result.errorMessage!,
+      );
+      return;
+    }
+
+    final appliedAmount = result.appliedAmount!;
+    setState(() {
+      _selectedMotif = null;
+      _customTextCtrl.clear();
+      _customFocusNode.unfocus();
+      _photo = null;
+      _actionId = null;
+      _uploadedPhotoPath = null;
+      _retryStateUncertain = false;
+      _processing = false;
+    });
+
+    if (!MediaQuery.of(context).disableAnimations) {
+      unawaited(_celebrationController.forward().then((_) {
+        if (mounted) _celebrationController.reset();
+      }));
+    }
+    HapticFeedback.heavyImpact();
+    showPointActionSuccess(
+      messenger: messenger,
+      message: widget.config.successMessage
+          .replaceAll('{name}', childName)
+          .replaceAll('{amount}', '$appliedAmount'),
+      color: widget.config.primaryColor,
+    );
+
+    if (!capturedMotif.isOther) {
+      unawaited(_incrementAndReload(capturedMotif.id));
+    }
+
+    await closePointActionPanelAfterSuccess(context);
   }
 
   /// Tâche d'arrière-plan : incrémenter le compteur et recharger le tri.
@@ -385,7 +448,7 @@ class _PointActionPanelState extends State<PointActionPanel>
     final isFav = _favorites.contains(motif.id);
 
     return GestureDetector(
-      onTap: _processing ? null : () => _selectMotif(motif),
+      onTap: _editingLocked ? null : () => _selectMotif(motif),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: width,
@@ -407,7 +470,7 @@ class _PointActionPanelState extends State<PointActionPanel>
               Align(
                 alignment: Alignment.topRight,
                 child: GestureDetector(
-                  onTap: _processing
+                  onTap: _editingLocked
                       ? null
                       : () async {
                           HapticFeedback.selectionClick();
@@ -510,7 +573,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                       final c = children[i];
                       final isSel = c.id == _selectedChildId;
                       return GestureDetector(
-                        onTap: _processing
+                        onTap: _editingLocked
                             ? null
                             : () => setState(() {
                                   _selectedChildId = c.id;
@@ -603,7 +666,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                 TextField(
                   controller: _customTextCtrl,
                   focusNode: _customFocusNode,
-                  enabled: !_processing,
+                  enabled: !_editingLocked,
                   maxLength: 100,
                   maxLines: 2,
                   textInputAction: TextInputAction.done,
@@ -647,7 +710,8 @@ class _PointActionPanelState extends State<PointActionPanel>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      onPressed: _processing ? null : () => _adjustAmount(-1),
+                      onPressed:
+                          _editingLocked ? null : () => _adjustAmount(-1),
                       icon: const Icon(Icons.remove_circle_outline,
                           color: Colors.white54, size: 36),
                     ),
@@ -670,7 +734,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                     ),
                     const SizedBox(width: 16),
                     IconButton(
-                      onPressed: _processing ? null : () => _adjustAmount(1),
+                      onPressed: _editingLocked ? null : () => _adjustAmount(1),
                       icon: const Icon(Icons.add_circle_outline,
                           color: Colors.white54, size: 36),
                     ),
@@ -682,7 +746,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                   spacing: 8,
                   children: [1, 2, 3, 5, 10].map((v) {
                     return GestureDetector(
-                      onTap: _processing ? null : () => _setAmount(v),
+                      onTap: _editingLocked ? null : () => _setAmount(v),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 6),
@@ -723,14 +787,14 @@ class _PointActionPanelState extends State<PointActionPanel>
                     runSpacing: 10,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: _processing
+                        onPressed: _editingLocked
                             ? null
                             : () => _pickPhoto(ImageSource.camera),
                         icon: const Icon(Icons.photo_camera_rounded),
                         label: const Text('Appareil photo'),
                       ),
                       OutlinedButton.icon(
-                        onPressed: _processing
+                        onPressed: _editingLocked
                             ? null
                             : () => _pickPhoto(ImageSource.gallery),
                         icon: const Icon(Icons.photo_library_rounded),
@@ -762,14 +826,14 @@ class _PointActionPanelState extends State<PointActionPanel>
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton.icon(
-                              onPressed: _processing
+                              onPressed: _editingLocked
                                   ? null
                                   : () => _pickPhoto(ImageSource.gallery),
                               icon: const Icon(Icons.swap_horiz_rounded),
                               label: const Text('Remplacer'),
                             ),
                             TextButton.icon(
-                              onPressed: _processing ? null : _removePhoto,
+                              onPressed: _editingLocked ? null : _removePhoto,
                               icon: const Icon(Icons.delete_outline_rounded),
                               label: const Text('Retirer'),
                             ),
@@ -860,7 +924,11 @@ class _PointActionPanelState extends State<PointActionPanel>
                         strokeWidth: 2, color: Colors.white))
                 : Icon(config.buttonIcon),
             label: Text(
-              _processing ? 'Enregistrement...' : config.buttonText,
+              _processing
+                  ? 'Enregistrement...'
+                  : _retryStateUncertain
+                      ? 'Réessayer sans doublon'
+                      : config.buttonText,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),

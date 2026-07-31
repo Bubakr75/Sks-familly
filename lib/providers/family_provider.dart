@@ -24,6 +24,7 @@ import '../models/screen_time_account.dart';
 import '../models/sks_wallet.dart';
 import '../services/firestore_service.dart';
 import '../services/family_manager_service.dart';
+import '../services/point_action_submission_service.dart';
 import '../services/storage_service.dart';
 import '../utils/image_compressor.dart';
 import '../services/voice_service.dart';
@@ -1150,12 +1151,12 @@ class FamilyProvider extends ChangeNotifier {
   Future<int> addQuickBonus(String childId, String reason,
       {String? photoStoragePath, String? actionId}) async {
     final amount = _calculateBonusAmount(childId);
-    await addPoints(childId, amount, reason,
+    final entry = await addPoints(childId, amount, reason,
         category: 'Bonus',
         isBonus: true,
         photoStoragePath: photoStoragePath,
         actionId: actionId);
-    return amount;
+    return entry.points;
   }
 
   /// Ajoute une pénalité cumulative (auto-calcul, jamais en dessous de 0).
@@ -1168,16 +1169,16 @@ class FamilyProvider extends ChangeNotifier {
     // Ne jamais descendre en dessous de 0
     final actualAmount = amount > child.points ? child.points : amount;
     if (actualAmount <= 0) return 0;
-    await addPoints(childId, actualAmount, reason,
+    final entry = await addPoints(childId, actualAmount, reason,
         category: 'Pénalité',
         isBonus: false,
         photoStoragePath: photoStoragePath,
         actionId: actionId);
-    return actualAmount;
+    return entry.points;
   }
 
   // ─── Points & Historique ───────────────────────────────────
-  Future<void> addPoints(
+  Future<HistoryEntry> addPoints(
     String childId,
     int points,
     String reason, {
@@ -1190,7 +1191,9 @@ class FamilyProvider extends ChangeNotifier {
     DateTime? date,
   }) async {
     final child = getChild(childId);
-    if (child == null) return;
+    if (child == null) {
+      throw StateError('L’enfant sélectionné est introuvable.');
+    }
     if (!_firestore.isConnected) {
       throw StateError(
         'Connexion requise pour enregistrer une action de points.',
@@ -1203,7 +1206,6 @@ class FamilyProvider extends ChangeNotifier {
     }
 
     final safeActionId = actionId ?? _uuid.v4();
-    await _firestore.syncMemberDisplayName(_currentParentName);
     final result = await _firestore.recordPointAction(
       actionId: safeActionId,
       childId: childId,
@@ -1213,18 +1215,43 @@ class FamilyProvider extends ChangeNotifier {
       isBonus: isBonus,
       photoStoragePath: photoStoragePath,
     );
-    final newBalance = result['newBalance'];
-    final historyData = Map<String, dynamic>.from(result['history'] as Map);
-    final entry = HistoryEntry.fromMap(historyData);
-    child.points = newBalance is int ? newBalance : (newBalance as num).toInt();
+    late final int authoritativeBalance;
+    late final HistoryEntry entry;
+    try {
+      final newBalance = result['newBalance'];
+      final historyData = Map<String, dynamic>.from(result['history'] as Map);
+      entry = HistoryEntry.fromMap(historyData);
+      authoritativeBalance =
+          newBalance is int ? newBalance : (newBalance as num).toInt();
+    } catch (_) {
+      // La transaction peut avoir abouti même si la réponse reçue est
+      // incomplète. Le rejeu avec le même actionId est idempotent.
+      throw const PointActionRemoteException(
+        code: 'unknown',
+        message: 'Réponse recordPointAction incomplète.',
+      );
+    }
+    child.points = authoritativeBalance;
 
-    // Le serveur est l'autorité ; le cache local ne sert qu'à l'affichage.
+    // Le serveur est l'autorité. L'interface est actualisée immédiatement :
+    // une panne du cache local Web/PWA après la transaction ne doit jamais
+    // transformer une réussite serveur en faux message d'échec.
     _markPending(child.id);
-    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
     _markPending(entry.id);
     _history.removeWhere((item) => item.id == entry.id);
     _history.insert(0, entry);
-    await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
+    notifyListeners();
+
+    try {
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint(
+          'Cache local point action indisponible ; le serveur reste autorité.',
+        );
+      }
+    }
 
     // 🔊 Feedback sonore
     if (isBonus) {
@@ -1232,7 +1259,7 @@ class FamilyProvider extends ChangeNotifier {
     } else {
       SoundService.playPenalty();
     }
-    notifyListeners();
+    return entry;
   }
 
   /// Transfert express SKS : déplace des points d'un enfant vers un autre.
