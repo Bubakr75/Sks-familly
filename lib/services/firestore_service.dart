@@ -585,7 +585,12 @@ class FirestoreService {
         throw StateError('Impossible d’enregistrer le code familial.');
       }
     }
+    final roleChanged = _memberRole != role;
     _memberRole = role;
+    if (roleChanged && _familyId != null) {
+      _stopListening();
+      _startListening();
+    }
   }
 
   Future<void> disconnectFamily() async {
@@ -783,7 +788,8 @@ class FirestoreService {
       onRequestsChanged?.call(list);
     }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
 
-    if (_memberRole == 'owner' || _memberRole == 'parent') {
+    if (const ['owner', 'manager', 'familyAdmin', 'parent']
+        .contains(_memberRole)) {
       _joinRequestsSub =
           fRef.collection('join_requests').snapshots().listen((snapshot) {
         _markDataReceived();

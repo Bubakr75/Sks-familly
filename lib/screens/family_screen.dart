@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../services/family_ownership_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/family_join_panel.dart';
@@ -24,6 +25,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
   bool _isFamilyCodeVisible = false;
   final _customCodeController = TextEditingController();
   bool _useCustomCode = false;
+  String? _accessDiagnostic;
+  String? _accessError;
 
   final _customCodeFocusNode = FocusNode();
 
@@ -35,15 +38,42 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   Future<void> _loadFamilyCode() async {
     final provider = context.read<FamilyProvider>();
+    String? diagnostic;
+    String? accessError;
+
     if (provider.isSyncEnabled) {
       try {
         await provider.refreshFamilyAccessContext();
-      } catch (_) {
-        // Le code reste masqué si le serveur ne confirme pas l'autorisation.
+      } catch (error) {
+        accessError = 'Actualisation du role impossible : $error';
+      }
+
+      final familyId = provider.familyId;
+      if (familyId != null) {
+        try {
+          final result = await FamilyOwnershipService().diagnose(familyId);
+          final ownership = result['ownership'];
+          if (ownership is Map) {
+            final code = ownership['code']?.toString() ?? 'INCONNU';
+            final member =
+                ownership['currentMemberState']?.toString() ?? 'inconnu';
+            diagnostic = '$code - membre : $member';
+          } else {
+            diagnostic = 'Reponse de diagnostic incomplete';
+          }
+        } catch (error) {
+          accessError ??= 'Diagnostic indisponible : $error';
+        }
       }
     }
+
     final code = provider.getFamilyCode();
-    if (mounted) setState(() => _familyCode = code.isNotEmpty ? code : null);
+    if (!mounted) return;
+    setState(() {
+      _familyCode = code.isNotEmpty ? code : null;
+      _accessDiagnostic = diagnostic;
+      _accessError = accessError;
+    });
   }
 
   @override
@@ -612,6 +642,31 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 const Icon(Icons.lock_rounded, size: 38),
                 const SizedBox(height: 12),
                 Text(message, textAlign: TextAlign.center),
+                const SizedBox(height: 10),
+                Text(
+                  'Role serveur : ${role ?? 'aucun'}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                if (_accessDiagnostic != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Diagnostic : $_accessDiagnostic',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+                if (_accessError != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    _accessError!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: _disconnect,
