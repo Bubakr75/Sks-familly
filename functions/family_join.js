@@ -446,8 +446,12 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
         return {
           familyId,
           requestId: requesterUid,
-          status: "sent",
+          status: result.alreadyMember === true ? "approved" : "sent",
           alreadyPending: result.alreadyPending,
+          alreadyMember: result.alreadyMember === true,
+          memberReady: result.alreadyMember === true,
+          activationState:
+            result.alreadyMember === true ? "ready" : "approval-pending",
           requestedRole: result.requestedRole,
         };
       } catch (error) {
@@ -478,7 +482,14 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
           memberRef.get(),
         ]);
 
-        if (!requestSnapshot.exists) {
+        const authenticatedActiveMember =
+          memberSnapshot.exists &&
+          memberSnapshot.data().active === true &&
+          memberSnapshot.data().uid === requesterUid;
+
+        // Un membre Firebase d?j? actif doit pouvoir restaurer son acc?s,
+        // m?me si une ancienne demande locale est encore marqu?e pending.
+        if (!requestSnapshot.exists || authenticatedActiveMember) {
           const existingMember = memberSnapshot.exists
             ? memberSnapshot.data()
             : null;
