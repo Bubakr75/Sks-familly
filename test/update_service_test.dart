@@ -3,52 +3,39 @@ import 'package:family_score/services/update_service.dart';
 
 void main() {
   group('UpdateService.isNewerVersion', () {
-    test('détecte un numéro de build supérieur', () {
+    test('d?tecte un num?ro de build sup?rieur', () {
       expect(
-        UpdateService.isNewerVersion('4.8.0+500', '4.8.0+499'),
+        UpdateService.isNewerVersion('4.8.0+510', '4.8.0+509'),
         isTrue,
       );
     });
 
-    test('refuse un numéro de build identique', () {
+    test('comprend le format GitHub build', () {
       expect(
-        UpdateService.isNewerVersion('4.8.0+499', '4.8.0+499'),
+        UpdateService.isNewerVersion('v4.8.0-build510', '4.8.0+509'),
+        isTrue,
+      );
+    });
+
+    test('refuse un num?ro identique ou inf?rieur', () {
+      expect(
+        UpdateService.isNewerVersion('4.8.0+509', '4.8.0+509'),
+        isFalse,
+      );
+      expect(
+        UpdateService.isNewerVersion('4.8.0+508', '4.8.0+509'),
         isFalse,
       );
     });
 
-    test('refuse un numéro de build inférieur', () {
-      expect(
-        UpdateService.isNewerVersion('4.8.0+498', '4.8.0+499'),
-        isFalse,
-      );
-    });
-
-    test('détecte une version métier supérieure', () {
+    test('compare d?abord la version m?tier', () {
       expect(
         UpdateService.isNewerVersion('4.9.0+1', '4.8.0+999'),
         isTrue,
       );
-    });
-
-    test('refuse une version métier inférieure', () {
       expect(
         UpdateService.isNewerVersion('4.7.9+999', '4.8.0+1'),
         isFalse,
-      );
-    });
-
-    test('accepte un préfixe v', () {
-      expect(
-        UpdateService.isNewerVersion('v4.8.0+500', '4.8.0+499'),
-        isTrue,
-      );
-    });
-
-    test('gère une version sans numéro de build', () {
-      expect(
-        UpdateService.isNewerVersion('4.8.1', '4.8.0+999'),
-        isTrue,
       );
     });
   });
@@ -57,8 +44,8 @@ void main() {
     Map<String, dynamic> release({
       bool draft = false,
       bool prerelease = false,
-      String tag = 'v4.8.0+500',
-      String name = 'app-release.apk',
+      String tag = 'v4.8.0-build510',
+      String name = 'SKS-Family-build-510.apk',
       String? url,
     }) {
       return {
@@ -69,53 +56,77 @@ void main() {
           {
             'name': name,
             'browser_download_url': url ??
-                'https://github.com/Bubakr75/Sks-familly/releases/download/$tag/$name',
+                'https://github.com/Bubakr75/Sks-familly/'
+                    'releases/download/$tag/$name',
           },
         ],
       };
     }
 
-    test('accepte uniquement l APK officiel de la Release publiée', () {
+    test('accepte l APK officiel du format build', () {
       expect(UpdateService.officialApkUrl(release()), isNotNull);
     });
 
-    test('refuse brouillons, préversions et URL externes', () {
-      expect(UpdateService.officialApkUrl(release(draft: true)), isNull);
-      expect(UpdateService.officialApkUrl(release(prerelease: true)), isNull);
+    test('conserve la compatibilit? avec l ancien format', () {
       expect(
         UpdateService.officialApkUrl(
-          release(url: 'https://example.com/app-release.apk'),
+          release(
+            tag: 'v4.8.0+510',
+            name: 'app-release.apk',
+          ),
+        ),
+        isNotNull,
+      );
+    });
+
+    test('refuse brouillons, pr?versions et URL externes', () {
+      expect(UpdateService.officialApkUrl(release(draft: true)), isNull);
+      expect(
+        UpdateService.officialApkUrl(release(prerelease: true)),
+        isNull,
+      );
+      expect(
+        UpdateService.officialApkUrl(
+          release(url: 'https://example.com/SKS-Family-build-510.apk'),
         ),
         isNull,
       );
     });
 
-    test('refuse un nom ou un tag inattendu', () {
-      expect(UpdateService.officialApkUrl(release(name: 'debug.apk')), isNull);
-      expect(UpdateService.officialApkUrl(release(tag: 'latest')), isNull);
-    });
-
-    test('construit une mise à jour unique à afficher sur l’accueil', () {
-      final update = UpdateService.parseAvailableUpdate(
-        release(),
-        '4.8.0+499',
-      );
-      expect(update, isNotNull);
-      expect(update!.currentVersion, '4.8.0+499');
-      expect(update.latestVersion, '4.8.0+500');
-      expect(update.apkUrl, contains('/app-release.apk'));
-
+    test('refuse un APK dont le build ne correspond pas au tag', () {
       expect(
-        UpdateService.parseAvailableUpdate(release(), '4.8.0+500'),
+        UpdateService.officialApkUrl(
+          release(name: 'SKS-Family-build-509.apk'),
+        ),
+        isNull,
+      );
+      expect(
+        UpdateService.officialApkUrl(release(tag: 'latest')),
         isNull,
       );
     });
 
-    test('refuse un téléchargement qui ne vient pas de la Release officielle',
-        () async {
+    test('construit la mise ? jour affich?e sur l accueil', () {
+      final update = UpdateService.parseAvailableUpdate(
+        release(),
+        '4.8.0+509',
+      );
+
+      expect(update, isNotNull);
+      expect(update!.currentVersion, '4.8.0+509');
+      expect(update.latestVersion, '4.8.0+510');
+      expect(update.apkUrl, contains('/SKS-Family-build-510.apk'));
+
+      expect(
+        UpdateService.parseAvailableUpdate(release(), '4.8.0+510'),
+        isNull,
+      );
+    });
+
+    test('refuse un t?l?chargement externe avant tout appel r?seau', () async {
       expect(
         await UpdateService.downloadAndInstall(
-          'https://example.com/app-release.apk',
+          'https://example.com/SKS-Family-build-510.apk',
         ),
         UpdateInstallResult.invalidUrl,
       );
