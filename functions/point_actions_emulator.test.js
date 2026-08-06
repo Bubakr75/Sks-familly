@@ -12,6 +12,7 @@ const PROJECT_ID = "demo-sks-family";
 let app;
 let db;
 let recordPointAction;
+let completePenaltyLines;
 let sequence = 0;
 
 class TestHttpsError extends Error {
@@ -39,6 +40,10 @@ function parentContext() {
       },
     },
   };
+}
+
+function childContext() {
+  return {auth: {uid: "child-a", token: {}}};
 }
 
 async function seedFamily(label, points = 40) {
@@ -86,11 +91,13 @@ test.before(() => {
     }
   );
   db = admin.firestore(app);
-  recordPointAction = createPointActionFunctions({
+  const pointActionFunctions = createPointActionFunctions({
     functions: fakeFunctions,
     admin,
     db,
-  }).recordPointAction;
+  });
+  recordPointAction = pointActionFunctions.recordPointAction;
+  completePenaltyLines = pointActionFunctions.completePenaltyLines;
 });
 
 test.after(async () => {
@@ -165,6 +172,45 @@ test("double validation est idempotente côté serveur", async () => {
       .get()).size,
     1
   );
+});
+
+test("lignes créées puis validées uniquement par un parent", async () => {
+  const seeded = await seedFamily("penalty-lines");
+  const result = await recordPointAction(
+    {
+      familyId: seeded.familyId,
+      actionId: "penalty-lines-action",
+      childId: "child-a",
+      amount: 5,
+      reason: "Manque de respect",
+      category: "Pénalité",
+      isBonus: false,
+      penaltyLinesCount: 30,
+      penaltyLinesInstruction: "Je parle calmement.",
+    },
+    parentContext()
+  );
+  assert.equal(result.punishment.penaltyLinesStatus, "pending");
+  const punishmentRef = seeded.familyRef
+    .collection("punishments")
+    .doc("penalty-lines-action");
+  assert.equal((await punishmentRef.get()).data().penaltyLinesCount, 30);
+
+  await assert.rejects(
+    completePenaltyLines(
+      {familyId: seeded.familyId, punishmentId: "penalty-lines-action"},
+      childContext()
+    ),
+    (error) => error.code === "permission-denied"
+  );
+  await completePenaltyLines(
+    {familyId: seeded.familyId, punishmentId: "penalty-lines-action"},
+    parentContext()
+  );
+  const completed = (await punishmentRef.get()).data();
+  assert.equal(completed.penaltyLinesStatus, "completed");
+  assert.equal(completed.penaltyLinesCompletedBy, "parent-a");
+  assert.equal(completed.completedLines, 30);
 });
 
 test("enfant changé avant validation cible uniquement la valeur capturée", async () => {

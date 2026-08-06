@@ -9,6 +9,8 @@ class PointActionDraft {
     required this.category,
     required this.isBonus,
     required this.hasPhoto,
+    this.penaltyLinesCount,
+    this.penaltyLinesInstruction,
   });
 
   final String actionId;
@@ -18,6 +20,11 @@ class PointActionDraft {
   final String category;
   final bool isBonus;
   final bool hasPhoto;
+  final int? penaltyLinesCount;
+  final String? penaltyLinesInstruction;
+
+  bool get hasPenaltyLines =>
+      !isBonus && penaltyLinesCount != null && penaltyLinesCount! > 0;
 }
 
 class PointActionRemoteException implements Exception {

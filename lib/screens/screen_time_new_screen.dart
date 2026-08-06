@@ -13,6 +13,7 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../config/emerald_theme.dart';
+import 'punishment_lines_screen.dart';
 
 class ScreenTimeNewScreen extends StatefulWidget {
   const ScreenTimeNewScreen({super.key});
@@ -72,12 +73,89 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
               style: TextStyle(color: Colors.white)),
         ),
         body: const Center(
-            child: Text('Aucun enfant',
-                style: TextStyle(color: Colors.white54))),
+            child:
+                Text('Aucun enfant', style: TextStyle(color: Colors.white54))),
       );
     }
 
     final account = fp.getScreenTimeAccount(child.id);
+
+    if (!isParent && fp.isScreenAccessBlocked(child.id)) {
+      final pending = fp.pendingPenaltyLinesForChild(child.id);
+      final total = pending.fold<int>(0, (sum, item) => sum + item.totalLines);
+      return Scaffold(
+        backgroundColor: EmeraldPalette.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          title: const Text(
+            "Temps d’écran interdit",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: Colors.red.shade900,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.orangeAccent, width: 2),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.phonelink_erase_rounded,
+                    color: Colors.white,
+                    size: 58,
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Lignes de pénalité en attente',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'L’accès aux écrans est interdit jusqu’à ce que tes lignes soient terminées et validées par un parent.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 15),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '$total ligne${total > 1 ? 's' : ''} à faire',
+                    style: const TextStyle(
+                      color: Colors.amberAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PunishmentLinesScreen(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.visibility_rounded),
+                    label: const Text('Voir mes lignes'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     // Timer 1s pour rafraîchir le chrono
     if (account.isRunning && _timer == null) {
@@ -95,8 +173,7 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text("Temps d'écran",
-            style:
-                TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
@@ -126,9 +203,8 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
                             : Colors.white.withValues(alpha: 0.04),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isSel
-                              ? EmeraldPalette.emerald
-                              : Colors.white12,
+                          color:
+                              isSel ? EmeraldPalette.emerald : Colors.white12,
                           width: isSel ? 2 : 1,
                         ),
                       ),
@@ -150,8 +226,7 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
                             Text(
                                 '${fp.getScreenTimeAccount(c.id).balanceMinutes} min',
                                 style: TextStyle(
-                                    color: EmeraldPalette.gold,
-                                    fontSize: 11)),
+                                    color: EmeraldPalette.gold, fontSize: 11)),
                           ],
                         ),
                       ]),
@@ -355,8 +430,12 @@ class _SessionClock extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(isLow ? Icons.timer_rounded : Icons.play_circle_fill_rounded,
-                    color: color, size: 32),
+                Icon(
+                    isLow
+                        ? Icons.timer_rounded
+                        : Icons.play_circle_fill_rounded,
+                    color: color,
+                    size: 32),
                 const SizedBox(height: 4),
                 Text(
                   _formatClock(),
@@ -431,8 +510,8 @@ class _OvertimeClock extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.warning_amber_rounded,
-                      color: Colors.redAccent
-                          .withValues(alpha: 0.7 + 0.3 * pulse),
+                      color:
+                          Colors.redAccent.withValues(alpha: 0.7 + 0.3 * pulse),
                       size: 36 + 4 * pulse),
                   const SizedBox(height: 4),
                   Text(
@@ -447,8 +526,8 @@ class _OvertimeClock extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.redAccent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
@@ -475,8 +554,8 @@ class _OvertimeClock extends StatelessWidget {
                 Colors.redAccent.withValues(alpha: 0.05),
               ]),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: Colors.redAccent.withValues(alpha: 0.4)),
+              border:
+                  Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -511,8 +590,7 @@ class _OvertimeClock extends StatelessWidget {
               ),
               icon: const Icon(Icons.stop_circle_rounded, size: 28),
               label: const Text('ARRÊTER',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
               onPressed: onStop,
             ),
           ),
@@ -789,9 +867,7 @@ class _GlassButton extends StatelessWidget {
             const SizedBox(width: 6),
             Text(label,
                 style: TextStyle(
-                    color: color,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800)),
+                    color: color, fontSize: 15, fontWeight: FontWeight.w800)),
           ],
         ),
       ),
@@ -827,9 +903,7 @@ class _StatChip extends StatelessWidget {
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
-                  color: color,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800)),
+                  color: color, fontSize: 15, fontWeight: FontWeight.w800)),
           Text(label,
               style: const TextStyle(color: Colors.white38, fontSize: 10)),
         ]),
@@ -862,12 +936,8 @@ class _HistoryTile extends StatelessWidget {
             color: color.withValues(alpha: 0.15),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-              isEarned
-                  ? Icons.add_rounded
-                  : Icons.remove_rounded,
-              color: color,
-              size: 18),
+          child: Icon(isEarned ? Icons.add_rounded : Icons.remove_rounded,
+              color: color, size: 18),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -875,13 +945,11 @@ class _HistoryTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(transaction.reason,
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 12),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis),
               Text(timeStr,
-                  style: const TextStyle(
-                      color: Colors.white24, fontSize: 10)),
+                  style: const TextStyle(color: Colors.white24, fontSize: 10)),
             ],
           ),
         ),

@@ -67,6 +67,8 @@ const pointActionFunctions =
 exports.recordPointAction = pointActionFunctions.recordPointAction;
 exports.recordHistoryEvent = pointActionFunctions.recordHistoryEvent;
 exports.setMemberDisplayName = pointActionFunctions.setMemberDisplayName;
+exports.completePenaltyLines = pointActionFunctions.completePenaltyLines;
+exports.updatePenaltyLines = pointActionFunctions.updatePenaltyLines;
 
 const {
   createFamilyManagementFunctions,

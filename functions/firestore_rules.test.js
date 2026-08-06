@@ -26,7 +26,6 @@ const FAMILY_B = "family-b";
 
 const parentWritableCollections = [
   "goals",
-  "punishments",
   "notes",
   "immunities",
   "trades",
@@ -78,6 +77,20 @@ function requestData(id, childId = "child-1", overrides = {}) {
     readBy: [],
     lastModifiedBy: "device-test",
     ...overrides,
+  };
+}
+
+function standalonePunishment(id) {
+  return {
+    id,
+    childId: "child-1",
+    text: "Je respecte les règles.",
+    totalLines: 20,
+    completedLines: 0,
+    createdAt: "2026-08-06T10:00:00.000Z",
+    photoUrls: [],
+    pendingValidation: false,
+    lastModifiedBy: "device-test",
   };
 }
 
@@ -324,6 +337,38 @@ for (const collectionName of parentWritableCollections) {
     }
   });
 }
+
+test("punishments: child cannot validate linked lines", async () => {
+  const parentDb = testEnv.authenticatedContext("parent-a").firestore();
+  const childDb = testEnv.authenticatedContext("child-a").firestore();
+  const standaloneRef = businessRef(parentDb, "punishments", "standalone");
+  await assertSucceeds(
+    setDoc(standaloneRef, standalonePunishment("standalone"))
+  );
+  await assertSucceeds(updateDoc(standaloneRef, {completedLines: 10}));
+
+  const linkedRef = businessRef(parentDb, "punishments", "linked");
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(businessRef(context.firestore(), "punishments", "linked"), {
+      ...standalonePunishment("linked"),
+      penaltyHistoryId: "linked",
+      hasPenaltyLines: true,
+      penaltyLinesCount: 20,
+      penaltyLinesInstruction: "Texte",
+      penaltyLinesStatus: "pending",
+      penaltyLinesCompletedAt: null,
+      penaltyLinesCompletedBy: null,
+    });
+  });
+  await assertFails(updateDoc(linkedRef, {penaltyLinesStatus: "completed"}));
+  await assertFails(
+    updateDoc(
+      businessRef(childDb, "punishments", "linked"),
+      {penaltyLinesStatus: "completed"}
+    )
+  );
+  await assertFails(deleteDoc(linkedRef));
+});
 
 test("children: +505 balance compatibility is narrow and parent-only", async () => {
   const parentDb = testEnv.authenticatedContext("parent-a").firestore();

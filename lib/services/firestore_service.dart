@@ -33,6 +33,8 @@ class FirestoreService {
     required String category,
     required bool isBonus,
     String? photoStoragePath,
+    int? penaltyLinesCount,
+    String? penaltyLinesInstruction,
   }) {
     return {
       'familyId': familyId,
@@ -43,6 +45,9 @@ class FirestoreService {
       'category': category.trim(),
       'isBonus': isBonus,
       if (photoStoragePath != null) 'photoStoragePath': photoStoragePath,
+      if (penaltyLinesCount != null) 'penaltyLinesCount': penaltyLinesCount,
+      if (penaltyLinesInstruction != null)
+        'penaltyLinesInstruction': penaltyLinesInstruction.trim(),
     };
   }
 
@@ -948,6 +953,8 @@ class FirestoreService {
     required String category,
     required bool isBonus,
     String? photoStoragePath,
+    int? penaltyLinesCount,
+    String? penaltyLinesInstruction,
   }) async {
     final currentFamilyId = _familyId;
     if (currentFamilyId == null) {
@@ -964,7 +971,45 @@ class FirestoreService {
           category: category,
           isBonus: isBonus,
           photoStoragePath: photoStoragePath,
+          penaltyLinesCount: penaltyLinesCount,
+          penaltyLinesInstruction: penaltyLinesInstruction,
         ));
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  Future<Map<String, dynamic>> updatePenaltyLines({
+    required String punishmentId,
+    required bool hasPenaltyLines,
+    int? count,
+    String? instruction,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('updatePenaltyLines').call({
+      'familyId': currentFamilyId,
+      'punishmentId': punishmentId,
+      'hasPenaltyLines': hasPenaltyLines,
+      if (count != null) 'penaltyLinesCount': count,
+      if (instruction != null) 'penaltyLinesInstruction': instruction.trim(),
+    });
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  Future<Map<String, dynamic>> completePenaltyLines(String punishmentId) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('completePenaltyLines').call({
+      'familyId': currentFamilyId,
+      'punishmentId': punishmentId,
+    });
     return Map<String, dynamic>.from(result.data as Map);
   }
 

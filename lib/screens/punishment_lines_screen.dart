@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../providers/pin_provider.dart';
 import '../models/punishment_lines.dart';
 import '../models/immunity_lines.dart';
 import '../models/child_model.dart';
@@ -71,6 +72,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   @override
   Widget build(BuildContext context) {
     final fp = context.watch<FamilyProvider>();
+    final isParent = context.watch<PinProvider>().isParentMode;
     final children = fp.children;
     if (children.isEmpty) {
       return AnimatedBackground(
@@ -84,7 +86,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     }
     _selectedChild ??= children.first;
     final child = _selectedChild!;
-    final allPunishments = fp.punishments.where((p) => p.childId == child.id).toList();
+    final allPunishments = fp.punishments.where((p) =>
+      p.childId == child.id &&
+      (isParent || p.totalLines > 0 || !p.isLinkedToPenalty)).toList();
     final active = allPunishments.where((p) => !p.isCompleted).toList();
     final completed = allPunishments.where((p) => p.isCompleted).toList();
     final immunities = fp.immunities.where((i) => i.childId == child.id && i.isUsable).toList();
@@ -98,7 +102,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
           elevation: 0,
           title: const Text('Punitions & Immunités', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           actions: [
-            IconButton(
+            if (isParent) IconButton(
               icon: const Icon(Icons.add_circle_rounded, color: Colors.redAccent, size: 28),
               onPressed: () => _showAddBottomSheet(context, fp, child),
             ),
@@ -141,7 +145,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildPunitionsTab(active, completed, child, fp),
+                  _buildPunitionsTab(active, completed, child, fp, isParent),
                   _buildImmunitiesTab(immunities, active, child, fp),
                 ],
               ),
@@ -242,7 +246,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
 
   // ── Onglet Punitions ──────────────────────────────────────────────────────
   Widget _buildPunitionsTab(List<PunishmentLines> active, List<PunishmentLines> completed,
-      ChildModel child, FamilyProvider fp) {
+      ChildModel child, FamilyProvider fp, bool isParent) {
     if (active.isEmpty && completed.isEmpty) {
       return const Center(
         child: Column(
@@ -260,11 +264,11 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       children: [
         if (active.isNotEmpty) ...[
           _sectionHeader('EN COURS', Colors.redAccent, Icons.edit_document),
-          ...active.map((p) => _buildPunishmentCard(p, child, fp)),
+          ...active.map((p) => _buildPunishmentCard(p, child, fp, isParent)),
         ],
         if (completed.isNotEmpty) ...[
           _sectionHeader('TERMINEES', Colors.green, Icons.check_circle_rounded),
-          ...completed.map((p) => _buildPunishmentCard(p, child, fp)),
+          ...completed.map((p) => _buildPunishmentCard(p, child, fp, isParent)),
         ],
       ],
     );
@@ -283,7 +287,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     );
   }
 
-  Widget _buildPunishmentCard(PunishmentLines p, ChildModel child, FamilyProvider fp) {
+  Widget _buildPunishmentCard(PunishmentLines p, ChildModel child,
+      FamilyProvider fp, bool isParent) {
     final isCompleted = p.isCompleted;
     final remaining = p.totalLines - p.completedLines;
     final progress = p.totalLines > 0 ? p.completedLines / p.totalLines : 0.0;
@@ -319,19 +324,19 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       color: isCompleted ? Colors.green : Colors.redAccent, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(p.text,
+                    child: Text(p.text.isNotEmpty ? p.text : 'Pénalité sans lignes',
                         style: TextStyle(
                             color: isCompleted ? Colors.white54 : Colors.white,
                             fontWeight: FontWeight.w600,
                             decoration: isCompleted ? TextDecoration.lineThrough : null)),
                   ),
-                  if (!isCompleted)
+                  if (!isCompleted && isParent)
                     IconButton(
                       icon: const Icon(Icons.quiz_rounded, color: Colors.amberAccent, size: 20),
                       onPressed: () => _showQuizThemePicker(p, child, fp),
                       tooltip: 'Lancer le quiz',
                     ),
-                  IconButton(
+                  if (isParent && !p.isLinkedToPenalty) IconButton(
                     icon: const Icon(Icons.delete_outline_rounded, color: Colors.white24, size: 18),
                     onPressed: () => _deletePunishment(fp, p.id),
                   ),
@@ -383,7 +388,26 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       ),
                     ),
                   ),
+                if (p.isLinkedToPenalty && isParent) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _confirmCompletePenaltyLines(fp, p),
+                      icon: const Icon(Icons.verified_rounded),
+                      label: const Text('Valider les lignes comme terminées'),
+                    ),
+                  ),
+                ],
               ],
+              if (p.isLinkedToPenalty && isParent)
+                TextButton.icon(
+                  onPressed: () => _editLinkedPenaltyLines(fp, p),
+                  icon: const Icon(Icons.edit_rounded),
+                  label: Text(p.totalLines > 0
+                      ? 'Modifier les lignes'
+                      : 'Ajouter des lignes'),
+                ),
               const SizedBox(height: 6),
               Text(_timeAgo(p.createdAt), style: const TextStyle(color: Colors.white38, fontSize: 11)),
             ],
@@ -782,6 +806,126 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   }
 
   // ── Bottom sheet ajout punition ───────────────────────────────────────────
+  Future<void> _confirmCompletePenaltyLines(
+      FamilyProvider fp, PunishmentLines punishment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Valider les lignes ?'),
+        content: const Text(
+          'Confirmez que les lignes sont terminées. L’accès aux écrans sera rétabli seulement si aucune autre pénalité avec lignes n’est en attente.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Annuler')),
+          ElevatedButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Confirmer')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await fp.completeLinkedPenaltyLines(punishment.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lignes validées par le serveur.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Validation impossible. Vérifiez la connexion et réessayez.'),
+        backgroundColor: Colors.redAccent,
+      ));
+    }
+  }
+
+  Future<void> _editLinkedPenaltyLines(
+      FamilyProvider fp, PunishmentLines punishment) async {
+    var enabled = punishment.totalLines > 0;
+    final countController = TextEditingController(
+      text: punishment.totalLines > 0 ? punishment.totalLines.toString() : '',
+    );
+    final instructionController = TextEditingController(text: punishment.text);
+    final result = await showDialog<({bool enabled, int? count, String text})>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Modifier les lignes'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              SwitchListTile(
+                value: enabled,
+                title: const Text('Lignes obligatoires'),
+                onChanged: (value) => setDialogState(() => enabled = value),
+              ),
+              if (enabled) ...[
+                TextField(
+                  controller: countController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Nombre de lignes'),
+                ),
+                TextField(
+                  controller: instructionController,
+                  maxLength: 500,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'Consigne (facultative)'),
+                ),
+              ],
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () {
+                final count = int.tryParse(countController.text.trim());
+                if (enabled && (count == null || count <= 0)) return;
+                Navigator.pop(dialogContext, (
+                  enabled: enabled,
+                  count: enabled ? count : null,
+                  text: instructionController.text.trim(),
+                ));
+              },
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+    countController.dispose();
+    instructionController.dispose();
+    if (result == null || !mounted) return;
+    if (!result.enabled && punishment.blocksScreenAccess) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Retirer les lignes en attente ?'),
+          content: const Text('Cette action retirera immédiatement cette obligation de lignes.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Annuler')),
+            ElevatedButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Retirer')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    try {
+      await fp.updateLinkedPenaltyLines(
+        punishmentId: punishment.id,
+        hasPenaltyLines: result.enabled,
+        count: result.count,
+        instruction: result.text,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Modification confirmée par le serveur.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Modification impossible. Réessayez une fois connecté.'),
+        backgroundColor: Colors.redAccent,
+      ));
+    }
+  }
+
   void _showAddBottomSheet(BuildContext context, FamilyProvider fp, ChildModel child) {
 
     showModalBottomSheet(

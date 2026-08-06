@@ -18,9 +18,16 @@ class QuickPenaltyFormState {
   (String, int)? selectedPreset;
   int customPoints = 3;
   bool isSubmitting = false;
+  bool? hasPenaltyLines;
+  int? penaltyLinesCount;
+  String penaltyLinesInstruction = '';
 
   int get points => selectedPreset?.$2 ?? customPoints;
   String get reason => selectedPreset?.$1 ?? 'Pénalité rapide';
+  bool get hasValidPenaltyLines =>
+      hasPenaltyLines != null &&
+      (hasPenaltyLines == false ||
+          (penaltyLinesCount != null && penaltyLinesCount! > 0));
 
   bool tryStartSubmission() {
     if (isSubmitting) return false;
@@ -560,6 +567,81 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                   ),
                 ],
                 const SizedBox(height: 24),
+                const Text(
+                  'Cette pénalité comporte-t-elle des lignes à faire ?',
+                  style: _labelStyle,
+                ),
+                RadioGroup<bool>(
+                  groupValue: form.hasPenaltyLines,
+                  onChanged: form.isSubmitting
+                      ? (_) {}
+                      : (value) => setS(() {
+                            form.hasPenaltyLines = value;
+                            if (value == false) {
+                              form.penaltyLinesCount = null;
+                              form.penaltyLinesInstruction = '';
+                            }
+                          }),
+                  child: const Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<bool>(
+                          value: false,
+                          title: Text('Non'),
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<bool>(
+                          value: true,
+                          title: Text('Oui'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (form.hasPenaltyLines == true) ...[
+                  TextFormField(
+                    enabled: !form.isSubmitting,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre de lignes à faire',
+                    ),
+                    onChanged: (value) => setS(() {
+                      form.penaltyLinesCount = int.tryParse(value);
+                    }),
+                  ),
+                  if (!form.hasValidPenaltyLines)
+                    const Text(
+                      'Le nombre doit être un entier strictement positif.',
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
+                  TextFormField(
+                    enabled: !form.isSubmitting,
+                    maxLength: 500,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Consigne ou texte à recopier (facultatif)',
+                    ),
+                    onChanged: (value) => form.penaltyLinesInstruction = value,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.deepOrange.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.deepOrangeAccent),
+                    ),
+                    child: const Text(
+                      "L’accès aux écrans sera interdit jusqu’à validation des lignes par un parent.",
+                      style: TextStyle(
+                        color: Colors.orangeAccent,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
                 _actionButton(
                   label: form.isSubmitting
                       ? 'Validation...'
@@ -567,6 +649,7 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                   color: Colors.red.shade700,
                   icon: Icons.remove_circle,
                   onTap: () async {
+                    if (!form.hasValidPenaltyLines) return;
                     if (!form.tryStartSubmission()) return;
                     setS(() {});
                     final child = fp.children
@@ -574,7 +657,13 @@ void _showQuickPenalty(BuildContext context, FamilyProvider fp,
                     final pts = form.points;
                     try {
                       await fp.addPoints(form.selectedChildId, pts, form.reason,
-                          isBonus: false, category: 'penalty');
+                          isBonus: false,
+                          category: 'penalty',
+                          penaltyLinesCount: form.hasPenaltyLines == true
+                              ? form.penaltyLinesCount
+                              : null,
+                          penaltyLinesInstruction:
+                              form.penaltyLinesInstruction.trim());
                       if (!ctx.mounted) return;
                       Navigator.pop(ctx);
                       _showConfirmSnack(

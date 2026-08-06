@@ -198,6 +198,35 @@ service cloud.firestore {
         );
     }
 
+    // Les obligations liées à une pénalité de points sont écrites et validées
+    // exclusivement par les Cloud Functions. Ce validateur ne couvre que
+    // l'ancien outil autonome « Punitions & Immunités ».
+    function isValidStandalonePunishment(data, punishmentId) {
+      return data.keys().hasOnly([
+          'id', 'childId', 'text', 'totalLines', 'completedLines',
+          'createdAt', 'photoUrls', 'pendingValidation', 'lastModifiedBy'
+        ]) &&
+        data.keys().hasAll([
+          'id', 'childId', 'text', 'totalLines', 'completedLines',
+          'createdAt', 'photoUrls', 'pendingValidation'
+        ]) &&
+        data.id is string &&
+        data.id == punishmentId &&
+        data.childId is string && data.childId.size() > 0 &&
+        data.childId.size() <= 128 &&
+        data.text is string && data.text.size() <= 500 &&
+        data.totalLines is int && data.totalLines > 0 &&
+        data.totalLines <= 10000 &&
+        data.completedLines is int && data.completedLines >= 0 &&
+        data.completedLines <= data.totalLines &&
+        data.createdAt is string && data.createdAt.size() >= 10 &&
+        data.createdAt.size() <= 40 &&
+        data.photoUrls is list && data.photoUrls.size() <= 20 &&
+        data.pendingValidation is bool &&
+        (!('lastModifiedBy' in data) ||
+          (data.lastModifiedBy is string && data.lastModifiedBy.size() <= 128));
+    }
+
     function isValidChildRequest(data, requestId) {
       return data.keys().hasOnly([
           'id',
@@ -332,9 +361,13 @@ service cloud.firestore {
 
       match /punishments/{punishmentId} {
         allow read: if activeFamilyMember(familyId);
-        allow create, update: if isFamilyParent(familyId) &&
-          isBoundedBusinessDocument(request.resource.data);
-        allow delete: if isFamilyParent(familyId);
+        allow create: if isFamilyParent(familyId) &&
+          isValidStandalonePunishment(request.resource.data, punishmentId);
+        allow update: if isFamilyParent(familyId) &&
+          !('penaltyHistoryId' in resource.data) &&
+          isValidStandalonePunishment(request.resource.data, punishmentId);
+        allow delete: if isFamilyParent(familyId) &&
+          !('penaltyHistoryId' in resource.data);
       }
 
       match /notes/{noteId} {

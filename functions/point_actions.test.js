@@ -8,6 +8,7 @@ const {
   resolveActor,
   fingerprint,
   buildPointHistory,
+  buildPenaltyLines,
   validatePhotoMetadata,
 } = require("./point_actions");
 
@@ -37,6 +38,59 @@ test("normalise une action avec ou sans photo isolée", () => {
     })),
     /INVALID_PHOTO_PATH/
   );
+});
+
+test("normalise des lignes uniquement pour une pénalité", () => {
+  const action = normalizePointAction(payload({
+    penaltyLinesCount: 25,
+    penaltyLinesInstruction: "Je respecte les règles.",
+  }));
+  assert.equal(action.penaltyLinesCount, 25);
+  assert.equal(action.penaltyLinesInstruction, "Je respecte les règles.");
+  assert.throws(
+    () => normalizePointAction(payload({penaltyLinesCount: 0})),
+    /INVALID_PENALTY_LINES_COUNT/
+  );
+  assert.throws(
+    () => normalizePointAction(payload({penaltyLinesCount: -1})),
+    /INVALID_PENALTY_LINES_COUNT/
+  );
+  assert.throws(
+    () => normalizePointAction(payload({
+      isBonus: true,
+      penaltyLinesCount: 10,
+    })),
+    /INVALID_PENALTY_LINES_COUNT/
+  );
+});
+
+test("construit une obligation en attente liée à la pénalité", () => {
+  const action = normalizePointAction(payload({
+    penaltyLinesCount: 12,
+    penaltyLinesInstruction: "Texte",
+  }));
+  const punishment = buildPenaltyLines({
+    action,
+    actor: {actorUid: "parent-a"},
+    createdAt: "server-time",
+    serverDate: "2026-08-06T10:00:00.000Z",
+  });
+  assert.equal(punishment.penaltyHistoryId, "action-a");
+  assert.equal(punishment.penaltyLinesStatus, "pending");
+  assert.equal(punishment.penaltyLinesCompletedBy, null);
+});
+
+test("construit une pénalité modifiable même sans lignes", () => {
+  const action = normalizePointAction(payload());
+  const punishment = buildPenaltyLines({
+    action,
+    actor: {actorUid: "parent-a"},
+    createdAt: "server-time",
+    serverDate: "2026-08-06T10:00:00.000Z",
+  });
+  assert.equal(punishment.hasPenaltyLines, false);
+  assert.equal(punishment.penaltyLinesCount, 0);
+  assert.equal(punishment.penaltyLinesStatus, "completed");
 });
 
 test("valide le type et la taille du fichier Storage", () => {

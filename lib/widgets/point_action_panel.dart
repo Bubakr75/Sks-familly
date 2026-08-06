@@ -101,6 +101,9 @@ class _PointActionPanelState extends State<PointActionPanel>
   bool _retryStateUncertain = false;
   bool _serverSubmissionStarted = false;
   late final TextEditingController _amountTextCtrl;
+  late final TextEditingController _penaltyLinesCountCtrl;
+  late final TextEditingController _penaltyLinesInstructionCtrl;
+  bool? _hasPenaltyLines;
 
   @override
   void initState() {
@@ -116,6 +119,8 @@ class _PointActionPanelState extends State<PointActionPanel>
     _customTextCtrl = TextEditingController();
     _customFocusNode = FocusNode();
     _amountTextCtrl = TextEditingController(text: _amount.toString());
+    _penaltyLinesCountCtrl = TextEditingController();
+    _penaltyLinesInstructionCtrl = TextEditingController();
     _sortedMotifs = widget.config.motifs;
     _loadPreferences();
   }
@@ -158,15 +163,17 @@ class _PointActionPanelState extends State<PointActionPanel>
     _customTextCtrl.dispose();
     _customFocusNode.dispose();
     _amountTextCtrl.dispose();
+    _penaltyLinesCountCtrl.dispose();
+    _penaltyLinesInstructionCtrl.dispose();
     super.dispose();
   }
 
   bool get _isValid =>
       _selectedChildId != null &&
-      _selectedMotif != null &&
       !_processing &&
       _isMotifValid &&
-      _isAmountValid;
+      _isAmountValid &&
+      _isPenaltyLinesValid;
   bool get _editingLocked => _processing || _retryStateUncertain;
 
   bool get _isAmountValid {
@@ -174,13 +181,21 @@ class _PointActionPanelState extends State<PointActionPanel>
     return value != null && value >= 1 && value <= 999;
   }
 
+  bool get _isPenaltyLinesValid {
+    if (widget.config.isBonus) return true;
+    if (_hasPenaltyLines == null) return false;
+    if (_hasPenaltyLines == false) return true;
+    final count = int.tryParse(_penaltyLinesCountCtrl.text.trim());
+    return count != null && count > 0 && count <= 10000;
+  }
+
   /// Un motif classique est toujours valide. "Autre" nécessite un texte non vide.
   bool get _isMotifValid {
-    if (_selectedMotif == null) return false;
-    if (_selectedMotif!.isOther) {
-      return isValidCustomText(_customTextCtrl.text);
-    }
-    return true;
+    return isPointActionReasonValid(
+      hasSelectedReason: _selectedMotif != null,
+      isOther: _selectedMotif?.isOther ?? false,
+      customText: _customTextCtrl.text,
+    );
   }
 
   void _selectMotif(ActionMotif motif) {
@@ -316,17 +331,22 @@ class _PointActionPanelState extends State<PointActionPanel>
     final capturedPhoto = _photo;
     final capturedFamilyId = fp.familyId;
     final actionId = _actionId ??= _uuid.v4();
-    final reason = buildReason(
+    final reason = resolvePointActionReason(
       isOther: capturedMotif.isOther,
-      emoji: capturedMotif.emoji,
-      label: capturedMotif.label,
+      selectedLabel: capturedMotif.label,
       customText: _customTextCtrl.text,
-    );
+    )!;
     final actualAmount = actualPenaltyAmount(
       requested: capturedAmount,
       balance: child.points,
       isBonus: capturedIsBonus,
     );
+    final capturedLinesCount = _hasPenaltyLines == true
+        ? int.parse(_penaltyLinesCountCtrl.text.trim())
+        : null;
+    final capturedLinesInstruction = _hasPenaltyLines == true
+        ? _penaltyLinesInstructionCtrl.text.trim()
+        : null;
 
     if (actualAmount < 1) {
       setState(() => _processing = false);
@@ -347,6 +367,8 @@ class _PointActionPanelState extends State<PointActionPanel>
         category: capturedCategory,
         isBonus: capturedIsBonus,
         hasPhoto: capturedPhoto != null,
+        penaltyLinesCount: capturedLinesCount,
+        penaltyLinesInstruction: capturedLinesInstruction,
       ),
       existingPhotoStoragePath: _uploadedPhotoPath,
       uploadPhoto: () async {
@@ -378,6 +400,8 @@ class _PointActionPanelState extends State<PointActionPanel>
           isBonus: capturedIsBonus,
           actionId: actionId,
           photoStoragePath: photoStoragePath,
+          penaltyLinesCount: capturedLinesCount,
+          penaltyLinesInstruction: capturedLinesInstruction,
         );
         return entry.points;
       },
@@ -413,6 +437,9 @@ class _PointActionPanelState extends State<PointActionPanel>
       _uploadedPhotoPath = null;
       _retryStateUncertain = false;
       _processing = false;
+      _hasPenaltyLines = null;
+      _penaltyLinesCountCtrl.clear();
+      _penaltyLinesInstructionCtrl.clear();
     });
 
     if (!MediaQuery.of(context).disableAnimations) {
@@ -782,9 +809,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                               ),
                               onChanged: (text) {
                                 final value = int.tryParse(text);
-                                if (value == null ||
-                                    value < 1 ||
-                                    value > 999) {
+                                if (value == null || value < 1 || value > 999) {
                                   setState(() {});
                                   return;
                                 }
@@ -836,6 +861,93 @@ class _PointActionPanelState extends State<PointActionPanel>
                 ),
 
                 const SizedBox(height: 20),
+
+                if (!widget.config.isBonus) ...[
+                  Text(
+                    'Cette pénalité comporte-t-elle des lignes à faire ?',
+                    style: TextStyle(
+                      color: config.accentColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  RadioGroup<bool>(
+                    groupValue: _hasPenaltyLines,
+                    onChanged: _editingLocked
+                        ? (_) {}
+                        : (value) => setState(() {
+                              _hasPenaltyLines = value;
+                              if (value == false) {
+                                _penaltyLinesCountCtrl.clear();
+                                _penaltyLinesInstructionCtrl.clear();
+                              }
+                            }),
+                    child: const Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<bool>(
+                            value: false,
+                            title: Text('Non'),
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<bool>(
+                            value: true,
+                            title: Text('Oui'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_hasPenaltyLines == true) ...[
+                    TextField(
+                      controller: _penaltyLinesCountCtrl,
+                      enabled: !_editingLocked,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre de lignes à faire',
+                        errorText: null,
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    if (_penaltyLinesCountCtrl.text.isNotEmpty &&
+                        !_isPenaltyLinesValid)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Le nombre doit être un entier strictement positif.',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _penaltyLinesInstructionCtrl,
+                      enabled: !_editingLocked,
+                      maxLength: 500,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Consigne ou texte à recopier (facultatif)',
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrange.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.deepOrangeAccent),
+                      ),
+                      child: const Text(
+                        "L’accès aux écrans sera interdit jusqu’à validation des lignes par un parent.",
+                        style: TextStyle(
+                          color: Colors.orangeAccent,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                ],
 
                 // ── Photo facultative ──
                 Text('Photo facultative',
@@ -970,8 +1082,10 @@ class _PointActionPanelState extends State<PointActionPanel>
           left: 20,
           right: 20,
           child: ElevatedButton.icon(
+            key: const ValueKey('point_action_apply_button'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isValid ? config.primaryColor : Colors.white12,
+              backgroundColor: _isValid ? config.primaryColor : Colors.white24,
+              disabledBackgroundColor: Colors.white24,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
