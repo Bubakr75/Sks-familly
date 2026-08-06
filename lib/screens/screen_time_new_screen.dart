@@ -7,6 +7,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -52,6 +53,15 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
     _pulseController.dispose();
     _tickController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (kIsWeb || MediaQuery.disableAnimationsOf(context)) {
+      _pulseController.stop();
+      _tickController.stop();
+    }
   }
 
   @override

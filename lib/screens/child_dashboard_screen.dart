@@ -1422,6 +1422,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     );
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (kIsWeb || MediaQuery.disableAnimationsOf(context)) {
+      _glowController.stop();
+    }
+  }
+
   Widget _buildScreenTab(ChildModel child, FamilyProvider fp, Color color) {
     final immunities    = fp.getUsableImmunitiesForChild(child.id);
     final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);

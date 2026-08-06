@@ -865,6 +865,25 @@ class FamilyProvider extends ChangeNotifier {
     return result;
   }
 
+  Future<SksWalletAdjustmentResult> reverseWalletOperation({
+    required String childId,
+    required String operationId,
+  }) async {
+    final result = await _firestore.reverseWalletOperation(
+      childId: childId,
+      operationId: operationId,
+    );
+    final previous = getWalletForChild(childId);
+    _wallets[childId] = SksWallet(
+      childId: childId,
+      balance: result.balance,
+      createdAt: previous.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    notifyListeners();
+    return result;
+  }
+
   Future<void> disconnectFamily() async {
     await _firestore.disconnectFamily();
     _familyCode = null;

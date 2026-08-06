@@ -71,6 +71,19 @@ class FirestoreService {
   }
 
   @visibleForTesting
+  static Map<String, dynamic> buildWalletReversalPayload({
+    required String familyId,
+    required String childId,
+    required String operationId,
+  }) {
+    return {
+      'familyId': familyId,
+      'childId': childId,
+      'operationId': operationId,
+    };
+  }
+
+  @visibleForTesting
   static Map<String, String?> buildApprovedLocalMembershipData({
     required String familyId,
     required String familyCode,
@@ -235,10 +248,10 @@ class FirestoreService {
           _db.settings = const Settings(
             persistenceEnabled: true,
             sslEnabled: true,
-            webExperimentalForceLongPolling: true,
-            webExperimentalAutoDetectLongPolling: false,
+            webExperimentalForceLongPolling: false,
+            webExperimentalAutoDetectLongPolling: true,
           );
-          if (kDebugMode) debugPrint('Firestore: long-polling force sur Web');
+          if (kDebugMode) debugPrint('Firestore: transport Web auto-détecté');
         } catch (e) {
           if (kDebugMode) debugPrint('Firestore settings error: $e');
         }
@@ -1063,6 +1076,24 @@ class FirestoreService {
           type: type,
           amount: amount,
           reason: reason,
+        ));
+    return SksWalletAdjustmentResult.fromData(result.data);
+  }
+
+  Future<SksWalletAdjustmentResult> reverseWalletOperation({
+    required String childId,
+    required String operationId,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('reverseWalletOperation').call(buildWalletReversalPayload(
+          familyId: currentFamilyId,
+          childId: childId,
+          operationId: operationId,
         ));
     return SksWalletAdjustmentResult.fromData(result.data);
   }

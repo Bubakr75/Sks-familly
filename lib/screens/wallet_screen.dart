@@ -67,6 +67,9 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   String? _selectedChildId;
+  String? _operationStreamChildId;
+  Stream<List<SksWalletOperation>>? _operationStream;
+  final Set<String> _reversalsInFlight = {};
 
   @override
   void initState() {
@@ -125,7 +128,11 @@ class _WalletScreenState extends State<WalletScreen> {
                     canManage,
                   ),
                   Expanded(
-                    child: _operationHistory(family, selectedChild.id),
+                    child: _operationHistory(
+                      family,
+                      selectedChild.id,
+                      canManage,
+                    ),
                   ),
                 ],
               ),
@@ -218,9 +225,24 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _operationHistory(FamilyProvider family, String childId) {
+  Stream<List<SksWalletOperation>> _stableOperationStream(
+    FamilyProvider family,
+    String childId,
+  ) {
+    if (_operationStream == null || _operationStreamChildId != childId) {
+      _operationStreamChildId = childId;
+      _operationStream = family.watchWalletOperations(childId);
+    }
+    return _operationStream!;
+  }
+
+  Widget _operationHistory(
+    FamilyProvider family,
+    String childId,
+    bool canManage,
+  ) {
     return StreamBuilder<List<SksWalletOperation>>(
-      stream: family.watchWalletOperations(childId),
+      stream: _stableOperationStream(family, childId),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const Center(
@@ -258,19 +280,88 @@ class _WalletScreenState extends State<WalletScreen> {
                 DateFormat('dd/MM/yyyy à HH:mm').format(operation.createdAt),
                 style: const TextStyle(color: Colors.white38),
               ),
-              trailing: Text(
-                '${isCredit ? '+' : ''}${operation.delta}',
-                style: TextStyle(
-                  color: isCredit ? Colors.greenAccent : Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
-                ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${isCredit ? '+' : ''}${operation.delta}',
+                    style: TextStyle(
+                      color: isCredit ? Colors.greenAccent : Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                    ),
+                  ),
+                  if (canManage && operation.canBeReversed)
+                    IconButton(
+                      tooltip: 'Annuler et rendre les points',
+                      onPressed: _reversalsInFlight.contains(operation.id)
+                          ? null
+                          : () => _confirmReversal(family, operation),
+                      icon: _reversalsInFlight.contains(operation.id)
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.undo_rounded),
+                    ),
+                ],
               ),
             );
           },
         );
       },
     );
+  }
+
+  Future<void> _confirmReversal(
+    FamilyProvider family,
+    SksWalletOperation operation,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Annuler cette opération ?'),
+        content: Text(
+          '${operation.amount} points seront retirés de la cagnotte et '
+          'rendus à l’enfant. L’opération restera dans l’historique.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Conserver'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Annuler et rembourser'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || _reversalsInFlight.contains(operation.id)) return;
+    setState(() => _reversalsInFlight.add(operation.id));
+    try {
+      await family.reverseWalletOperation(
+        childId: operation.childId,
+        operationId: operation.id,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Opération annulée et points rendus à l’enfant.'),
+        backgroundColor: EmeraldPalette.success,
+      ));
+    } on FirebaseFunctionsException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(walletErrorMessage(
+          code: error.code,
+          serverMessage: error.message,
+        )),
+        backgroundColor: Colors.redAccent,
+      ));
+    } finally {
+      if (mounted) setState(() => _reversalsInFlight.remove(operation.id));
+    }
   }
 
   Future<void> _showAdjustmentDialog(

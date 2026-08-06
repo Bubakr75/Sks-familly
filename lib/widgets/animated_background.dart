@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:math' as math;
 
 class AnimatedBackground extends StatefulWidget {
@@ -85,6 +86,17 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (kIsWeb || MediaQuery.disableAnimationsOf(context)) {
+      _particleController.stop();
+      _breathController.stop();
+      _starController.stop();
+      _nebulaController.stop();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final defaultColors = [
       const Color(0xFF051410),
@@ -93,6 +105,20 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
       const Color(0xFF051410),
     ];
     final bgColors = widget.colors ?? defaultColors;
+
+    if (kIsWeb || MediaQuery.disableAnimationsOf(context)) {
+      return Stack(
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: bgColors),
+            ),
+            child: const SizedBox.expand(),
+          ),
+          RepaintBoundary(child: widget.child),
+        ],
+      );
+    }
 
     return Stack(
       children: [
@@ -257,8 +283,8 @@ class _StarsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final s in stars) {
-      final twinkle =
-          0.3 + 0.7 * ((math.sin(time * 6.2832 * s.twinkleSpeed + s.phase) + 1) / 2);
+      final twinkle = 0.3 +
+          0.7 * ((math.sin(time * 6.2832 * s.twinkleSpeed + s.phase) + 1) / 2);
       final px = s.x * size.width;
       final py = s.y * size.height;
 
@@ -341,6 +367,5 @@ class _NebulaPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _NebulaPainter old) =>
-      progress != old.progress;
+  bool shouldRepaint(covariant _NebulaPainter old) => progress != old.progress;
 }

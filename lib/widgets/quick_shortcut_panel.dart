@@ -1,9 +1,9 @@
 // lib/widgets/quick_shortcut_panel.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import 'quick_point_action_form.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../utils/pin_guard.dart';
@@ -198,7 +198,7 @@ class _QuickPanel extends StatelessWidget {
             color: Colors.greenAccent,
             onTap: () {
               onClose();
-              _showQuickBonus(context, fp, isParent: true);
+              _showReliableQuickPointAction(context, fp, isBonus: true);
             },
           ),
           _ShortcutTile(
@@ -208,7 +208,7 @@ class _QuickPanel extends StatelessWidget {
             color: Colors.redAccent,
             onTap: () {
               onClose();
-              _showQuickPenalty(context, fp, isParent: isParent);
+              _showReliableQuickPointAction(context, fp, isBonus: false);
             },
           ),
           const Divider(color: Colors.white12, height: 16),
@@ -372,6 +372,68 @@ Widget _childSelector(
   );
 }
 
+void _showReliableQuickPointAction(
+  BuildContext context,
+  FamilyProvider fp, {
+  required bool isBonus,
+}) {
+  if (fp.children.isEmpty) return;
+  final presets = isBonus
+      ? const [
+          QuickPointActionPreset('Devoirs faits', 5),
+          QuickPointActionPreset('Chambre rangée', 3),
+          QuickPointActionPreset('Aide en cuisine', 3),
+          QuickPointActionPreset('Bonne attitude', 3),
+        ]
+      : const [
+          QuickPointActionPreset('Dispute', 5),
+          QuickPointActionPreset('Insolence', 5),
+          QuickPointActionPreset('Devoirs non faits', 4),
+          QuickPointActionPreset('Manque de respect', 5),
+        ];
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => FractionallySizedBox(
+      heightFactor: 0.92,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: QuickPointActionForm(
+          isBonus: isBonus,
+          children: fp.children,
+          presets: presets,
+          onSubmit: (draft) async {
+            final child = fp.children.firstWhere((c) => c.id == draft.childId);
+            await fp.addPoints(
+              draft.childId,
+              draft.amount,
+              draft.reason,
+              isBonus: draft.isBonus,
+              category: draft.category,
+              actionId: draft.actionId,
+              penaltyLinesCount: draft.penaltyLinesCount,
+              penaltyLinesInstruction: draft.penaltyLinesInstruction,
+            );
+            if (context.mounted) {
+              _showConfirmSnack(
+                context,
+                isBonus
+                    ? '✅ +${draft.amount} pts à ${child.name}'
+                    : '⚡ -${draft.amount} pts à ${child.name}',
+                isBonus ? Colors.green : Colors.red,
+              );
+            }
+          },
+        ),
+      ),
+    ),
+  );
+}
+
+// Ancien dialogue conservé temporairement pour compatibilité.
+// ignore: unused_element
 void _showQuickBonus(BuildContext context, FamilyProvider fp,
     {required bool isParent}) {
   if (fp.children.isEmpty) return;
@@ -485,6 +547,8 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
   );
 }
 
+// Ancien dialogue conservé temporairement pour compatibilité.
+// ignore: unused_element
 void _showQuickPenalty(BuildContext context, FamilyProvider fp,
     {required bool isParent}) {
   if (fp.children.isEmpty) return;

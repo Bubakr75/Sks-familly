@@ -91,6 +91,7 @@ const walletFunctions = createWalletFunctions({
 });
 
 exports.adjustWallet = walletFunctions.adjustWallet;
+exports.reverseWalletOperation = walletFunctions.reverseWalletOperation;
 
 const {
   createSecureChildOperationFunctions,
