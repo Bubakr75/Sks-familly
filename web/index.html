@@ -1,297 +1,195 @@
-﻿<!DOCTYPE html>
-<html>
+<!DOCTYPE html>
+<html lang="fr">
 <head>
   <base href="$FLUTTER_BASE_HREF">
-
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="SKS Family - Application familiale de points et rÃ©compenses">
+  <meta name="description" content="SKS Family - Application familiale de points et récompenses">
   <meta name="application-name" content="SKS Family">
   <meta name="format-detection" content="telephone=no">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-
-  <!-- iOS / Safari meta tags (requis pour Web Push sur iPhone 16.4+) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SKS Family">
   <meta name="theme-color" content="#051410">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon.png?v=2"/>
-
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon.png?v=3">
+  <link rel="manifest" href="manifest.json?v=3">
   <title>SKS Family</title>
-  <link rel="manifest" href="manifest.json?v=2">
-
   <style>
-    /* Fond NOIR PUR pour que la vidÃ©o d'intro dÃ©marre sans logo ni Ã©cran gris */
     html, body {
       margin: 0;
       padding: 0;
-      background-color: #000000;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-
-    /* Splash de chargement : NOIR PUR, sans logo, pour transition invisible vers la vidÃ©o */
     #loading {
       position: fixed;
       inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #000000;
-      color: #FFFFFF;
-      z-index: 10;
-      transition: opacity 0.3s ease;
+      z-index: 1;
+      background: #000;
+      opacity: 1;
+      pointer-events: none;
+      transition: opacity 160ms ease-out;
     }
-    #loading.hidden { opacity: 0; pointer-events: none; }
-
-    /* BanniÃ¨re d'installation iOS */
-    #ios-install-banner {
+    #loading.hidden { opacity: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      #loading { transition: none; }
+    }
+    #ios-install-banner, #pwa-install-banner {
       position: fixed;
-      left: 12px; right: 12px;
-      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      bottom: max(12px, env(safe-area-inset-bottom));
       z-index: 100;
-      background: linear-gradient(135deg, #00E676, #047857);
-      color: #051410;
-      border-radius: 16px;
-      padding: 14px 16px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
       display: none;
       align-items: center;
       gap: 12px;
-      font-size: 13px;
-      font-weight: 600;
-    }
-    #ios-install-banner.show { display: flex; }
-    #ios-install-banner .emoji { font-size: 22px; }
-    #ios-install-banner .close {
-      margin-left: auto;
-      background: rgba(5,20,16,0.18);
-      border: none;
-      color: #051410;
-      font-size: 18px;
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    /* Invitation d'installation pour Chrome / Edge sur Android et ordinateur */
-    #pwa-install-banner {
-      position: fixed;
-      left: 12px; right: 12px;
-      bottom: 12px;
-      z-index: 101;
-      background: linear-gradient(135deg, #D4AF37, #F7E7A9);
-      color: #051410;
       border-radius: 16px;
       padding: 14px 16px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-      display: none;
-      align-items: center;
-      gap: 12px;
+      color: #051410;
+      background: linear-gradient(135deg, #00E676, #D4AF37);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
       font-size: 13px;
       font-weight: 700;
     }
-    #pwa-install-banner.show { display: flex; }
-    #pwa-install-button {
-      margin-left: auto;
+    #ios-install-banner.show, #pwa-install-banner.show { display: flex; }
+    #ios-install-banner button, #pwa-install-banner button {
+      min-width: 44px;
+      min-height: 44px;
       border: 0;
-      border-radius: 10px;
-      padding: 9px 12px;
-      color: #FFFFFF;
+      border-radius: 12px;
+      color: #fff;
       background: #047857;
       font-weight: 800;
       cursor: pointer;
     }
-    #pwa-install-close {
-      border: 0;
-      background: transparent;
+    #ios-install-banner .close, #pwa-install-close {
+      margin-left: auto;
       color: #051410;
-      font-size: 18px;
-      cursor: pointer;
+      background: transparent;
+      font-size: 20px;
     }
   </style>
 </head>
 <body>
-  <div id="intro-overlay" style="position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;">
-    <video id="intro-video" src="videos/intro.mp4" autoplay muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>
-    <button id="intro-skip" style="position:absolute;top:40px;right:20px;background:rgba(0,0,0,0.5);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:15px;cursor:pointer;">Passer</button>
-    <button id="intro-sound" style="position:absolute;bottom:40px;right:20px;background:rgba(0,0,0,0.5);color:#fff;border:none;padding:10px 20px;border-radius:20px;font-size:15px;cursor:pointer;">Activer le son</button>
-  </div>
-  <script>
-    (function(){
-      var ov = document.getElementById('intro-overlay');
-      var vid = document.getElementById('intro-video');
-      var skip = document.getElementById('intro-skip');
-      var snd = document.getElementById('intro-sound');
-      function hide(){ if(ov){ setTimeout(function(){ ov.style.transition='opacity 0.8s'; ov.style.opacity='0'; setTimeout(function(){ if(ov) ov.remove(); },850); }, 600); } }
-      if(vid){ vid.onended = hide; }
-      if(skip){ skip.onclick = hide; }
-      if(snd){ snd.onclick = function(){ if(vid){ vid.muted=false; vid.play(); snd.style.display='none'; } }; }
-      setTimeout(hide, 20000);
-    })();
-  </script>
-  <!-- Splash : fond NOIR PUR (zÃ©ro logo, pour transition invisible vers la vidÃ©o d'intro) -->
-  <div id="loading"></div>
+  <div id="loading" aria-hidden="true"></div>
 
-  <!-- BanniÃ¨re "Ajouter Ã  l'Ã©cran d'accueil" pour iOS -->
-  <div id="ios-install-banner">
-    <span class="emoji">ðŸ“²</span>
-    <span>Sur iPhone : ouvrez ce site dans <b>Safari</b>, touchez <b>Partager</b> <span style="font-size:16px">âŽ‹</span>, puis <b>Sur l'Ã©cran d'accueil</b> et <b>Ajouter</b>. Ouvrez ensuite SKS Family depuis son icÃ´ne.</span>
-    <button class="close" id="ios-banner-close">âœ•</button>
-  </div>
-  <div id="pwa-install-banner">
-    <span class="emoji">📲</span>
+  <aside id="ios-install-banner" role="status" aria-label="Installer SKS Family sur iPhone">
+    <span aria-hidden="true">📲</span>
+    <span>Dans Safari, touchez Partager, puis « Sur l’écran d’accueil ».</span>
+    <button class="close" id="ios-banner-close" type="button" aria-label="Fermer la proposition d’installation">✕</button>
+  </aside>
+
+  <aside id="pwa-install-banner" role="status" aria-label="Installer SKS Family">
+    <span aria-hidden="true">📲</span>
     <span>Installez SKS Family pour l’ouvrir comme une application.</span>
-    <button id="pwa-install-button">Installer</button>
-    <button id="pwa-install-close" aria-label="Fermer">✕</button>
-  </div>
+    <button id="pwa-install-button" type="button">Installer</button>
+    <button id="pwa-install-close" type="button" aria-label="Fermer la proposition d’installation">✕</button>
+  </aside>
 
-  <!-- Flutter (bootstrap gÃ¨re le chargement de l'app) -->
   <script src="flutter_bootstrap.js" async></script>
-
   <script>
-    // ============================================================
-    // 1. ENREGISTREMENT DU SERVICE WORKER (firebase-messaging-sw.js)
-    //    Fait AVANT l'init Firebase cÃ´tÃ© Dart => notifs web fiabilisÃ©es
-    // ============================================================
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register(
-          'firebase-messaging-sw.js',
-          { scope: '/firebase-cloud-messaging-push-scope' }
-        )
-          .then(function (reg) {
-            console.log('[SW] Service worker enregistrÃ© :', reg.scope);
-          })
-          .catch(function (err) {
-            console.warn('[SW] Ã‰chec enregistrement service worker :', err);
-          });
-      });
-    }
-
-    // ============================================================
-    // 2. MASQUER LE SPLASH de faÃ§on robuste
-    //    On attend l'apparition du <flutter-view> dans le DOM (polling
-    //    lÃ©ger). DÃ¨s qu'il existe, on masque le splash. Garde-fou 10s.
-    // ============================================================
     (function () {
+      'use strict';
+
       var loading = document.getElementById('loading');
-      var hidden = false;
-      function hideLoading() {
-        if (hidden || !loading) return;
-        hidden = true;
+      var loadingRemoved = false;
+      function removeLoading() {
+        if (loadingRemoved) return;
+        loadingRemoved = true;
+        if (!loading) return;
         loading.classList.add('hidden');
-        setTimeout(function () {
+        window.setTimeout(function () {
           if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
-        }, 600);
+          loading = null;
+        }, 180);
       }
-
-      // a) DÃ¨s que le flutter-view est prÃ©sent => on masque
-      function checkFlutterView() {
-        var fv = document.querySelector('flutter-view');
-        if (fv || document.querySelector('flt-glass-pane')) {
-          // petit dÃ©lai pour laisser Flutter peindre sa 1re frame
-          setTimeout(hideLoading, 300);
-        } else {
-          setTimeout(checkFlutterView, 250);
+      window.addEventListener('flutter-first-frame', removeLoading, { once: true });
+      var flutterObserver = new MutationObserver(function () {
+        if (document.querySelector('flutter-view, flt-glass-pane')) {
+          removeLoading();
+          flutterObserver.disconnect();
         }
+      });
+      flutterObserver.observe(document.documentElement, { childList: true, subtree: true });
+      window.setTimeout(function () {
+        removeLoading();
+        flutterObserver.disconnect();
+      }, 12000);
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register(
+            'firebase-messaging-sw.js',
+            { scope: '/firebase-cloud-messaging-push-scope' }
+          ).catch(function () {});
+        }, { once: true });
       }
-      window.addEventListener('load', function () { checkFlutterView(); });
 
-      // b) Ã‰vÃ©nement officiel Flutter (si dispo)
-      window.addEventListener('flutter-first-frame', hideLoading);
-
-      // c) Garde-fou absolu : masque aprÃ¨s 10s quoi qu'il arrive
-      setTimeout(hideLoading, 10000);
-    })();
-
-    // ============================================================
-    // 3. PROMPT PWA + DÃ‰TECTION iOS
-    // ============================================================
-    (function () {
       function isStandalone() {
-        return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-            || window.navigator.standalone === true;
+        return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+          window.navigator.standalone === true;
       }
       function isIOS() {
         return /iphone|ipad|ipod/i.test(navigator.userAgent);
+      }
+      function hideBanner(id, storageKey) {
+        try { sessionStorage.setItem(storageKey, '1'); } catch (_) {}
+        var banner = document.getElementById(id);
+        if (banner) banner.classList.remove('show');
       }
 
       if (isIOS() && !isStandalone()) {
         try {
           if (sessionStorage.getItem('sks_ios_banner_dismissed') !== '1') {
-            window.addEventListener('load', function () {
-              setTimeout(function () {
-                var b = document.getElementById('ios-install-banner');
-                if (b) b.classList.add('show');
-              }, 3000);
-            });
+            window.setTimeout(function () {
+              var banner = document.getElementById('ios-install-banner');
+              if (banner) banner.classList.add('show');
+            }, 3000);
           }
-        } catch (e) {}
-
-        var btn = document.getElementById('ios-banner-close');
-        if (btn) {
-          btn.addEventListener('click', function () {
-            try { sessionStorage.setItem('sks_ios_banner_dismissed', '1'); } catch (e) {}
-            var b = document.getElementById('ios-install-banner');
-            if (b) b.classList.remove('show');
-          });
-        }
+        } catch (_) {}
       }
+      var iosClose = document.getElementById('ios-banner-close');
+      if (iosClose) iosClose.addEventListener('click', function () {
+        hideBanner('ios-install-banner', 'sks_ios_banner_dismissed');
+      });
 
       var deferredPrompt = null;
-      window.addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        deferredPrompt = e;
-        try {
-          if (sessionStorage.getItem('sks_pwa_banner_dismissed') !== '1') {
-            var banner = document.getElementById('pwa-install-banner');
-            if (banner && !isStandalone()) banner.classList.add('show');
-          }
-        } catch (e) {}
+      window.addEventListener('beforeinstallprompt', function (event) {
+        event.preventDefault();
+        deferredPrompt = event;
+        var banner = document.getElementById('pwa-install-banner');
+        if (banner && !isStandalone()) banner.classList.add('show');
       });
       window.addEventListener('appinstalled', function () {
         deferredPrompt = null;
-        var banner = document.getElementById('pwa-install-banner');
-        if (banner) banner.classList.remove('show');
+        hideBanner('pwa-install-banner', 'sks_pwa_banner_dismissed');
       });
-
       var installButton = document.getElementById('pwa-install-button');
-      if (installButton) {
-        installButton.addEventListener('click', async function () {
-          if (!deferredPrompt) return;
-          installButton.disabled = true;
-          try {
-            await deferredPrompt.prompt();
-            await deferredPrompt.userChoice;
-          } finally {
-            deferredPrompt = null;
-            installButton.disabled = false;
-            var banner = document.getElementById('pwa-install-banner');
-            if (banner) banner.classList.remove('show');
-          }
-        });
-      }
-
+      if (installButton) installButton.addEventListener('click', async function () {
+        if (!deferredPrompt || installButton.disabled) return;
+        installButton.disabled = true;
+        try {
+          await deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+        } catch (_) {
+          // Le navigateur peut refuser l'invite sans bloquer l'interface.
+        } finally {
+          deferredPrompt = null;
+          installButton.disabled = false;
+          hideBanner('pwa-install-banner', 'sks_pwa_banner_dismissed');
+        }
+      });
       var installClose = document.getElementById('pwa-install-close');
-      if (installClose) {
-        installClose.addEventListener('click', function () {
-          try {
-            sessionStorage.setItem('sks_pwa_banner_dismissed', '1');
-          } catch (e) {}
-          var banner = document.getElementById('pwa-install-banner');
-          if (banner) banner.classList.remove('show');
-        });
-      }
+      if (installClose) installClose.addEventListener('click', function () {
+        hideBanner('pwa-install-banner', 'sks_pwa_banner_dismissed');
+      });
     })();
   </script>
 </body>
 </html>
-
-

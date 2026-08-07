@@ -21,6 +21,7 @@ import 'fcm_service.dart';
 import 'family_management_service.dart';
 
 class FirestoreService {
+  static const int historyRealtimeLimit = 500;
   static const walletFunctionsRegion = 'us-central1';
 
   @visibleForTesting
@@ -216,7 +217,30 @@ class FirestoreService {
   StreamSubscription? _walletsSub;
 
   Timer? _keepAliveTimer;
-  DateTime _lastDataReceived = DateTime.now();
+  Timer? _reconnectTimer;
+  bool _healthCheckInFlight = false;
+  int _reconnectCount = 0;
+
+  int get activeListenerCount => [
+        _childrenSub,
+        _historySub,
+        _goalsSub,
+        _punishmentsSub,
+        _notesSub,
+        _immunitiesSub,
+        _tradesSub,
+        _tribunalSub,
+        _badgesSub,
+        _requestsSub,
+        _joinRequestsSub,
+        _screenTimeSub,
+        _parentProfilesSub,
+        _choresSub,
+        _rewardsSub,
+        _purchasesSub,
+        _walletsSub,
+      ].where((subscription) => subscription != null).length;
+  int get reconnectCount => _reconnectCount;
 
   void Function(List<ChildModel>, List<Map<String, dynamic>>)?
       onChildrenChanged;
@@ -627,16 +651,25 @@ class FirestoreService {
   // ─── Keep-alive ──────────────────────────────────────────────
   void reconnect() {
     if (_familyId == null) return;
-    _stopListening();
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _reconnectCount++;
     _startListening();
-    _lastDataReceived = DateTime.now();
+  }
+
+  void _scheduleReconnect([Object? error]) {
+    if (_familyId == null || _reconnectTimer != null) return;
+    final familyAtFailure = _familyId;
+    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+      _reconnectTimer = null;
+      if (_familyId == familyAtFailure) reconnect();
+    });
   }
 
   void _startKeepAlive() {
     _stopKeepAlive();
-    _lastDataReceived = DateTime.now();
     _keepAliveTimer = Timer.periodic(
-      const Duration(seconds: 15),
+      const Duration(seconds: 30),
       (_) => _checkConnection(),
     );
   }
@@ -644,27 +677,28 @@ class FirestoreService {
   void _stopKeepAlive() {
     _keepAliveTimer?.cancel();
     _keepAliveTimer = null;
+    _healthCheckInFlight = false;
   }
 
-  void _checkConnection() {
-    if (_familyId == null) return;
-    final sec = DateTime.now().difference(_lastDataReceived).inSeconds;
-    if (sec > 45) reconnect();
-    _db
-        .collection('families')
-        .doc(_familyId)
-        .get()
-        .then((_) {})
-        .catchError((_) {
-      reconnect();
-    });
+  Future<void> _checkConnection() async {
+    final familyAtStart = _familyId;
+    if (familyAtStart == null || _healthCheckInFlight) return;
+    _healthCheckInFlight = true;
+    try {
+      await _db.collection('families').doc(familyAtStart).get();
+    } catch (error) {
+      if (_familyId == familyAtStart) _scheduleReconnect(error);
+    } finally {
+      _healthCheckInFlight = false;
+    }
   }
 
-  void _markDataReceived() => _lastDataReceived = DateTime.now();
+  void _markDataReceived() {}
 
   // ─── Listeners temps réel ────────────────────────────────────
   void _startListening() {
     if (_familyId == null) return;
+    _stopListening(cancelReconnect: false);
     final fRef = _db.collection('families').doc(_familyId);
 
     _childrenSub = fRef.collection('children').snapshots().listen((s) {
@@ -682,9 +716,14 @@ class FirestoreService {
         }
       }
       onChildrenChanged?.call(list, raw);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
-    _historySub = fRef.collection('history').snapshots().listen((s) {
+    _historySub = fRef
+        .collection('history')
+        .orderBy('date', descending: true)
+        .limit(historyRealtimeLimit)
+        .snapshots()
+        .listen((s) {
       _markDataReceived();
       final list = <HistoryEntry>[];
       final raw = <Map<String, dynamic>>[];
@@ -700,7 +739,7 @@ class FirestoreService {
       }
       list.sort((a, b) => b.date.compareTo(a.date));
       onHistoryChanged?.call(list, raw);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _goalsSub = fRef.collection('goals').snapshots().listen((s) {
       _markDataReceived();
@@ -717,7 +756,7 @@ class FirestoreService {
         }
       }
       onGoalsChanged?.call(list, raw);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _punishmentsSub = fRef.collection('punishments').snapshots().listen((s) {
       _markDataReceived();
@@ -734,7 +773,7 @@ class FirestoreService {
         }
       }
       onPunishmentsChanged?.call(list, raw);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _notesSub = fRef.collection('notes').snapshots().listen((s) {
       _markDataReceived();
@@ -745,7 +784,7 @@ class FirestoreService {
       }).toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       onNotesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _immunitiesSub = fRef.collection('immunities').snapshots().listen((s) {
       _markDataReceived();
@@ -755,7 +794,7 @@ class FirestoreService {
         return ImmunityLines.fromMap(d);
       }).toList();
       onImmunitiesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _tradesSub = fRef.collection('trades').snapshots().listen((s) {
       _markDataReceived();
@@ -766,7 +805,7 @@ class FirestoreService {
       }).toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       onTradesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _tribunalSub = fRef.collection('tribunal').snapshots().listen((s) {
       _markDataReceived();
@@ -776,7 +815,7 @@ class FirestoreService {
         return TribunalCase.fromMap(d);
       }).toList();
       onTribunalChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _badgesSub = fRef.collection('custom_badges').snapshots().listen((s) {
       _markDataReceived();
@@ -786,7 +825,7 @@ class FirestoreService {
         return BadgeModel.fromMap(d);
       }).toList();
       onBadgesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     Query<Map<String, dynamic>> requestsQuery = fRef.collection('requests');
     if (_memberRole == 'child' && _memberChildId != null) {
@@ -804,7 +843,7 @@ class FirestoreService {
           .where((r) => r.isPending)
           .toList();
       onRequestsChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     if (const ['owner', 'manager', 'familyAdmin', 'parent']
         .contains(_memberRole)) {
@@ -822,7 +861,7 @@ class FirestoreService {
               status == 'received';
         }).toList();
         onJoinRequestsChanged?.call(list);
-      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+      }, onError: (_) => _scheduleReconnect());
     }
 
     _screenTimeSub = fRef.collection('screen_time').snapshots().listen((s) {
@@ -832,7 +871,7 @@ class FirestoreService {
         data[doc.id] = doc.data()['value'];
       }
       onScreenTimeChanged?.call(data);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     // ─── Profils parents ───
     _parentProfilesSub =
@@ -845,7 +884,7 @@ class FirestoreService {
       }).toList();
       list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
       onParentProfilesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     // ─── Chores (tâches checklist) ───
     _choresSub = fRef.collection('chores').snapshots().listen((s) {
@@ -856,7 +895,7 @@ class FirestoreService {
         return d;
       }).toList();
       onChoresChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     // ─── Récompenses boutique ───
     _rewardsSub = fRef.collection('rewards').snapshots().listen((s) {
@@ -867,7 +906,7 @@ class FirestoreService {
         return d;
       }).toList();
       onRewardsChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     // ─── Achats boutique ───
     _purchasesSub = fRef.collection('purchases').snapshots().listen((s) {
@@ -878,7 +917,7 @@ class FirestoreService {
         return d;
       }).toList();
       onPurchasesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     final wallets = fRef.collection('wallets');
     if (_memberRole == 'child' && _memberChildId != null) {
@@ -891,7 +930,7 @@ class FirestoreService {
           list.add(SksWallet.fromMap(data));
         }
         onWalletsChanged?.call(list);
-      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+      }, onError: (_) => _scheduleReconnect());
     } else {
       _walletsSub = wallets.snapshots().listen((snapshot) {
         _markDataReceived();
@@ -901,11 +940,15 @@ class FirestoreService {
           return SksWallet.fromMap(data);
         }).toList();
         onWalletsChanged?.call(list);
-      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+      }, onError: (_) => _scheduleReconnect());
     }
   }
 
-  void _stopListening() {
+  void _stopListening({bool cancelReconnect = true}) {
+    if (cancelReconnect) {
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+    }
     _childrenSub?.cancel();
     _historySub?.cancel();
     _goalsSub?.cancel();
