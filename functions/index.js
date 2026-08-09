@@ -65,6 +65,7 @@ const {createPointActionFunctions} = require("./point_actions");
 const pointActionFunctions =
   createPointActionFunctions({functions, admin, db});
 exports.recordPointAction = pointActionFunctions.recordPointAction;
+exports.getPointActionStatus = pointActionFunctions.getPointActionStatus;
 exports.recordHistoryEvent = pointActionFunctions.recordHistoryEvent;
 exports.setMemberDisplayName = pointActionFunctions.setMemberDisplayName;
 exports.completePenaltyLines = pointActionFunctions.completePenaltyLines;

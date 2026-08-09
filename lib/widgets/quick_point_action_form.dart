@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/child_model.dart';
 import '../services/point_action_submission_service.dart';
@@ -31,6 +32,7 @@ class QuickPointActionForm extends StatefulWidget {
 }
 
 class _QuickPointActionFormState extends State<QuickPointActionForm> {
+  static const _uuid = Uuid();
   final _reasonController = TextEditingController();
   final _amountController = TextEditingController(text: '5');
   final _linesController = TextEditingController();
@@ -40,6 +42,8 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
   bool _isOther = false;
   bool? _hasLines;
   bool _submitting = false;
+  bool _verifying = false;
+  String? _operationId;
   String? _error;
 
   @override
@@ -84,6 +88,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
       _reasonController.clear();
       _amountController.text = '${preset.points}';
       _error = null;
+      _operationId = null;
     });
   }
 
@@ -93,6 +98,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
       _preset = null;
       _isOther = true;
       _error = null;
+      _operationId = null;
     });
   }
 
@@ -108,7 +114,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
       customText: _reasonController.text,
     )!;
     final draft = PointActionDraft(
-      actionId: 'quick-${DateTime.now().microsecondsSinceEpoch}',
+      actionId: _operationId ??= _uuid.v4(),
       childId: _childId,
       amount: int.parse(_amountController.text.trim()),
       reason: reason,
@@ -119,6 +125,9 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
           _hasLines == true ? int.parse(_linesController.text.trim()) : null,
       penaltyLinesInstruction:
           _hasLines == true ? _instructionController.text.trim() : null,
+      onVerifying: () {
+        if (mounted) setState(() => _verifying = true);
+      },
     );
     try {
       await widget.onSubmit(draft);
@@ -127,6 +136,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
       if (!mounted) return;
       setState(() {
         _submitting = false;
+        _verifying = false;
         _error = widget.isBonus
             ? 'Impossible d’enregistrer le bonus. Réessayez.'
             : 'Impossible d’enregistrer la pénalité. Réessayez.';
@@ -166,7 +176,10 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                         .toList(),
                     onChanged: _submitting
                         ? null
-                        : (value) => setState(() => _childId = value!),
+                        : (value) => setState(() {
+                              _childId = value!;
+                              _operationId = null;
+                            }),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -196,7 +209,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                     decoration: const InputDecoration(
                       labelText: 'Motif personnalisé',
                     ),
-                    onChanged: (_) => setState(() {}),
+                    onChanged: (_) => setState(() => _operationId = null),
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -207,7 +220,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(labelText: 'Points'),
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (_) => setState(() => _operationId = null),
                 ),
                 if (!widget.isBonus) ...[
                   const SizedBox(height: 16),
@@ -219,7 +232,10 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                     groupValue: _hasLines,
                     onChanged: _submitting
                         ? (_) {}
-                        : (value) => setState(() => _hasLines = value),
+                        : (value) => setState(() {
+                              _hasLines = value;
+                              _operationId = null;
+                            }),
                     child: const Row(
                       children: [
                         Expanded(
@@ -249,7 +265,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                       decoration: const InputDecoration(
                         labelText: 'Nombre de lignes à faire',
                       ),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => setState(() => _operationId = null),
                     ),
                     TextField(
                       controller: _instructionController,
@@ -258,6 +274,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                       decoration: const InputDecoration(
                         labelText: 'Consigne facultative',
                       ),
+                      onChanged: (_) => setState(() => _operationId = null),
                     ),
                   ],
                 ],
@@ -294,7 +311,11 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.check_circle_outline),
-                label: Text(_submitting ? 'Enregistrement…' : 'Appliquer'),
+                label: Text(_submitting
+                    ? (_verifying
+                        ? 'Vérification de l’enregistrement…'
+                        : 'Enregistrement…')
+                    : 'Appliquer'),
               ),
             ),
           ),

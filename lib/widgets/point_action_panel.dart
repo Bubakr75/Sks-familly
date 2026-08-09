@@ -93,6 +93,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   ActionMotif? _selectedMotif;
   int _amount = 5;
   bool _processing = false;
+  bool _verifying = false;
   late AnimationController _celebrationController;
   late Animation<double> _celebrationAnim;
   late TextEditingController _customTextCtrl;
@@ -384,6 +385,9 @@ class _PointActionPanelState extends State<PointActionPanel>
         hasPhoto: capturedPhoto != null,
         penaltyLinesCount: capturedLinesCount,
         penaltyLinesInstruction: capturedLinesInstruction,
+        onVerifying: () {
+          if (mounted) setState(() => _verifying = true);
+        },
       ),
       existingPhotoStoragePath: _uploadedPhotoPath,
       uploadPhoto: () async {
@@ -417,6 +421,9 @@ class _PointActionPanelState extends State<PointActionPanel>
           hasPhoto: capturedPhoto != null,
           penaltyLinesCount: capturedLinesCount,
           penaltyLinesInstruction: capturedLinesInstruction,
+          onVerifying: () {
+            if (mounted) setState(() => _verifying = true);
+          },
         );
         if (widget.submitAction != null) {
           return widget.submitAction!(draft);
@@ -431,6 +438,7 @@ class _PointActionPanelState extends State<PointActionPanel>
           photoStoragePath: photoStoragePath,
           penaltyLinesCount: capturedLinesCount,
           penaltyLinesInstruction: capturedLinesInstruction,
+          onVerifying: draft.onVerifying,
         );
         return entry.points;
       },
@@ -446,6 +454,7 @@ class _PointActionPanelState extends State<PointActionPanel>
     if (!result.success) {
       setState(() {
         _processing = false;
+        _verifying = false;
         _retryStateUncertain = result.retryStateUncertain;
         _uploadedPhotoPath = result.photoStoragePath;
       });
@@ -466,6 +475,7 @@ class _PointActionPanelState extends State<PointActionPanel>
       _uploadedPhotoPath = null;
       _retryStateUncertain = false;
       _processing = false;
+      _verifying = false;
       _hasPenaltyLines = null;
       _penaltyLinesCountCtrl.clear();
       _penaltyLinesInstructionCtrl.clear();
@@ -1171,7 +1181,9 @@ class _PointActionPanelState extends State<PointActionPanel>
                       : Icon(config.buttonIcon),
                   label: Text(
                     _processing
-                        ? 'Enregistrement...'
+                        ? (_verifying
+                            ? 'Vérification de l’enregistrement…'
+                            : 'Enregistrement…')
                         : _retryStateUncertain
                             ? 'Réessayer sans doublon'
                             : config.buttonText,

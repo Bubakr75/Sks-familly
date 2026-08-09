@@ -11,6 +11,7 @@ class PointActionDraft {
     required this.hasPhoto,
     this.penaltyLinesCount,
     this.penaltyLinesInstruction,
+    this.onVerifying,
   });
 
   final String actionId;
@@ -22,6 +23,7 @@ class PointActionDraft {
   final bool hasPhoto;
   final int? penaltyLinesCount;
   final String? penaltyLinesInstruction;
+  final void Function()? onVerifying;
 
   bool get hasPenaltyLines =>
       !isBonus && penaltyLinesCount != null && penaltyLinesCount! > 0;
@@ -185,9 +187,8 @@ PointActionFailure describePointActionFailure(Object error) {
     'cancelled',
   ].contains(normalizedCode)) {
     return const PointActionFailure(
-      message: 'La réponse du serveur est incertaine. Conservez cette saisie '
-          'et appuyez de nouveau sur Valider : le même identifiant empêchera '
-          'tout doublon.',
+      message: 'Vérification de l’enregistrement en attente. Votre saisie est '
+          'conservée et la vérification reprendra automatiquement.',
       stateUncertain: true,
       functionUnavailable: false,
     );

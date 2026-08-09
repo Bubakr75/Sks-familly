@@ -415,6 +415,7 @@ void _showReliableQuickPointAction(
               actionId: draft.actionId,
               penaltyLinesCount: draft.penaltyLinesCount,
               penaltyLinesInstruction: draft.penaltyLinesInstruction,
+              onVerifying: draft.onVerifying,
             );
             if (context.mounted) {
               _showConfirmSnack(

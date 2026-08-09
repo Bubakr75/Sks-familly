@@ -263,5 +263,30 @@ void main() {
       gate.complete();
       await tester.pumpAndSettle();
     });
+
+    testWidgets('un retry rapide conserve exactement le même operationId',
+        (tester) async {
+      final operationIds = <String>[];
+      var attempt = 0;
+      await pumpQuick(tester, isBonus: true, submit: (draft) async {
+        operationIds.add(draft.actionId);
+        attempt++;
+        if (attempt == 1) {
+          draft.onVerifying?.call();
+          throw const PointActionRemoteException(code: 'unavailable');
+        }
+      });
+      await tester.tap(find.text('Motif rapide'));
+      await tester.pump();
+      final button = find.byKey(const ValueKey('quick_apply_button'));
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(find.text('Impossible d’enregistrer le bonus. Réessayez.'),
+          findsOneWidget);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(operationIds, hasLength(2));
+      expect(operationIds[1], operationIds[0]);
+    });
   });
 }

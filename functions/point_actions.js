@@ -302,7 +302,7 @@ function createPointActionFunctions({functions, admin, db}) {
               "Cet identifiant est déjà utilisé."
             );
           }
-          return {...existing.result, idempotent: true};
+          return {...existing.result, status: "committed", idempotent: true};
         }
 
         const child = childSnap.data();
@@ -350,12 +350,63 @@ function createPointActionFunctions({functions, admin, db}) {
         tx.create(operationRef, {
           fingerprint: actionFingerprint,
           operation: "point_action",
+          operationId: action.actionId,
+          status: "committed",
           actorUid: uid,
           createdAt,
+          committedAt: createdAt,
           result,
         });
-        return {...result, idempotent: false};
+        return {...result, status: "committed", idempotent: false};
       });
+    } catch (error) {
+      throw fail(error);
+    }
+  });
+
+  const getPointActionStatus = functions.https.onCall(async (data, context) => {
+    try {
+      if (!context.auth || !context.auth.uid) {
+        throw new HttpsError("unauthenticated", "Authentification requise.");
+      }
+      const familyId = cleanId(data && data.familyId, "family_id");
+      const operationId = cleanId(
+        data && (data.operationId || data.actionId),
+        "operation_id"
+      );
+      const familyRef = db.collection("families").doc(familyId);
+      const memberRef = familyRef.collection("members").doc(context.auth.uid);
+      const operationRef = familyRef.collection("_operations").doc(operationId);
+      const [familySnap, memberSnap, operationSnap] = await Promise.all([
+        familyRef.get(),
+        memberRef.get(),
+        operationRef.get(),
+      ]);
+      const actor = resolveActor({
+        uid: context.auth.uid,
+        family: familySnap.exists ? familySnap.data() : null,
+        member: memberSnap.exists ? memberSnap.data() : null,
+        managerDurableVerified: isDurableVerifiedAuth(context),
+      });
+      if (!actor) {
+        throw new HttpsError("permission-denied", "Un parent actif est requis.");
+      }
+      if (!operationSnap.exists) {
+        return {operationId, status: "unknown"};
+      }
+      const operation = operationSnap.data();
+      if (operation.operation !== "point_action" ||
+          operation.actorUid !== context.auth.uid) {
+        throw new HttpsError("permission-denied", "Opération inaccessible.");
+      }
+      const status = operation.status || "committed";
+      if (status === "committed") {
+        return {operationId, status, result: operation.result};
+      }
+      if (status === "rejected") {
+        return {operationId, status, errorCode: operation.errorCode || "internal"};
+      }
+      return {operationId, status: "processing"};
     } catch (error) {
       throw fail(error);
     }
@@ -572,6 +623,7 @@ function createPointActionFunctions({functions, admin, db}) {
 
   return {
     recordPointAction,
+    getPointActionStatus,
     recordHistoryEvent,
     setMemberDisplayName,
     completePenaltyLines,

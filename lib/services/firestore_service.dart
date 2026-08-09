@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -19,10 +20,13 @@ import '../models/sks_wallet.dart';
 import '../utils/web_reconnect.dart';
 import 'fcm_service.dart';
 import 'family_management_service.dart';
+import 'point_action_submission_service.dart';
 
 class FirestoreService {
   static const int historyRealtimeLimit = 500;
   static const walletFunctionsRegion = 'us-central1';
+  static const _pendingPointActionsKey = 'pending_point_actions_v1';
+  static const _pendingPointActionMaxAge = Duration(days: 30);
 
   @visibleForTesting
   static Map<String, dynamic> buildPointActionPayload({
@@ -304,6 +308,7 @@ class FirestoreService {
         } else {
           await FcmService().registerToken();
         }
+        unawaited(resumePendingPointActionChecks());
       }
     } catch (e) {
       if (kDebugMode) debugPrint('FirestoreService init error: $e');
@@ -655,6 +660,7 @@ class FirestoreService {
     _reconnectTimer = null;
     _reconnectCount++;
     _startListening();
+    unawaited(resumePendingPointActionChecks());
   }
 
   void _scheduleReconnect([Object? error]) {
@@ -1011,26 +1017,196 @@ class FirestoreService {
     String? photoStoragePath,
     int? penaltyLinesCount,
     String? penaltyLinesInstruction,
+    void Function()? onVerifying,
   }) async {
     final currentFamilyId = _familyId;
     if (currentFamilyId == null) {
       throw StateError('Aucune famille connectée.');
     }
-    final result = await FirebaseFunctions.instanceFor(
-      region: walletFunctionsRegion,
-    ).httpsCallable('recordPointAction').call(buildPointActionPayload(
-          familyId: currentFamilyId,
-          actionId: actionId,
-          childId: childId,
-          amount: amount,
-          reason: reason,
-          category: category,
-          isBonus: isBonus,
-          photoStoragePath: photoStoragePath,
-          penaltyLinesCount: penaltyLinesCount,
-          penaltyLinesInstruction: penaltyLinesInstruction,
-        ));
-    return Map<String, dynamic>.from(result.data as Map);
+    await _savePendingPointAction(
+      familyId: currentFamilyId,
+      operationId: actionId,
+      isBonus: isBonus,
+    );
+    try {
+      final result = await FirebaseFunctions.instanceFor(
+        region: walletFunctionsRegion,
+      ).httpsCallable('recordPointAction').call(buildPointActionPayload(
+            familyId: currentFamilyId,
+            actionId: actionId,
+            childId: childId,
+            amount: amount,
+            reason: reason,
+            category: category,
+            isBonus: isBonus,
+            photoStoragePath: photoStoragePath,
+            penaltyLinesCount: penaltyLinesCount,
+            penaltyLinesInstruction: penaltyLinesInstruction,
+          ));
+      final data = Map<String, dynamic>.from(result.data as Map);
+      if (data['status'] != 'committed') {
+        throw const PointActionRemoteException(
+          code: 'unknown',
+          message: 'Statut recordPointAction non confirmé.',
+        );
+      }
+      await _removePendingPointAction(actionId);
+      return data;
+    } catch (error) {
+      if (!_isUncertainPointActionError(error)) {
+        await _removePendingPointAction(actionId);
+        rethrow;
+      }
+      onVerifying?.call();
+      final reconciled = await _reconcilePointAction(
+        familyId: currentFamilyId,
+        operationId: actionId,
+      );
+      if (reconciled != null) return reconciled;
+      throw const PointActionRemoteException(
+        code: 'unavailable',
+        message: 'Vérification serveur toujours en attente.',
+      );
+    }
+  }
+
+  bool _isUncertainPointActionError(Object error) {
+    final code = error is FirebaseFunctionsException
+        ? error.code.toLowerCase()
+        : error is PointActionRemoteException
+            ? error.code.toLowerCase()
+            : '';
+    return const {
+      'unavailable',
+      'deadline-exceeded',
+      'internal',
+      'unknown',
+      'cancelled',
+    }.contains(code);
+  }
+
+  Future<Map<String, dynamic>?> _reconcilePointAction({
+    required String familyId,
+    required String operationId,
+  }) async {
+    const delays = <Duration>[
+      Duration.zero,
+      Duration(milliseconds: 500),
+      Duration(seconds: 1),
+      Duration(seconds: 2),
+    ];
+    for (final delay in delays) {
+      if (delay > Duration.zero) await Future<void>.delayed(delay);
+      try {
+        final response = await FirebaseFunctions.instanceFor(
+          region: walletFunctionsRegion,
+        ).httpsCallable('getPointActionStatus').call({
+          'familyId': familyId,
+          'operationId': operationId,
+        });
+        final status = Map<String, dynamic>.from(response.data as Map);
+        if (status['status'] == 'committed' && status['result'] is Map) {
+          await _removePendingPointAction(operationId);
+          return {
+            ...Map<String, dynamic>.from(status['result'] as Map),
+            'status': 'committed',
+            'idempotent': true,
+          };
+        }
+        if (status['status'] == 'rejected') {
+          await _removePendingPointAction(operationId);
+          throw PointActionRemoteException(
+            code: status['errorCode'] as String? ?? 'failed-precondition',
+          );
+        }
+      } on PointActionRemoteException {
+        rethrow;
+      } catch (_) {
+        // Le prochain essai utilise strictement le même identifiant.
+      }
+    }
+    return null;
+  }
+
+  Future<void> _savePendingPointAction({
+    required String familyId,
+    required String operationId,
+    required bool isBonus,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final pending = _readPendingPointActions(prefs)
+      ..removeWhere((item) => item['operationId'] == operationId)
+      ..add({
+        'operationId': operationId,
+        'familyId': familyId,
+        'type': isBonus ? 'bonus' : 'penalty',
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+        'status': 'reconciling',
+      });
+    await prefs.setString(_pendingPointActionsKey, jsonEncode(pending));
+  }
+
+  List<Map<String, dynamic>> _readPendingPointActions(
+    SharedPreferences prefs,
+  ) {
+    try {
+      final raw = prefs.getString(_pendingPointActionsKey);
+      if (raw == null) return [];
+      return (jsonDecode(raw) as List)
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> _removePendingPointAction(String operationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final pending = _readPendingPointActions(prefs)
+      ..removeWhere((item) => item['operationId'] == operationId);
+    await prefs.setString(_pendingPointActionsKey, jsonEncode(pending));
+  }
+
+  Future<void> resumePendingPointActionChecks() async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final pending = _readPendingPointActions(prefs);
+    final now = DateTime.now().toUtc();
+    var changed = false;
+    for (final item in List<Map<String, dynamic>>.from(pending)) {
+      final operationId = item['operationId'] as String?;
+      final familyId = item['familyId'] as String?;
+      final createdAt = DateTime.tryParse(item['createdAt'] as String? ?? '');
+      if (operationId == null ||
+          familyId == null ||
+          createdAt == null ||
+          now.difference(createdAt) > _pendingPointActionMaxAge) {
+        pending.remove(item);
+        changed = true;
+        continue;
+      }
+      // Une opération d'une autre famille doit rester disponible jusqu'à ce
+      // que cette famille soit de nouveau active sur l'appareil.
+      if (familyId != currentFamilyId) continue;
+      try {
+        final result = await _reconcilePointAction(
+          familyId: familyId,
+          operationId: operationId,
+        );
+        if (result != null) {
+          pending.remove(item);
+          changed = true;
+        }
+      } on PointActionRemoteException {
+        pending.remove(item);
+        changed = true;
+      }
+    }
+    if (changed) {
+      await prefs.setString(_pendingPointActionsKey, jsonEncode(pending));
+    }
   }
 
   Future<Map<String, dynamic>> updatePenaltyLines({

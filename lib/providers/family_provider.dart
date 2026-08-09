@@ -1215,6 +1215,7 @@ class FamilyProvider extends ChangeNotifier {
     DateTime? date,
     int? penaltyLinesCount,
     String? penaltyLinesInstruction,
+    void Function()? onVerifying,
   }) async {
     final child = getChild(childId);
     if (child == null) {
@@ -1242,6 +1243,7 @@ class FamilyProvider extends ChangeNotifier {
       photoStoragePath: photoStoragePath,
       penaltyLinesCount: penaltyLinesCount,
       penaltyLinesInstruction: penaltyLinesInstruction,
+      onVerifying: onVerifying,
     );
     late final int authoritativeBalance;
     late final HistoryEntry entry;
