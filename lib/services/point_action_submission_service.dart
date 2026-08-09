@@ -1,5 +1,47 @@
 import 'package:cloud_functions/cloud_functions.dart';
 
+enum PointActionStatusKind {
+  committed,
+  processing,
+  rejected,
+  unknown,
+  functionUnavailable,
+  unauthenticated,
+  networkUnavailable,
+  permissionDenied,
+  serverFailure,
+}
+
+class PointActionStatusResult {
+  const PointActionStatusResult(
+    this.kind, {
+    this.result,
+    this.errorCode,
+  });
+
+  final PointActionStatusKind kind;
+  final Map<String, dynamic>? result;
+  final String? errorCode;
+
+  bool get serviceAvailable => const {
+        PointActionStatusKind.committed,
+        PointActionStatusKind.processing,
+        PointActionStatusKind.rejected,
+        PointActionStatusKind.unknown,
+      }.contains(kind);
+}
+
+class PointActionMaintenanceException implements Exception {
+  const PointActionMaintenanceException();
+
+  static const message =
+      'Mise à jour serveur en cours. Les bonus et pénalités sont '
+      'temporairement suspendus. Votre saisie est conservée.';
+
+  @override
+  String toString() => message;
+}
+
 class PointActionDraft {
   const PointActionDraft({
     required this.actionId,
@@ -112,6 +154,13 @@ class PointActionFailure {
 }
 
 PointActionFailure describePointActionFailure(Object error) {
+  if (error is PointActionMaintenanceException) {
+    return const PointActionFailure(
+      message: PointActionMaintenanceException.message,
+      stateUncertain: false,
+      functionUnavailable: true,
+    );
+  }
   String? code;
   String? serverMessage;
   if (error is FirebaseFunctionsException) {

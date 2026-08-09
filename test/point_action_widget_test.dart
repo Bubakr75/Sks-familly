@@ -288,5 +288,36 @@ void main() {
       expect(operationIds, hasLength(2));
       expect(operationIds[1], operationIds[0]);
     });
+
+    testWidgets('maintenance conserve le formulaire et ne soumet rien',
+        (tester) async {
+      var calls = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: QuickPointActionForm(
+            isBonus: true,
+            children: [_child],
+            presets: const [QuickPointActionPreset('Motif rapide', 4)],
+            checkServiceAvailability: ({bool force = false}) async => false,
+            onSubmit: (_) async => calls++,
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Autre'));
+      await tester.pump();
+      final reason = find.byKey(const ValueKey('quick_custom_reason'));
+      await tester.enterText(reason, 'Saisie conservée');
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('quick_maintenance_message')),
+          findsOneWidget);
+      expect(find.text('Saisie conservée'), findsOneWidget);
+      final button = tester.widget<ElevatedButton>(
+        find.byKey(const ValueKey('quick_apply_button')),
+      );
+      expect(button.onPressed, isNull);
+      expect(calls, 0);
+    });
   });
 }

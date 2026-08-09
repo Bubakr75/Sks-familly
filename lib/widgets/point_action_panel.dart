@@ -16,6 +16,7 @@ import '../utils/checklist_helpers.dart';
 import '../utils/motif_helpers.dart';
 import '../services/motif_preferences_service.dart';
 import '../services/action_photo_service.dart';
+import '../services/firestore_service.dart';
 import '../services/point_action_submission_service.dart';
 import '../services/storage_service.dart';
 import 'point_action_feedback.dart';
@@ -112,6 +113,8 @@ class _PointActionPanelState extends State<PointActionPanel>
   String? _uploadedPhotoPath;
   bool _retryStateUncertain = false;
   bool _serverSubmissionStarted = false;
+  late bool _pointServiceAvailable;
+  bool _checkingPointService = false;
   late final TextEditingController _amountTextCtrl;
   late final TextEditingController _penaltyLinesCountCtrl;
   late final TextEditingController _penaltyLinesInstructionCtrl;
@@ -133,8 +136,24 @@ class _PointActionPanelState extends State<PointActionPanel>
     _amountTextCtrl = TextEditingController(text: _amount.toString());
     _penaltyLinesCountCtrl = TextEditingController();
     _penaltyLinesInstructionCtrl = TextEditingController();
+    _pointServiceAvailable = widget.submitAction != null;
     _sortedMotifs = widget.config.motifs;
     _loadPreferences();
+    if (widget.submitAction == null) {
+      unawaited(_checkPointService());
+    }
+  }
+
+  Future<void> _checkPointService({bool force = false}) async {
+    if (_checkingPointService) return;
+    setState(() => _checkingPointService = true);
+    final result = await FirestoreService()
+        .checkPointActionServiceAvailability(force: force);
+    if (!mounted) return;
+    setState(() {
+      _pointServiceAvailable = result.serviceAvailable;
+      _checkingPointService = false;
+    });
   }
 
   Future<void> _loadPreferences() async {
@@ -183,6 +202,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   bool get _isValid =>
       _selectedChildId != null &&
       !_processing &&
+      _pointServiceAvailable &&
       _isMotifValid &&
       _isAmountValid &&
       _isPenaltyLinesValid;
@@ -1146,6 +1166,23 @@ class _PointActionPanelState extends State<PointActionPanel>
                       // ── Historique récent (3 dernières) ──
                       if (fp != null)
                         ..._buildRecentHistory(fp, selectedChild?.id ?? ''),
+
+                      if (!_pointServiceAvailable) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          PointActionMaintenanceException.message,
+                          key: ValueKey('point_action_maintenance_message'),
+                          style: TextStyle(color: Colors.orangeAccent),
+                          textAlign: TextAlign.center,
+                        ),
+                        TextButton.icon(
+                          onPressed: _checkingPointService
+                              ? null
+                              : () => _checkPointService(force: true),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Vérifier à nouveau'),
+                        ),
+                      ],
 
                       const SizedBox(height: 20),
                     ],

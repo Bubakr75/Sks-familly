@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../services/family_ownership_service.dart';
+import '../services/firebase_session_service.dart';
+import '../services/firestore_service.dart';
+import '../services/point_action_submission_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/family_join_panel.dart';
@@ -27,13 +32,20 @@ class _FamilyScreenState extends State<FamilyScreen> {
   bool _useCustomCode = false;
   String? _accessDiagnostic;
   String? _accessError;
+  PointActionStatusKind? _pointServiceStatus;
 
   final _customCodeFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
+    FirebaseSessionService.instance.addListener(_onSessionChanged);
+    unawaited(FirebaseSessionService.instance.observeTemporarily());
     _loadFamilyCode();
+  }
+
+  void _onSessionChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadFamilyCode() async {
@@ -42,10 +54,14 @@ class _FamilyScreenState extends State<FamilyScreen> {
     String? accessError;
 
     if (provider.isSyncEnabled) {
+      await FirebaseSessionService.instance.inspect();
+      _pointServiceStatus =
+          (await FirestoreService().checkPointActionServiceAvailability()).kind;
       try {
         await provider.refreshFamilyAccessContext();
       } catch (error) {
-        accessError = 'Actualisation du role impossible : $error';
+        accessError =
+            'Votre session doit être actualisée. Vos données locales sont conservées.';
       }
 
       final familyId = provider.familyId;
@@ -78,6 +94,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   @override
   void dispose() {
+    FirebaseSessionService.instance.removeListener(_onSessionChanged);
+    unawaited(FirebaseSessionService.instance.stopObserving());
     _customCodeController.dispose();
     _customCodeFocusNode.dispose();
     super.dispose();
@@ -406,6 +424,31 @@ class _FamilyScreenState extends State<FamilyScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<FamilyProvider>();
     final isConnected = provider.isSyncEnabled;
+    final session = FirebaseSessionService.instance.snapshot;
+    final pointServiceAvailable = _pointServiceStatus != null &&
+        const {
+          PointActionStatusKind.committed,
+          PointActionStatusKind.processing,
+          PointActionStatusKind.rejected,
+          PointActionStatusKind.unknown,
+        }.contains(_pointServiceStatus);
+    final fullySynchronized = isConnected &&
+        session.state == FirebaseSessionState.authenticated &&
+        !provider.isReconnecting &&
+        pointServiceAvailable;
+    final statusTitle = !isConnected
+        ? 'Famille enregistrée localement'
+        : session.state == FirebaseSessionState.refreshing
+            ? 'Connexion en cours'
+            : session.state == FirebaseSessionState.networkUnavailable
+                ? 'Hors connexion'
+                : session.state != FirebaseSessionState.authenticated
+                    ? 'Session à renouveler'
+                    : !pointServiceAvailable
+                        ? 'Mise à jour serveur en cours'
+                        : provider.isReconnecting
+                            ? 'Connexion en cours'
+                            : 'Synchronisé';
     final primary = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
@@ -526,7 +569,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       GlassCard(
                         padding: const EdgeInsets.all(20),
                         borderRadius: 20,
-                        glowColor: isConnected ? const Color(0xFF00E676) : null,
+                        glowColor:
+                            fullySynchronized ? const Color(0xFF00E676) : null,
                         child: Row(
                           children: [
                             Container(
@@ -534,11 +578,11 @@ class _FamilyScreenState extends State<FamilyScreen> {
                               height: 56,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: (isConnected
+                                color: (fullySynchronized
                                         ? const Color(0xFF00E676)
                                         : Colors.grey)
                                     .withValues(alpha: 0.12),
-                                boxShadow: isConnected
+                                boxShadow: fullySynchronized
                                     ? [
                                         BoxShadow(
                                           color: const Color(0xFF00E676)
@@ -549,10 +593,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
                                     : null,
                               ),
                               child: Icon(
-                                isConnected
+                                fullySynchronized
                                     ? Icons.cloud_done_rounded
                                     : Icons.cloud_off_rounded,
-                                color: isConnected
+                                color: fullySynchronized
                                     ? const Color(0xFF00E676)
                                     : Colors.grey,
                                 size: 28,
@@ -564,22 +608,20 @@ class _FamilyScreenState extends State<FamilyScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    isConnected
-                                        ? 'Synchronisé ✅'
-                                        : 'Mode local',
+                                    statusTitle,
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
-                                      color: isConnected
+                                      color: fullySynchronized
                                           ? const Color(0xFF00E676)
                                           : Colors.grey,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    isConnected
-                                        ? 'Données partagées en temps réel'
-                                        : 'Les données restent sur cet appareil',
+                                    fullySynchronized
+                                        ? 'Famille, session, Firestore et service de points disponibles'
+                                        : 'Vos données locales sont conservées',
                                     style: TextStyle(
                                         color: Colors.grey[500], fontSize: 13),
                                   ),

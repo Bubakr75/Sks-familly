@@ -18,6 +18,7 @@ class QuickPointActionForm extends StatefulWidget {
   final List<ChildModel> children;
   final List<QuickPointActionPreset> presets;
   final Future<void> Function(PointActionDraft draft) onSubmit;
+  final Future<bool> Function({bool force})? checkServiceAvailability;
 
   const QuickPointActionForm({
     super.key,
@@ -25,6 +26,7 @@ class QuickPointActionForm extends StatefulWidget {
     required this.children,
     required this.presets,
     required this.onSubmit,
+    this.checkServiceAvailability,
   });
 
   @override
@@ -45,11 +47,28 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
   bool _verifying = false;
   String? _operationId;
   String? _error;
+  late bool _serviceAvailable;
+  bool _checkingService = false;
 
   @override
   void initState() {
     super.initState();
     _childId = widget.children.first.id;
+    _serviceAvailable = widget.checkServiceAvailability == null;
+    if (widget.checkServiceAvailability != null) {
+      _checkService();
+    }
+  }
+
+  Future<void> _checkService({bool force = false}) async {
+    if (_checkingService || widget.checkServiceAvailability == null) return;
+    setState(() => _checkingService = true);
+    final available = await widget.checkServiceAvailability!(force: force);
+    if (!mounted) return;
+    setState(() {
+      _serviceAvailable = available;
+      _checkingService = false;
+    });
   }
 
   @override
@@ -73,6 +92,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
             (_hasLines == false ||
                 ((int.tryParse(_linesController.text.trim()) ?? 0) > 0)));
     return !_submitting &&
+        _serviceAvailable &&
         amount != null &&
         amount > 0 &&
         amount <= 999 &&
@@ -287,6 +307,21 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                       style: const TextStyle(color: Colors.redAccent),
                     ),
                   ),
+                if (!_serviceAvailable) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    PointActionMaintenanceException.message,
+                    key: ValueKey('quick_maintenance_message'),
+                    style: TextStyle(color: Colors.orangeAccent),
+                  ),
+                  TextButton.icon(
+                    onPressed: _checkingService
+                        ? null
+                        : () => _checkService(force: true),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Vérifier à nouveau'),
+                  ),
+                ],
               ],
             ),
           ),

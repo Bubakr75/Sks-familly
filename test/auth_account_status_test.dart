@@ -2,6 +2,15 @@ import 'package:family_score/services/auth_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('une famille liée interdit la création silencieuse d’un nouvel UID', () {
+    expect(
+      AuthService.canCreateAnonymousAccount(
+        hasCurrentUser: false,
+        hasLinkedFamily: true,
+      ),
+      isFalse,
+    );
+  });
   test('identifie un compte anonyme comme temporaire', () {
     final status = FirebaseAccountStatus.fromValues(
       authenticated: true,

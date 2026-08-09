@@ -6,6 +6,7 @@ import '../providers/family_provider.dart';
 import 'quick_point_action_form.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
+import '../services/firestore_service.dart';
 import '../utils/pin_guard.dart';
 import 'glass_card.dart';
 import 'tv_focus_wrapper.dart';
@@ -404,6 +405,11 @@ void _showReliableQuickPointAction(
           isBonus: isBonus,
           children: fp.children,
           presets: presets,
+          checkServiceAvailability: ({bool force = false}) async {
+            final status = await FirestoreService()
+                .checkPointActionServiceAvailability(force: force);
+            return status.serviceAvailable;
+          },
           onSubmit: (draft) async {
             final child = fp.children.firstWhere((c) => c.id == draft.childId);
             await fp.addPoints(
