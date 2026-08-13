@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
+import 'package:crypto/crypto.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -19,9 +22,15 @@ import '../models/sks_wallet.dart';
 import '../utils/web_reconnect.dart';
 import 'fcm_service.dart';
 import 'family_management_service.dart';
+import 'firebase_session_service.dart';
+import 'point_action_submission_service.dart';
 
 class FirestoreService {
+  static const int historyRealtimeLimit = 500;
   static const walletFunctionsRegion = 'us-central1';
+  static const _pendingPointActionsKey = 'pending_point_actions_v1';
+  static const _pendingPointActionArchiveAge = Duration(days: 30);
+  static const _pointServiceCacheDuration = Duration(seconds: 30);
 
   @visibleForTesting
   static Map<String, dynamic> buildPointActionPayload({
@@ -33,6 +42,8 @@ class FirestoreService {
     required String category,
     required bool isBonus,
     String? photoStoragePath,
+    int? penaltyLinesCount,
+    String? penaltyLinesInstruction,
   }) {
     return {
       'familyId': familyId,
@@ -43,6 +54,9 @@ class FirestoreService {
       'category': category.trim(),
       'isBonus': isBonus,
       if (photoStoragePath != null) 'photoStoragePath': photoStoragePath,
+      if (penaltyLinesCount != null) 'penaltyLinesCount': penaltyLinesCount,
+      if (penaltyLinesInstruction != null)
+        'penaltyLinesInstruction': penaltyLinesInstruction.trim(),
     };
   }
 
@@ -62,6 +76,19 @@ class FirestoreService {
       'type': type,
       'amount': amount,
       'reason': reason.trim(),
+    };
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic> buildWalletReversalPayload({
+    required String familyId,
+    required String childId,
+    required String operationId,
+  }) {
+    return {
+      'familyId': familyId,
+      'childId': childId,
+      'operationId': operationId,
     };
   }
 
@@ -198,7 +225,34 @@ class FirestoreService {
   StreamSubscription? _walletsSub;
 
   Timer? _keepAliveTimer;
-  DateTime _lastDataReceived = DateTime.now();
+  Timer? _reconnectTimer;
+  Timer? _reconnectDebounceTimer;
+  bool _healthCheckInFlight = false;
+  int _reconnectCount = 0;
+  DateTime? _pointServiceCheckedAt;
+  String? _pointServiceCacheKey;
+  PointActionStatusResult? _pointServiceStatus;
+
+  int get activeListenerCount => [
+        _childrenSub,
+        _historySub,
+        _goalsSub,
+        _punishmentsSub,
+        _notesSub,
+        _immunitiesSub,
+        _tradesSub,
+        _tribunalSub,
+        _badgesSub,
+        _requestsSub,
+        _joinRequestsSub,
+        _screenTimeSub,
+        _parentProfilesSub,
+        _choresSub,
+        _rewardsSub,
+        _purchasesSub,
+        _walletsSub,
+      ].where((subscription) => subscription != null).length;
+  int get reconnectCount => _reconnectCount;
 
   void Function(List<ChildModel>, List<Map<String, dynamic>>)?
       onChildrenChanged;
@@ -230,10 +284,10 @@ class FirestoreService {
           _db.settings = const Settings(
             persistenceEnabled: true,
             sslEnabled: true,
-            webExperimentalForceLongPolling: true,
-            webExperimentalAutoDetectLongPolling: false,
+            webExperimentalForceLongPolling: false,
+            webExperimentalAutoDetectLongPolling: true,
           );
-          if (kDebugMode) debugPrint('Firestore: long-polling force sur Web');
+          if (kDebugMode) debugPrint('Firestore: transport Web auto-détecté');
         } catch (e) {
           if (kDebugMode) debugPrint('Firestore settings error: $e');
         }
@@ -241,6 +295,7 @@ class FirestoreService {
 
       final prefs = await SharedPreferences.getInstance();
       _familyId = prefs.getString('family_id');
+      invalidatePointActionServiceAvailability();
       _memberRole = prefs.getString('family_member_role');
       _memberChildId = prefs.getString('family_member_child_id');
       _deviceId = prefs.getString('device_id');
@@ -262,6 +317,7 @@ class FirestoreService {
         } else {
           await FcmService().registerToken();
         }
+        unawaited(resumePendingPointActionChecks());
       }
     } catch (e) {
       if (kDebugMode) debugPrint('FirestoreService init error: $e');
@@ -272,7 +328,13 @@ class FirestoreService {
     try {
       attachWebReconnectHandlers(() {
         if (kDebugMode) debugPrint('Web lifecycle event: reconnect Firestore');
+        _startKeepAlive();
         reconnect();
+      }, pauseFn: () {
+        if (kDebugMode) debugPrint('Web lifecycle event: pause keep-alive');
+        _reconnectDebounceTimer?.cancel();
+        _reconnectDebounceTimer = null;
+        _stopKeepAlive();
       });
     } catch (e) {
       if (kDebugMode) debugPrint('Web lifecycle error: $e');
@@ -281,6 +343,8 @@ class FirestoreService {
 
   // ─── Dispose ─────────────────────────────────────────────────
   void dispose() {
+    detachWebReconnectHandlers();
+    _reconnectDebounceTimer?.cancel();
     _stopListening();
     _stopKeepAlive();
   }
@@ -383,6 +447,7 @@ class FirestoreService {
     }
 
     _familyId = result.familyId;
+    invalidatePointActionServiceAvailability();
     _memberRole = 'owner';
     _memberChildId = null;
 
@@ -433,6 +498,7 @@ class FirestoreService {
       if (query.docs.isEmpty) return false;
       final doc = query.docs.first;
       _familyId = doc.id;
+      invalidatePointActionServiceAvailability();
       await doc.reference.update({'memberCount': FieldValue.increment(1)});
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('family_id', _familyId!);
@@ -524,6 +590,7 @@ class FirestoreService {
     _stopKeepAlive();
 
     _familyId = approvedFamilyId;
+    invalidatePointActionServiceAvailability();
     _memberRole = approvedRole;
     _memberChildId = approvedChildId;
 
@@ -585,13 +652,19 @@ class FirestoreService {
         throw StateError('Impossible d’enregistrer le code familial.');
       }
     }
+    final roleChanged = _memberRole != role;
     _memberRole = role;
+    if (roleChanged && _familyId != null) {
+      _stopListening();
+      _startListening();
+    }
   }
 
   Future<void> disconnectFamily() async {
     _stopListening();
     _stopKeepAlive();
     _familyId = null;
+    invalidatePointActionServiceAvailability();
     _memberRole = null;
     _memberChildId = null;
     final prefs = await SharedPreferences.getInstance();
@@ -604,16 +677,34 @@ class FirestoreService {
   // ─── Keep-alive ──────────────────────────────────────────────
   void reconnect() {
     if (_familyId == null) return;
-    _stopListening();
-    _startListening();
-    _lastDataReceived = DateTime.now();
+    // Safari peut envoyer focus, visibilitychange et resumed ensemble.
+    // Une seule reconstruction des listeners doit survivre à cette rafale.
+    _reconnectDebounceTimer?.cancel();
+    _reconnectDebounceTimer = Timer(const Duration(milliseconds: 750), () {
+      _reconnectDebounceTimer = null;
+      if (_familyId == null) return;
+      invalidatePointActionServiceAvailability();
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _reconnectCount++;
+      _startListening();
+      unawaited(resumePendingPointActionChecks());
+    });
+  }
+
+  void _scheduleReconnect([Object? error]) {
+    if (_familyId == null || _reconnectTimer != null) return;
+    final familyAtFailure = _familyId;
+    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+      _reconnectTimer = null;
+      if (_familyId == familyAtFailure) reconnect();
+    });
   }
 
   void _startKeepAlive() {
     _stopKeepAlive();
-    _lastDataReceived = DateTime.now();
     _keepAliveTimer = Timer.periodic(
-      const Duration(seconds: 15),
+      const Duration(seconds: 30),
       (_) => _checkConnection(),
     );
   }
@@ -621,27 +712,28 @@ class FirestoreService {
   void _stopKeepAlive() {
     _keepAliveTimer?.cancel();
     _keepAliveTimer = null;
+    _healthCheckInFlight = false;
   }
 
-  void _checkConnection() {
-    if (_familyId == null) return;
-    final sec = DateTime.now().difference(_lastDataReceived).inSeconds;
-    if (sec > 45) reconnect();
-    _db
-        .collection('families')
-        .doc(_familyId)
-        .get()
-        .then((_) {})
-        .catchError((_) {
-      reconnect();
-    });
+  Future<void> _checkConnection() async {
+    final familyAtStart = _familyId;
+    if (familyAtStart == null || _healthCheckInFlight) return;
+    _healthCheckInFlight = true;
+    try {
+      await _db.collection('families').doc(familyAtStart).get();
+    } catch (error) {
+      if (_familyId == familyAtStart) _scheduleReconnect(error);
+    } finally {
+      _healthCheckInFlight = false;
+    }
   }
 
-  void _markDataReceived() => _lastDataReceived = DateTime.now();
+  void _markDataReceived() {}
 
   // ─── Listeners temps réel ────────────────────────────────────
   void _startListening() {
     if (_familyId == null) return;
+    _stopListening(cancelReconnect: false);
     final fRef = _db.collection('families').doc(_familyId);
 
     _childrenSub = fRef.collection('children').snapshots().listen((s) {
@@ -659,9 +751,14 @@ class FirestoreService {
         }
       }
       onChildrenChanged?.call(list, raw);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
-    _historySub = fRef.collection('history').snapshots().listen((s) {
+    _historySub = fRef
+        .collection('history')
+        .orderBy('date', descending: true)
+        .limit(historyRealtimeLimit)
+        .snapshots()
+        .listen((s) {
       _markDataReceived();
       final list = <HistoryEntry>[];
       final raw = <Map<String, dynamic>>[];
@@ -677,7 +774,7 @@ class FirestoreService {
       }
       list.sort((a, b) => b.date.compareTo(a.date));
       onHistoryChanged?.call(list, raw);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _goalsSub = fRef.collection('goals').snapshots().listen((s) {
       _markDataReceived();
@@ -694,7 +791,7 @@ class FirestoreService {
         }
       }
       onGoalsChanged?.call(list, raw);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _punishmentsSub = fRef.collection('punishments').snapshots().listen((s) {
       _markDataReceived();
@@ -711,7 +808,7 @@ class FirestoreService {
         }
       }
       onPunishmentsChanged?.call(list, raw);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _notesSub = fRef.collection('notes').snapshots().listen((s) {
       _markDataReceived();
@@ -722,7 +819,7 @@ class FirestoreService {
       }).toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       onNotesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _immunitiesSub = fRef.collection('immunities').snapshots().listen((s) {
       _markDataReceived();
@@ -732,7 +829,7 @@ class FirestoreService {
         return ImmunityLines.fromMap(d);
       }).toList();
       onImmunitiesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _tradesSub = fRef.collection('trades').snapshots().listen((s) {
       _markDataReceived();
@@ -743,7 +840,7 @@ class FirestoreService {
       }).toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       onTradesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _tribunalSub = fRef.collection('tribunal').snapshots().listen((s) {
       _markDataReceived();
@@ -753,7 +850,7 @@ class FirestoreService {
         return TribunalCase.fromMap(d);
       }).toList();
       onTribunalChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     _badgesSub = fRef.collection('custom_badges').snapshots().listen((s) {
       _markDataReceived();
@@ -763,7 +860,7 @@ class FirestoreService {
         return BadgeModel.fromMap(d);
       }).toList();
       onBadgesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     Query<Map<String, dynamic>> requestsQuery = fRef.collection('requests');
     if (_memberRole == 'child' && _memberChildId != null) {
@@ -781,9 +878,10 @@ class FirestoreService {
           .where((r) => r.isPending)
           .toList();
       onRequestsChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
-    if (_memberRole == 'owner' || _memberRole == 'parent') {
+    if (const ['owner', 'manager', 'familyAdmin', 'parent']
+        .contains(_memberRole)) {
       _joinRequestsSub =
           fRef.collection('join_requests').snapshots().listen((snapshot) {
         _markDataReceived();
@@ -798,7 +896,7 @@ class FirestoreService {
               status == 'received';
         }).toList();
         onJoinRequestsChanged?.call(list);
-      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+      }, onError: (_) => _scheduleReconnect());
     }
 
     _screenTimeSub = fRef.collection('screen_time').snapshots().listen((s) {
@@ -808,7 +906,7 @@ class FirestoreService {
         data[doc.id] = doc.data()['value'];
       }
       onScreenTimeChanged?.call(data);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     // ─── Profils parents ───
     _parentProfilesSub =
@@ -821,7 +919,7 @@ class FirestoreService {
       }).toList();
       list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
       onParentProfilesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     // ─── Chores (tâches checklist) ───
     _choresSub = fRef.collection('chores').snapshots().listen((s) {
@@ -832,7 +930,7 @@ class FirestoreService {
         return d;
       }).toList();
       onChoresChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     // ─── Récompenses boutique ───
     _rewardsSub = fRef.collection('rewards').snapshots().listen((s) {
@@ -843,7 +941,7 @@ class FirestoreService {
         return d;
       }).toList();
       onRewardsChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     // ─── Achats boutique ───
     _purchasesSub = fRef.collection('purchases').snapshots().listen((s) {
@@ -854,7 +952,7 @@ class FirestoreService {
         return d;
       }).toList();
       onPurchasesChanged?.call(list);
-    }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+    }, onError: (_) => _scheduleReconnect());
 
     final wallets = fRef.collection('wallets');
     if (_memberRole == 'child' && _memberChildId != null) {
@@ -867,7 +965,7 @@ class FirestoreService {
           list.add(SksWallet.fromMap(data));
         }
         onWalletsChanged?.call(list);
-      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+      }, onError: (_) => _scheduleReconnect());
     } else {
       _walletsSub = wallets.snapshots().listen((snapshot) {
         _markDataReceived();
@@ -877,11 +975,17 @@ class FirestoreService {
           return SksWallet.fromMap(data);
         }).toList();
         onWalletsChanged?.call(list);
-      }, onError: (_) => Future.delayed(const Duration(seconds: 5), reconnect));
+      }, onError: (_) => _scheduleReconnect());
     }
   }
 
-  void _stopListening() {
+  void _stopListening({bool cancelReconnect = true}) {
+    if (cancelReconnect) {
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _reconnectDebounceTimer?.cancel();
+      _reconnectDebounceTimer = null;
+    }
     _childrenSub?.cancel();
     _historySub?.cancel();
     _goalsSub?.cancel();
@@ -942,6 +1046,361 @@ class FirestoreService {
     required String category,
     required bool isBonus,
     String? photoStoragePath,
+    int? penaltyLinesCount,
+    String? penaltyLinesInstruction,
+    void Function()? onVerifying,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final availability = await checkPointActionServiceAvailability();
+    if (!availability.serviceAvailable) {
+      throw const PointActionMaintenanceException();
+    }
+    final payload = buildPointActionPayload(
+      familyId: currentFamilyId,
+      actionId: actionId,
+      childId: childId,
+      amount: amount,
+      reason: reason,
+      category: category,
+      isBonus: isBonus,
+      photoStoragePath: photoStoragePath,
+      penaltyLinesCount: penaltyLinesCount,
+      penaltyLinesInstruction: penaltyLinesInstruction,
+    );
+    await _savePendingPointAction(
+      familyId: currentFamilyId,
+      operationId: actionId,
+      isBonus: isBonus,
+      fingerprint: sha256.convert(utf8.encode(jsonEncode(payload))).toString(),
+    );
+    try {
+      final callable = FirebaseFunctions.instanceFor(
+        region: walletFunctionsRegion,
+      ).httpsCallable('recordPointAction');
+      final result = await callWithSingleAuthRetry(
+        call: () => callable.call(payload),
+        refreshSession: FirebaseSessionService.instance.refreshExistingSession,
+        isUnauthenticated: (error) =>
+            error is FirebaseFunctionsException &&
+            error.code.toLowerCase() == 'unauthenticated',
+      );
+      final data = Map<String, dynamic>.from(result.data as Map);
+      if (data['status'] != 'committed') {
+        throw const PointActionRemoteException(
+          code: 'unknown',
+          message: 'Statut recordPointAction non confirmé.',
+        );
+      }
+      await _removePendingPointAction(actionId);
+      return data;
+    } catch (error) {
+      if (!_isUncertainPointActionError(error)) {
+        await _removePendingPointAction(actionId);
+        rethrow;
+      }
+      onVerifying?.call();
+      final reconciled = await _reconcilePointAction(
+        familyId: currentFamilyId,
+        operationId: actionId,
+      );
+      if (reconciled != null) return reconciled;
+      throw const PointActionRemoteException(
+        code: 'unavailable',
+        message: 'Vérification serveur toujours en attente.',
+      );
+    }
+  }
+
+  Future<PointActionStatusResult> checkPointActionServiceAvailability({
+    bool force = false,
+  }) async {
+    final family = _familyId;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (family == null || uid == null) {
+      return const PointActionStatusResult(
+        PointActionStatusKind.unauthenticated,
+      );
+    }
+    final key = '$uid:$family';
+    final checkedAt = _pointServiceCheckedAt;
+    if (!force &&
+        _pointServiceCacheKey == key &&
+        checkedAt != null &&
+        DateTime.now().difference(checkedAt) < _pointServiceCacheDuration &&
+        _pointServiceStatus != null) {
+      return _pointServiceStatus!;
+    }
+    final result = await getPointActionStatus(
+      familyId: family,
+      operationId: 'service_probe_v1',
+    );
+    _pointServiceCacheKey = key;
+    _pointServiceCheckedAt = DateTime.now();
+    _pointServiceStatus = result;
+    return result;
+  }
+
+  void invalidatePointActionServiceAvailability() {
+    _pointServiceCheckedAt = null;
+    _pointServiceCacheKey = null;
+    _pointServiceStatus = null;
+  }
+
+  Future<PointActionStatusResult> getPointActionStatus({
+    required String familyId,
+    required String operationId,
+  }) async {
+    try {
+      final callable = FirebaseFunctions.instanceFor(
+        region: walletFunctionsRegion,
+      ).httpsCallable('getPointActionStatus');
+      final response = await callWithSingleAuthRetry(
+        call: () => callable.call({
+          'familyId': familyId,
+          'operationId': operationId,
+        }),
+        refreshSession: FirebaseSessionService.instance.refreshExistingSession,
+        isUnauthenticated: (error) =>
+            error is FirebaseFunctionsException &&
+            error.code.toLowerCase() == 'unauthenticated',
+      );
+      final data = Map<String, dynamic>.from(response.data as Map);
+      return switch (data['status']) {
+        'committed' => PointActionStatusResult(
+            PointActionStatusKind.committed,
+            result: data['result'] is Map
+                ? Map<String, dynamic>.from(data['result'] as Map)
+                : null,
+          ),
+        'processing' => const PointActionStatusResult(
+            PointActionStatusKind.processing,
+          ),
+        'rejected' => PointActionStatusResult(
+            PointActionStatusKind.rejected,
+            errorCode: data['errorCode'] as String?,
+          ),
+        _ => const PointActionStatusResult(PointActionStatusKind.unknown),
+      };
+    } on FirebaseSessionException catch (error) {
+      return PointActionStatusResult(
+        error.state == FirebaseSessionState.networkUnavailable
+            ? PointActionStatusKind.networkUnavailable
+            : PointActionStatusKind.unauthenticated,
+        errorCode: error.technicalCode,
+      );
+    } on FirebaseFunctionsException catch (error) {
+      final code = error.code.toLowerCase();
+      if (code == 'not-found' || code == 'unimplemented') {
+        return const PointActionStatusResult(
+          PointActionStatusKind.functionUnavailable,
+        );
+      }
+      if (code == 'unauthenticated') {
+        return const PointActionStatusResult(
+          PointActionStatusKind.unauthenticated,
+        );
+      }
+      if (code == 'permission-denied') {
+        return const PointActionStatusResult(
+          PointActionStatusKind.permissionDenied,
+        );
+      }
+      if (code == 'unavailable' || code == 'deadline-exceeded') {
+        return const PointActionStatusResult(
+          PointActionStatusKind.networkUnavailable,
+        );
+      }
+      return PointActionStatusResult(
+        PointActionStatusKind.serverFailure,
+        errorCode: code,
+      );
+    } catch (_) {
+      return const PointActionStatusResult(PointActionStatusKind.serverFailure);
+    }
+  }
+
+  bool _isUncertainPointActionError(Object error) {
+    final code = error is FirebaseFunctionsException
+        ? error.code.toLowerCase()
+        : error is PointActionRemoteException
+            ? error.code.toLowerCase()
+            : '';
+    return const {
+      'unavailable',
+      'deadline-exceeded',
+      'internal',
+      'unknown',
+      'cancelled',
+    }.contains(code);
+  }
+
+  Future<Map<String, dynamic>?> _reconcilePointAction({
+    required String familyId,
+    required String operationId,
+  }) async {
+    const delays = <Duration>[
+      Duration.zero,
+      Duration(milliseconds: 500),
+      Duration(seconds: 1),
+      Duration(seconds: 2),
+    ];
+    for (final delay in delays) {
+      if (delay > Duration.zero) await Future<void>.delayed(delay);
+      final status = await getPointActionStatus(
+        familyId: familyId,
+        operationId: operationId,
+      );
+      if (status.kind == PointActionStatusKind.committed &&
+          status.result != null) {
+        await _removePendingPointAction(operationId);
+        return {
+          ...status.result!,
+          'status': 'committed',
+          'idempotent': true,
+        };
+      }
+      if (status.kind == PointActionStatusKind.rejected) {
+        await _removePendingPointAction(operationId);
+        throw PointActionRemoteException(
+          code: status.errorCode ?? 'failed-precondition',
+        );
+      }
+      if (!status.serviceAvailable) return null;
+      // Le prochain essai utilise strictement le même identifiant.
+    }
+    return null;
+  }
+
+  Future<void> _savePendingPointAction({
+    required String familyId,
+    required String operationId,
+    required bool isBonus,
+    required String fingerprint,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final pending = _readPendingPointActions(prefs)
+      ..removeWhere((item) => item['operationId'] == operationId)
+      ..add({
+        'operationId': operationId,
+        'familyId': familyId,
+        'type': isBonus ? 'bonus' : 'penalty',
+        'fingerprint': fingerprint,
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+        'status': 'reconciling',
+      });
+    await prefs.setString(_pendingPointActionsKey, jsonEncode(pending));
+  }
+
+  @visibleForTesting
+  static List<Map<String, dynamic>> decodePendingPointActions(String? raw) {
+    if (raw == null || raw.isEmpty) return [];
+    Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } catch (_) {
+      return [
+        {
+          'status': 'corrupted',
+          'createdAt': DateTime.now().toUtc().toIso8601String(),
+        }
+      ];
+    }
+    if (decoded is! List) return [];
+    final entries = <Map<String, dynamic>>[];
+    for (final entry in decoded) {
+      try {
+        final value = entry is String ? jsonDecode(entry) : entry;
+        if (value is Map) entries.add(Map<String, dynamic>.from(value));
+      } catch (_) {
+        entries.add({
+          'status': 'corrupted',
+          'createdAt': DateTime.now().toUtc().toIso8601String(),
+        });
+      }
+    }
+    return entries;
+  }
+
+  @visibleForTesting
+  static bool archiveOldPendingPointActions(
+    List<Map<String, dynamic>> entries, {
+    required DateTime now,
+  }) {
+    var changed = false;
+    for (final entry in entries) {
+      final createdAt = DateTime.tryParse(entry['createdAt'] as String? ?? '');
+      if (createdAt != null &&
+          now.toUtc().difference(createdAt.toUtc()) >
+              _pendingPointActionArchiveAge &&
+          entry['status'] != 'verificationRequired') {
+        entry['status'] = 'verificationRequired';
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  List<Map<String, dynamic>> _readPendingPointActions(
+    SharedPreferences prefs,
+  ) {
+    return decodePendingPointActions(prefs.getString(_pendingPointActionsKey));
+  }
+
+  Future<void> _removePendingPointAction(String operationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final pending = _readPendingPointActions(prefs)
+      ..removeWhere((item) => item['operationId'] == operationId);
+    await prefs.setString(_pendingPointActionsKey, jsonEncode(pending));
+  }
+
+  Future<void> resumePendingPointActionChecks() async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final pending = _readPendingPointActions(prefs);
+    final now = DateTime.now().toUtc();
+    var changed = archiveOldPendingPointActions(pending, now: now);
+    for (final item in List<Map<String, dynamic>>.from(pending)) {
+      final operationId = item['operationId'] as String?;
+      final familyId = item['familyId'] as String?;
+      final createdAt = DateTime.tryParse(item['createdAt'] as String? ?? '');
+      if (operationId == null || familyId == null || createdAt == null) {
+        if (item['status'] != 'corrupted') {
+          item['status'] = 'corrupted';
+          changed = true;
+        }
+        continue;
+      }
+      // Une opération d'une autre famille doit rester disponible jusqu'à ce
+      // que cette famille soit de nouveau active sur l'appareil.
+      if (familyId != currentFamilyId) continue;
+      try {
+        final result = await _reconcilePointAction(
+          familyId: familyId,
+          operationId: operationId,
+        );
+        if (result != null) {
+          pending.remove(item);
+          changed = true;
+        }
+      } on PointActionRemoteException {
+        pending.remove(item);
+        changed = true;
+      }
+    }
+    if (changed) {
+      await prefs.setString(_pendingPointActionsKey, jsonEncode(pending));
+    }
+  }
+
+  Future<Map<String, dynamic>> updatePenaltyLines({
+    required String punishmentId,
+    required bool hasPenaltyLines,
+    int? count,
+    String? instruction,
   }) async {
     final currentFamilyId = _familyId;
     if (currentFamilyId == null) {
@@ -949,16 +1408,27 @@ class FirestoreService {
     }
     final result = await FirebaseFunctions.instanceFor(
       region: walletFunctionsRegion,
-    ).httpsCallable('recordPointAction').call(buildPointActionPayload(
-          familyId: currentFamilyId,
-          actionId: actionId,
-          childId: childId,
-          amount: amount,
-          reason: reason,
-          category: category,
-          isBonus: isBonus,
-          photoStoragePath: photoStoragePath,
-        ));
+    ).httpsCallable('updatePenaltyLines').call({
+      'familyId': currentFamilyId,
+      'punishmentId': punishmentId,
+      'hasPenaltyLines': hasPenaltyLines,
+      if (count != null) 'penaltyLinesCount': count,
+      if (instruction != null) 'penaltyLinesInstruction': instruction.trim(),
+    });
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  Future<Map<String, dynamic>> completePenaltyLines(String punishmentId) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('completePenaltyLines').call({
+      'familyId': currentFamilyId,
+      'punishmentId': punishmentId,
+    });
     return Map<String, dynamic>.from(result.data as Map);
   }
 
@@ -1012,6 +1482,24 @@ class FirestoreService {
           type: type,
           amount: amount,
           reason: reason,
+        ));
+    return SksWalletAdjustmentResult.fromData(result.data);
+  }
+
+  Future<SksWalletAdjustmentResult> reverseWalletOperation({
+    required String childId,
+    required String operationId,
+  }) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) {
+      throw StateError('Aucune famille connectée.');
+    }
+    final result = await FirebaseFunctions.instanceFor(
+      region: walletFunctionsRegion,
+    ).httpsCallable('reverseWalletOperation').call(buildWalletReversalPayload(
+          familyId: currentFamilyId,
+          childId: childId,
+          operationId: operationId,
         ));
     return SksWalletAdjustmentResult.fromData(result.data);
   }

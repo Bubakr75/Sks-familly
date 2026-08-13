@@ -11,6 +11,38 @@ String? normalizeCustomText(String? input) {
   return trimmed;
 }
 
+const int maxCustomReasonLength = 100;
+
+/// Validation unique utilisée par les formulaires bonus et pénalité.
+bool isPointActionReasonValid({
+  required bool hasSelectedReason,
+  required bool isOther,
+  String? customText,
+}) {
+  if (!hasSelectedReason) return false;
+  if (!isOther) return true;
+  final normalized = normalizeCustomText(customText);
+  return normalized != null && normalized.length <= maxCustomReasonLength;
+}
+
+/// Retourne uniquement la valeur active : le motif prédéfini ou le texte
+/// personnalisé nettoyé. L'ancien texte « Autre » est donc toujours ignoré
+/// quand un motif prédéfini est sélectionné.
+String? resolvePointActionReason({
+  required bool isOther,
+  String? selectedLabel,
+  String? customText,
+}) {
+  if (isOther) {
+    final normalized = normalizeCustomText(customText);
+    if (normalized == null || normalized.length > maxCustomReasonLength) {
+      return null;
+    }
+    return normalized;
+  }
+  return normalizeCustomText(selectedLabel);
+}
+
 /// Valide un motif "Autre" : le texte doit être non vide après trim.
 bool isValidCustomText(String? input) {
   return normalizeCustomText(input) != null;

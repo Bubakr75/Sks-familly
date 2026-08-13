@@ -25,6 +25,10 @@ class _UpdateBannerState extends State<UpdateBanner> {
   @override
   void initState() {
     super.initState();
+    if (kIsWeb || !Platform.isAndroid) {
+      _checking = false;
+      return;
+    }
     _checkUpdate();
   }
 

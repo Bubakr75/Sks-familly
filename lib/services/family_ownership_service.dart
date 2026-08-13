@@ -61,6 +61,12 @@ class FamilyOwnershipService {
   final FirebaseFunctions _functions;
   final Uuid _uuid;
 
+  Future<Map<String, dynamic>> diagnose(String familyId) {
+    return _call('getFamilyOwnershipDiagnostic', {
+      'familyId': _requiredId(familyId),
+    });
+  }
+
   Future<FamilyOwnershipResult> transfer({
     required String familyId,
     required String targetMemberId,

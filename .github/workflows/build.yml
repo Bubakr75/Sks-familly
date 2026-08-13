@@ -138,20 +138,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          VERSION_NAME=$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' pubspec.yaml)
-          test -n "$VERSION_NAME"
+          VERSION_FULL=$(sed -nE 's/^version:[[:space:]]*([^[:space:]]+).*/\1/p' pubspec.yaml)
+          if ! [[ "$VERSION_FULL" =~ ^([^+]+)\+([0-9]+)$ ]]; then
+            echo "Version pubspec.yaml illisible. Format attendu: x.y.z+build."
+            exit 1
+          fi
+          VERSION_NAME="${BASH_REMATCH[1]}"
+          VERSION_CODE="${BASH_REMATCH[2]}"
           LATEST_TAG=$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)
-          LATEST_CODE=${LATEST_TAG##*+}
-          if ! [[ "$LATEST_CODE" =~ ^[0-9]+$ ]]; then
+          if [[ "$LATEST_TAG" =~ \+([0-9]+)$ ]]; then
+            LATEST_CODE="${BASH_REMATCH[1]}"
+          elif [[ "$LATEST_TAG" =~ -build([0-9]+)$ ]]; then
+            LATEST_CODE="${BASH_REMATCH[1]}"
+          else
             echo "VersionCode officiel illisible."
             exit 1
           fi
-          if [ "${{ github.run_number }}" -le "$LATEST_CODE" ]; then
+          if [ "$VERSION_CODE" -le "$LATEST_CODE" ]; then
             echo "Le versionCode doit être supérieur à la version officielle $LATEST_CODE."
             exit 1
           fi
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Build Release APK
         shell: bash

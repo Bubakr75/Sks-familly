@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum FirebaseAccountKind {
   temporary,
@@ -102,12 +103,32 @@ class AuthService {
     );
   }
 
+  @visibleForTesting
+  static bool canCreateAnonymousAccount({
+    required bool hasCurrentUser,
+    required bool hasLinkedFamily,
+  }) {
+    return !hasCurrentUser && !hasLinkedFamily;
+  }
+
   Future<void> ensureConnected() async {
     if (currentUser != null) {
       if (kDebugMode) {
         debugPrint('AuthService: session Firebase disponible.');
       }
       return;
+    }
+    final preferences = await SharedPreferences.getInstance();
+    final linkedFamilyId = preferences.getString('family_id');
+    if (!canCreateAnonymousAccount(
+      hasCurrentUser: false,
+      hasLinkedFamily: linkedFamilyId != null && linkedFamilyId.isNotEmpty,
+    )) {
+      throw const DurableAuthException(
+        code: 'controlled-reconnection-required',
+        message:
+            'Votre session doit être actualisée. Vos données locales sont conservées.',
+      );
     }
     try {
       await _auth.signInAnonymously();

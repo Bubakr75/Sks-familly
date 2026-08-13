@@ -32,6 +32,10 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/.dart-appdata/
+/.tool-state/
+/android/.tool-state/
+/functions/.firebase-test/
 
 # Symbolication related
 app.*.symbols

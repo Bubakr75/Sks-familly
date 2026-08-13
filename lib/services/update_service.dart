@@ -33,20 +33,52 @@ class UpdateService {
       'https://api.github.com/repos/$_repo/releases/latest';
   static const int maxApkBytes = 250 * 1024 * 1024;
 
+  static ({String version, String apkName})? _releaseInfo(String? tag) {
+    if (tag == null) return null;
+
+    final buildMatch =
+        RegExp(r'^v(\d+)\.(\d+)\.(\d+)-build(\d+)$').firstMatch(tag);
+    if (buildMatch != null) {
+      final build = buildMatch.group(4)!;
+      return (
+        version:
+            '${buildMatch.group(1)}.${buildMatch.group(2)}.${buildMatch.group(3)}+$build',
+        apkName: 'SKS-Family-build-$build.apk',
+      );
+    }
+
+    final legacyMatch =
+        RegExp(r'^v(\d+)\.(\d+)\.(\d+)\+(\d+)$').firstMatch(tag);
+    if (legacyMatch != null) {
+      return (
+        version:
+            '${legacyMatch.group(1)}.${legacyMatch.group(2)}.${legacyMatch.group(3)}+${legacyMatch.group(4)}',
+        apkName: officialApkName,
+      );
+    }
+
+    return null;
+  }
+
   static String? officialApkUrl(Map<String, dynamic> release) {
     if (release['draft'] == true || release['prerelease'] == true) return null;
-    final tag = release['tag_name'] as String?;
-    if (tag == null || !RegExp(r'^v\d+\.\d+\.\d+\+\d+$').hasMatch(tag)) {
-      return null;
-    }
+
+    final tag = release['tag_name'];
+    if (tag is! String) return null;
+
+    final info = _releaseInfo(tag);
+    if (info == null) return null;
 
     final assets = release['assets'];
     if (assets is! List) return null;
+
     for (final value in assets) {
       if (value is! Map) continue;
+
       final name = value['name'];
       final url = value['browser_download_url'];
-      if (name != officialApkName || url is! String) continue;
+      if (name != info.apkName || url is! String) continue;
+
       final uri = Uri.tryParse(url);
       if (uri == null ||
           uri.scheme != 'https' ||
@@ -55,9 +87,11 @@ class UpdateService {
           uri.fragment.isNotEmpty) {
         continue;
       }
-      final expectedPath = '/$_repo/releases/download/$tag/$officialApkName';
+
+      final expectedPath = '/$_repo/releases/download/$tag/${info.apkName}';
       if (Uri.decodeComponent(uri.path) == expectedPath) return url;
     }
+
     return null;
   }
 
@@ -67,14 +101,18 @@ class UpdateService {
   ) {
     final tag = release['tag_name'];
     if (tag is! String) return null;
-    final latestVersion = tag.replaceFirst(RegExp(r'^v'), '');
+
+    final info = _releaseInfo(tag);
+    if (info == null) return null;
+
     final apkUrl = officialApkUrl(release);
-    if (apkUrl == null || !isNewerVersion(latestVersion, currentVersion)) {
+    if (apkUrl == null || !isNewerVersion(info.version, currentVersion)) {
       return null;
     }
+
     return AvailableUpdate(
       currentVersion: currentVersion,
-      latestVersion: latestVersion,
+      latestVersion: info.version,
       apkUrl: apkUrl,
     );
   }
@@ -93,9 +131,12 @@ class UpdateService {
             uri,
             headers: const {'Accept': 'application/vnd.github.v3+json'},
           ).timeout(const Duration(seconds: 10));
+
     if (response.statusCode != 200) return null;
+
     final decoded = jsonDecode(response.body);
     if (decoded is! Map) return null;
+
     return parseAvailableUpdate(
       Map<String, dynamic>.from(decoded),
       currentVersion,
@@ -109,17 +150,19 @@ class UpdateService {
     if (!_isOfficialDownloadUrl(url)) {
       return UpdateInstallResult.invalidUrl;
     }
+
     try {
       final uri = Uri.parse(url);
       final response = client == null
           ? await http.get(uri).timeout(const Duration(minutes: 5))
           : await client.get(uri).timeout(const Duration(minutes: 5));
+
       if (response.statusCode != 200) {
         return UpdateInstallResult.downloadFailed;
       }
-      final announcedSize = int.tryParse(
-        response.headers['content-length'] ?? '',
-      );
+
+      final announcedSize =
+          int.tryParse(response.headers['content-length'] ?? '');
       if ((announcedSize != null && announcedSize > maxApkBytes) ||
           response.bodyBytes.length > maxApkBytes) {
         return UpdateInstallResult.fileTooLarge;
@@ -129,10 +172,12 @@ class UpdateService {
       if (directory == null) {
         return UpdateInstallResult.storageUnavailable;
       }
+
       final file = File(
         '${directory.path}/com.bubakr.sks_family-update.apk',
       );
       await file.writeAsBytes(response.bodyBytes, flush: true);
+
       final openResult = await OpenFilex.open(file.path);
       return openResult.type == ResultType.done
           ? UpdateInstallResult.launched
@@ -151,10 +196,17 @@ class UpdateService {
         uri.fragment.isNotEmpty) {
       return false;
     }
-    return RegExp(
+
+    final path = Uri.decodeComponent(uri.path);
+    final match = RegExp(
       r'^/Bubakr75/Sks-familly/releases/download/'
-      r'v\d+\.\d+\.\d+\+\d+/app-release\.apk$',
-    ).hasMatch(Uri.decodeComponent(uri.path));
+      r'(v\d+\.\d+\.\d+(?:-build\d+|\+\d+))/([^/]+)$',
+    ).firstMatch(path);
+
+    if (match == null) return false;
+
+    final info = _releaseInfo(match.group(1));
+    return info != null && match.group(2) == info.apkName;
   }
 
   static bool isNewerVersion(String latest, String current) {
@@ -173,9 +225,13 @@ class UpdateService {
   }
 
   static (List<int>, int) _parseVersion(String value) {
-    final normalized = value.trim().replaceFirst(RegExp(r'^v'), '');
-    final sections = normalized.split('+');
+    final normalized =
+        value.trim().replaceFirst(RegExp(r'^v'), '').replaceFirstMapped(
+              RegExp(r'-build(\d+)$'),
+              (match) => '+${match.group(1)}',
+            );
 
+    final sections = normalized.split('+');
     final versionParts = sections.first
         .split('.')
         .map((part) => int.tryParse(part) ?? 0)

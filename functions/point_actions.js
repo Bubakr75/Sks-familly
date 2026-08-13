@@ -40,6 +40,27 @@ function normalizePointAction(data) {
   }
   if (typeof isBonus !== "boolean") throw new Error("INVALID_ACTION_TYPE");
 
+  let penaltyLinesCount = null;
+  let penaltyLinesInstruction = null;
+  if (data.penaltyLinesCount != null) {
+    if (isBonus || !Number.isInteger(data.penaltyLinesCount) ||
+        data.penaltyLinesCount < 1 || data.penaltyLinesCount > 10000) {
+      throw new Error("INVALID_PENALTY_LINES_COUNT");
+    }
+    penaltyLinesCount = data.penaltyLinesCount;
+    if (data.penaltyLinesInstruction != null) {
+      if (typeof data.penaltyLinesInstruction !== "string" ||
+          data.penaltyLinesInstruction.trim().length > 500 ||
+          /[\u0000-\u001f]/.test(data.penaltyLinesInstruction)) {
+        throw new Error("INVALID_PENALTY_LINES_INSTRUCTION");
+      }
+      penaltyLinesInstruction = data.penaltyLinesInstruction.trim();
+    }
+  } else if (data.penaltyLinesInstruction != null &&
+      String(data.penaltyLinesInstruction).trim() !== "") {
+    throw new Error("INVALID_PENALTY_LINES_INSTRUCTION");
+  }
+
   let photoStoragePath = null;
   if (data.photoStoragePath != null) {
     if (typeof data.photoStoragePath !== "string") {
@@ -60,6 +81,8 @@ function normalizePointAction(data) {
     category: category.trim(),
     isBonus,
     photoStoragePath,
+    penaltyLinesCount,
+    penaltyLinesInstruction,
   };
 }
 
@@ -142,7 +165,7 @@ function buildPointHistory({
   createdAt,
   serverDate,
 }) {
-  return {
+  const history = {
     id: action.actionId,
     childId: action.childId,
     points: actualAmount,
@@ -156,6 +179,40 @@ function buildPointHistory({
     actorRole: actor.actorRole,
     actionBy: actor.actorDisplayName,
     proofPhotoPath: action.photoStoragePath,
+  };
+  if (action.penaltyLinesCount != null) {
+    history.hasPenaltyLines = true;
+    history.penaltyLinesCount = action.penaltyLinesCount;
+    history.penaltyLinesInstruction = action.penaltyLinesInstruction;
+    history.penaltyLinesStatus = "pending";
+  } else if (!action.isBonus) {
+    history.hasPenaltyLines = false;
+  }
+  return history;
+}
+
+function buildPenaltyLines({action, actor, createdAt, serverDate}) {
+  if (action.isBonus) return null;
+  const hasPenaltyLines = action.penaltyLinesCount != null;
+  const count = action.penaltyLinesCount || 0;
+  return {
+    id: action.actionId,
+    penaltyHistoryId: action.actionId,
+    childId: action.childId,
+    text: action.penaltyLinesInstruction || "",
+    totalLines: count,
+    completedLines: 0,
+    createdAt,
+    photoUrls: [],
+    pendingValidation: false,
+    hasPenaltyLines,
+    penaltyLinesCount: count,
+    penaltyLinesInstruction: action.penaltyLinesInstruction || "",
+    penaltyLinesStatus: hasPenaltyLines ? "pending" : "completed",
+    penaltyLinesCompletedAt: null,
+    penaltyLinesCompletedBy: null,
+    createdBy: actor.actorUid,
+    serverDate,
   };
 }
 
@@ -208,6 +265,8 @@ function createPointActionFunctions({functions, admin, db}) {
       const memberRef = familyRef.collection("members").doc(uid);
       const childRef = familyRef.collection("children").doc(action.childId);
       const historyRef = familyRef.collection("history").doc(action.actionId);
+      const punishmentRef =
+        familyRef.collection("punishments").doc(action.actionId);
       const operationRef =
         familyRef.collection("_operations").doc(action.actionId);
       const actionFingerprint = fingerprint(action, uid);
@@ -243,7 +302,7 @@ function createPointActionFunctions({functions, admin, db}) {
               "Cet identifiant est déjà utilisé."
             );
           }
-          return {...existing.result, idempotent: true};
+          return {...existing.result, status: "committed", idempotent: true};
         }
 
         const child = childSnap.data();
@@ -272,21 +331,82 @@ function createPointActionFunctions({functions, admin, db}) {
           createdAt,
           serverDate,
         });
+        const punishment = buildPenaltyLines({
+          action,
+          actor,
+          createdAt,
+          serverDate,
+        });
         const result = {
           history: {...history, createdAt: serverDate},
           newBalance,
+          punishment: punishment
+            ? {...punishment, createdAt: serverDate}
+            : null,
         };
         tx.update(childRef, {points: newBalance});
         tx.create(historyRef, history);
+        if (punishment) tx.create(punishmentRef, punishment);
         tx.create(operationRef, {
           fingerprint: actionFingerprint,
           operation: "point_action",
+          operationId: action.actionId,
+          status: "committed",
           actorUid: uid,
           createdAt,
+          committedAt: createdAt,
           result,
         });
-        return {...result, idempotent: false};
+        return {...result, status: "committed", idempotent: false};
       });
+    } catch (error) {
+      throw fail(error);
+    }
+  });
+
+  const getPointActionStatus = functions.https.onCall(async (data, context) => {
+    try {
+      if (!context.auth || !context.auth.uid) {
+        throw new HttpsError("unauthenticated", "Authentification requise.");
+      }
+      const familyId = cleanId(data && data.familyId, "family_id");
+      const operationId = cleanId(
+        data && (data.operationId || data.actionId),
+        "operation_id"
+      );
+      const familyRef = db.collection("families").doc(familyId);
+      const memberRef = familyRef.collection("members").doc(context.auth.uid);
+      const operationRef = familyRef.collection("_operations").doc(operationId);
+      const [familySnap, memberSnap, operationSnap] = await Promise.all([
+        familyRef.get(),
+        memberRef.get(),
+        operationRef.get(),
+      ]);
+      const actor = resolveActor({
+        uid: context.auth.uid,
+        family: familySnap.exists ? familySnap.data() : null,
+        member: memberSnap.exists ? memberSnap.data() : null,
+        managerDurableVerified: isDurableVerifiedAuth(context),
+      });
+      if (!actor) {
+        throw new HttpsError("permission-denied", "Un parent actif est requis.");
+      }
+      if (!operationSnap.exists) {
+        return {operationId, status: "unknown"};
+      }
+      const operation = operationSnap.data();
+      if (operation.operation !== "point_action" ||
+          operation.actorUid !== context.auth.uid) {
+        throw new HttpsError("permission-denied", "Opération inaccessible.");
+      }
+      const status = operation.status || "committed";
+      if (status === "committed") {
+        return {operationId, status, result: operation.result};
+      }
+      if (status === "rejected") {
+        return {operationId, status, errorCode: operation.errorCode || "internal"};
+      }
+      return {operationId, status: "processing"};
     } catch (error) {
       throw fail(error);
     }
@@ -391,7 +511,124 @@ function createPointActionFunctions({functions, admin, db}) {
     return {displayName: displayName.trim()};
   });
 
-  return {recordPointAction, recordHistoryEvent, setMemberDisplayName};
+  async function requireParent(context, familyId) {
+    if (!context.auth || !context.auth.uid) {
+      throw new HttpsError("unauthenticated", "Authentification requise.");
+    }
+    const uid = context.auth.uid;
+    const familyRef = db.collection("families").doc(familyId);
+    const memberRef = familyRef.collection("members").doc(uid);
+    const [familySnap, memberSnap] = await Promise.all([
+      familyRef.get(),
+      memberRef.get(),
+    ]);
+    const actor = resolveActor({
+      uid,
+      family: familySnap.exists ? familySnap.data() : null,
+      member: memberSnap.exists ? memberSnap.data() : null,
+      managerDurableVerified: isDurableVerifiedAuth(context),
+    });
+    if (!actor) {
+      throw new HttpsError("permission-denied", "Un parent actif est requis.");
+    }
+    return {actor, familyRef};
+  }
+
+  const completePenaltyLines = functions.https.onCall(async (data, context) => {
+    try {
+      const familyId = cleanId(data && data.familyId, "family_id");
+      const punishmentId = cleanId(
+        data && data.punishmentId,
+        "punishment_id"
+      );
+      const {actor, familyRef} = await requireParent(context, familyId);
+      const punishmentRef = familyRef.collection("punishments").doc(punishmentId);
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(punishmentRef);
+        if (!snap.exists || snap.data().hasPenaltyLines !== true) {
+          throw new HttpsError("not-found", "Lignes de pénalité introuvables.");
+        }
+        tx.update(punishmentRef, {
+          completedLines: snap.data().penaltyLinesCount,
+          penaltyLinesStatus: "completed",
+          penaltyLinesCompletedAt: fieldValue.serverTimestamp(),
+          penaltyLinesCompletedBy: actor.actorUid,
+          pendingValidation: false,
+        });
+      });
+      const saved = await punishmentRef.get();
+      return {punishment: {id: saved.id, ...saved.data()}};
+    } catch (error) {
+      throw fail(error);
+    }
+  });
+
+  const updatePenaltyLines = functions.https.onCall(async (data, context) => {
+    try {
+      const familyId = cleanId(data && data.familyId, "family_id");
+      const punishmentId = cleanId(
+        data && data.punishmentId,
+        "punishment_id"
+      );
+      if (typeof data.hasPenaltyLines !== "boolean") {
+        throw new Error("INVALID_PENALTY_LINES_STATE");
+      }
+      const {actor, familyRef} = await requireParent(context, familyId);
+      const punishmentRef = familyRef.collection("punishments").doc(punishmentId);
+      const snap = await punishmentRef.get();
+      if (!snap.exists || typeof snap.data().penaltyHistoryId !== "string") {
+        throw new HttpsError("not-found", "Pénalité liée introuvable.");
+      }
+      const instruction = data.penaltyLinesInstruction == null
+        ? "" : data.penaltyLinesInstruction;
+      if (data.hasPenaltyLines &&
+          (!Number.isInteger(data.penaltyLinesCount) ||
+           data.penaltyLinesCount < 1 || data.penaltyLinesCount > 10000)) {
+        throw new Error("INVALID_PENALTY_LINES_COUNT");
+      }
+      if (typeof instruction !== "string" || instruction.trim().length > 500 ||
+          /[\u0000-\u001f]/.test(instruction)) {
+        throw new Error("INVALID_PENALTY_LINES_INSTRUCTION");
+      }
+      const patch = data.hasPenaltyLines ? {
+        hasPenaltyLines: true,
+        totalLines: data.penaltyLinesCount,
+        penaltyLinesCount: data.penaltyLinesCount,
+        text: instruction.trim(),
+        penaltyLinesInstruction: instruction.trim(),
+        completedLines: 0,
+        penaltyLinesStatus: "pending",
+        penaltyLinesCompletedAt: null,
+        penaltyLinesCompletedBy: null,
+        lastModifiedByUid: actor.actorUid,
+      } : {
+        hasPenaltyLines: false,
+        totalLines: 0,
+        penaltyLinesCount: 0,
+        text: "",
+        penaltyLinesInstruction: "",
+        completedLines: 0,
+        penaltyLinesStatus: "completed",
+        penaltyLinesCompletedAt: fieldValue.serverTimestamp(),
+        penaltyLinesCompletedBy: actor.actorUid,
+        lastModifiedByUid: actor.actorUid,
+      };
+      await punishmentRef.update(patch);
+      const saved = await punishmentRef.get();
+      return {punishment: {id: saved.id, ...saved.data()}};
+    } catch (error) {
+      throw fail(error);
+    }
+  });
+
+  return {
+    recordPointAction,
+    getPointActionStatus,
+    recordHistoryEvent,
+    setMemberDisplayName,
+    completePenaltyLines,
+    updatePenaltyLines,
+  };
 }
 
 module.exports = {
@@ -400,6 +637,7 @@ module.exports = {
   resolveActor,
   fingerprint,
   buildPointHistory,
+  buildPenaltyLines,
   validatePhotoMetadata,
   createPointActionFunctions,
 };

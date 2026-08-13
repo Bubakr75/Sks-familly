@@ -5,7 +5,6 @@ import '../config/emerald_theme.dart';
 import '../models/parent_profile.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
-import '../widgets/animated_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'pin_verification_screen.dart';
 import 'home_screen.dart';
@@ -30,8 +29,8 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeAnim = CurvedAnimation(
-        parent: _fadeController, curve: Curves.easeOutCubic);
+    _fadeAnim =
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic);
     _fadeController.forward();
   }
 
@@ -219,8 +218,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
                       Row(
                         children: [
                           Icon(Icons.shield_rounded,
-                              size: 12,
-                              color: EmeraldPalette.emeraldLight),
+                              size: 12, color: EmeraldPalette.emeraldLight),
                           const SizedBox(width: 4),
                           Text(
                             'Profil Parent',
@@ -440,17 +438,14 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
     return Row(
       children: [
         Expanded(
-            child: Divider(
-                color: EmeraldPalette.glassBorder, thickness: 1)),
+            child: Divider(color: EmeraldPalette.glassBorder, thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text('OU',
-              style:
-                  EmeraldTypography.label.copyWith(fontSize: 10)),
+          child:
+              Text('OU', style: EmeraldTypography.label.copyWith(fontSize: 10)),
         ),
         Expanded(
-            child: Divider(
-                color: EmeraldPalette.glassBorder, thickness: 1)),
+            child: Divider(color: EmeraldPalette.glassBorder, thickness: 1)),
       ],
     );
   }
@@ -546,37 +541,49 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
 
   // ===== ACTIONS =====
 
-  void _enterParentMode() {
+  Future<void> _enterParentMode() async {
     final pin = context.read<PinProvider>();
     if (!pin.isPinSet) {
       pin.unlockParentMode();
+      await context.read<FamilyProvider>().setCurrentParent('Parent');
+      if (!mounted) return;
       _navigateToHome();
       return;
     }
     Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
-    ).then((ok) {
+    ).then((ok) async {
       if (ok == true) {
+        if (!mounted) return;
+        final familyProvider = context.read<FamilyProvider>();
         context.read<PinProvider>().unlockParentMode();
+        await familyProvider.setCurrentParent('Parent');
+        if (!mounted) return;
         _navigateToHome();
       }
     });
   }
 
-  void _selectProfile(ParentProfile profile) {
+  Future<void> _selectProfile(ParentProfile profile) async {
     final pin = context.read<PinProvider>();
     if (!pin.isPinSet) {
       pin.unlockParentModeWithProfile(profile);
+      await context.read<FamilyProvider>().setCurrentParent(profile.name);
+      if (!mounted) return;
       _navigateToHome();
       return;
     }
     Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
-    ).then((ok) {
+    ).then((ok) async {
       if (ok == true) {
+        if (!mounted) return;
+        final familyProvider = context.read<FamilyProvider>();
         context.read<PinProvider>().unlockParentModeWithProfile(profile);
+        await familyProvider.setCurrentParent(profile.name);
+        if (!mounted) return;
         _navigateToHome();
       }
     });

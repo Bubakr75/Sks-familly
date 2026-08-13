@@ -145,6 +145,18 @@ class FamilyJoinApprovalPanel extends StatelessWidget {
                   (data['requestedRole'] as String? ?? '').toLowerCase();
               final deviceName = (data['deviceName'] as String? ?? '').trim();
               final isParent = role == 'parent';
+              final status =
+                  (data['status'] as String? ?? 'pending').toLowerCase();
+              final createdAt = data['createdAt'];
+              final requestedAt =
+                  createdAt is Timestamp ? createdAt.toDate().toLocal() : null;
+              final dateLabel = requestedAt == null
+                  ? 'Date non disponible'
+                  : '${requestedAt.day.toString().padLeft(2, '0')}/'
+                      '${requestedAt.month.toString().padLeft(2, '0')}/'
+                      '${requestedAt.year} à '
+                      '${requestedAt.hour.toString().padLeft(2, '0')}:'
+                      '${requestedAt.minute.toString().padLeft(2, '0')}';
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -165,6 +177,13 @@ class FamilyJoinApprovalPanel extends StatelessWidget {
                         isParent
                             ? 'Demande comme parent'
                             : 'Demande comme enfant',
+                      ),
+                      const SizedBox(height: 4),
+                      Text('Demandée le $dateLabel · État : $status'),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Approuvez uniquement si vous reconnaissez cet appareil et cette demande.',
+                        style: TextStyle(color: Colors.orange, fontSize: 12),
                       ),
                       const SizedBox(height: 14),
                       Row(

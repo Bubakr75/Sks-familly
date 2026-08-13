@@ -1,5 +1,47 @@
 import 'package:cloud_functions/cloud_functions.dart';
 
+enum PointActionStatusKind {
+  committed,
+  processing,
+  rejected,
+  unknown,
+  functionUnavailable,
+  unauthenticated,
+  networkUnavailable,
+  permissionDenied,
+  serverFailure,
+}
+
+class PointActionStatusResult {
+  const PointActionStatusResult(
+    this.kind, {
+    this.result,
+    this.errorCode,
+  });
+
+  final PointActionStatusKind kind;
+  final Map<String, dynamic>? result;
+  final String? errorCode;
+
+  bool get serviceAvailable => const {
+        PointActionStatusKind.committed,
+        PointActionStatusKind.processing,
+        PointActionStatusKind.rejected,
+        PointActionStatusKind.unknown,
+      }.contains(kind);
+}
+
+class PointActionMaintenanceException implements Exception {
+  const PointActionMaintenanceException();
+
+  static const message =
+      'Mise à jour serveur en cours. Les bonus et pénalités sont '
+      'temporairement suspendus. Votre saisie est conservée.';
+
+  @override
+  String toString() => message;
+}
+
 class PointActionDraft {
   const PointActionDraft({
     required this.actionId,
@@ -9,6 +51,9 @@ class PointActionDraft {
     required this.category,
     required this.isBonus,
     required this.hasPhoto,
+    this.penaltyLinesCount,
+    this.penaltyLinesInstruction,
+    this.onVerifying,
   });
 
   final String actionId;
@@ -18,6 +63,12 @@ class PointActionDraft {
   final String category;
   final bool isBonus;
   final bool hasPhoto;
+  final int? penaltyLinesCount;
+  final String? penaltyLinesInstruction;
+  final void Function()? onVerifying;
+
+  bool get hasPenaltyLines =>
+      !isBonus && penaltyLinesCount != null && penaltyLinesCount! > 0;
 }
 
 class PointActionRemoteException implements Exception {
@@ -103,6 +154,13 @@ class PointActionFailure {
 }
 
 PointActionFailure describePointActionFailure(Object error) {
+  if (error is PointActionMaintenanceException) {
+    return const PointActionFailure(
+      message: PointActionMaintenanceException.message,
+      stateUncertain: false,
+      functionUnavailable: true,
+    );
+  }
   String? code;
   String? serverMessage;
   if (error is FirebaseFunctionsException) {
@@ -178,9 +236,8 @@ PointActionFailure describePointActionFailure(Object error) {
     'cancelled',
   ].contains(normalizedCode)) {
     return const PointActionFailure(
-      message: 'La réponse du serveur est incertaine. Conservez cette saisie '
-          'et appuyez de nouveau sur Valider : le même identifiant empêchera '
-          'tout doublon.',
+      message: 'Vérification de l’enregistrement en attente. Votre saisie est '
+          'conservée et la vérification reprendra automatiquement.',
       stateUncertain: true,
       functionUnavailable: false,
     );

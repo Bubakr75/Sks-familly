@@ -11,10 +11,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/family_provider.dart';
+import '../models/child_model.dart';
 import '../utils/checklist_helpers.dart';
 import '../utils/motif_helpers.dart';
 import '../services/motif_preferences_service.dart';
 import '../services/action_photo_service.dart';
+import '../services/firestore_service.dart';
 import '../services/point_action_submission_service.dart';
 import '../services/storage_service.dart';
 import 'point_action_feedback.dart';
@@ -70,7 +72,15 @@ class PointActionConfig {
 /// un champ texte personnalisé pour décrire l'action précisément.
 class PointActionPanel extends StatefulWidget {
   final PointActionConfig config;
-  const PointActionPanel({super.key, required this.config});
+  final List<ChildModel>? children;
+  final Future<int> Function(PointActionDraft draft)? submitAction;
+
+  const PointActionPanel({
+    super.key,
+    required this.config,
+    this.children,
+    this.submitAction,
+  });
 
   @override
   State<PointActionPanel> createState() => _PointActionPanelState();
@@ -84,6 +94,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   ActionMotif? _selectedMotif;
   int _amount = 5;
   bool _processing = false;
+  bool _verifying = false;
   late AnimationController _celebrationController;
   late Animation<double> _celebrationAnim;
   late TextEditingController _customTextCtrl;
@@ -92,7 +103,9 @@ class _PointActionPanelState extends State<PointActionPanel>
   Map<String, int> _usage = {};
   List<ActionMotif> _sortedMotifs = [];
   final ActionPhotoService _photoService = ActionPhotoService();
-  final StorageService _storageService = StorageService();
+  StorageService? _storageServiceInstance;
+  StorageService get _storageService =>
+      _storageServiceInstance ??= StorageService();
   final PointActionSubmissionCoordinator _submissionCoordinator =
       PointActionSubmissionCoordinator();
   ActionPhoto? _photo;
@@ -100,6 +113,12 @@ class _PointActionPanelState extends State<PointActionPanel>
   String? _uploadedPhotoPath;
   bool _retryStateUncertain = false;
   bool _serverSubmissionStarted = false;
+  late bool _pointServiceAvailable;
+  bool _checkingPointService = false;
+  late final TextEditingController _amountTextCtrl;
+  late final TextEditingController _penaltyLinesCountCtrl;
+  late final TextEditingController _penaltyLinesInstructionCtrl;
+  bool? _hasPenaltyLines;
 
   @override
   void initState() {
@@ -114,8 +133,27 @@ class _PointActionPanelState extends State<PointActionPanel>
     );
     _customTextCtrl = TextEditingController();
     _customFocusNode = FocusNode();
+    _amountTextCtrl = TextEditingController(text: _amount.toString());
+    _penaltyLinesCountCtrl = TextEditingController();
+    _penaltyLinesInstructionCtrl = TextEditingController();
+    _pointServiceAvailable = widget.submitAction != null;
     _sortedMotifs = widget.config.motifs;
     _loadPreferences();
+    if (widget.submitAction == null) {
+      unawaited(_checkPointService());
+    }
+  }
+
+  Future<void> _checkPointService({bool force = false}) async {
+    if (_checkingPointService) return;
+    setState(() => _checkingPointService = true);
+    final result = await FirestoreService()
+        .checkPointActionServiceAvailability(force: force);
+    if (!mounted) return;
+    setState(() {
+      _pointServiceAvailable = result.serviceAvailable;
+      _checkingPointService = false;
+    });
   }
 
   Future<void> _loadPreferences() async {
@@ -155,30 +193,49 @@ class _PointActionPanelState extends State<PointActionPanel>
     _celebrationController.dispose();
     _customTextCtrl.dispose();
     _customFocusNode.dispose();
+    _amountTextCtrl.dispose();
+    _penaltyLinesCountCtrl.dispose();
+    _penaltyLinesInstructionCtrl.dispose();
     super.dispose();
   }
 
   bool get _isValid =>
       _selectedChildId != null &&
-      _selectedMotif != null &&
       !_processing &&
-      _isMotifValid;
+      _pointServiceAvailable &&
+      _isMotifValid &&
+      _isAmountValid &&
+      _isPenaltyLinesValid;
   bool get _editingLocked => _processing || _retryStateUncertain;
+
+  bool get _isAmountValid {
+    final value = int.tryParse(_amountTextCtrl.text);
+    return value != null && value >= 1 && value <= 999;
+  }
+
+  bool get _isPenaltyLinesValid {
+    if (widget.config.isBonus) return true;
+    if (_hasPenaltyLines == null) return false;
+    if (_hasPenaltyLines == false) return true;
+    final count = int.tryParse(_penaltyLinesCountCtrl.text.trim());
+    return count != null && count > 0 && count <= 10000;
+  }
 
   /// Un motif classique est toujours valide. "Autre" nécessite un texte non vide.
   bool get _isMotifValid {
-    if (_selectedMotif == null) return false;
-    if (_selectedMotif!.isOther) {
-      return isValidCustomText(_customTextCtrl.text);
-    }
-    return true;
+    return isPointActionReasonValid(
+      hasSelectedReason: _selectedMotif != null,
+      isOther: _selectedMotif?.isOther ?? false,
+      customText: _customTextCtrl.text,
+    );
   }
 
   void _selectMotif(ActionMotif motif) {
     if (_editingLocked) return;
     setState(() {
       _selectedMotif = motif;
-      _amount = motif.defaultPoints;
+      _amount = motif.defaultPoints.clamp(1, 999);
+      _syncAmountText();
       // Si on quitte "Autre", vider le texte et retirer le focus
       if (!motif.isOther) {
         _customTextCtrl.clear();
@@ -194,10 +251,20 @@ class _PointActionPanelState extends State<PointActionPanel>
     }
   }
 
+  void _syncAmountText() {
+    final value = _amount.toString();
+    if (_amountTextCtrl.text == value) return;
+    _amountTextCtrl.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+  }
+
   void _adjustAmount(int delta) {
     if (_editingLocked) return;
     setState(() {
       _amount = (_amount + delta).clamp(1, 999);
+      _syncAmountText();
     });
     HapticFeedback.selectionClick();
   }
@@ -206,6 +273,7 @@ class _PointActionPanelState extends State<PointActionPanel>
     if (_editingLocked) return;
     setState(() {
       _amount = value.clamp(1, 999);
+      _syncAmountText();
     });
     HapticFeedback.selectionClick();
   }
@@ -258,10 +326,14 @@ class _PointActionPanelState extends State<PointActionPanel>
   Future<void> _apply() async {
     if (_processing || !_isValid) return;
 
-    final fp = context.read<FamilyProvider>();
+    final fp = widget.children == null ? context.read<FamilyProvider>() : null;
     final messenger = ScaffoldMessenger.of(context);
     final capturedChildId = _selectedChildId!;
-    final child = fp.getChild(capturedChildId);
+    ChildModel? child;
+    final availableChildren = widget.children ?? fp!.children;
+    for (final candidate in availableChildren) {
+      if (candidate.id == capturedChildId) child = candidate;
+    }
     if (child == null) {
       messenger.showSnackBar(const SnackBar(
         content: Text(
@@ -293,19 +365,24 @@ class _PointActionPanelState extends State<PointActionPanel>
     final capturedIsBonus = widget.config.isBonus;
     final capturedCategory = widget.config.category;
     final capturedPhoto = _photo;
-    final capturedFamilyId = fp.familyId;
+    final capturedFamilyId = fp?.familyId;
     final actionId = _actionId ??= _uuid.v4();
-    final reason = buildReason(
+    final reason = resolvePointActionReason(
       isOther: capturedMotif.isOther,
-      emoji: capturedMotif.emoji,
-      label: capturedMotif.label,
+      selectedLabel: capturedMotif.label,
       customText: _customTextCtrl.text,
-    );
+    )!;
     final actualAmount = actualPenaltyAmount(
       requested: capturedAmount,
       balance: child.points,
       isBonus: capturedIsBonus,
     );
+    final capturedLinesCount = _hasPenaltyLines == true
+        ? int.parse(_penaltyLinesCountCtrl.text.trim())
+        : null;
+    final capturedLinesInstruction = _hasPenaltyLines == true
+        ? _penaltyLinesInstructionCtrl.text.trim()
+        : null;
 
     if (actualAmount < 1) {
       setState(() => _processing = false);
@@ -326,6 +403,11 @@ class _PointActionPanelState extends State<PointActionPanel>
         category: capturedCategory,
         isBonus: capturedIsBonus,
         hasPhoto: capturedPhoto != null,
+        penaltyLinesCount: capturedLinesCount,
+        penaltyLinesInstruction: capturedLinesInstruction,
+        onVerifying: () {
+          if (mounted) setState(() => _verifying = true);
+        },
       ),
       existingPhotoStoragePath: _uploadedPhotoPath,
       uploadPhoto: () async {
@@ -346,10 +428,27 @@ class _PointActionPanelState extends State<PointActionPanel>
         _uploadedPhotoPath = path;
         return path;
       },
-      deletePhoto: _storageService.deleteActionPhoto,
+      deletePhoto: (path) => _storageService.deleteActionPhoto(path),
       recordAction: (photoStoragePath) async {
         _serverSubmissionStarted = true;
-        final entry = await fp.addPoints(
+        final draft = PointActionDraft(
+          actionId: actionId,
+          childId: capturedChildId,
+          amount: actualAmount,
+          reason: reason,
+          category: capturedCategory,
+          isBonus: capturedIsBonus,
+          hasPhoto: capturedPhoto != null,
+          penaltyLinesCount: capturedLinesCount,
+          penaltyLinesInstruction: capturedLinesInstruction,
+          onVerifying: () {
+            if (mounted) setState(() => _verifying = true);
+          },
+        );
+        if (widget.submitAction != null) {
+          return widget.submitAction!(draft);
+        }
+        final entry = await fp!.addPoints(
           capturedChildId,
           actualAmount,
           reason,
@@ -357,6 +456,9 @@ class _PointActionPanelState extends State<PointActionPanel>
           isBonus: capturedIsBonus,
           actionId: actionId,
           photoStoragePath: photoStoragePath,
+          penaltyLinesCount: capturedLinesCount,
+          penaltyLinesInstruction: capturedLinesInstruction,
+          onVerifying: draft.onVerifying,
         );
         return entry.points;
       },
@@ -372,6 +474,7 @@ class _PointActionPanelState extends State<PointActionPanel>
     if (!result.success) {
       setState(() {
         _processing = false;
+        _verifying = false;
         _retryStateUncertain = result.retryStateUncertain;
         _uploadedPhotoPath = result.photoStoragePath;
       });
@@ -392,6 +495,10 @@ class _PointActionPanelState extends State<PointActionPanel>
       _uploadedPhotoPath = null;
       _retryStateUncertain = false;
       _processing = false;
+      _verifying = false;
+      _hasPenaltyLines = null;
+      _penaltyLinesCountCtrl.clear();
+      _penaltyLinesInstructionCtrl.clear();
     });
 
     if (!MediaQuery.of(context).disableAnimations) {
@@ -530,8 +637,8 @@ class _PointActionPanelState extends State<PointActionPanel>
 
   @override
   Widget build(BuildContext context) {
-    final fp = context.watch<FamilyProvider>();
-    final children = fp.children;
+    final fp = widget.children == null ? context.watch<FamilyProvider>() : null;
+    final children = widget.children ?? fp!.children;
     final config = widget.config;
 
     // Auto-sélection du premier enfant
@@ -539,399 +646,591 @@ class _PointActionPanelState extends State<PointActionPanel>
       _selectedChildId = children.first.id;
     }
 
-    final selectedChild =
-        _selectedChildId != null ? fp.getChild(_selectedChildId!) : null;
+    ChildModel? selectedChild;
+    for (final child in children) {
+      if (child.id == _selectedChildId) selectedChild = child;
+    }
 
     return Stack(
       children: [
         // Contenu principal
-        SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Titre ──
-              Text(config.title,
-                  style: TextStyle(
-                      color: config.primaryColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 2),
-              Text(config.subtitle,
-                  style: const TextStyle(color: Colors.white54, fontSize: 14)),
-              const SizedBox(height: 20),
+        Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                key: const ValueKey('point_action_scroll_view'),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Titre ──
+                    Text(config.title,
+                        style: TextStyle(
+                            color: config.primaryColor,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 2),
+                    Text(config.subtitle,
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 14)),
+                    const SizedBox(height: 20),
 
-              // ── Sélection enfant ──
-              if (children.length > 1)
-                SizedBox(
-                  height: 60,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: children.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (_, i) {
-                      final c = children[i];
-                      final isSel = c.id == _selectedChildId;
-                      return GestureDetector(
-                        onTap: _editingLocked
-                            ? null
-                            : () => setState(() {
-                                  _selectedChildId = c.id;
-                                  _selectedMotif = null;
-                                  _customTextCtrl.clear();
-                                  _customFocusNode.unfocus();
-                                }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSel
-                                ? config.primaryColor.withValues(alpha: 0.15)
-                                : Colors.white.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                                color: isSel
-                                    ? config.primaryColor
-                                    : Colors.white12,
-                                width: isSel ? 2 : 1),
+                    // ── Sélection enfant ──
+                    if (children.length > 1)
+                      SizedBox(
+                        height: 60,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: children.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 10),
+                          itemBuilder: (_, i) {
+                            final c = children[i];
+                            final isSel = c.id == _selectedChildId;
+                            return GestureDetector(
+                              onTap: _editingLocked
+                                  ? null
+                                  : () => setState(() {
+                                        _selectedChildId = c.id;
+                                        _selectedMotif = null;
+                                        _customTextCtrl.clear();
+                                        _customFocusNode.unfocus();
+                                      }),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSel
+                                      ? config.primaryColor
+                                          .withValues(alpha: 0.15)
+                                      : Colors.white.withValues(alpha: 0.04),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                      color: isSel
+                                          ? config.primaryColor
+                                          : Colors.white12,
+                                      width: isSel ? 2 : 1),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(c.avatar.isNotEmpty ? c.avatar : '👤',
+                                        style: const TextStyle(fontSize: 22)),
+                                    const SizedBox(width: 6),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(c.name,
+                                            style: TextStyle(
+                                                color: isSel
+                                                    ? config.accentColor
+                                                    : Colors.white70,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600)),
+                                        Text('${c.points} pts',
+                                            style: TextStyle(
+                                                color: config.primaryColor
+                                                    .withValues(alpha: 0.7),
+                                                fontSize: 11)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Cartes de motifs ──
+                    Text('Choisis un motif',
+                        style: TextStyle(
+                            color: config.accentColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 158 +
+                          ((MediaQuery.textScalerOf(context).scale(14) - 14) *
+                                  10)
+                              .clamp(0, 120),
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _sortedMotifs
+                            .where((motif) => !motif.isOther)
+                            .length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (_, index) {
+                          final motifs = _sortedMotifs
+                              .where((motif) => !motif.isOther)
+                              .toList(growable: false);
+                          return _buildMotifCard(motifs[index], width: 150);
+                        },
+                      ),
+                    ),
+                    if (_sortedMotifs.any((motif) => motif.isOther)) ...[
+                      const SizedBox(height: 10),
+                      _buildMotifCard(
+                        _sortedMotifs.firstWhere((motif) => motif.isOther),
+                        width: double.infinity,
+                      ),
+                    ],
+
+                    // ── Champ texte pour motif "Autre" ──
+                    if (_selectedMotif?.isOther == true) ...[
+                      const SizedBox(height: 10),
+                      TextField(
+                        key: const ValueKey('point_action_custom_reason'),
+                        controller: _customTextCtrl,
+                        focusNode: _customFocusNode,
+                        enabled: !_editingLocked,
+                        maxLength: 100,
+                        maxLines: 2,
+                        textInputAction: TextInputAction.done,
+                        style:
+                            TextStyle(color: config.accentColor, fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: widget.config.isBonus
+                              ? 'Décris la bonne action…'
+                              : 'Décris le comportement…',
+                          hintStyle: const TextStyle(color: Colors.white24),
+                          filled: true,
+                          fillColor:
+                              config.primaryColor.withValues(alpha: 0.08),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                                color:
+                                    config.primaryColor.withValues(alpha: 0.3)),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                                color: config.primaryColor, width: 2),
+                          ),
+                          counterStyle: const TextStyle(
+                              color: Colors.white24, fontSize: 11),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 24),
+                    ] else ...[
+                      const SizedBox(height: 24),
+                    ],
+
+                    // ── Montant ──
+                    if (_selectedMotif != null) ...[
+                      Text('Montant',
+                          style: TextStyle(
+                              color: config.accentColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            onPressed:
+                                _editingLocked ? null : () => _adjustAmount(-1),
+                            icon: const Icon(Icons.remove_circle_outline,
+                                color: Colors.white54, size: 36),
+                          ),
+                          const SizedBox(width: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            decoration: BoxDecoration(
+                              color:
+                                  config.primaryColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: config.primaryColor
+                                      .withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  widget.config.isBonus ? '+' : '-',
+                                  style: TextStyle(
+                                    color: config.primaryColor,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                SizedBox(
+                                  width: 72,
+                                  child: TextField(
+                                    controller: _amountTextCtrl,
+                                    enabled: !_editingLocked,
+                                    keyboardType: TextInputType.number,
+                                    textAlign: TextAlign.center,
+                                    maxLength: 3,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    style: TextStyle(
+                                      color: config.primaryColor,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      border: InputBorder.none,
+                                      counterText: '',
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                    onChanged: (text) {
+                                      final value = int.tryParse(text);
+                                      if (value == null ||
+                                          value < 1 ||
+                                          value > 999) {
+                                        setState(() {});
+                                        return;
+                                      }
+                                      setState(() => _amount = value);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          IconButton(
+                            onPressed:
+                                _editingLocked ? null : () => _adjustAmount(1),
+                            icon: const Icon(Icons.add_circle_outline,
+                                color: Colors.white54, size: 36),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Presets rapides
+                      Wrap(
+                        spacing: 8,
+                        children: [1, 2, 3, 5, 10].map((v) {
+                          return GestureDetector(
+                            onTap: _editingLocked ? null : () => _setAmount(v),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _amount == v
+                                    ? config.primaryColor.withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: _amount == v
+                                        ? config.primaryColor
+                                            .withValues(alpha: 0.5)
+                                        : Colors.white12),
+                              ),
+                              child: Text('$v',
+                                  style: TextStyle(
+                                      color: _amount == v
+                                          ? config.accentColor
+                                          : Colors.white54,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      if (!widget.config.isBonus) ...[
+                        Text(
+                          'Cette pénalité comporte-t-elle des lignes à faire ?',
+                          style: TextStyle(
+                            color: config.accentColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        RadioGroup<bool>(
+                          groupValue: _hasPenaltyLines,
+                          onChanged: _editingLocked
+                              ? (_) {}
+                              : (value) => setState(() {
+                                    _hasPenaltyLines = value;
+                                    if (value == false) {
+                                      _penaltyLinesCountCtrl.clear();
+                                      _penaltyLinesInstructionCtrl.clear();
+                                    }
+                                  }),
+                          child: const Row(
                             children: [
-                              Text(c.avatar.isNotEmpty ? c.avatar : '👤',
-                                  style: const TextStyle(fontSize: 22)),
-                              const SizedBox(width: 6),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              Expanded(
+                                child: RadioListTile<bool>(
+                                  value: false,
+                                  title: Text('Non'),
+                                ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<bool>(
+                                  value: true,
+                                  title: Text('Oui'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_hasPenaltyLines == true) ...[
+                          TextField(
+                            key: const ValueKey('penalty_lines_count'),
+                            controller: _penaltyLinesCountCtrl,
+                            enabled: !_editingLocked,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: 'Nombre de lignes à faire',
+                              errorText: null,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          if (_penaltyLinesCountCtrl.text.isNotEmpty &&
+                              !_isPenaltyLinesValid)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 6),
+                              child: Text(
+                                'Le nombre doit être un entier strictement positif.',
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
+                            ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _penaltyLinesInstructionCtrl,
+                            enabled: !_editingLocked,
+                            maxLength: 500,
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              labelText:
+                                  'Consigne ou texte à recopier (facultatif)',
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.deepOrange.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: Colors.deepOrangeAccent),
+                            ),
+                            child: const Text(
+                              "L’accès aux écrans sera interdit jusqu’à validation des lignes par un parent.",
+                              style: TextStyle(
+                                color: Colors.orangeAccent,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                      ],
+
+                      // ── Photo facultative ──
+                      Text('Photo facultative',
+                          style: TextStyle(
+                              color: config.accentColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 10),
+                      if (_photo == null)
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _editingLocked
+                                  ? null
+                                  : () => _pickPhoto(ImageSource.camera),
+                              icon: const Icon(Icons.photo_camera_rounded),
+                              label: const Text('Appareil photo'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _editingLocked
+                                  ? null
+                                  : () => _pickPhoto(ImageSource.gallery),
+                              icon: const Icon(Icons.photo_library_rounded),
+                              label: const Text('Galerie'),
+                            ),
+                          ],
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Column(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.memory(
+                                  _photo!.bytes,
+                                  height: 180,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  Text(c.name,
-                                      style: TextStyle(
-                                          color: isSel
-                                              ? config.accentColor
-                                              : Colors.white70,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600)),
-                                  Text('${c.points} pts',
-                                      style: TextStyle(
-                                          color: config.primaryColor
-                                              .withValues(alpha: 0.7),
-                                          fontSize: 11)),
+                                  TextButton.icon(
+                                    onPressed: _editingLocked
+                                        ? null
+                                        : () => _pickPhoto(ImageSource.gallery),
+                                    icon: const Icon(Icons.swap_horiz_rounded),
+                                    label: const Text('Remplacer'),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed:
+                                        _editingLocked ? null : _removePhoto,
+                                    icon: const Icon(
+                                        Icons.delete_outline_rounded),
+                                    label: const Text('Retirer'),
+                                  ),
                                 ],
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
 
-              const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-              // ── Cartes de motifs ──
-              Text('Choisis un motif',
-                  style: TextStyle(
-                      color: config.accentColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700)),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 146,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount:
-                      _sortedMotifs.where((motif) => !motif.isOther).length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
-                  itemBuilder: (_, index) {
-                    final motifs = _sortedMotifs
-                        .where((motif) => !motif.isOther)
-                        .toList(growable: false);
-                    return _buildMotifCard(motifs[index], width: 150);
-                  },
-                ),
-              ),
-              if (_sortedMotifs.any((motif) => motif.isOther)) ...[
-                const SizedBox(height: 10),
-                _buildMotifCard(
-                  _sortedMotifs.firstWhere((motif) => motif.isOther),
-                  width: double.infinity,
-                ),
-              ],
-
-              // ── Champ texte pour motif "Autre" ──
-              if (_selectedMotif?.isOther == true) ...[
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _customTextCtrl,
-                  focusNode: _customFocusNode,
-                  enabled: !_editingLocked,
-                  maxLength: 100,
-                  maxLines: 2,
-                  textInputAction: TextInputAction.done,
-                  style: TextStyle(color: config.accentColor, fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText: widget.config.isBonus
-                        ? 'Décris la bonne action…'
-                        : 'Décris le comportement…',
-                    hintStyle: const TextStyle(color: Colors.white24),
-                    filled: true,
-                    fillColor: config.primaryColor.withValues(alpha: 0.08),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                          color: config.primaryColor.withValues(alpha: 0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          BorderSide(color: config.primaryColor, width: 2),
-                    ),
-                    counterStyle:
-                        const TextStyle(color: Colors.white24, fontSize: 11),
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 24),
-              ] else ...[
-                const SizedBox(height: 24),
-              ],
-
-              // ── Montant ──
-              if (_selectedMotif != null) ...[
-                Text('Montant',
-                    style: TextStyle(
-                        color: config.accentColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700)),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed:
-                          _editingLocked ? null : () => _adjustAmount(-1),
-                      icon: const Icon(Icons.remove_circle_outline,
-                          color: Colors.white54, size: 36),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: config.primaryColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: config.primaryColor.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                          '${widget.config.isBonus ? "+" : "-"}$_amount',
-                          style: TextStyle(
-                              color: config.primaryColor,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900)),
-                    ),
-                    const SizedBox(width: 16),
-                    IconButton(
-                      onPressed: _editingLocked ? null : () => _adjustAmount(1),
-                      icon: const Icon(Icons.add_circle_outline,
-                          color: Colors.white54, size: 36),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Presets rapides
-                Wrap(
-                  spacing: 8,
-                  children: [1, 2, 3, 5, 10].map((v) {
-                    return GestureDetector(
-                      onTap: _editingLocked ? null : () => _setAmount(v),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _amount == v
-                              ? config.primaryColor.withValues(alpha: 0.2)
-                              : Colors.white.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: _amount == v
-                                  ? config.primaryColor.withValues(alpha: 0.5)
-                                  : Colors.white12),
-                        ),
-                        child: Text('$v',
-                            style: TextStyle(
-                                color: _amount == v
-                                    ? config.accentColor
-                                    : Colors.white54,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700)),
-                      ),
-                    );
-                  }).toList(),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ── Photo facultative ──
-                Text('Photo facultative',
-                    style: TextStyle(
-                        color: config.accentColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700)),
-                const SizedBox(height: 10),
-                if (_photo == null)
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _editingLocked
-                            ? null
-                            : () => _pickPhoto(ImageSource.camera),
-                        icon: const Icon(Icons.photo_camera_rounded),
-                        label: const Text('Appareil photo'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _editingLocked
-                            ? null
-                            : () => _pickPhoto(ImageSource.gallery),
-                        icon: const Icon(Icons.photo_library_rounded),
-                        label: const Text('Galerie'),
-                      ),
-                    ],
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.memory(
-                            _photo!.bytes,
-                            height: 180,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
+                      // ── Aperçu ──
+                      if (selectedChild != null)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color:
+                                    config.primaryColor.withValues(alpha: 0.2)),
+                          ),
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              Text(
+                                  selectedChild.avatar.isNotEmpty
+                                      ? selectedChild.avatar
+                                      : '👤',
+                                  style: const TextStyle(fontSize: 24)),
+                              const SizedBox(width: 10),
+                              Text('${selectedChild.name}:',
+                                  style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                              const SizedBox(width: 8),
+                              Text('${selectedChild.points}',
+                                  style: const TextStyle(
+                                      color: Colors.white38, fontSize: 18)),
+                              const SizedBox(width: 8),
+                              Icon(Icons.arrow_forward_rounded,
+                                  color: config.primaryColor
+                                      .withValues(alpha: 0.5),
+                                  size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                  widget.config.isBonus
+                                      ? '${selectedChild.points + _amount}'
+                                      : '${(selectedChild.points - (selectedChild.points <= 0 ? 0 : _amount.clamp(1, selectedChild.points))).clamp(0, 999)}',
+                                  style: TextStyle(
+                                      color: config.primaryColor,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800)),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton.icon(
-                              onPressed: _editingLocked
-                                  ? null
-                                  : () => _pickPhoto(ImageSource.gallery),
-                              icon: const Icon(Icons.swap_horiz_rounded),
-                              label: const Text('Remplacer'),
-                            ),
-                            TextButton.icon(
-                              onPressed: _editingLocked ? null : _removePhoto,
-                              icon: const Icon(Icons.delete_outline_rounded),
-                              label: const Text('Retirer'),
-                            ),
-                          ],
+
+                      const SizedBox(height: 16),
+
+                      // ── Historique récent (3 dernières) ──
+                      if (fp != null)
+                        ..._buildRecentHistory(fp, selectedChild?.id ?? ''),
+
+                      if (!_pointServiceAvailable) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          PointActionMaintenanceException.message,
+                          key: ValueKey('point_action_maintenance_message'),
+                          style: TextStyle(color: Colors.orangeAccent),
+                          textAlign: TextAlign.center,
+                        ),
+                        TextButton.icon(
+                          onPressed: _checkingPointService
+                              ? null
+                              : () => _checkPointService(force: true),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Vérifier à nouveau'),
                         ),
                       ],
-                    ),
-                  ),
 
-                const SizedBox(height: 20),
-
-                // ── Aperçu ──
-                if (selectedChild != null)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: config.primaryColor.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                            selectedChild.avatar.isNotEmpty
-                                ? selectedChild.avatar
-                                : '👤',
-                            style: const TextStyle(fontSize: 24)),
-                        const SizedBox(width: 10),
-                        Text('${selectedChild.name}:',
-                            style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600)),
-                        const SizedBox(width: 8),
-                        Text('${selectedChild.points}',
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 18)),
-                        const SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded,
-                            color: config.primaryColor.withValues(alpha: 0.5),
-                            size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                            widget.config.isBonus
-                                ? '${selectedChild.points + _amount}'
-                                : '${(selectedChild.points - (selectedChild.points <= 0 ? 0 : _amount.clamp(1, selectedChild.points))).clamp(0, 999)}',
-                            style: TextStyle(
-                                color: config.primaryColor,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800)),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 16),
-
-                // ── Historique récent (3 dernières) ──
-                ..._buildRecentHistory(fp, selectedChild?.id ?? ''),
-
-                const SizedBox(height: 20),
-              ],
-            ],
-          ),
-        ),
-
-        // ── Bouton flottant de validation ──
-        Positioned(
-          bottom: 20,
-          left: 20,
-          right: 20,
-          child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isValid ? config.primaryColor : Colors.white12,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              elevation: _isValid ? 6 : 0,
+                      const SizedBox(height: 20),
+                    ],
+                  ],
+                ),
+              ),
             ),
-            onPressed: _isValid ? _apply : null,
-            icon: _processing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Icon(config.buttonIcon),
-            label: Text(
-              _processing
-                  ? 'Enregistrement...'
-                  : _retryStateUncertain
-                      ? 'Réessayer sans doublon'
-                      : config.buttonText,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  key: const ValueKey('point_action_apply_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        _isValid ? config.primaryColor : Colors.white24,
+                    disabledBackgroundColor: const Color(0xFF45524E),
+                    disabledForegroundColor: Colors.white70,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    elevation: _isValid ? 6 : 0,
+                  ),
+                  onPressed: _isValid ? _apply : null,
+                  icon: _processing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : Icon(config.buttonIcon),
+                  label: Text(
+                    _processing
+                        ? (_verifying
+                            ? 'Vérification de l’enregistrement…'
+                            : 'Enregistrement…')
+                        : _retryStateUncertain
+                            ? 'Réessayer sans doublon'
+                            : config.buttonText,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
 
         // ── Animation de célébration ──

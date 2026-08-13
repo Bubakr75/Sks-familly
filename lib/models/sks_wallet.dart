@@ -50,6 +50,11 @@ class SksWalletOperation {
   final String actorUid;
   final int balanceAfter;
   final DateTime createdAt;
+  final String status;
+  final DateTime? reversedAt;
+  final String? reversedBy;
+  final String? reversalTransactionId;
+  final bool pointsDebited;
 
   const SksWalletOperation({
     required this.id,
@@ -61,6 +66,11 @@ class SksWalletOperation {
     required this.actorUid,
     required this.balanceAfter,
     required this.createdAt,
+    this.status = 'active',
+    this.reversedAt,
+    this.reversedBy,
+    this.reversalTransactionId,
+    this.pointsDebited = false,
   });
 
   factory SksWalletOperation.fromMap(Map<String, dynamic> map) {
@@ -74,8 +84,17 @@ class SksWalletOperation {
       actorUid: map['actorUid'] as String? ?? '',
       balanceAfter: (map['balanceAfter'] as num?)?.toInt() ?? 0,
       createdAt: _walletDate(map['createdAt']),
+      status: map['status'] as String? ?? 'active',
+      reversedAt:
+          map['reversedAt'] == null ? null : _walletDate(map['reversedAt']),
+      reversedBy: map['reversedBy'] as String?,
+      reversalTransactionId: map['reversalTransactionId'] as String?,
+      pointsDebited: map['pointsDebited'] == true,
     );
   }
+
+  bool get canBeReversed =>
+      type == 'credit' && pointsDebited && status != 'reversed';
 }
 
 class SksWalletAdjustmentResult {

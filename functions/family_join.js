@@ -400,10 +400,18 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
             currentMember.exists &&
             currentMember.data().active === true
           ) {
-            throw new HttpsError(
-              "already-exists",
-              "Cet appareil appartient deja a cette famille."
-            );
+            const activeMember = currentMember.data();
+            const activeRequestedRole =
+              activeMember.role === "child" ? "child" : "parent";
+
+            // Le compte appartient deja a cette famille. Retourner un resultat
+            // compatible avec le client afin qu'il restaure son acces local,
+            // sans creer une nouvelle demande et sans nouvelle approbation.
+            return {
+              alreadyPending: true,
+              alreadyMember: true,
+              requestedRole: activeRequestedRole,
+            };
           }
 
           if (
@@ -438,8 +446,12 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
         return {
           familyId,
           requestId: requesterUid,
-          status: "sent",
+          status: result.alreadyMember === true ? "approved" : "sent",
           alreadyPending: result.alreadyPending,
+          alreadyMember: result.alreadyMember === true,
+          memberReady: result.alreadyMember === true,
+          activationState:
+            result.alreadyMember === true ? "ready" : "approval-pending",
           requestedRole: result.requestedRole,
         };
       } catch (error) {
@@ -470,7 +482,48 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
           memberRef.get(),
         ]);
 
-        if (!requestSnapshot.exists) {
+        const authenticatedActiveMember =
+          memberSnapshot.exists &&
+          memberSnapshot.data().active === true &&
+          memberSnapshot.data().uid === requesterUid;
+
+        // Un membre Firebase d?j? actif doit pouvoir restaurer son acc?s,
+        // m?me si une ancienne demande locale est encore marqu?e pending.
+        if (!requestSnapshot.exists || authenticatedActiveMember) {
+          const existingMember = memberSnapshot.exists
+            ? memberSnapshot.data()
+            : null;
+          const existingRole =
+            existingMember && existingMember.role === "child"
+              ? "child"
+              : "parent";
+          const existingChildId =
+            existingRole === "child" &&
+            existingMember &&
+            typeof existingMember.childId === "string" &&
+            existingMember.childId.trim().length > 0
+              ? existingMember.childId.trim()
+              : null;
+
+          // Recuperation d'un acces local perdu apres une deconnexion :
+          // seul le membre Firebase authentifie, deja actif dans cette
+          // famille, peut restaurer son propre rattachement.
+          if (
+            existingMember &&
+            existingMember.active === true &&
+            existingMember.uid === requesterUid &&
+            (existingRole !== "child" || existingChildId)
+          ) {
+            return {
+              familyId,
+              status: "approved",
+              activationState: "ready",
+              memberReady: true,
+              role: existingRole,
+              childId: existingChildId,
+            };
+          }
+
           throw new HttpsError(
             "not-found",
             "Demande de connexion introuvable."

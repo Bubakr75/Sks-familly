@@ -46,6 +46,16 @@ exports.revokeFamilyRecoveryCode =
 exports.recoverFamilyOwnership =
   familyOwnershipFunctions.recoverFamilyOwnership;
 
+const {
+  createFamilyOwnershipDiagnosticFunctions,
+} = require("./family_ownership_diagnostic");
+const familyOwnershipDiagnosticFunctions =
+  createFamilyOwnershipDiagnosticFunctions({functions, db});
+exports.getFamilyOwnershipDiagnostic =
+  familyOwnershipDiagnosticFunctions.getFamilyOwnershipDiagnostic;
+exports.prepareHistoricalOwnerMigrationDryRun =
+  familyOwnershipDiagnosticFunctions.prepareHistoricalOwnerMigrationDryRun;
+
 const {createFamilyInboxFunctions} = require("./family_inbox");
 const familyInboxFunctions =
   createFamilyInboxFunctions({functions, admin, db});
@@ -55,8 +65,11 @@ const {createPointActionFunctions} = require("./point_actions");
 const pointActionFunctions =
   createPointActionFunctions({functions, admin, db});
 exports.recordPointAction = pointActionFunctions.recordPointAction;
+exports.getPointActionStatus = pointActionFunctions.getPointActionStatus;
 exports.recordHistoryEvent = pointActionFunctions.recordHistoryEvent;
 exports.setMemberDisplayName = pointActionFunctions.setMemberDisplayName;
+exports.completePenaltyLines = pointActionFunctions.completePenaltyLines;
+exports.updatePenaltyLines = pointActionFunctions.updatePenaltyLines;
 
 const {
   createFamilyManagementFunctions,
@@ -79,6 +92,7 @@ const walletFunctions = createWalletFunctions({
 });
 
 exports.adjustWallet = walletFunctions.adjustWallet;
+exports.reverseWalletOperation = walletFunctions.reverseWalletOperation;
 
 const {
   createSecureChildOperationFunctions,

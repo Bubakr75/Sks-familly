@@ -161,6 +161,13 @@ class PendingRequestsScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton.icon(
+                            onPressed: () =>
+                                _showRequestDetails(context, fp, r),
+                            icon: const Icon(Icons.visibility_outlined),
+                            label: const Text('Voir le motif'),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
                             onPressed: () => _showRejectDialog(context, fp, r),
                             icon: const Icon(Icons.close, color: Colors.red),
                             label: const Text('Refuser',
@@ -204,6 +211,57 @@ class PendingRequestsScreen extends StatelessWidget {
   }
 
   /// Dialogue d'approbation avec modification des points + commentaire
+  void _showRequestDetails(
+    BuildContext context,
+    FamilyProvider provider,
+    PendingRequest request,
+  ) {
+    final childName =
+        provider.getChild(request.childId)?.name ?? 'Enfant';
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${_typeLabel(request.type)} ? $childName'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Motif',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              SelectableText(
+                request.text.trim().isEmpty
+                    ? 'Aucun motif indiqu?.'
+                    : request.text,
+              ),
+              if (request.amount > 0) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Montant : ${request.amount}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Text('Propos? par ${request.requestedBy}'),
+              const SizedBox(height: 4),
+              Text(_formatDate(request.createdAt)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showApproveDialog(BuildContext context, FamilyProvider fp, PendingRequest r) {
     final amountCtrl = TextEditingController(text: r.amount.toString());
     final commentCtrl = TextEditingController();

@@ -83,9 +83,10 @@ function buildWalletOperationData({
   operation,
   actorUid,
   balanceAfter,
+  childPointsAfter,
   timestamp,
 }) {
-  return {
+  const data = {
     childId: operation.childId,
     type: operation.type,
     amount: operation.amount,
@@ -97,7 +98,14 @@ function buildWalletOperationData({
     actorUid,
     balanceAfter,
     createdAt: timestamp,
+    pointsKind: "behavior_points",
+    pointsDebited: operation.type === "credit",
+    pointsReturned: operation.type === "debit",
   };
+  if (Number.isInteger(childPointsAfter)) {
+    data.childPointsAfter = childPointsAfter;
+  }
+  return data;
 }
 
 function isMatchingWalletOperation({
@@ -126,6 +134,47 @@ function calculateWalletBalance({
       : currentBalance - amount;
   if (balance < 0) throw new Error("INSUFFICIENT_BALANCE");
   return balance;
+}
+
+function calculateChildPointsAfterWalletCredit({
+  currentChildPoints,
+  type,
+  amount,
+}) {
+  if (!Number.isInteger(currentChildPoints) || currentChildPoints < 0) {
+    throw new Error("INVALID_CHILD_POINTS_BALANCE");
+  }
+  if (type === "credit" && currentChildPoints < amount) {
+    throw new Error("INSUFFICIENT_CHILD_POINTS");
+  }
+  return type === "credit"
+    ? currentChildPoints - amount
+    : currentChildPoints + amount;
+}
+
+function normalizeWalletReversal(data) {
+  return {
+    familyId: cleanWalletDocumentId(data && data.familyId, "family_id"),
+    childId: cleanWalletDocumentId(data && data.childId, "child_id"),
+    operationId: cleanWalletDocumentId(
+      data && data.operationId,
+      "operation_id"
+    ),
+  };
+}
+
+function validateReversibleWalletOperation(operation, childId) {
+  if (!operation ||
+      operation.childId !== childId ||
+      operation.type !== "credit" ||
+      operation.pointsDebited !== true ||
+      operation.pointsKind !== "behavior_points" ||
+      !Number.isInteger(operation.amount) ||
+      operation.amount < 1 ||
+      operation.amount > MAX_WALLET_AMOUNT) {
+    throw new Error("OPERATION_NOT_REVERSIBLE");
+  }
+  return operation.amount;
 }
 
 function createWalletFunctions({
@@ -158,6 +207,12 @@ function createWalletFunctions({
       return new HttpsError(
         "failed-precondition",
         "Le solde de la cagnotte est insuffisant."
+      );
+    }
+    if (error && error.message === "INSUFFICIENT_CHILD_POINTS") {
+      return new HttpsError(
+        "failed-precondition",
+        "Le solde de points de l'enfant est insuffisant."
       );
     }
     if (error && error.message === "IDEMPOTENCY_CONFLICT") {
@@ -201,6 +256,9 @@ function createWalletFunctions({
         const operationRef = walletRef
           .collection("operations")
           .doc(operation.operationId);
+        const historyRef = familyRef
+          .collection("history")
+          .doc(`wallet_${operation.operationId}`);
 
         return await db.runTransaction(async (transaction) => {
           const [
@@ -265,6 +323,12 @@ function createWalletFunctions({
             type: operation.type,
             amount: operation.amount,
           });
+          const childData = childSnapshot.data() || {};
+          const childPointsAfter = calculateChildPointsAfterWalletCredit({
+            currentChildPoints: childData.points,
+            type: operation.type,
+            amount: operation.amount,
+          });
 
           const timestamp = fieldValue.serverTimestamp();
           const walletData = {
@@ -281,19 +345,35 @@ function createWalletFunctions({
             walletData,
             {merge: true}
           );
+          transaction.update(childRef, {points: childPointsAfter});
           transaction.create(
             operationRef,
             buildWalletOperationData({
               operation,
               actorUid,
               balanceAfter: balance,
+              childPointsAfter,
               timestamp,
             })
           );
+          if (operation.type === "debit") {
+            transaction.create(historyRef, {
+              childId: operation.childId,
+              points: operation.amount,
+              reason: `Restitution cagnotte : ${operation.reason}`,
+              category: "wallet_withdrawal",
+              isBonus: true,
+              date: timestamp,
+              createdAt: timestamp,
+              actionByUid: actorUid,
+              walletOperationId: operation.operationId,
+            });
+          }
 
           return {
             operationId: operation.operationId,
             balance,
+            childPoints: childPointsAfter,
             idempotent: false,
           };
         });
@@ -303,7 +383,140 @@ function createWalletFunctions({
     }
   );
 
-  return {adjustWallet};
+  const reverseWalletOperation = functions.https.onCall(
+    async (data, context) => {
+      try {
+        if (!context.auth || !context.auth.uid) {
+          throw new HttpsError(
+            "unauthenticated",
+            "Une authentification Firebase est requise."
+          );
+        }
+        const actorUid = context.auth.uid;
+        const reversal = normalizeWalletReversal(data);
+        const familyRef = db.collection("families").doc(reversal.familyId);
+        const memberRef = familyRef.collection("members").doc(actorUid);
+        const childRef = familyRef.collection("children").doc(reversal.childId);
+        const walletRef = familyRef.collection("wallets").doc(reversal.childId);
+        const operationRef = walletRef
+          .collection("operations")
+          .doc(reversal.operationId);
+        const reversalId = `reversal_${reversal.operationId}`;
+        const reversalRef = walletRef.collection("operations").doc(reversalId);
+        const historyRef = familyRef.collection("history").doc(reversalId);
+
+        return await db.runTransaction(async (transaction) => {
+          const [familySnap, memberSnap, childSnap, walletSnap,
+            operationSnap, reversalSnap] = await Promise.all([
+            transaction.get(familyRef),
+            transaction.get(memberRef),
+            transaction.get(childRef),
+            transaction.get(walletRef),
+            transaction.get(operationRef),
+            transaction.get(reversalRef),
+          ]);
+          if (!familySnap.exists || !childSnap.exists || !walletSnap.exists) {
+            throw new HttpsError("not-found", "Famille, enfant ou cagnotte introuvable.");
+          }
+          if (!isAuthorizedWalletParent({
+            uid: actorUid,
+            family: familySnap.data(),
+            member: memberSnap.exists ? memberSnap.data() : null,
+          })) {
+            throw new HttpsError(
+              "permission-denied",
+              "Seul un parent autorisé peut annuler cette opération."
+            );
+          }
+          if (!operationSnap.exists) {
+            throw new HttpsError("not-found", "Opération introuvable.");
+          }
+          if (reversalSnap.exists) {
+            const existing = reversalSnap.data();
+            return {
+              operationId: reversal.operationId,
+              reversalTransactionId: reversalId,
+              balance: existing.balanceAfter,
+              childPoints: existing.childPointsAfter,
+              idempotent: true,
+            };
+          }
+          const original = operationSnap.data();
+          if (original.reversedAt || original.status === "reversed") {
+            throw new Error("ALREADY_REVERSED");
+          }
+          const amount = validateReversibleWalletOperation(
+            original,
+            reversal.childId
+          );
+          const wallet = walletSnap.data() || {};
+          const child = childSnap.data() || {};
+          if (!Number.isInteger(wallet.balance) || wallet.balance < amount) {
+            throw new Error("INSUFFICIENT_BALANCE");
+          }
+          if (!Number.isInteger(child.points) || child.points < 0) {
+            throw new Error("INVALID_CHILD_POINTS_BALANCE");
+          }
+          const balanceAfter = wallet.balance - amount;
+          const childPointsAfter = child.points + amount;
+          const timestamp = fieldValue.serverTimestamp();
+          transaction.update(walletRef, {balance: balanceAfter, updatedAt: timestamp});
+          transaction.update(childRef, {points: childPointsAfter});
+          transaction.update(operationRef, {
+            status: "reversed",
+            reversedAt: timestamp,
+            reversedBy: actorUid,
+            reversalTransactionId: reversalId,
+          });
+          transaction.create(reversalRef, {
+            childId: reversal.childId,
+            type: "reversal",
+            amount,
+            delta: -amount,
+            reason: `Annulation : ${original.reason}`,
+            actorUid,
+            balanceAfter,
+            childPointsAfter,
+            pointsKind: "behavior_points",
+            originalOperationId: reversal.operationId,
+            createdAt: timestamp,
+          });
+          transaction.create(historyRef, {
+            childId: reversal.childId,
+            points: amount,
+            reason: `Remboursement cagnotte : ${original.reason}`,
+            category: "wallet_reversal",
+            isBonus: true,
+            date: timestamp,
+            createdAt: timestamp,
+            actionByUid: actorUid,
+            walletOperationId: reversal.operationId,
+            reversalTransactionId: reversalId,
+          });
+          return {
+            operationId: reversal.operationId,
+            reversalTransactionId: reversalId,
+            balance: balanceAfter,
+            childPoints: childPointsAfter,
+            idempotent: false,
+          };
+        });
+      } catch (error) {
+        if (error && error.message === "OPERATION_NOT_REVERSIBLE") {
+          throw new HttpsError(
+            "failed-precondition",
+            "Cette opération n’a pas débité les points de l’enfant."
+          );
+        }
+        if (error && error.message === "ALREADY_REVERSED") {
+          throw new HttpsError("already-exists", "Cette opération est déjà annulée.");
+        }
+        throw toHttpsError(error);
+      }
+    }
+  );
+
+  return {adjustWallet, reverseWalletOperation};
 }
 
 module.exports = {
@@ -313,5 +526,8 @@ module.exports = {
   buildWalletOperationData,
   isMatchingWalletOperation,
   calculateWalletBalance,
+  calculateChildPointsAfterWalletCredit,
+  normalizeWalletReversal,
+  validateReversibleWalletOperation,
   createWalletFunctions,
 };

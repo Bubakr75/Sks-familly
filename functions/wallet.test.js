@@ -10,6 +10,9 @@ const {
   buildWalletOperationData,
   isMatchingWalletOperation,
   calculateWalletBalance,
+  calculateChildPointsAfterWalletCredit,
+  normalizeWalletReversal,
+  validateReversibleWalletOperation,
 } = require("./wallet");
 
 test("normalizes a valid wallet operation", () => {
@@ -186,4 +189,67 @@ test("never allows a negative wallet balance", () => {
     }),
     /INSUFFICIENT_BALANCE/
   );
+});
+
+
+test("wallet credit atomically consumes child behavior points", () => {
+  assert.equal(
+    calculateChildPointsAfterWalletCredit({
+      currentChildPoints: 25,
+      type: "credit",
+      amount: 10,
+    }),
+    15
+  );
+
+  assert.equal(
+    calculateChildPointsAfterWalletCredit({
+      currentChildPoints: 25,
+      type: "debit",
+      amount: 10,
+    }),
+    35
+  );
+
+  assert.throws(
+    () => calculateChildPointsAfterWalletCredit({
+      currentChildPoints: 5,
+      type: "credit",
+      amount: 10,
+    }),
+    /INSUFFICIENT_CHILD_POINTS/
+  );
+});
+
+test("normalizes reversal identifiers and rejects malformed operations", () => {
+  assert.deepEqual(normalizeWalletReversal({
+    familyId: "family-1",
+    childId: "child-1",
+    operationId: "operation-1",
+  }), {
+    familyId: "family-1",
+    childId: "child-1",
+    operationId: "operation-1",
+  });
+  assert.equal(validateReversibleWalletOperation({
+    childId: "child-1",
+    type: "credit",
+    amount: 12,
+    pointsDebited: true,
+    pointsKind: "behavior_points",
+  }, "child-1"), 12);
+  for (const operation of [
+    null,
+    {childId: "child-2", type: "credit", amount: 12,
+      pointsDebited: true, pointsKind: "behavior_points"},
+    {childId: "child-1", type: "debit", amount: 12,
+      pointsDebited: false, pointsKind: "behavior_points"},
+    {childId: "child-1", type: "credit", amount: 0,
+      pointsDebited: true, pointsKind: "behavior_points"},
+  ]) {
+    assert.throws(
+      () => validateReversibleWalletOperation(operation, "child-1"),
+      /OPERATION_NOT_REVERSIBLE/
+    );
+  }
 });

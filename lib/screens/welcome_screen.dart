@@ -67,12 +67,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     _cardController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800));
-    _cardFade =
-        CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
+    _cardFade = CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
 
-    _particleController = AnimationController(
-        vsync: this, duration: const Duration(seconds: 10))
-      ..repeat();
+    _particleController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 10))
+          ..repeat();
 
     for (int i = 0; i < 40; i++) {
       _particles.add(_WelcomeParticle(_rng));
@@ -156,8 +155,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Annuler',
-                    style: TextStyle(color: Colors.grey[400]))),
+                child:
+                    Text('Annuler', style: TextStyle(color: Colors.grey[400]))),
             FilledButton(
               onPressed: () => _validatePin(ctx, pinCtrl),
               child: const Text('Valider'),
@@ -184,8 +183,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         ]),
         backgroundColor: Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 2),
       ));
     }
@@ -235,9 +233,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  void _navigateToHome(String parentName) {
+  Future<void> _navigateToHome(String parentName) async {
     context.read<PinProvider>().unlockParentMode();
-    context.read<FamilyProvider>().setCurrentParent(parentName);
+    await context.read<FamilyProvider>().setCurrentParent(parentName);
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -319,8 +318,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             return Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF0D1B2A),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -355,11 +353,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           child: ListTile(
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
-                            tileColor: const Color(0xFF7C4DFF)
-                                .withValues(alpha: 0.08),
+                            tileColor:
+                                const Color(0xFF7C4DFF).withValues(alpha: 0.08),
                             leading: CircleAvatar(
-                              backgroundColor:
-                                  const Color(0xFF7C4DFF).withValues(alpha: 0.15),
+                              backgroundColor: const Color(0xFF7C4DFF)
+                                  .withValues(alpha: 0.15),
                               radius: 24,
                               child: child.hasPhoto
                                   ? ClipOval(
@@ -374,8 +372,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       child.avatar.isEmpty
                                           ? '🧒'
                                           : child.avatar,
-                                      style:
-                                          const TextStyle(fontSize: 22)),
+                                      style: const TextStyle(fontSize: 22)),
                             ),
                             title: Text(
                               child.name,
@@ -415,8 +412,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: EmeraldPalette.surface,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('❔ Comment utiliser SKS Family ?',
             style: TextStyle(color: Colors.white, fontSize: 18)),
         content: SingleChildScrollView(
@@ -437,8 +433,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 const SizedBox(height: 16),
                 Text('🧒 Mode Enfant',
                     style: TextStyle(
-                        color: Color(0xFF7C4DFF),
-                        fontWeight: FontWeight.bold)),
+                        color: Color(0xFF7C4DFF), fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Text('• Voit ses points et ses badges',
                     style: TextStyle(color: Colors.white70)),
@@ -449,8 +444,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 const SizedBox(height: 20),
                 Text('💡 Le mode Parent est protégé par un code PIN.',
                     style: TextStyle(
-                        color: Colors.amber,
-                        fontStyle: FontStyle.italic)),
+                        color: Colors.amber, fontStyle: FontStyle.italic)),
               ]),
         ),
         actions: [
@@ -507,17 +501,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF00E5FF),
-                                  Color(0xFF7C4DFF)
-                                ],
+                                colors: [Color(0xFF00E5FF), Color(0xFF7C4DFF)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF00E5FF)
-                                      .withValues(alpha: _pulseAnim.value * 0.5),
+                                  color: const Color(0xFF00E5FF).withValues(
+                                      alpha: _pulseAnim.value * 0.5),
                                   blurRadius: 30,
                                   spreadRadius: 5,
                                 ),
@@ -579,13 +570,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           return FadeTransition(
                             opacity: _cardFade,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
                               child: Container(
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  borderRadius:
-                                      BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(20),
                                   color: Colors.white.withValues(alpha: 0.04),
                                   border: Border.all(
                                       color:
@@ -612,20 +602,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           );
                         }
 
-                        final sorted =
-                            List<ChildModel>.from(fp.children)
-                              ..sort((a, b) =>
-                                  b.points.compareTo(a.points));
+                        final sorted = List<ChildModel>.from(fp.children)
+                          ..sort((a, b) => b.points.compareTo(a.points));
 
                         return FadeTransition(
                           opacity: _cardFade,
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 24),
                                 child: Row(children: [
                                   const Text('🏆 ',
                                       style: TextStyle(fontSize: 16)),
@@ -647,8 +634,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20),
                                   itemCount: sorted.length,
-                                  itemBuilder: (_, i) =>
-                                      _ChildStatCard(
+                                  itemBuilder: (_, i) => _ChildStatCard(
                                     child: sorted[i],
                                     rank: i + 1,
                                     delay: i * 100,
@@ -670,8 +656,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         end: Offset.zero,
                       ).animate(_btn1Slide),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 28),
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
                         child: TvFocusWrapper(
                           onTap: _handleParentMode,
                           child: Container(
@@ -724,8 +709,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         end: Offset.zero,
                       ).animate(_btn2Slide),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 28),
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
                         child: TvFocusWrapper(
                           onTap: _handleChildMode,
                           child: Container(
@@ -740,8 +724,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                               gradient: LinearGradient(
                                 colors: [
-                                  const Color(0xFF7C4DFF).withValues(alpha: 0.15),
-                                  const Color(0xFF7C4DFF).withValues(alpha: 0.05),
+                                  const Color(0xFF7C4DFF)
+                                      .withValues(alpha: 0.15),
+                                  const Color(0xFF7C4DFF)
+                                      .withValues(alpha: 0.05),
                                 ],
                               ),
                             ),
@@ -773,19 +759,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         if (fp.children.isEmpty) {
                           return const SizedBox.shrink();
                         }
-                        final totalPts = fp.children
-                            .fold<int>(0, (s, c) => s + c.points);
-                        final totalBadges = fp.children.fold<int>(
-                            0, (s, c) => s + c.badgeIds.length);
-                        final topChild =
-                            fp.childrenSorted.isNotEmpty
-                                ? fp.childrenSorted.first
-                                : null;
+                        final totalPts =
+                            fp.children.fold<int>(0, (s, c) => s + c.points);
+                        final totalBadges = fp.children
+                            .fold<int>(0, (s, c) => s + c.badgeIds.length);
+                        final topChild = fp.childrenSorted.isNotEmpty
+                            ? fp.childrenSorted.first
+                            : null;
                         return FadeTransition(
                           opacity: _cardFade,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24),
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                   vertical: 14, horizontal: 16),
@@ -808,8 +792,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   Container(
                                       width: 1,
                                       height: 36,
-                                      color: Colors.white
-                                          .withValues(alpha: 0.1)),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.1)),
                                   _StatBubble(
                                     icon: '🏅',
                                     value: '$totalBadges',
@@ -818,14 +802,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   Container(
                                       width: 1,
                                       height: 36,
-                                      color: Colors.white
-                                          .withValues(alpha: 0.1)),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.1)),
                                   _StatBubble(
                                     icon: '👑',
-                                    value: topChild?.name
-                                            .split(' ')
-                                            .first ??
-                                        '—',
+                                    value:
+                                        topChild?.name.split(' ').first ?? '—',
                                     label: 'Leader',
                                   ),
                                 ],
@@ -965,8 +947,7 @@ class _ChildStatCardState extends State<_ChildStatCard>
                 Positioned(
                   top: -6,
                   right: -6,
-                  child: Text(_rankEmoji,
-                      style: const TextStyle(fontSize: 14)),
+                  child: Text(_rankEmoji, style: const TextStyle(fontSize: 14)),
                 ),
               ],
             ),
@@ -1019,8 +1000,7 @@ class _StatBubble extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w800)),
-        Text(label,
-            style: TextStyle(color: Colors.grey[500], fontSize: 10)),
+        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 10)),
       ],
     );
   }
@@ -1042,8 +1022,7 @@ class _WelcomeParticle {
 class _WelcomeParticlePainter extends CustomPainter {
   final List<_WelcomeParticle> particles;
   final double time;
-  _WelcomeParticlePainter(
-      {required this.particles, required this.time});
+  _WelcomeParticlePainter({required this.particles, required this.time});
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = Colors.white.withValues(alpha: 0.15);

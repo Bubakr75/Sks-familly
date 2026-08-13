@@ -39,7 +39,9 @@ class SKSBootstrap extends StatefulWidget {
 class _SKSBootstrapState extends State<SKSBootstrap> {
   bool _ready = false;
   bool _showOnboarding = false;
-  bool _showIntro = false; // affiche la vidÃ©o d'intro une fois
+  static const _introVersionKey = 'intro_seen_4_8_0_513';
+  bool _showIntro = false;
+  bool _introDecisionReady = false;
   // Instances initialisÃ©es en arriÃ¨re-plan, rÃ©utilisÃ©es par MultiProvider
   final FamilyProvider _familyProvider = FamilyProvider();
   final PinProvider _pinProvider = PinProvider();
@@ -48,15 +50,31 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
   @override
   void initState() {
     super.initState();
-    // L'intro se joue Ã  chaque dÃ©marrage
-    _showIntro = false; // intro geree en HTML dans index.html
+    _prepareIntro();
     _initializeEverything();
+  }
+
+  Future<void> _prepareIntro() async {
+    var showIntro = false;
+    if (kIsWeb) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        showIntro = !(prefs.getBool(_introVersionKey) ?? false);
+        if (showIntro) await prefs.setBool(_introVersionKey, true);
+      } catch (_) {
+        showIntro = false;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _showIntro = showIntro;
+      _introDecisionReady = true;
+    });
   }
 
   void _onIntroFinished() {
     if (!mounted) return;
     setState(() => _showIntro = false);
-    _initializeEverything();
   }
 
   Future<void> _initializeEverything() async {
@@ -203,7 +221,8 @@ class _SKSBootstrapState extends State<SKSBootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    // Ã‰cran d'intro vidÃ©o (1Ã¨re fois seulement)
+    if (!_introDecisionReady) return const _SplashScreen();
+    // Intro Flutter après la première frame, une seule fois par version web.
     if (_showIntro) {
       return IntroVideoScreen(onFinished: _onIntroFinished);
     }
@@ -258,7 +277,8 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    // Sur Web, visibilitychange/focus sont déjà regroupés et temporisés.
+    if (state == AppLifecycleState.resumed && !kIsWeb) {
       if (kDebugMode) debugPrint('App resumed - reconnecting Firestore...');
       final familyProvider = context.read<FamilyProvider>();
       familyProvider.reconnectFirestore();
@@ -317,19 +337,6 @@ class _StartupRouter extends StatefulWidget {
 }
 
 class _StartupRouterState extends State<_StartupRouter> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      try {
-        context.read<FamilyProvider>().reconnectFirestore();
-      } catch (e) {
-        if (kDebugMode) debugPrint('Reconnect Firestore error: $e');
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return const ProfileSelectionScreen();

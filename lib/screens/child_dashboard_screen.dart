@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
+import '../models/punishment_lines.dart';
 import '../models/badge_model.dart';
 import '../models/history_entry.dart';
 import '../utils/image_cache.dart';
@@ -22,6 +23,7 @@ import '../widgets/history_proof_photo.dart';
 import 'timeline_screen.dart';
 import 'shop_screen.dart';
 import 'wallet_screen.dart';
+import 'punishment_lines_screen.dart';
 
 // ─── Arc screen-time ─────────────────────────────────────────
 class _ScreenTimePainter extends CustomPainter {
@@ -1042,9 +1044,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
   
   Widget _buildProfileTab(ChildModel child, FamilyProvider fp, Color color) {
+    final pendingLines = fp.pendingPenaltyLinesForChild(child.id);
     return SingleChildScrollView(
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24),
       child: Column(children: [
+        if (pendingLines.isNotEmpty)
+          _buildPenaltyLinesAlert(child, pendingLines),
         // ─── Boutons proposition enfant (Bonus + Pénalité + Immunité) ───
         if (!context.watch<PinProvider>().isParentMode)
           Padding(
@@ -1338,6 +1343,93 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   //  TAB ÉCRAN
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  Widget _buildPenaltyLinesAlert(
+      ChildModel child, List<PunishmentLines> pendingLines) {
+    final total = pendingLines.fold<int>(0, (sum, item) => sum + item.totalLines);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.red.shade900, Colors.deepOrange.shade700],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.orangeAccent, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withValues(alpha: 0.4),
+              blurRadius: 18,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.white, size: 30),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Lignes de pénalité en attente',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            const Text(
+              'L’accès aux écrans est interdit jusqu’à ce que tes lignes soient terminées et validées par un parent.',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '$total ligne${total > 1 ? 's' : ''} à faire',
+              style: const TextStyle(
+                color: Colors.amberAccent,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            ...pendingLines.where((item) => item.text.trim().isNotEmpty).map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '• ${item.totalLines} lignes : ${item.text}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PunishmentLinesScreen()),
+              ),
+              icon: const Icon(Icons.visibility_rounded),
+              label: Text('Voir les lignes de ${child.name}'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (kIsWeb || MediaQuery.disableAnimationsOf(context)) {
+      _glowController.stop();
+    }
+  }
+
   Widget _buildScreenTab(ChildModel child, FamilyProvider fp, Color color) {
     final immunities    = fp.getUsableImmunitiesForChild(child.id);
     final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);

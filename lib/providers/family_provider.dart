@@ -149,6 +149,11 @@ class FamilyProvider extends ChangeNotifier {
   List<GoalModel> get goals => _goals;
   List<NoteModel> get notes => _notes;
   List<PunishmentLines> get punishments => _punishments;
+  List<PunishmentLines> pendingPenaltyLinesForChild(String childId) =>
+      PenaltyLinesAccess.pendingForChild(_punishments, childId);
+
+  bool isScreenAccessBlocked(String childId) =>
+      pendingPenaltyLinesForChild(childId).isNotEmpty;
   List<ImmunityLines> get immunities => _immunities;
   List<TribunalCase> get tribunalCases => _tribunalCases;
   List<BadgeModel> get customBadges => _customBadges;
@@ -710,11 +715,16 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
-  void setCurrentParent(String name) {
+  Future<void> setCurrentParent(String name) async {
     _currentParentName = name;
-    _metaBox.put('current_parent', name);
+    await _metaBox.put('current_parent', name);
     if (_firestore.isConnected && name.trim().isNotEmpty) {
-      unawaited(_firestore.syncMemberDisplayName(name).catchError((_) {}));
+      try {
+        await _firestore.syncMemberDisplayName(name);
+      } catch (_) {
+        // Le profil reste sélectionné localement. L'action sensible suivante
+        // retentera la synchronisation avant son enregistrement serveur.
+      }
     }
     notifyListeners();
   }
@@ -855,6 +865,25 @@ class FamilyProvider extends ChangeNotifier {
       balance: result.balance,
       createdAt: previous.createdAt,
       updatedAt: now,
+    );
+    notifyListeners();
+    return result;
+  }
+
+  Future<SksWalletAdjustmentResult> reverseWalletOperation({
+    required String childId,
+    required String operationId,
+  }) async {
+    final result = await _firestore.reverseWalletOperation(
+      childId: childId,
+      operationId: operationId,
+    );
+    final previous = getWalletForChild(childId);
+    _wallets[childId] = SksWallet(
+      childId: childId,
+      balance: result.balance,
+      createdAt: previous.createdAt,
+      updatedAt: DateTime.now(),
     );
     notifyListeners();
     return result;
@@ -1189,6 +1218,9 @@ class FamilyProvider extends ChangeNotifier {
     String? photoStoragePath,
     String? actionId,
     DateTime? date,
+    int? penaltyLinesCount,
+    String? penaltyLinesInstruction,
+    void Function()? onVerifying,
   }) async {
     final child = getChild(childId);
     if (child == null) {
@@ -1206,6 +1238,10 @@ class FamilyProvider extends ChangeNotifier {
     }
 
     final safeActionId = actionId ?? _uuid.v4();
+    // Le serveur signe l'historique avec le nom du membre authentifié.
+    // Attendre cette synchronisation évite qu'une action faite juste après
+    // le choix de « Papa » ou « Maman » conserve le nom du profil précédent.
+    await _firestore.syncMemberDisplayName(_currentParentName);
     final result = await _firestore.recordPointAction(
       actionId: safeActionId,
       childId: childId,
@@ -1214,6 +1250,9 @@ class FamilyProvider extends ChangeNotifier {
       category: category,
       isBonus: isBonus,
       photoStoragePath: photoStoragePath,
+      penaltyLinesCount: penaltyLinesCount,
+      penaltyLinesInstruction: penaltyLinesInstruction,
+      onVerifying: onVerifying,
     );
     late final int authoritativeBalance;
     late final HistoryEntry entry;
@@ -1232,6 +1271,22 @@ class FamilyProvider extends ChangeNotifier {
       );
     }
     child.points = authoritativeBalance;
+
+    final punishmentData = result['punishment'];
+    if (punishmentData is Map) {
+      final punishment = PunishmentLines.fromMap(
+        Map<String, dynamic>.from(punishmentData),
+      );
+      _markPending(punishment.id);
+      _punishments.removeWhere((item) => item.id == punishment.id);
+      _punishments.add(punishment);
+      try {
+        await _punishmentsBox.put(
+          punishment.id,
+          jsonEncode(punishment.toMap()),
+        );
+      } catch (_) {}
+    }
 
     // Le serveur est l'autorité. L'interface est actualisée immédiatement :
     // une panne du cache local Web/PWA après la transaction ne doit jamais
@@ -1260,6 +1315,50 @@ class FamilyProvider extends ChangeNotifier {
       SoundService.playPenalty();
     }
     return entry;
+  }
+
+  Future<void> updateLinkedPenaltyLines({
+    required String punishmentId,
+    required bool hasPenaltyLines,
+    int? count,
+    String? instruction,
+  }) async {
+    final result = await _firestore.updatePenaltyLines(
+      punishmentId: punishmentId,
+      hasPenaltyLines: hasPenaltyLines,
+      count: count,
+      instruction: instruction,
+    );
+    final raw = result['punishment'];
+    if (raw is! Map) {
+      throw StateError('Réponse serveur incomplète.');
+    }
+    final punishment = PunishmentLines.fromMap(Map<String, dynamic>.from(raw));
+    _markPending(punishment.id);
+    _punishments.removeWhere((item) => item.id == punishment.id);
+    _punishments.add(punishment);
+    await _punishmentsBox.put(
+      punishment.id,
+      jsonEncode(punishment.toMap()),
+    );
+    notifyListeners();
+  }
+
+  Future<void> completeLinkedPenaltyLines(String punishmentId) async {
+    final result = await _firestore.completePenaltyLines(punishmentId);
+    final raw = result['punishment'];
+    if (raw is! Map) {
+      throw StateError('Réponse serveur incomplète.');
+    }
+    final punishment = PunishmentLines.fromMap(Map<String, dynamic>.from(raw));
+    _markPending(punishment.id);
+    _punishments.removeWhere((item) => item.id == punishment.id);
+    _punishments.add(punishment);
+    await _punishmentsBox.put(
+      punishment.id,
+      jsonEncode(punishment.toMap()),
+    );
+    notifyListeners();
   }
 
   /// Transfert express SKS : déplace des points d'un enfant vers un autre.
@@ -1420,18 +1519,21 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> addNote(
     String childId,
     String text, {
-    String authorName = 'Parent',
+    String? authorName,
     bool isEvaluation = false,
     int? aiScore,
     int? parentScore,
     int? overallScore,
     Map<String, int> categoryScores = const {},
   }) async {
+    final resolvedAuthorName = authorName?.trim().isNotEmpty == true
+        ? authorName!.trim()
+        : _currentParentName;
     final note = NoteModel(
       id: _uuid.v4(),
       childId: childId,
       text: text,
-      authorName: authorName,
+      authorName: resolvedAuthorName,
       isEvaluation: isEvaluation,
       aiScore: aiScore,
       parentScore: parentScore,
