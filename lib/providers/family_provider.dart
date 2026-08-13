@@ -715,11 +715,16 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
-  void setCurrentParent(String name) {
+  Future<void> setCurrentParent(String name) async {
     _currentParentName = name;
-    _metaBox.put('current_parent', name);
+    await _metaBox.put('current_parent', name);
     if (_firestore.isConnected && name.trim().isNotEmpty) {
-      unawaited(_firestore.syncMemberDisplayName(name).catchError((_) {}));
+      try {
+        await _firestore.syncMemberDisplayName(name);
+      } catch (_) {
+        // Le profil reste sélectionné localement. L'action sensible suivante
+        // retentera la synchronisation avant son enregistrement serveur.
+      }
     }
     notifyListeners();
   }
@@ -1233,6 +1238,10 @@ class FamilyProvider extends ChangeNotifier {
     }
 
     final safeActionId = actionId ?? _uuid.v4();
+    // Le serveur signe l'historique avec le nom du membre authentifié.
+    // Attendre cette synchronisation évite qu'une action faite juste après
+    // le choix de « Papa » ou « Maman » conserve le nom du profil précédent.
+    await _firestore.syncMemberDisplayName(_currentParentName);
     final result = await _firestore.recordPointAction(
       actionId: safeActionId,
       childId: childId,
@@ -1510,18 +1519,21 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> addNote(
     String childId,
     String text, {
-    String authorName = 'Parent',
+    String? authorName,
     bool isEvaluation = false,
     int? aiScore,
     int? parentScore,
     int? overallScore,
     Map<String, int> categoryScores = const {},
   }) async {
+    final resolvedAuthorName = authorName?.trim().isNotEmpty == true
+        ? authorName!.trim()
+        : _currentParentName;
     final note = NoteModel(
       id: _uuid.v4(),
       childId: childId,
       text: text,
-      authorName: authorName,
+      authorName: resolvedAuthorName,
       isEvaluation: isEvaluation,
       aiScore: aiScore,
       parentScore: parentScore,
