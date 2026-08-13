@@ -226,6 +226,7 @@ class FirestoreService {
 
   Timer? _keepAliveTimer;
   Timer? _reconnectTimer;
+  Timer? _reconnectDebounceTimer;
   bool _healthCheckInFlight = false;
   int _reconnectCount = 0;
   DateTime? _pointServiceCheckedAt;
@@ -327,7 +328,13 @@ class FirestoreService {
     try {
       attachWebReconnectHandlers(() {
         if (kDebugMode) debugPrint('Web lifecycle event: reconnect Firestore');
+        _startKeepAlive();
         reconnect();
+      }, pauseFn: () {
+        if (kDebugMode) debugPrint('Web lifecycle event: pause keep-alive');
+        _reconnectDebounceTimer?.cancel();
+        _reconnectDebounceTimer = null;
+        _stopKeepAlive();
       });
     } catch (e) {
       if (kDebugMode) debugPrint('Web lifecycle error: $e');
@@ -336,6 +343,8 @@ class FirestoreService {
 
   // ─── Dispose ─────────────────────────────────────────────────
   void dispose() {
+    detachWebReconnectHandlers();
+    _reconnectDebounceTimer?.cancel();
     _stopListening();
     _stopKeepAlive();
   }
@@ -668,12 +677,19 @@ class FirestoreService {
   // ─── Keep-alive ──────────────────────────────────────────────
   void reconnect() {
     if (_familyId == null) return;
-    invalidatePointActionServiceAvailability();
-    _reconnectTimer?.cancel();
-    _reconnectTimer = null;
-    _reconnectCount++;
-    _startListening();
-    unawaited(resumePendingPointActionChecks());
+    // Safari peut envoyer focus, visibilitychange et resumed ensemble.
+    // Une seule reconstruction des listeners doit survivre à cette rafale.
+    _reconnectDebounceTimer?.cancel();
+    _reconnectDebounceTimer = Timer(const Duration(milliseconds: 750), () {
+      _reconnectDebounceTimer = null;
+      if (_familyId == null) return;
+      invalidatePointActionServiceAvailability();
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _reconnectCount++;
+      _startListening();
+      unawaited(resumePendingPointActionChecks());
+    });
   }
 
   void _scheduleReconnect([Object? error]) {
@@ -967,6 +983,8 @@ class FirestoreService {
     if (cancelReconnect) {
       _reconnectTimer?.cancel();
       _reconnectTimer = null;
+      _reconnectDebounceTimer?.cancel();
+      _reconnectDebounceTimer = null;
     }
     _childrenSub?.cancel();
     _historySub?.cancel();

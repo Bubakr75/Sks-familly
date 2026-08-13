@@ -46,6 +46,7 @@ void main() {
       expect(source, contains('_${name}Sub = null;'), reason: name);
     }
     expect(source, contains('_reconnectTimer?.cancel();'));
+    expect(source, contains('_reconnectDebounceTimer?.cancel();'));
     expect(source, contains('_keepAliveTimer?.cancel();'));
   });
 

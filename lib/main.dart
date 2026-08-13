@@ -277,7 +277,8 @@ class _SKSFamilyAppState extends State<SKSFamilyApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    // Sur Web, visibilitychange/focus sont déjà regroupés et temporisés.
+    if (state == AppLifecycleState.resumed && !kIsWeb) {
       if (kDebugMode) debugPrint('App resumed - reconnecting Firestore...');
       final familyProvider = context.read<FamilyProvider>();
       familyProvider.reconnectFirestore();
@@ -336,19 +337,6 @@ class _StartupRouter extends StatefulWidget {
 }
 
 class _StartupRouterState extends State<_StartupRouter> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      try {
-        context.read<FamilyProvider>().reconnectFirestore();
-      } catch (e) {
-        if (kDebugMode) debugPrint('Reconnect Firestore error: $e');
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return const ProfileSelectionScreen();
