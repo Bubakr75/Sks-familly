@@ -1,7 +1,7 @@
 name: family_score
 description: "SKS Family - Systeme de points et recompenses pour la famille"
 publish_to: 'none'
-version: 4.8.4+517
+version: 4.8.5+518
 environment:
   sdk: '>=3.3.0 <4.0.0'   # âœ… CORRIGÃ‰
 

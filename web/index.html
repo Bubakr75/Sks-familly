@@ -138,6 +138,19 @@
       function isIOS() {
         return /iphone|ipad|ipod/i.test(navigator.userAgent);
       }
+
+      // iOS conserve parfois l'ancien cache Flutter de l'icône d'accueil
+      // alors que Safari charge déjà la nouvelle version. Le service worker
+      // FCM reste séparé et n'est jamais supprimé ici.
+      if (isIOS() && isStandalone() && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          registrations.forEach(function (registration) {
+            if (!registration.scope.includes('/firebase-cloud-messaging-push-scope')) {
+              registration.unregister().catch(function () {});
+            }
+          });
+        }).catch(function () {});
+      }
       function hideBanner(id, storageKey) {
         try { sessionStorage.setItem(storageKey, '1'); } catch (_) {}
         var banner = document.getElementById(id);

@@ -43,4 +43,11 @@ void main() {
     expect(html, contains('flutter_bootstrap.js'));
     expect(html, contains('manifest.json?v=3'));
   });
+
+  test('la PWA iOS retire uniquement l’ancien cache Flutter', () {
+    expect(html, contains('isIOS() && isStandalone()'));
+    expect(html, contains('navigator.serviceWorker.getRegistrations()'));
+    expect(html, contains('/firebase-cloud-messaging-push-scope'));
+    expect(html, contains('registration.unregister()'));
+  });
 }

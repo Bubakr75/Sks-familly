@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../models/child_model.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
+import '../utils/web_display_mode.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import 'home_screen.dart';
@@ -40,6 +41,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   void initState() {
     super.initState();
+    final reducePwaMotion = isIosStandalonePwa;
 
     _logoController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500));
@@ -52,7 +54,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     _pulseController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))
-      ..repeat(reverse: true);
+      ..value = reducePwaMotion ? 0.5 : 0;
+    if (!reducePwaMotion) _pulseController.repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
         CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
@@ -71,7 +74,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     _particleController =
         AnimationController(vsync: this, duration: const Duration(seconds: 10))
-          ..repeat();
+          ..value = 0;
+    if (!reducePwaMotion) _particleController.repeat();
 
     for (int i = 0; i < 40; i++) {
       _particles.add(_WelcomeParticle(_rng));
