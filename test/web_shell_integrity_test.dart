@@ -37,6 +37,14 @@ void main() {
     expect(html, contains('removeLoading'));
   });
 
+  test('la PWA iOS ne décale pas les coordonnées tactiles', () {
+    expect(html, isNot(contains('viewport-fit=cover')));
+    expect(
+      html,
+      contains('apple-mobile-web-app-status-bar-style" content="black"'),
+    );
+    expect(html, isNot(contains('content="black-translucent"')));
+  });
   test('notifications et PWA conservent des scopes séparés', () {
     expect(html, contains('firebase-messaging-sw.js'));
     expect(html, contains('/firebase-cloud-messaging-push-scope'));
