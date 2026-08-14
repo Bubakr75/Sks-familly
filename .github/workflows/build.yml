@@ -80,33 +80,6 @@ jobs:
             printf 'storeFile=../release-key.jks\n'
           } > android/key.properties
 
-      - name: Inject Gemini API Key
-        shell: bash
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          python3 - << 'PYEOF'
-          import os
-          api_key = os.environ.get('GEMINI_API_KEY', '').replace('\n', '').replace('\r', '').strip()
-          with open('lib/services/gemini_service.dart', 'r', encoding='utf-8') as f:
-              lines = f.readlines()
-          new_lines = []
-          skip_next = False
-          for i, line in enumerate(lines):
-              if skip_next:
-                  skip_next = False
-                  continue
-              if 'static const _apiKey' in line and '=' in line:
-                  new_lines.append("  static const _apiKey = '" + api_key + "';\n")
-                  if i + 1 < len(lines) and 'defaultValue' in lines[i + 1]:
-                      skip_next = True
-              else:
-                  new_lines.append(line)
-          with open('lib/services/gemini_service.dart', 'w', encoding='utf-8') as f:
-              f.writelines(new_lines)
-          print("Gemini key injected")
-          PYEOF
-
       - name: Create missing asset folders
         run: mkdir -p assets/animations assets/images
 

@@ -7,6 +7,14 @@ const path = require("node:path");
 
 const indexPath = path.join(__dirname, "..", "web", "index.html");
 const html = fs.readFileSync(indexPath, "utf8");
+const webWorkflow = fs.readFileSync(
+  path.join(__dirname, "..", ".github", "workflows", "deploy-web.yml"),
+  "utf8",
+);
+const androidWorkflow = fs.readFileSync(
+  path.join(__dirname, "..", ".github", "workflows", "build.yml"),
+  "utf8",
+);
 
 test("les scripts inline de index.html ont une syntaxe JavaScript valide", () => {
   const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
@@ -25,4 +33,16 @@ test("le shell web ne contient aucun overlay vidéo pré-Flutter", () => {
 test("le document HTML est complet et non corrompu", () => {
   assert.match(html, /<\/body>\s*<\/html>\s*$/);
   assert.equal(/[ÃÂ]|â€|ðŸ/.test(html), false);
+});
+
+test("les builds clients ne publient aucun secret serveur", () => {
+  assert.doesNotMatch(webWorkflow, /assets\/service_account\.json/);
+  assert.doesNotMatch(webWorkflow, /GEMINI_API_KEY/);
+  assert.doesNotMatch(androidWorkflow, /GEMINI_API_KEY/);
+  assert.match(webWorkflow, /\/tmp\/sa\.json/);
+});
+
+test("le workflow Web ne déploie que Firebase Hosting", () => {
+  assert.match(webWorkflow, /firebase deploy --only hosting/);
+  assert.doesNotMatch(webWorkflow, /firebase deploy --only firestore/);
 });

@@ -36,35 +36,6 @@ jobs:
         run: |
           mkdir -p assets/animations assets/images
 
-      - name: Inject service account (assets)
-        run: echo "${{ secrets.SERVICE_ACCOUNT_BASE64 }}" | base64 --decode > assets/service_account.json
-
-      - name: Inject Gemini API Key
-        run: |
-          python3 - << 'PYEOF'
-          import os
-          api_key = os.environ.get('GEMINI_API_KEY', '').replace('\n', '').replace('\r', '').strip()
-          with open('lib/services/gemini_service.dart', 'r', encoding='utf-8') as f:
-              lines = f.readlines()
-          new_lines = []
-          skip_next = False
-          for i, line in enumerate(lines):
-              if skip_next:
-                  skip_next = False
-                  continue
-              if 'static const _apiKey' in line and '=' in line:
-                  new_lines.append("  static const _apiKey = '" + api_key + "';\n")
-                  if i + 1 < len(lines) and 'defaultValue' in lines[i + 1]:
-                      skip_next = True
-              else:
-                  new_lines.append(line)
-          with open('lib/services/gemini_service.dart', 'w', encoding='utf-8') as f:
-              f.writelines(new_lines)
-          print("Gemini key injected OK")
-          PYEOF
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
       - name: Build Web
         # Le cache Flutter historique bloque parfois les gestes dans la PWA iOS.
         # FCM conserve son propre service worker à portée séparée.
@@ -85,12 +56,7 @@ jobs:
       - name: Decode service account
         run: echo "${{ secrets.SERVICE_ACCOUNT_BASE64 }}" | base64 --decode > /tmp/sa.json
 
-      - name: Deploy Firestore Rules
-        run: |
-          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          firebase deploy --only firestore:rules --project sks-familly-3f205 --non-interactive || true
-
       - name: Deploy to Firebase Hosting
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          firebase deploy --only hosting --project sks-familly-3f205 --non-interactive || true
+          firebase deploy --only hosting --project sks-familly-3f205 --non-interactive
