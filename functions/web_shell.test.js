@@ -43,7 +43,12 @@ test("les builds clients ne publient aucun secret serveur", () => {
   assert.doesNotMatch(webWorkflow, /assets\/service_account\.json/);
   assert.doesNotMatch(webWorkflow, /GEMINI_API_KEY/);
   assert.doesNotMatch(androidWorkflow, /GEMINI_API_KEY/);
-  assert.match(webWorkflow, /\/tmp\/sa\.json/);
+  assert.doesNotMatch(webWorkflow, /SERVICE_ACCOUNT_BASE64|sa\.json/);
+  assert.doesNotMatch(functionsWorkflow, /SERVICE_ACCOUNT_BASE64|sa\.json/);
+  assert.match(webWorkflow, /google-github-actions\/auth@v3/);
+  assert.match(functionsWorkflow, /google-github-actions\/auth@v3/);
+  assert.match(webWorkflow, /id-token:\s*write/);
+  assert.match(functionsWorkflow, /id-token:\s*write/);
 });
 
 test("le workflow Web ne déploie que Firebase Hosting", () => {

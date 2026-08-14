@@ -54,6 +54,7 @@ assets/service_account.json
 
 # 🔒 SECRETS - NE JAMAIS COMMITTER
 service_account_b64.txt
+gha-creds-*.json
 android/key.properties
 android/release-key.jks
 android/app/google-services.json
