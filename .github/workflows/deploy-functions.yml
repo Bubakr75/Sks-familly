@@ -2,11 +2,6 @@ name: Deploy Firebase Functions
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'functions/**'
 
 jobs:
   deploy:
@@ -47,6 +42,6 @@ jobs:
           }' > .firebaserc
 
       - name: Deploy Functions
-        run: firebase deploy --only functions --project sks-familly-3f205 --force
+        run: firebase deploy --only functions --project sks-familly-3f205
         env:
           GOOGLE_APPLICATION_CREDENTIALS: sa.json

@@ -15,6 +15,10 @@ const androidWorkflow = fs.readFileSync(
   path.join(__dirname, "..", ".github", "workflows", "build.yml"),
   "utf8",
 );
+const functionsWorkflow = fs.readFileSync(
+  path.join(__dirname, "..", ".github", "workflows", "deploy-functions.yml"),
+  "utf8",
+);
 
 test("les scripts inline de index.html ont une syntaxe JavaScript valide", () => {
   const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
@@ -45,4 +49,10 @@ test("les builds clients ne publient aucun secret serveur", () => {
 test("le workflow Web ne déploie que Firebase Hosting", () => {
   assert.match(webWorkflow, /firebase deploy --only hosting/);
   assert.doesNotMatch(webWorkflow, /firebase deploy --only firestore/);
+});
+
+test("les Functions ne sont jamais redéployées automatiquement ou avec force", () => {
+  assert.match(functionsWorkflow, /workflow_dispatch:/);
+  assert.doesNotMatch(functionsWorkflow, /\bpush:/);
+  assert.doesNotMatch(functionsWorkflow, /\s--force(?:\s|$)/);
 });
