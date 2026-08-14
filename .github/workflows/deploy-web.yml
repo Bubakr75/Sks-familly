@@ -66,7 +66,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Build Web
-        run: flutter build web --release --no-tree-shake-icons
+        # Le cache Flutter historique bloque parfois les gestes dans la PWA iOS.
+        # FCM conserve son propre service worker à portée séparée.
+        run: flutter build web --release --no-tree-shake-icons --pwa-strategy=none
 
       - name: Add unique build identifier (force new Firebase version)
         run: |

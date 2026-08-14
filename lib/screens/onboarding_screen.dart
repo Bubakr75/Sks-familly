@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/animated_background.dart';
@@ -5,7 +7,9 @@ import '../widgets/glass_card.dart';
 import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  final WidgetBuilder? destinationBuilder;
+
+  const OnboardingScreen({super.key, this.destinationBuilder});
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
@@ -14,6 +18,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   final _pageController = PageController();
   int _currentPage = 0;
+  bool _finishing = false;
   late AnimationController _fadeCtrl;
   late AnimationController _scaleCtrl;
   late Animation<double> _fadeAnim;
@@ -65,8 +70,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _scaleCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeIn);
-    _scaleAnim =
-        CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
+    _scaleAnim = CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
     _fadeCtrl.forward();
     _scaleCtrl.forward();
   }
@@ -82,26 +86,40 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void _nextPage() {
     if (_currentPage < _pages.length - 1) {
       _pageController.nextPage(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut);
+          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
     } else {
       _finish();
     }
   }
 
-  Future<void> _finish() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_done', true);
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const HomeScreen(),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
-      );
+  void _finish() {
+    if (_finishing) return;
+    _finishing = true;
+
+    // Sur une PWA iOS installée, le stockage WebKit peut répondre tardivement.
+    // La navigation ne doit jamais rester bloquée en attendant cette écriture.
+    unawaited(_rememberOnboardingCompletion());
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, __, ___) =>
+            widget.destinationBuilder?.call(context) ?? const HomeScreen(),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
+  }
+
+  Future<void> _rememberOnboardingCompletion() async {
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 2));
+      await prefs
+          .setBool('onboarding_done', true)
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // L'application reste utilisable même si le stockage local est indisponible.
     }
   }
 
@@ -120,8 +138,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 child: TextButton(
                   onPressed: _finish,
                   child: Text('Passer',
-                      style:
-                          TextStyle(fontSize: 16, color: Colors.grey[500])),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[500])),
                 ),
               ),
               Expanded(
@@ -152,27 +169,27 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                   color: pageColor.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                      color:
-                                          pageColor.withValues(alpha: 0.3),
+                                      color: pageColor.withValues(alpha: 0.3),
                                       width: 2),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: pageColor.withValues(
-                                            alpha: 0.2),
+                                        color: pageColor.withValues(alpha: 0.2),
                                         blurRadius: 24),
                                   ],
                                 ),
                                 child: Center(
                                     child: Text(page.emoji,
-                                        style: const TextStyle(
-                                            fontSize: 72))),
+                                        style: const TextStyle(fontSize: 72))),
                               ),
                             ),
                             const SizedBox(height: 40),
                             // FIXED: NeonText replaced with ShaderMask Text
                             ShaderMask(
                               shaderCallback: (bounds) => LinearGradient(
-                                colors: [pageColor, pageColor.withValues(alpha: 0.7)],
+                                colors: [
+                                  pageColor,
+                                  pageColor.withValues(alpha: 0.7)
+                                ],
                               ).createShader(bounds),
                               child: Text(
                                 page.title,
@@ -219,8 +236,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         boxShadow: _currentPage == i
                             ? [
                                 BoxShadow(
-                                    color:
-                                        dotColor.withValues(alpha: 0.4),
+                                    color: dotColor.withValues(alpha: 0.4),
                                     blurRadius: 8)
                               ]
                             : null,
@@ -241,8 +257,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           colors: [color, color.withValues(alpha: 0.7)]),
                       boxShadow: [
                         BoxShadow(
-                            color: color.withValues(alpha: 0.3),
-                            blurRadius: 16)
+                            color: color.withValues(alpha: 0.3), blurRadius: 16)
                       ],
                     ),
                     child: Material(
