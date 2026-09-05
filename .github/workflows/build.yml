@@ -86,6 +86,12 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Run Cloud Functions tests
+        run: cd functions && npm ci && npm test
+
       - name: Generate app icons
         run: dart run flutter_launcher_icons
 
@@ -163,7 +169,6 @@ jobs:
           fi
 
       - name: Verify application ID and official signing certificate
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

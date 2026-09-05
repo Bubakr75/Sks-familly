@@ -36,6 +36,8 @@ migrate_working_dir/
 /.tool-state/
 /android/.tool-state/
 /functions/.firebase-test/
+/.firebase/
+/design_lab/
 
 # Symbolication related
 app.*.symbols

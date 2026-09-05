@@ -26,8 +26,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: cd functions && npm install
+      - name: Install dependencies and run tests
+        run: cd functions && npm ci && npm test
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools

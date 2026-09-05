@@ -1513,6 +1513,7 @@ class FirestoreService {
     required String operationId,
     String? childId,
     String? rewardId,
+    String? requestId,
     String? caseId,
     String? tradeId,
     String? toChildId,
@@ -1520,6 +1521,10 @@ class FirestoreService {
     int? minutes,
     int? immunityLines,
     String? description,
+    int? percent,
+    int? durationHours,
+    String? label,
+    String? reason,
   }) async {
     final currentFamilyId = _familyId;
     if (currentFamilyId == null) {
@@ -1531,6 +1536,7 @@ class FirestoreService {
       'operationId': operationId,
       if (childId != null) 'childId': childId,
       if (rewardId != null) 'rewardId': rewardId,
+      if (requestId != null) 'requestId': requestId,
       if (caseId != null) 'caseId': caseId,
       if (tradeId != null) 'tradeId': tradeId,
       if (toChildId != null) 'toChildId': toChildId,
@@ -1538,6 +1544,10 @@ class FirestoreService {
       if (minutes != null) 'minutes': minutes,
       if (immunityLines != null) 'immunityLines': immunityLines,
       if (description != null) 'description': description.trim(),
+      if (percent != null) 'percent': percent,
+      if (durationHours != null) 'durationHours': durationHours,
+      if (label != null) 'label': label.trim(),
+      if (reason != null) 'reason': reason.trim(),
     };
     final result = await FirebaseFunctions.instance
         .httpsCallable('performFamilyOperation')

@@ -40,6 +40,7 @@ async function seedFirestore() {
     const members = [
       [FAMILY_A, "owner-a", "owner", true],
       [FAMILY_A, "parent-a", "parent", true],
+      [FAMILY_A, "manager-a", "manager", true],
       [FAMILY_A, "child-a", "child", true],
       [FAMILY_A, "inactive-a", "parent", false],
       [FAMILY_B, "owner-b", "owner", true],
@@ -95,6 +96,34 @@ test("un parent actif peut ajouter, lire et remplacer une preuve valide", async 
     uploadBytes(target, JPEG, {contentType: "image/jpeg"})
   );
   await assertSucceeds(deleteObject(target));
+});
+
+test("un gestionnaire durable vérifié peut ajouter une preuve", async () => {
+  const manager = testEnv.authenticatedContext("manager-a", {
+    email_verified: true,
+    firebase: {sign_in_provider: "password"},
+  });
+  await assertSucceeds(
+    uploadBytes(
+      proofRef(manager, FAMILY_A, "action-manager"),
+      JPEG,
+      {contentType: "image/jpeg"}
+    )
+  );
+});
+
+test("un gestionnaire anonyme ne peut pas ajouter une preuve", async () => {
+  const manager = testEnv.authenticatedContext("manager-a", {
+    email_verified: false,
+    firebase: {sign_in_provider: "anonymous"},
+  });
+  await assertFails(
+    uploadBytes(
+      proofRef(manager, FAMILY_A, "action-manager-anonyme"),
+      JPEG,
+      {contentType: "image/jpeg"}
+    )
+  );
 });
 
 test("une preuve devient immuable dès que l'action serveur existe", async () => {

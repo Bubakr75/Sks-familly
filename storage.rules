@@ -17,6 +17,14 @@ service firebase.storage {
         (
           firestore.get(memberPath(familyId)).data.role == 'parent' ||
           (
+            (
+              firestore.get(memberPath(familyId)).data.role == 'manager' ||
+              firestore.get(memberPath(familyId)).data.role == 'familyAdmin'
+            ) &&
+            request.auth.token.email_verified == true &&
+            request.auth.token.firebase.sign_in_provider != 'anonymous'
+          ) ||
+          (
             firestore.get(memberPath(familyId)).data.role == 'owner' &&
             firestore.get(
               /databases/(default)/documents/families/$(familyId)

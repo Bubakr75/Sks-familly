@@ -29,8 +29,14 @@ service cloud.firestore {
         member(familyId).uid == request.auth.uid &&
         (
           member(familyId).role == 'parent' ||
-          member(familyId).role == 'manager' ||
-          member(familyId).role == 'familyAdmin' ||
+          (
+            (
+              member(familyId).role == 'manager' ||
+              member(familyId).role == 'familyAdmin'
+            ) &&
+            request.auth.token.email_verified == true &&
+            request.auth.token.firebase.sign_in_provider != 'anonymous'
+          ) ||
           (
             member(familyId).role == 'child' &&
             member(familyId).childId is string &&
@@ -495,6 +501,12 @@ service cloud.firestore {
         allow create, update: if isFamilyParent(familyId) &&
           isBoundedBusinessDocument(request.resource.data);
         allow delete: if isFamilyParent(familyId);
+      }
+
+      // Configuration boutique écrite exclusivement par la Function serveur.
+      match /settings/{settingId} {
+        allow read: if activeFamilyMember(familyId);
+        allow write: if false;
       }
 
       match /wallets/{childId} {

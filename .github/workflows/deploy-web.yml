@@ -40,6 +40,9 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Run Flutter tests
+        run: flutter test
+
       - name: Create missing asset folders
         run: |
           mkdir -p assets/animations assets/images

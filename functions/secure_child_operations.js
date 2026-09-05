@@ -5,6 +5,10 @@ const crypto = require("node:crypto");
 const ID_PATTERN = /^[^/\u0000-\u001f]{1,200}$/;
 const OPERATIONS = new Set([
   "purchase_reward",
+  "purchase_approve",
+  "purchase_reject",
+  "sale_set",
+  "sale_stop",
   "tribunal_vote",
   "tribunal_remove_vote",
   "trade_create",
@@ -32,7 +36,7 @@ function normalizeSecureOperation(data) {
     operationId: cleanId(data.operationId, "operation_id"),
     operation,
   };
-  for (const key of ["childId", "rewardId", "caseId", "tradeId", "toChildId"]) {
+  for (const key of ["childId", "rewardId", "requestId", "caseId", "tradeId", "toChildId"]) {
     if (data[key] !== undefined) normalized[key] = cleanId(data[key], key);
   }
   if (data.vote !== undefined) {
@@ -61,19 +65,83 @@ function normalizeSecureOperation(data) {
     }
     normalized.description = data.description.trim();
   }
+  if (data.percent !== undefined) {
+    if (!Number.isInteger(data.percent) || data.percent < 1 || data.percent > 90) {
+      throw new Error("INVALID_PERCENT");
+    }
+    normalized.percent = data.percent;
+  }
+  if (data.durationHours !== undefined) {
+    if (!Number.isInteger(data.durationHours) || data.durationHours < 1 || data.durationHours > 720) {
+      throw new Error("INVALID_DURATION_HOURS");
+    }
+    normalized.durationHours = data.durationHours;
+  }
+  if (data.label !== undefined) {
+    if (typeof data.label !== "string" || data.label.trim().length > 80) {
+      throw new Error("INVALID_LABEL");
+    }
+    normalized.label = data.label.trim();
+  }
+  if (data.reason !== undefined) {
+    if (typeof data.reason !== "string" || data.reason.trim().length > 300) {
+      throw new Error("INVALID_REASON");
+    }
+    normalized.reason = data.reason.trim();
+  }
   return normalized;
 }
 
-function memberRole({uid, family, member}) {
+function memberRole({uid, family, member, authToken = {}}) {
   if (!member || member.active !== true || member.uid !== uid) return null;
   if (member.role === "owner") {
     return family && family.ownerUid === uid ? "parent" : null;
   }
   if (member.role === "parent") return "parent";
+  if ((member.role === "manager" || member.role === "familyAdmin") &&
+      authToken.email_verified === true &&
+      authToken.firebase && authToken.firebase.sign_in_provider !== "anonymous") {
+    return "parent";
+  }
   if (member.role === "child" &&
       typeof member.childId === "string" &&
       ID_PATTERN.test(member.childId)) return "child";
   return null;
+}
+
+function screenTimeMinutes(reward) {
+  const title = typeof reward.title === "string" ? reward.title.toLowerCase() : "";
+  const isScreenTime = title.includes("ecran") || title.includes("écran") ||
+    title.includes("min") || reward.icon === "🎮";
+  if (!isScreenTime) return 0;
+  const match = title.match(/(\d+)/);
+  return Math.min(480, Math.max(1, match ? Number.parseInt(match[1], 10) : 15));
+}
+
+function buildPurchaseRequest({operationId, childId, childName, reward, cost, salePercent = 0, actorUid, now}) {
+  const title = typeof reward.title === "string" ? reward.title.slice(0, 200) : "";
+  const icon = typeof reward.icon === "string" ? reward.icon.slice(0, 16) : "";
+  return {
+    id: operationId,
+    type: "boutique",
+    childId,
+    requestedBy: childName,
+    text: `🛒 ${childName || "Un enfant"} achète "${title || "une récompense"}" (${cost} pts)`,
+    amount: cost,
+    status: "pending",
+    createdAt: now,
+    extra: {
+      purchaseId: operationId,
+      rewardId: reward.id || "",
+      rewardTitle: title,
+      icon,
+      originalCost: reward.cost,
+      salePrice: cost,
+      onSale: salePercent > 0,
+    },
+    readBy: [],
+    lastModifiedBy: actorUid,
+  };
 }
 
 function authorizeChildTarget({role, member, childId}) {
@@ -147,7 +215,8 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
         ]);
         if (!familySnap.exists) throw new HttpsError("not-found", "Famille introuvable.");
         const member = memberSnap.exists ? memberSnap.data() : null;
-        const role = memberRole({uid, family: familySnap.data(), member});
+        const role = memberRole({uid, family: familySnap.data(), member,
+          authToken: context.auth.token || {}});
         if (!role) throw new HttpsError("permission-denied", "Membre actif requis.");
         if (logSnap.exists) {
           if (!isMatchingReplay(logSnap.data(), fingerprint)) {
@@ -165,8 +234,11 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
           const childRef = familyRef.collection("children").doc(op.childId);
           const rewardRef = familyRef.collection("rewards").doc(op.rewardId);
           const purchaseRef = familyRef.collection("purchases").doc(op.operationId);
-          const [childSnap, rewardSnap] = await Promise.all([
-            tx.get(childRef), tx.get(rewardRef),
+          const requestRef = familyRef.collection("requests").doc(op.operationId);
+          const accountRef = familyRef.collection("screen_time_accounts").doc(op.childId);
+          const saleRef = familyRef.collection("settings").doc("shop");
+          const [childSnap, rewardSnap, saleSnap, accountSnap] = await Promise.all([
+            tx.get(childRef), tx.get(rewardRef), tx.get(saleRef), tx.get(accountRef),
           ]);
           if (!childSnap.exists || !rewardSnap.exists) {
             throw new HttpsError("not-found", "Enfant ou récompense introuvable.");
@@ -179,25 +251,116 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
               reward.isDeleted === true) {
             throw new Error("INVALID_PURCHASE_STATE");
           }
-          if (child.points < reward.cost) {
+          const sale = saleSnap.exists ? saleSnap.data() : {};
+          const saleActive = Number.isInteger(sale.percent) && sale.percent >= 1 &&
+            sale.percent <= 90 && typeof sale.endAt === "string" && sale.endAt > new Date().toISOString();
+          const cost = saleActive ? Math.max(1, Math.round(reward.cost * (100 - sale.percent) / 100)) : reward.cost;
+          if (child.points < cost) {
             throw new HttpsError("failed-precondition", "Points insuffisants.");
           }
+          const now = new Date().toISOString();
+          const childName = typeof child.name === "string" ? child.name.slice(0, 120) : "";
+          const minutes = screenTimeMinutes(reward);
           const purchase = {
             id: op.operationId,
             rewardId: op.rewardId,
             childId: op.childId,
-            childName: typeof child.name === "string" ? child.name.slice(0, 120) : "",
+            childName,
             title: typeof reward.title === "string" ? reward.title.slice(0, 200) : "",
             icon: typeof reward.icon === "string" ? reward.icon.slice(0, 16) : "",
-            cost: reward.cost,
+            cost,
+            salePercent: saleActive ? sale.percent : 0,
             originalCost: reward.cost,
             status: "pending",
-            date: new Date().toISOString(),
+            date: now,
             actorUid: uid,
+            screenTimeMinutes: minutes,
           };
-          tx.update(childRef, {points: child.points - reward.cost});
+          const request = buildPurchaseRequest({
+            operationId: op.operationId,
+            childId: op.childId,
+            childName,
+            reward: {...reward, id: op.rewardId},
+            cost,
+            actorUid: uid,
+            now,
+          });
+          tx.update(childRef, {points: child.points - cost});
           tx.create(purchaseRef, purchase);
-          result = {purchase, points: child.points - reward.cost};
+          tx.create(requestRef, request);
+          const historyRef = familyRef.collection("history").doc(`${op.operationId}_purchase`);
+          tx.create(historyRef, {
+            id: historyRef.id, childId: op.childId, points: cost,
+            reason: `Achat boutique : ${purchase.title}`, category: "boutique",
+            date: now, isBonus: false, actionBy: childName, actorUid: uid,
+          });
+          if (minutes > 0) {
+            const account = accountSnap.exists ? accountSnap.data() : {};
+            const balance = Number.isInteger(account.balanceMinutes) ? account.balanceMinutes : 0;
+            tx.set(accountRef, {...account, childId: op.childId,
+              balanceMinutes: balance + minutes, lastUpdated: now}, {merge: true});
+          }
+          result = {purchase, request, points: child.points - cost, minutes};
+        } else if (op.operation === "purchase_approve" || op.operation === "purchase_reject") {
+          if (role !== "parent" || !op.requestId) {
+            throw new HttpsError("permission-denied", "Validation parent requise.");
+          }
+          const requestRef = familyRef.collection("requests").doc(op.requestId);
+          const purchaseRef = familyRef.collection("purchases").doc(op.requestId);
+          const [requestSnap, purchaseSnap] = await Promise.all([tx.get(requestRef), tx.get(purchaseRef)]);
+          if (!requestSnap.exists || !purchaseSnap.exists) throw new HttpsError("not-found", "Achat introuvable.");
+          const request = requestSnap.data();
+          const purchase = purchaseSnap.data();
+          if (request.type !== "boutique" || request.status !== "pending" || purchase.status !== "pending") {
+            throw new Error("INVALID_PURCHASE_STATE");
+          }
+          const status = op.operation === "purchase_approve" ? "approved" : "rejected";
+          const now = new Date().toISOString();
+          let childRef;
+          let childSnap;
+          let accountRef;
+          let accountSnap;
+          if (status === "rejected") {
+            childRef = familyRef.collection("children").doc(purchase.childId);
+            childSnap = await tx.get(childRef);
+            if (!childSnap.exists || !Number.isInteger(childSnap.data().points) || !Number.isInteger(purchase.cost)) {
+              throw new Error("INVALID_PURCHASE_STATE");
+            }
+            if (Number.isInteger(purchase.screenTimeMinutes) && purchase.screenTimeMinutes > 0) {
+              accountRef = familyRef.collection("screen_time_accounts").doc(purchase.childId);
+              accountSnap = await tx.get(accountRef);
+            }
+          }
+          tx.update(purchaseRef, {status, reviewedAt: now, reviewedBy: uid});
+          tx.delete(requestRef);
+          if (status === "rejected") {
+            tx.update(childRef, {points: childSnap.data().points + purchase.cost});
+            if (accountRef && accountSnap && accountSnap.exists) {
+              const account = accountSnap.data();
+              const balance = Number.isInteger(account.balanceMinutes) ? account.balanceMinutes : 0;
+              tx.update(accountRef, {
+                balanceMinutes: Math.max(0, balance - purchase.screenTimeMinutes),
+                lastUpdated: now,
+              });
+            }
+            const refundRef = familyRef.collection("history").doc(`${op.requestId}_refund`);
+            tx.create(refundRef, {id: refundRef.id, childId: purchase.childId, points: purchase.cost,
+              reason: `Achat annulé : ${purchase.title || "récompense"}`, category: "boutique",
+              date: now, isBonus: true, actionBy: "Parent", actorUid: uid});
+          }
+          result = {purchaseId: op.requestId, status};
+        } else if (op.operation === "sale_set" || op.operation === "sale_stop") {
+          if (role !== "parent") throw new HttpsError("permission-denied", "Action parent requise.");
+          const saleRef = familyRef.collection("settings").doc("shop");
+          if (op.operation === "sale_stop") {
+            tx.set(saleRef, {percent: 0, endAt: null, label: "", updatedBy: uid});
+            result = {percent: 0};
+          } else {
+            if (!op.percent || !op.durationHours) throw new Error("INVALID_SALE");
+            const endAt = new Date(Date.now() + op.durationHours * 3600000).toISOString();
+            tx.set(saleRef, {percent: op.percent, endAt, label: op.label || "Soldes", updatedBy: uid});
+            result = {percent: op.percent, endAt};
+          }
         } else if (op.operation.startsWith("tribunal_")) {
           if (role !== "child" || !op.caseId) {
             throw new HttpsError("permission-denied", "Vote enfant requis.");
@@ -372,5 +535,6 @@ module.exports = {
   operationFingerprint,
   isMatchingReplay,
   applyTradeTransition,
+  buildPurchaseRequest,
   createSecureChildOperationFunctions,
 };

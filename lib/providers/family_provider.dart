@@ -195,6 +195,15 @@ class FamilyProvider extends ChangeNotifier {
     await _metaBox.put('sale_percent', _saleDiscountPercent);
     await _metaBox.put('sale_end', _saleEndDate!.toIso8601String());
     await _metaBox.put('sale_label', _saleLabel);
+    if (_firestore.isConnected) {
+      await _firestore.performFamilyOperation(
+        operation: 'sale_set',
+        operationId: 'sale_${_uuid.v4()}',
+        percent: _saleDiscountPercent,
+        durationHours: durationHours,
+        label: label,
+      );
+    }
     // Timer pour arrêter automatiquement la vente
     _saleTimer?.cancel();
     _saleTimer = Timer(Duration(hours: durationHours), () {
@@ -213,6 +222,12 @@ class FamilyProvider extends ChangeNotifier {
     await _metaBox.delete('sale_percent');
     await _metaBox.delete('sale_end');
     await _metaBox.delete('sale_label');
+    if (_firestore.isConnected) {
+      await _firestore.performFamilyOperation(
+        operation: 'sale_stop',
+        operationId: 'sale_${_uuid.v4()}',
+      );
+    }
     notifyListeners();
   }
 
@@ -665,8 +680,46 @@ class FamilyProvider extends ChangeNotifier {
           _purchasesBox.put(id, jsonEncode(p));
         }
       }
+      _restoreMissingPurchaseRequests();
       notifyListeners();
     };
+  }
+
+  void _restoreMissingPurchaseRequests() {
+    for (final purchase in _purchases) {
+      final purchaseId = purchase['id']?.toString() ?? '';
+      if (purchaseId.isEmpty || purchase['status'] != 'pending') continue;
+      if (_deletedRequestIds.contains(purchaseId) ||
+          _pendingRequests.any((request) => request.id == purchaseId)) {
+        continue;
+      }
+
+      final childId = purchase['childId']?.toString() ?? '';
+      if (childId.isEmpty) continue;
+      final childName = purchase['childName']?.toString() ?? 'Un enfant';
+      final title = purchase['title']?.toString() ?? 'une récompense';
+      final rawCost = purchase['cost'];
+      final cost = rawCost is num ? rawCost.toInt() : 0;
+      final date = DateTime.tryParse(purchase['date']?.toString() ?? '');
+      final request = PendingRequest(
+        id: purchaseId,
+        type: 'boutique',
+        childId: childId,
+        requestedBy: childName,
+        text: '🛒 $childName achète "$title" ($cost pts)',
+        amount: cost,
+        createdAt: date,
+        extra: {
+          'purchaseId': purchaseId,
+          'rewardId': purchase['rewardId']?.toString() ?? '',
+          'rewardTitle': title,
+          'icon': purchase['icon']?.toString() ?? '',
+        },
+      );
+      _markPending(purchaseId);
+      _pendingRequests.add(request);
+      _requestsBox.put(purchaseId, jsonEncode(request.toMap()));
+    }
   }
 
   // ───────────────────────────────────────────────────────────
@@ -2630,6 +2683,7 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<RequestResult> createRequest({
+    String? requestId,
     required String type,
     required String childId,
     required String requestedBy,
@@ -2653,7 +2707,7 @@ class FamilyProvider extends ChangeNotifier {
     }
 
     final r = PendingRequest(
-      id: _uuid.v4(),
+      id: requestId ?? _uuid.v4(),
       type: type,
       childId: childId,
       requestedBy: requestedBy,
@@ -2730,6 +2784,15 @@ class FamilyProvider extends ChangeNotifier {
         // ✅ Les points ont déjà été déduits à l'achat.
         // La validation du parent confirme simplement l'achat.
         // On ajoute juste un commentaire si fourni.
+        if (_firestore.isConnected) {
+          await _firestore.performFamilyOperation(
+            operation: 'purchase_approve',
+            operationId: 'review_${_uuid.v4()}',
+            requestId: r.id,
+          );
+        } else {
+          await _setPurchaseRequestStatus(r, 'approved');
+        }
         break;
     }
 
@@ -2746,8 +2809,22 @@ class FamilyProvider extends ChangeNotifier {
 
     // 🛒 Si c'est un achat boutique → rembourser les points
     if (r != null && r.type == 'boutique') {
+      if (_firestore.isConnected) {
+        await _firestore.performFamilyOperation(
+          operation: 'purchase_reject',
+          operationId: 'review_${_uuid.v4()}',
+          requestId: r.id,
+          reason: reason,
+        );
+        _pendingRequests.removeWhere((x) => x.id == requestId);
+        _markRequestDeleted(requestId);
+        await _requestsBox.delete(requestId);
+        notifyListeners();
+        return;
+      }
+      final shouldRefund = await _setPurchaseRequestStatus(r, 'rejected');
       final child = getChild(r.childId);
-      if (child != null) {
+      if (shouldRefund && child != null) {
         child.points += r.amount; // remboursement
         _markPending(child.id);
         await _childrenBox.put(child.id, jsonEncode(child.toMap()));
@@ -2791,6 +2868,26 @@ class FamilyProvider extends ChangeNotifier {
     await _requestsBox.delete(requestId);
     if (_firestore.isConnected) await _firestore.deleteRequest(requestId);
     notifyListeners();
+  }
+
+  Future<bool> _setPurchaseRequestStatus(
+    PendingRequest request,
+    String status,
+  ) async {
+    final purchaseId = request.extra['purchaseId']?.toString() ?? request.id;
+    final index = _purchases.indexWhere((p) => p['id'] == purchaseId);
+    if (index < 0) return false;
+
+    final purchase = Map<String, dynamic>.from(_purchases[index]);
+    if (purchase['status'] != 'pending') return false;
+    purchase['status'] = status;
+    purchase['reviewedAt'] = DateTime.now().toIso8601String();
+    _purchases[index] = purchase;
+    await _purchasesBox.put(purchaseId, jsonEncode(purchase));
+    if (_firestore.isConnected) {
+      await _firestore.savePurchase(purchase);
+    }
+    return true;
   }
 
   // ─── BOUTIQUE DE RÉCOMPENSES ───────────────────────────────────
@@ -2910,6 +3007,7 @@ class FamilyProvider extends ChangeNotifier {
     // 🔒 On transmet le PRIX PAYÉ (soldé) et non le prix original
     final onSale = actualCost < reward.cost;
     await createRequest(
+      requestId: purchaseId,
       type: 'boutique',
       childId: childId,
       requestedBy: child.name,
@@ -2918,6 +3016,7 @@ class FamilyProvider extends ChangeNotifier {
           : '🛒 ${child.name} achète "${reward.title}" ($actualCost pts)',
       amount: actualCost,
       extra: {
+        'purchaseId': purchaseId,
         'rewardId': reward.id,
         'rewardTitle': reward.title,
         'icon': reward.icon,
