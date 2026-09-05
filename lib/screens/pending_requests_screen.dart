@@ -197,8 +197,9 @@ class PendingRequestsScreen extends StatelessWidget {
                                         ),
                                       ),
                                     const SizedBox(height: 12),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
+                                    Wrap(
+                                      alignment: WrapAlignment.end,
+                                      runSpacing: 8,
                                       children: [
                                         TextButton.icon(
                                           onPressed: () => _showRequestDetails(
@@ -220,7 +221,23 @@ class PendingRequestsScreen extends StatelessWidget {
                                         const SizedBox(width: 8),
                                         // 📺 Bouton spécial : Démarrer le chrono (temps d'écran)
                                         if (r.type == 'boutique' &&
-                                            _isScreenTimeReward(r))
+                                            _isScreenTimeReward(r)) ...[
+                                          ElevatedButton.icon(
+                                            onPressed: () async {
+                                              await fp.approveRequest(r.id);
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                        const SnackBar(
+                                                  content: Text(
+                                                      '✅ Achat accepté. Le chrono pourra être démarré plus tard.'),
+                                                ));
+                                              }
+                                            },
+                                            icon: const Icon(Icons.check),
+                                            label: const Text('Accepter'),
+                                          ),
+                                          const SizedBox(width: 8),
                                           ElevatedButton.icon(
                                             onPressed: () =>
                                                 _startScreenTimeNow(
@@ -228,13 +245,13 @@ class PendingRequestsScreen extends StatelessWidget {
                                             icon: const Icon(
                                                 Icons.play_circle_fill),
                                             label:
-                                                const Text('Démarrer chrono'),
+                                                const Text('Accepter + chrono'),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Colors.teal,
                                               foregroundColor: Colors.white,
                                             ),
-                                          )
-                                        else
+                                          ),
+                                        ] else
                                           ElevatedButton.icon(
                                             onPressed: () => _showApproveDialog(
                                                 context, fp, r),

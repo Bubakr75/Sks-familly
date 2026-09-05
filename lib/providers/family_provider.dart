@@ -29,6 +29,7 @@ import '../services/storage_service.dart';
 import '../utils/image_compressor.dart';
 import '../services/voice_service.dart';
 import '../services/sound_service.dart';
+import '../services/notification_service.dart';
 
 /// Résultat de createRequest pour exploiter la déduplication.
 enum RequestResult { created, duplicate, failed }
@@ -3173,6 +3174,7 @@ class FamilyProvider extends ChangeNotifier {
 
   /// Démarre une session de temps d'écran
   Future<void> startScreenTimeSession(String childId, int minutes) async {
+    final childName = getChild(childId)?.name ?? 'l’enfant';
     if (_firestore.isConnected) {
       await _firestore.performFamilyOperation(
         operation: 'screen_start',
@@ -3181,6 +3183,11 @@ class FamilyProvider extends ChangeNotifier {
         minutes: minutes,
       );
       _startOvertimeChecker();
+      await NotificationService.scheduleScreenTimeEnd(
+        childId: childId,
+        childName: childName,
+        minutes: minutes,
+      );
       return;
     }
     final account = getScreenTimeAccount(childId);
@@ -3194,6 +3201,11 @@ class FamilyProvider extends ChangeNotifier {
     account.appliedOvertimeTranches = 0;
     _screenTimeAccounts[childId] = account;
     _startOvertimeChecker();
+    await NotificationService.scheduleScreenTimeEnd(
+      childId: childId,
+      childName: childName,
+      minutes: minutes,
+    );
     if (_firestore.isConnected) {
       try {
         await _firestore.saveScreenTimeAccount(childId, account.toMap());
@@ -3206,6 +3218,7 @@ class FamilyProvider extends ChangeNotifier {
   /// Les pénalités d'overtime sont déjà appliquées en temps réel par le timer,
   /// on ne les re-applique PAS ici (sinon double pénalité).
   Future<void> stopScreenTimeSession(String childId) async {
+    await NotificationService.cancelScreenTimeEnd(childId);
     if (_firestore.isConnected) {
       await _firestore.performFamilyOperation(
         operation: 'screen_stop',

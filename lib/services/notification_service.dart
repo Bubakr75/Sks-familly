@@ -32,7 +32,8 @@ class NotificationService {
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Europe/Paris'));
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _localNotifications.initialize(initSettings);
@@ -54,17 +55,34 @@ class NotificationService {
       playSound: true,
     );
 
-    final android = _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    const screenTimerChannel = AndroidNotificationChannel(
+      'sks_screen_timer_channel',
+      'Fin du temps d’écran',
+      description: 'Sonnerie à la fin d’un chrono de temps d’écran',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    final android = _localNotifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     await android?.createNotificationChannel(androidChannel);
     await android?.createNotificationChannel(reminderChannel);
+    await android?.createNotificationChannel(screenTimerChannel);
+    await android?.requestNotificationsPermission();
+    try {
+      await android?.requestExactAlarmsPermission();
+    } catch (_) {
+      // Certains constructeurs Android ne proposent pas cette permission.
+    }
 
     _initialized = true;
   }
 
   // ===== SCHEDULED NOTIFICATIONS =====
 
-  static Future<void> scheduleDailyReminder({int hour = 19, int minute = 0}) async {
+  static Future<void> scheduleDailyReminder(
+      {int hour = 19, int minute = 0}) async {
     if (kIsWeb) return; // pas de notifs locales planifiées sur web
     await _localNotifications.cancel(1001);
 
@@ -84,7 +102,8 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -119,12 +138,14 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );
   }
 
-  static Future<void> scheduleMonthlyReminder({int hour = 18, int minute = 0}) async {
+  static Future<void> scheduleMonthlyReminder(
+      {int hour = 18, int minute = 0}) async {
     if (kIsWeb) return;
     await _localNotifications.cancel(1003);
 
@@ -145,13 +166,15 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
   static Future<void> cancelMonthlyReminder() async {
     await _localNotifications.cancel(1003);
   }
+
   static Future<void> cancelDailyReminder() async {
     await _localNotifications.cancel(1001);
   }
@@ -164,18 +187,70 @@ class NotificationService {
     await _localNotifications.cancelAll();
   }
 
+  static int _screenTimerId(String childId) =>
+      200000 + (childId.hashCode & 0x1fffffff) % 700000;
+
+  /// Programme une vraie alarme Android, audible même si l’app est fermée.
+  static Future<void> scheduleScreenTimeEnd({
+    required String childId,
+    required String childName,
+    required int minutes,
+  }) async {
+    if (kIsWeb || minutes <= 0) return;
+    await init();
+    await _localNotifications.cancel(_screenTimerId(childId));
+    final end = tz.TZDateTime.now(tz.local).add(Duration(minutes: minutes));
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'sks_screen_timer_channel',
+        'Fin du temps d’écran',
+        channelDescription: 'Sonnerie à la fin d’un chrono de temps d’écran',
+        importance: Importance.max,
+        priority: Priority.max,
+        playSound: true,
+        enableVibration: true,
+        category: AndroidNotificationCategory.alarm,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+        icon: '@mipmap/ic_launcher',
+      ),
+    );
+    Future<void> schedule(AndroidScheduleMode mode) =>
+        _localNotifications.zonedSchedule(
+          _screenTimerId(childId),
+          '⏰ Temps d’écran terminé',
+          'Le chrono de $childName est arrivé à zéro.',
+          end,
+          details,
+          androidScheduleMode: mode,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        );
+    try {
+      await schedule(AndroidScheduleMode.exactAllowWhileIdle);
+    } catch (_) {
+      await schedule(AndroidScheduleMode.inexactAllowWhileIdle);
+    }
+  }
+
+  static Future<void> cancelScreenTimeEnd(String childId) async {
+    if (kIsWeb) return;
+    await _localNotifications.cancel(_screenTimerId(childId));
+  }
+
   // ===== TIME HELPERS =====
 
   static tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    var scheduled =
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
     if (scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
     return scheduled;
   }
 
-  static tz.TZDateTime _nextInstanceOfDayAndTime(int dayOfWeek, int hour, int minute) {
+  static tz.TZDateTime _nextInstanceOfDayAndTime(
+      int dayOfWeek, int hour, int minute) {
     var scheduled = _nextInstanceOfTime(hour, minute);
     while (scheduled.weekday != dayOfWeek) {
       scheduled = scheduled.add(const Duration(days: 1));
@@ -187,13 +262,15 @@ class NotificationService {
     final now = tz.TZDateTime.now(tz.local);
     // Dernier jour du mois courant (jour 0 du mois suivant)
     var lastDay = DateTime(now.year, now.month + 1, 0).day;
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, lastDay, hour, minute);
+    var scheduled =
+        tz.TZDateTime(tz.local, now.year, now.month, lastDay, hour, minute);
     // Si deja passe, on prend le dernier jour du mois suivant
     if (scheduled.isBefore(now)) {
       final nextMonth = now.month == 12 ? 1 : now.month + 1;
       final nextYear = now.month == 12 ? now.year + 1 : now.year;
       lastDay = DateTime(nextYear, nextMonth + 1, 0).day;
-      scheduled = tz.TZDateTime(tz.local, nextYear, nextMonth, lastDay, hour, minute);
+      scheduled =
+          tz.TZDateTime(tz.local, nextYear, nextMonth, lastDay, hour, minute);
     }
     return scheduled;
   }
@@ -261,49 +338,78 @@ class NotificationService {
         message: message,
         type: type,
         onDismiss: () {
-          try { entry.remove(); } catch (_) {}
+          try {
+            entry.remove();
+          } catch (_) {}
         },
       ),
     );
 
     overlay.insert(entry);
     Future.delayed(const Duration(seconds: 4), () {
-      try { entry.remove(); } catch (_) {}
+      try {
+        entry.remove();
+      } catch (_) {}
     });
   }
 
   // ===== CONVENIENCE METHODS =====
 
   static void notifyBonus(String childName, int points, String reason) {
-    show(title: 'Bonus pour $childName', message: '+$points pts - $reason', type: NotificationType.bonus);
+    show(
+        title: 'Bonus pour $childName',
+        message: '+$points pts - $reason',
+        type: NotificationType.bonus);
   }
 
   static void notifyPenalty(String childName, int points, String reason) {
-    show(title: 'Penalite pour $childName', message: '$points pts - $reason', type: NotificationType.penalty);
+    show(
+        title: 'Penalite pour $childName',
+        message: '$points pts - $reason',
+        type: NotificationType.penalty);
   }
 
   static void notifyPunishment(String childName, String text, int lines) {
-    show(title: 'Punition pour $childName', message: '$lines lignes - "$text"', type: NotificationType.punishment);
+    show(
+        title: 'Punition pour $childName',
+        message: '$lines lignes - "$text"',
+        type: NotificationType.punishment);
   }
 
-  static void notifyPunishmentProgress(String childName, int completed, int total) {
-    show(title: 'Progres de $childName', message: '$completed/$total lignes completees', type: NotificationType.progress);
+  static void notifyPunishmentProgress(
+      String childName, int completed, int total) {
+    show(
+        title: 'Progres de $childName',
+        message: '$completed/$total lignes completees',
+        type: NotificationType.progress);
   }
 
   static void notifyBadge(String childName, String badgeName) {
-    show(title: '\u{1F3C6} Nouveau badge !', message: '$childName a obtenu "$badgeName"', type: NotificationType.badge);
+    show(
+        title: '\u{1F3C6} Nouveau badge !',
+        message: '$childName a obtenu "$badgeName"',
+        type: NotificationType.badge);
   }
 
   static void notifyGoalCompleted(String childName, String goalTitle) {
-    show(title: '\u{1F3AF} Objectif atteint !', message: '$childName a complete "$goalTitle"', type: NotificationType.goal);
+    show(
+        title: '\u{1F3AF} Objectif atteint !',
+        message: '$childName a complete "$goalTitle"',
+        type: NotificationType.goal);
   }
 
   static void notifyScreenTime(String childName, String time) {
-    show(title: '\u{1F4FA} Temps d\'ecran', message: '$childName a $time ce week-end', type: NotificationType.screenTime);
+    show(
+        title: '\u{1F4FA} Temps d\'ecran',
+        message: '$childName a $time ce week-end',
+        type: NotificationType.screenTime);
   }
 
   static void notifySyncUpdate(String detail) {
-    show(title: '\u{1F504} Mise a jour', message: detail, type: NotificationType.sync);
+    show(
+        title: '\u{1F504} Mise a jour',
+        message: detail,
+        type: NotificationType.sync);
   }
 }
 
@@ -344,14 +450,20 @@ class _NotificationOverlayState extends State<_NotificationOverlay>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 400));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(
+            CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
     _controller.forward();
 
     Future.delayed(const Duration(milliseconds: 3500), () {
-      if (mounted) _controller.reverse().then((_) { if (mounted) widget.onDismiss(); });
+      if (mounted) {
+        _controller.reverse().then((_) {
+          if (mounted) widget.onDismiss();
+        });
+      }
     });
   }
 
@@ -363,40 +475,64 @@ class _NotificationOverlayState extends State<_NotificationOverlay>
 
   IconData get _icon {
     switch (widget.type) {
-      case NotificationType.bonus: return Icons.add_circle_rounded;
-      case NotificationType.penalty: return Icons.remove_circle_rounded;
-      case NotificationType.punishment: return Icons.assignment_rounded;
-      case NotificationType.progress: return Icons.trending_up_rounded;
-      case NotificationType.badge: return Icons.emoji_events_rounded;
-      case NotificationType.goal: return Icons.flag_rounded;
-      case NotificationType.screenTime: return Icons.tv_rounded;
-      case NotificationType.sync: return Icons.sync_rounded;
+      case NotificationType.bonus:
+        return Icons.add_circle_rounded;
+      case NotificationType.penalty:
+        return Icons.remove_circle_rounded;
+      case NotificationType.punishment:
+        return Icons.assignment_rounded;
+      case NotificationType.progress:
+        return Icons.trending_up_rounded;
+      case NotificationType.badge:
+        return Icons.emoji_events_rounded;
+      case NotificationType.goal:
+        return Icons.flag_rounded;
+      case NotificationType.screenTime:
+        return Icons.tv_rounded;
+      case NotificationType.sync:
+        return Icons.sync_rounded;
     }
   }
 
   Color get _color {
     switch (widget.type) {
-      case NotificationType.bonus: return const Color(0xFF2E7D32);
-      case NotificationType.penalty: return const Color(0xFFC62828);
-      case NotificationType.punishment: return const Color(0xFFE65100);
-      case NotificationType.progress: return const Color(0xFF1565C0);
-      case NotificationType.badge: return const Color(0xFFF9A825);
-      case NotificationType.goal: return const Color(0xFF6A1B9A);
-      case NotificationType.screenTime: return const Color(0xFF7C4DFF);
-      case NotificationType.sync: return const Color(0xFF00897B);
+      case NotificationType.bonus:
+        return const Color(0xFF2E7D32);
+      case NotificationType.penalty:
+        return const Color(0xFFC62828);
+      case NotificationType.punishment:
+        return const Color(0xFFE65100);
+      case NotificationType.progress:
+        return const Color(0xFF1565C0);
+      case NotificationType.badge:
+        return const Color(0xFFF9A825);
+      case NotificationType.goal:
+        return const Color(0xFF6A1B9A);
+      case NotificationType.screenTime:
+        return const Color(0xFF7C4DFF);
+      case NotificationType.sync:
+        return const Color(0xFF00897B);
     }
   }
 
   String get _emoji {
     switch (widget.type) {
-      case NotificationType.bonus: return '\u{2B50}';
-      case NotificationType.penalty: return '\u{26A0}';
-      case NotificationType.punishment: return '\u{1F4DD}';
-      case NotificationType.progress: return '\u{1F4C8}';
-      case NotificationType.badge: return '\u{1F3C6}';
-      case NotificationType.goal: return '\u{1F3AF}';
-      case NotificationType.screenTime: return '\u{1F4FA}';
-      case NotificationType.sync: return '\u{1F504}';
+      case NotificationType.bonus:
+        return '\u{2B50}';
+      case NotificationType.penalty:
+        return '\u{26A0}';
+      case NotificationType.punishment:
+        return '\u{1F4DD}';
+      case NotificationType.progress:
+        return '\u{1F4C8}';
+      case NotificationType.badge:
+        return '\u{1F3C6}';
+      case NotificationType.goal:
+        return '\u{1F3AF}';
+      case NotificationType.screenTime:
+        return '\u{1F4FA}';
+      case NotificationType.sync:
+        return '\u{1F504}';
     }
   }
 
@@ -404,7 +540,8 @@ class _NotificationOverlayState extends State<_NotificationOverlay>
   Widget build(BuildContext context) {
     return Positioned(
       top: MediaQuery.of(context).padding.top + 8,
-      left: 12, right: 12,
+      left: 12,
+      right: 12,
       child: SlideTransition(
         position: _slideAnimation,
         child: FadeTransition(
@@ -412,28 +549,48 @@ class _NotificationOverlayState extends State<_NotificationOverlay>
           child: GestureDetector(
             onTap: widget.onDismiss,
             onVerticalDragEnd: (details) {
-              if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
-                _controller.reverse().then((_) { if (mounted) widget.onDismiss(); });
+              if (details.primaryVelocity != null &&
+                  details.primaryVelocity! < 0) {
+                _controller.reverse().then((_) {
+                  if (mounted) widget.onDismiss();
+                });
               }
             },
             child: Material(
-              elevation: 8, borderRadius: BorderRadius.circular(16),
+              elevation: 8,
+              borderRadius: BorderRadius.circular(16),
               shadowColor: _color.withValues(alpha: 0.3),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [_color, _color.withValues(alpha: 0.85)]),
+                  gradient: LinearGradient(
+                      colors: [_color, _color.withValues(alpha: 0.85)]),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(children: [
                   Text(_emoji, style: const TextStyle(fontSize: 28)),
                   const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Text(widget.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                    const SizedBox(height: 2),
-                    Text(widget.message, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ])),
-                  Icon(_icon, color: Colors.white.withValues(alpha: 0.8), size: 24),
+                  Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                        Text(widget.title,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15)),
+                        const SizedBox(height: 2),
+                        Text(widget.message,
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 13),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis),
+                      ])),
+                  Icon(_icon,
+                      color: Colors.white.withValues(alpha: 0.8), size: 24),
                 ]),
               ),
             ),
@@ -443,5 +600,3 @@ class _NotificationOverlayState extends State<_NotificationOverlay>
     );
   }
 }
-
-
