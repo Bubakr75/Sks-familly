@@ -37,6 +37,8 @@
       transition: opacity 160ms ease-out;
     }
     #loading.hidden { opacity: 0; }
+    /* Les vidéos décoratives restent sous les boutons Flutter, y compris côté DOM. */
+    video[id^="videoElement-"]:not([controls]) { pointer-events: none; }
     @media (prefers-reduced-motion: reduce) {
       #loading { transition: none; }
     }
@@ -136,7 +138,8 @@
           window.navigator.standalone === true;
       }
       function isIOS() {
-        return /iphone|ipad|ipod/i.test(navigator.userAgent);
+        return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       }
 
       // iOS conserve parfois l'ancien cache Flutter de l'icône d'accueil
@@ -145,7 +148,15 @@
       if (isIOS() && isStandalone() && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (registrations) {
           registrations.forEach(function (registration) {
-            if (!registration.scope.includes('/firebase-cloud-messaging-push-scope')) {
+            var workers = [registration.active, registration.waiting, registration.installing]
+              .filter(Boolean);
+            // Ne cibler que l'ancien worker Flutter identifié, jamais un worker inconnu.
+            if (!registration.scope.includes('/firebase-cloud-messaging-push-scope') &&
+                workers.length > 0 && workers.every(function (worker) {
+                  var url = new URL(worker.scriptURL, window.location.href);
+                  return url.origin === window.location.origin &&
+                    url.pathname === new URL('flutter_service_worker.js', document.baseURI).pathname;
+                })) {
               registration.unregister().catch(function () {});
             }
           });

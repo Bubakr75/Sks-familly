@@ -64,6 +64,34 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
     }
   }
 
+  Future<void> _runTimerAction(
+    Future<void> Function() action,
+    String successMessage,
+  ) async {
+    try {
+      await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: EmeraldPalette.emerald,
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Erreur du chrono: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Action impossible. Vérifiez la connexion puis réessayez.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final fp = context.watch<FamilyProvider>();
@@ -257,9 +285,12 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
                     overtimeMinutes: account.overtimeMinutes,
                     penalty: account.overtimePenalty,
                     pulseAnim: _pulse,
-                    onStop: () {
+                    onStop: () async {
                       HapticFeedback.heavyImpact();
-                      fp.stopScreenTimeSession(child.id);
+                      await _runTimerAction(
+                        () => fp.stopScreenTimeSession(child.id),
+                        'Chrono arrêté pour ${child.name}.',
+                      );
                     },
                   )
                 else if (account.isRunning)
@@ -267,18 +298,24 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
                     remaining: account.sessionRemaining,
                     total: account.sessionMinutes,
                     tickAnim: _tick,
-                    onStop: () {
+                    onStop: () async {
                       HapticFeedback.heavyImpact();
-                      fp.stopScreenTimeSession(child.id);
+                      await _runTimerAction(
+                        () => fp.stopScreenTimeSession(child.id),
+                        'Chrono arrêté pour ${child.name}.',
+                      );
                     },
                   )
                 else
                   _BalanceClock(
                     balance: account.balanceMinutes,
                     onStart: account.balanceMinutes > 0
-                        ? (mins) {
+                        ? (mins) async {
                             HapticFeedback.mediumImpact();
-                            fp.startScreenTimeSession(child.id, mins);
+                            await _runTimerAction(
+                              () => fp.startScreenTimeSession(child.id, mins),
+                              'Chrono démarré pour ${child.name} ($mins min).',
+                            );
                           }
                         : null,
                   ),
@@ -357,13 +394,11 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
           label: '+10 min',
           icon: Icons.add_rounded,
           color: EmeraldPalette.gold,
-          onTap: () {
+          onTap: () async {
             HapticFeedback.mediumImpact();
-            fp.extendScreenTime(child.id, 10);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text('+10 min pour ${child.name}'),
-                  backgroundColor: EmeraldPalette.gold),
+            await _runTimerAction(
+              () => fp.extendScreenTime(child.id, 10),
+              '+10 min pour ${child.name}',
             );
           },
         ),
@@ -374,13 +409,11 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
           label: '+30 min',
           icon: Icons.add_rounded,
           color: EmeraldPalette.goldLight,
-          onTap: () {
+          onTap: () async {
             HapticFeedback.mediumImpact();
-            fp.extendScreenTime(child.id, 30);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text('+30 min pour ${child.name}'),
-                  backgroundColor: EmeraldPalette.gold),
+            await _runTimerAction(
+              () => fp.extendScreenTime(child.id, 30),
+              '+30 min pour ${child.name}',
             );
           },
         ),

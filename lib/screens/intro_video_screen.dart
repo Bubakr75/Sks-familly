@@ -9,12 +9,14 @@ class IntroVideoScreen extends StatefulWidget {
   final VoidCallback onFinished;
   final Future<void> Function()? initializeForTest;
   final Future<void> Function()? activateSoundForTest;
+  final VideoPlayerController Function()? controllerFactory;
 
   const IntroVideoScreen({
     super.key,
     required this.onFinished,
     this.initializeForTest,
     this.activateSoundForTest,
+    this.controllerFactory,
   });
 
   @override
@@ -49,13 +51,16 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
         return;
       }
 
-      final controller = VideoPlayerController.asset('assets/videos/intro.mp4');
+      final controller = widget.controllerFactory?.call() ??
+          VideoPlayerController.asset('assets/videos/intro.mp4');
       _controller = controller;
       await controller.initialize().timeout(const Duration(seconds: 10));
       if (!mounted || _finished) return;
 
       await controller.setLooping(false);
+      if (!mounted || _finished) return;
       await controller.setVolume(kIsWeb ? 0 : 1);
+      if (!mounted || _finished) return;
       controller.addListener(_onVideoChanged);
       setState(() => _initialized = true);
 
@@ -110,7 +115,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
       _soundPending = true;
       _errorMessage = null;
     });
-    request.then((_) {
+    request.timeout(const Duration(seconds: 5)).then((_) {
       if (!mounted || _finished) return;
       setState(() {
         _soundPending = false;
@@ -134,10 +139,17 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
     if (_finished) return;
     _finished = true;
     _safetyTimer?.cancel();
-    final controller = _controller;
-    if (controller != null) unawaited(controller.pause());
+    _releaseVideo();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     if (mounted) widget.onFinished();
+  }
+
+  void _releaseVideo() {
+    final controller = _controller;
+    _controller = null;
+    if (controller == null) return;
+    controller.removeListener(_onVideoChanged);
+    unawaited(controller.dispose().catchError((Object _) {}));
   }
 
   @override
@@ -147,6 +159,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
       return;
     }
     if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
       unawaited(controller.pause());
@@ -160,11 +173,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
     WidgetsBinding.instance.removeObserver(this);
     _safetyTimer?.cancel();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    final controller = _controller;
-    if (controller != null) {
-      controller.removeListener(_onVideoChanged);
-      unawaited(controller.dispose());
-    }
+    _releaseVideo();
     super.dispose();
   }
 
@@ -190,7 +199,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
                   child: SizedBox(
                     width: controller.value.size.width,
                     height: controller.value.size.height,
-                    child: VideoPlayer(controller),
+                    child: IgnorePointer(child: VideoPlayer(controller)),
                   ),
                 ),
               ),

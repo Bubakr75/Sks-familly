@@ -11,6 +11,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
 import '../services/gemini_service.dart';
 import '../widgets/transfer_points_sheet.dart';
+import '../widgets/tribunal_case_dialog.dart';
 
 class TribunalScreen extends StatefulWidget {
   const TribunalScreen({super.key});
@@ -53,20 +54,19 @@ class _TribunalScreenState extends State<TribunalScreen>
               elevation: 0,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.swap_horiz_rounded, color: Colors.cyan),
+                  icon:
+                      const Icon(Icons.swap_horiz_rounded, color: Colors.cyan),
                   tooltip: 'Transfert express SKS — sans ouvrir d\'affaire',
                   onPressed: () => showTransferPointsSheet(context),
                 ),
               ],
               title: ShaderMask(
                 shaderCallback: (bounds) =>
-                    const LinearGradient(
-                            colors: [Colors.purple, Colors.amber])
+                    const LinearGradient(colors: [Colors.purple, Colors.amber])
                         .createShader(bounds),
                 child: const Text('⚖️ Tribunal Familial',
                     style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
+                        fontWeight: FontWeight.bold, color: Colors.white)),
               ),
               bottom: TabBar(
                 controller: _tabController,
@@ -75,27 +75,24 @@ class _TribunalScreenState extends State<TribunalScreen>
                 unselectedLabelColor: Colors.white38,
                 tabs: [
                   Tab(
-                      child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                        const Text('En cours'),
-                        if (activeCases.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius:
-                                    BorderRadius.circular(10)),
-                            child: Text('${activeCases.length}',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ])),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Text('En cours'),
+                    if (activeCases.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10)),
+                        child: Text('${activeCases.length}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ])),
                   const Tab(text: 'Classees'),
                 ],
               ),
@@ -113,8 +110,7 @@ class _TribunalScreenState extends State<TribunalScreen>
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text('Nouvelle affaire',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold)),
+                      color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         );
@@ -122,8 +118,7 @@ class _TribunalScreenState extends State<TribunalScreen>
     );
   }
 
-  Widget _buildActiveTab(
-      FamilyProvider fp, List<TribunalCase> cases) {
+  Widget _buildActiveTab(FamilyProvider fp, List<TribunalCase> cases) {
     if (cases.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -132,21 +127,18 @@ class _TribunalScreenState extends State<TribunalScreen>
           const SizedBox(height: 16),
           Text('Aucune affaire en cours',
               style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 16)),
+                  color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
         ]),
       );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: cases.length,
-      itemBuilder: (context, index) =>
-          _buildCaseCard(fp, cases[index]),
+      itemBuilder: (context, index) => _buildCaseCard(fp, cases[index]),
     );
   }
 
-  Widget _buildClosedTab(
-      FamilyProvider fp, List<TribunalCase> cases) {
+  Widget _buildClosedTab(FamilyProvider fp, List<TribunalCase> cases) {
     if (cases.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -155,16 +147,14 @@ class _TribunalScreenState extends State<TribunalScreen>
           const SizedBox(height: 16),
           Text('Aucune affaire classee',
               style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 16)),
+                  color: Colors.white.withValues(alpha: 0.4), fontSize: 16)),
         ]),
       );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: cases.length,
-      itemBuilder: (context, index) =>
-          _buildCaseCard(fp, cases[index]),
+      itemBuilder: (context, index) => _buildCaseCard(fp, cases[index]),
     );
   }
 
@@ -184,8 +174,8 @@ class _TribunalScreenState extends State<TribunalScreen>
             children: [
               Row(children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
@@ -212,25 +202,23 @@ class _TribunalScreenState extends State<TribunalScreen>
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(tc.description,
-                  style: const TextStyle(
-                      color: Colors.white54, fontSize: 13),
+                  style: const TextStyle(color: Colors.white54, fontSize: 13),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
               const SizedBox(height: 10),
               Row(children: [
-                const Icon(Icons.person,
-                    color: Colors.amber, size: 16),
+                const Icon(Icons.person, color: Colors.amber, size: 16),
                 const SizedBox(width: 4),
                 Text('Plaignant: $plaintiff',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12)),
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 12)),
                 const SizedBox(width: 16),
                 const Icon(Icons.person_outline,
                     color: Colors.redAccent, size: 16),
                 const SizedBox(width: 4),
                 Text('Accuse: $accused',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12)),
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 12)),
               ]),
             ],
           ),
@@ -252,8 +240,7 @@ class _TribunalScreenState extends State<TribunalScreen>
       builder: (ctx) => Container(
         decoration: BoxDecoration(
           color: Colors.grey.shade900,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -275,32 +262,26 @@ class _TribunalScreenState extends State<TribunalScreen>
                     fontSize: 20,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            Text(tc.description,
-                style: const TextStyle(color: Colors.white70)),
+            Text(tc.description, style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 16),
             _infoRow('Plaignant', plaintiff, Colors.amber),
             _infoRow('Accuse', accused, Colors.redAccent),
-            _infoRow('Statut',
-                '${tc.statusEmoji} ${tc.statusLabel}', tc.statusColor),
+            _infoRow('Statut', '${tc.statusEmoji} ${tc.statusLabel}',
+                tc.statusColor),
             if (tc.verdict != null)
-              _infoRow('Verdict',
-                  '${tc.verdictEmoji} ${tc.verdictLabel}',
+              _infoRow('Verdict', '${tc.verdictEmoji} ${tc.verdictLabel}',
                   Colors.purple),
-            if (tc.verdictReason != null &&
-                tc.verdictReason!.isNotEmpty)
-              _infoRow(
-                  'Raison', tc.verdictReason!, Colors.purple),
+            if (tc.verdictReason != null && tc.verdictReason!.isNotEmpty)
+              _infoRow('Raison', tc.verdictReason!, Colors.purple),
             const SizedBox(height: 20),
             if (isParent && !tc.isClosed) ...[
               if (tc.status == TribunalStatus.filed)
-                _actionButton('â–¶️ Ouvrir l\'audience', Colors.blue,
-                    () {
+                _actionButton('â–¶️ Ouvrir l\'audience', Colors.blue, () {
                   fp.startTribunalHearing(tc.id);
                   if (ctx.mounted) Navigator.pop(ctx);
                 }),
               if (tc.status == TribunalStatus.inProgress)
-                _actionButton(
-                    '🤔 Passer en deliberation', Colors.purple, () {
+                _actionButton('🤔 Passer en deliberation', Colors.purple, () {
                   fp.startTribunalDeliberation(tc.id);
                   if (ctx.mounted) Navigator.pop(ctx);
                 }),
@@ -325,13 +306,11 @@ class _TribunalScreenState extends State<TribunalScreen>
                 const SizedBox(height: 8),
                 _actionButton('✅ Innocent', Colors.green, () {
                   if (ctx.mounted) Navigator.pop(ctx);
-                  _showVerdictDialog(
-                      fp, tc, TribunalVerdict.innocent);
+                  _showVerdictDialog(fp, tc, TribunalVerdict.innocent);
                 }),
               ],
               const SizedBox(height: 8),
-              _actionButton('🗑️ Classer sans suite', Colors.grey,
-                  () {
+              _actionButton('🗑️ Classer sans suite', Colors.grey, () {
                 fp.dismissTribunalCase(tc.id);
                 if (ctx.mounted) Navigator.pop(ctx);
               }),
@@ -358,21 +337,17 @@ class _TribunalScreenState extends State<TribunalScreen>
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(children: [
         Text('$label: ',
-            style:
-                const TextStyle(color: Colors.white54, fontSize: 14)),
+            style: const TextStyle(color: Colors.white54, fontSize: 14)),
         Expanded(
           child: Text(value,
               style: TextStyle(
-                  color: color,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold)),
+                  color: color, fontSize: 14, fontWeight: FontWeight.bold)),
         ),
       ]),
     );
   }
 
-  Widget _actionButton(
-      String label, Color color, VoidCallback onTap) {
+  Widget _actionButton(String label, Color color, VoidCallback onTap) {
     return SizedBox(
       width: double.infinity,
       child: TvFocusWrapper(
@@ -413,8 +388,7 @@ class _TribunalScreenState extends State<TribunalScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.grey.shade900,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           verdict == TribunalVerdict.guilty
               ? '⚠️ Verdict : Coupable'
@@ -427,15 +401,13 @@ class _TribunalScreenState extends State<TribunalScreen>
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               labelText: 'Raison du verdict',
-              labelStyle:
-                  const TextStyle(color: Colors.white70),
+              labelStyle: const TextStyle(color: Colors.white70),
               enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                      color: Colors.purple.withValues(alpha: 0.5)),
+                  borderSide:
+                      BorderSide(color: Colors.purple.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(12)),
               focusedBorder: OutlineInputBorder(
-                  borderSide:
-                      const BorderSide(color: Colors.purple),
+                  borderSide: const BorderSide(color: Colors.purple),
                   borderRadius: BorderRadius.circular(12)),
             ),
           ),
@@ -443,25 +415,20 @@ class _TribunalScreenState extends State<TribunalScreen>
           TextField(
             controller: pointsCtrl,
             // Autorise chiffres et signe moins
-            keyboardType: const TextInputType.numberWithOptions(
-                signed: true),
+            keyboardType: const TextInputType.numberWithOptions(signed: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(
-                  RegExp(r'^-?\d*')),
+              FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
             ],
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText:
-                  'Points pour l\'Accuse (negatif = penalite)',
-              labelStyle:
-                  const TextStyle(color: Colors.white70),
+              labelText: 'Points pour l\'Accuse (negatif = penalite)',
+              labelStyle: const TextStyle(color: Colors.white70),
               enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                      color: Colors.purple.withValues(alpha: 0.5)),
+                  borderSide:
+                      BorderSide(color: Colors.purple.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(12)),
               focusedBorder: OutlineInputBorder(
-                  borderSide:
-                      const BorderSide(color: Colors.purple),
+                  borderSide: const BorderSide(color: Colors.purple),
                   borderRadius: BorderRadius.circular(12)),
             ),
           ),
@@ -472,8 +439,7 @@ class _TribunalScreenState extends State<TribunalScreen>
               child: const Text('Annuler',
                   style: TextStyle(color: Colors.white54))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
             onPressed: () {
               final pts = int.tryParse(pointsCtrl.text) ?? 0;
               final reason = reasonCtrl.text.trim();
@@ -500,181 +466,51 @@ class _TribunalScreenState extends State<TribunalScreen>
     );
   }
 
-  void _showFileCase(FamilyProvider fp) {
+  Future<void> _showFileCase(FamilyProvider fp) async {
     if (fp.children.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-              Text('Il faut au moins 2 enfants pour le tribunal'),
-          backgroundColor: Colors.orange));
+          content: Text('Il faut au moins 2 enfants pour le tribunal')));
       return;
     }
-
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    String? plaintiffId;
-    String? accusedId;
-
-    showDialog(
+    final messenger = ScaffoldMessenger.of(context);
+    final submitted = await showDialog<bool>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: Colors.grey.shade900,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
-          title: const Text('⚖️ Nouvelle Affaire',
-              style: TextStyle(color: Colors.white)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: titleCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Titre de l\'affaire',
-                    labelStyle:
-                        const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(
-                            color:
-                                Colors.purple.withValues(alpha: 0.5)),
-                        borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(
-                            color: Colors.purple),
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: 'Description des faits',
-                    labelStyle:
-                        const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(
-                            color:
-                                Colors.purple.withValues(alpha: 0.5)),
-                        borderRadius: BorderRadius.circular(12)),
-                    focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(
-                            color: Colors.purple),
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Plaignant :',
-                    style: TextStyle(
-                        color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: fp.children.map((c) {
-                    final selected = plaintiffId == c.id;
-                    return GestureDetector(
-                      onTap: () {
-                        setDialogState(() {
-                          plaintiffId = c.id;
-                          // Reinitialise Accuse si meme enfant
-                          if (accusedId == c.id) accusedId = null;
-                        });
-                      },
-                      child: Chip(
-                        label: Text(c.name,
-                            style: TextStyle(
-                                color: selected
-                                    ? Colors.amber
-                                    : Colors.white70)),
-                        backgroundColor: selected
-                            ? Colors.amber.withValues(alpha: 0.2)
-                            : Colors.white.withValues(alpha: 0.1),
-                        side: selected
-                            ? const BorderSide(color: Colors.amber)
-                            : BorderSide.none,
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 12),
-                const Text('Accuse :',
-                    style: TextStyle(
-                        color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  // Exclut le plaignant de la liste des Accuses
-                  children: fp.children
-                      .where((c) => c.id != plaintiffId)
-                      .map((c) {
-                    final selected = accusedId == c.id;
-                    return GestureDetector(
-                      onTap: () =>
-                          setDialogState(() => accusedId = c.id),
-                      child: Chip(
-                        label: Text(c.name,
-                            style: TextStyle(
-                                color: selected
-                                    ? Colors.redAccent
-                                    : Colors.white70)),
-                        backgroundColor: selected
-                            ? Colors.redAccent.withValues(alpha: 0.2)
-                            : Colors.white.withValues(alpha: 0.1),
-                        side: selected
-                            ? const BorderSide(
-                                color: Colors.redAccent)
-                            : BorderSide.none,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Annuler',
-                    style: TextStyle(color: Colors.white54))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple),
-              onPressed: () {
-                final title = titleCtrl.text.trim();
-                // Validation complete
-                if (title.isEmpty ||
-                    plaintiffId == null ||
-                    accusedId == null ||
-                    plaintiffId == accusedId) return;
-                fp.fileTribunalCase(
-                  title: title,
-                  description: descCtrl.text.trim(),
-                  plaintiffId: plaintiffId!,
-                  accusedId: accusedId!,
-                );
-                if (ctx.mounted) Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: const Text('⚖️ Affaire deposee !'),
-                  backgroundColor: Colors.purple.shade700,
-                ));
-              },
-              child: const Text('Deposer l\'affaire'),
-            ),
-          ],
-        ),
+      barrierDismissible: false,
+      builder: (_) => TribunalCaseDialog(
+        children: fp.children,
+        childAccount: fp.memberRole == 'child',
+        childId: fp.memberChildId,
+        onSubmit: (caseId, title, description, plaintiff, accused) =>
+            fp.fileTribunalCase(
+                caseId: caseId,
+                title: title,
+                description: description,
+                plaintiffId: plaintiff,
+                accusedId: accused),
       ),
     );
+    if (submitted == true && mounted) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Affaire enregistrée et transmise à la famille.')));
+    }
   }
-  void _showGeminiVerdict(FamilyProvider fp, TribunalCase tc, Map<String, dynamic> result) {
+
+  void _showGeminiVerdict(
+      FamilyProvider fp, TribunalCase tc, Map<String, dynamic> result) {
     final verdict = result['verdict'] as String;
     final raison = result['raison'] as String;
     final sanction = result['sanction'] as String;
     final conseil = result['conseil'] as String;
-    final color = verdict == 'guilty' ? Colors.red : verdict == 'innocent' ? Colors.green : Colors.grey;
-    final emoji = verdict == 'guilty' ? '⚠️' : verdict == 'innocent' ? '✅' : '📁';
+    final color = verdict == 'guilty'
+        ? Colors.red
+        : verdict == 'innocent'
+            ? Colors.green
+            : Colors.grey;
+    final emoji = verdict == 'guilty'
+        ? '⚠️'
+        : verdict == 'innocent'
+            ? '✅'
+            : '📁';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -683,32 +519,57 @@ class _TribunalScreenState extends State<TribunalScreen>
         title: Row(children: [
           Text(emoji, style: const TextStyle(fontSize: 24)),
           const SizedBox(width: 8),
-          Text('Verdict IA', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          Text('Verdict IA',
+              style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         ]),
-        content: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text('Raison :', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
-          Text(raison, style: const TextStyle(color: Colors.white)),
-          if (sanction.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('Sanction :', style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
-            Text(sanction, style: const TextStyle(color: Colors.white)),
-          ],
-          if (conseil.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('Conseil :', style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
-            Text(conseil, style: const TextStyle(color: Colors.white)),
-          ],
-        ])),
+        content: SingleChildScrollView(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+              Text('Raison :',
+                  style: TextStyle(
+                      color: Colors.white70, fontWeight: FontWeight.bold)),
+              Text(raison, style: const TextStyle(color: Colors.white)),
+              if (sanction.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Sanction :',
+                    style: TextStyle(
+                        color: Colors.orangeAccent,
+                        fontWeight: FontWeight.bold)),
+                Text(sanction, style: const TextStyle(color: Colors.white)),
+              ],
+              if (conseil.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Conseil :',
+                    style: TextStyle(
+                        color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+                Text(conseil, style: const TextStyle(color: Colors.white)),
+              ],
+            ])),
         actions: [
           if (verdict == 'guilty')
-            TextButton(onPressed: () { Navigator.pop(ctx); _showVerdictDialog(fp, tc, TribunalVerdict.guilty); }, child: const Text('Appliquer', style: TextStyle(color: Colors.red))),
+            TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _showVerdictDialog(fp, tc, TribunalVerdict.guilty);
+                },
+                child: const Text('Appliquer',
+                    style: TextStyle(color: Colors.red))),
           if (verdict == 'innocent')
-            TextButton(onPressed: () { Navigator.pop(ctx); _showVerdictDialog(fp, tc, TribunalVerdict.innocent); }, child: const Text('Appliquer', style: TextStyle(color: Colors.green))),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fermer', style: TextStyle(color: Colors.white54))),
+            TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _showVerdictDialog(fp, tc, TribunalVerdict.innocent);
+                },
+                child: const Text('Appliquer',
+                    style: TextStyle(color: Colors.green))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Fermer',
+                  style: TextStyle(color: Colors.white54))),
         ],
       ),
     );
   }
 }
-
-

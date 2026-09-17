@@ -16,9 +16,15 @@ void main() {
 
   test('la suppression refuse proprement la demande et rembourse les achats',
       () {
-    expect(source, contains('await provider.rejectRequest('));
+    expect(source, contains('() => provider.rejectRequest('));
     expect(source, contains("final isPurchase = request.type == 'boutique'"));
     expect(source, contains('les points de l’achat seront remboursés'));
+  });
+
+  test('tous les boutons affichent une réussite ou une erreur', () {
+    expect(source, contains('Future<void> _runAction('));
+    expect(source, contains('Action impossible. Vérifiez la connexion'));
+    expect(source, contains('await _runAction('));
   });
 
   test('le statut de l’achat suit la décision prise dans la cloche', () {

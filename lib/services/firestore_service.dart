@@ -1903,6 +1903,23 @@ class FirestoreService {
   }
 
   // ─── WRITE : Tribunal ────────────────────────────────────────
+  Future<TribunalCase> createTribunalCase(TribunalCase tc) async {
+    final family = _familyId;
+    if (family == null) throw StateError('Aucune famille connectée.');
+    final response = await FirebaseFunctions.instance
+        .httpsCallable('performFamilyOperation')
+        .call({
+      'familyId': family,
+      'operation': 'tribunal_create',
+      'operationId': tc.id,
+      'tribunal': tc.toMap(),
+      'senderDeviceId': deviceId,
+    });
+    final result = Map<String, dynamic>.from(response.data as Map);
+    return TribunalCase.fromMap(
+        Map<String, dynamic>.from(result['tribunal'] as Map));
+  }
+
   Future<void> saveTribunalCase(TribunalCase tc) async {
     if (_familyId == null) return;
     try {

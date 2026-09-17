@@ -1,12 +1,13 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
-import 'dart:async';
+import 'dart:js_interop';
+import 'pwa_lifecycle.dart';
+
+@JS('navigator.standalone')
+external JSBoolean? get _navigatorStandalone;
 
 class WebReconnectFactory {
-  static StreamSubscription? _visibilitySub;
-  static StreamSubscription? _onlineSub;
-  static StreamSubscription? _focusSub;
-  static Timer? _resumeDebounce;
+  static PwaLifecycle? _lifecycle;
 
   static void attach(
     void Function() reconnectFn, {
@@ -14,33 +15,29 @@ class WebReconnectFactory {
   }) {
     detach();
 
-    void scheduleResume() {
-      if (html.document.visibilityState != 'visible') return;
-      _resumeDebounce?.cancel();
-      _resumeDebounce = Timer(const Duration(milliseconds: 700), reconnectFn);
-    }
-
-    _visibilitySub = html.document.onVisibilityChange.listen((_) {
-      if (html.document.visibilityState == 'visible') {
-        scheduleResume();
-      } else {
-        _resumeDebounce?.cancel();
-        pauseFn?.call();
-      }
-    });
-
-    _onlineSub = html.window.onOnline.listen((_) => scheduleResume());
-    _focusSub = html.window.onFocus.listen((_) => scheduleResume());
+    _lifecycle = PwaLifecycle(
+      isVisible: () => html.document.visibilityState == 'visible',
+      standalone: isStandaloneMode(
+        displayMode:
+            html.window.matchMedia('(display-mode: standalone)').matches,
+        navigatorFlag: _navigatorStandalone?.toDart == true,
+      ),
+      onResume: reconnectFn,
+      onPause: pauseFn,
+    )..attach([
+        html.document.onVisibilityChange.map((_) =>
+            html.document.visibilityState == 'visible'
+                ? PwaEvent.visible
+                : PwaEvent.hidden),
+        html.window.onOnline.map((_) => PwaEvent.online),
+        html.window.onFocus.map((_) => PwaEvent.focus),
+        html.window.onPageShow.map((_) => PwaEvent.pageShow),
+        html.window.onPageHide.map((_) => PwaEvent.pageHide),
+      ]);
   }
 
   static void detach() {
-    _resumeDebounce?.cancel();
-    _resumeDebounce = null;
-    _visibilitySub?.cancel();
-    _onlineSub?.cancel();
-    _focusSub?.cancel();
-    _visibilitySub = null;
-    _onlineSub = null;
-    _focusSub = null;
+    _lifecycle?.detach();
+    _lifecycle = null;
   }
 }

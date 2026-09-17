@@ -31,12 +31,11 @@ void main() {
     );
   });
 
-  test('Android autorise les mises à jour sans permissions stockage obsolètes',
-      () {
+  test('Android Play Store ne peut pas installer un APK externe', () {
     final manifest =
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
 
-    expect(manifest, contains('android.permission.REQUEST_INSTALL_PACKAGES'));
+    expect(manifest, isNot(contains('REQUEST_INSTALL_PACKAGES')));
     expect(manifest, isNot(contains('READ_EXTERNAL_STORAGE')));
     expect(manifest, isNot(contains('WRITE_EXTERNAL_STORAGE')));
     expect(manifest, contains('android:allowBackup="false"'));

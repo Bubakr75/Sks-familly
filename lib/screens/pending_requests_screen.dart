@@ -8,6 +8,33 @@ import '../widgets/family_join_approval_panel.dart';
 class PendingRequestsScreen extends StatelessWidget {
   const PendingRequestsScreen({super.key});
 
+  Future<void> _runAction(
+    BuildContext context,
+    Future<void> Function() action, {
+    required String successMessage,
+    Color successColor = Colors.green,
+  }) async {
+    try {
+      await action();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage), backgroundColor: successColor),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Erreur lors du traitement de la demande: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Action impossible. Vérifiez la connexion puis réessayez.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   String _typeLabel(String type) {
     switch (type) {
       case 'punishment':
@@ -224,15 +251,12 @@ class PendingRequestsScreen extends StatelessWidget {
                                             _isScreenTimeReward(r)) ...[
                                           ElevatedButton.icon(
                                             onPressed: () async {
-                                              await fp.approveRequest(r.id);
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                        const SnackBar(
-                                                  content: Text(
-                                                      '✅ Achat accepté. Le chrono pourra être démarré plus tard.'),
-                                                ));
-                                              }
+                                              await _runAction(
+                                                context,
+                                                () => fp.approveRequest(r.id),
+                                                successMessage:
+                                                    '✅ Achat accepté. Le chrono pourra être démarré plus tard.',
+                                              );
                                             },
                                             icon: const Icon(Icons.check),
                                             label: const Text('Accepter'),
@@ -299,19 +323,15 @@ class PendingRequestsScreen extends StatelessWidget {
             style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
               Navigator.pop(dialogContext);
-              await provider.rejectRequest(
-                request.id,
-                reason: 'Notification supprimée par un parent.',
-              );
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isPurchase
-                        ? 'Notification supprimée et achat remboursé.'
-                        : 'Notification supprimée.',
-                  ),
+              await _runAction(
+                context,
+                () => provider.rejectRequest(
+                  request.id,
+                  reason: 'Notification supprimée par un parent.',
                 ),
+                successMessage: isPurchase
+                    ? 'Notification supprimée et achat remboursé.'
+                    : 'Notification supprimée.',
               );
             },
             icon: const Icon(Icons.delete_outline_rounded),
@@ -446,15 +466,15 @@ class PendingRequestsScreen extends StatelessWidget {
             onPressed: () async {
               final amount = int.tryParse(amountCtrl.text.trim()) ?? r.amount;
               Navigator.pop(ctx);
-              await fp.approveRequest(r.id,
-                  customAmount: amount, comment: commentCtrl.text.trim());
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('✅ Validé ! +$amount pts'),
-                      backgroundColor: Colors.green),
-                );
-              }
+              await _runAction(
+                context,
+                () => fp.approveRequest(
+                  r.id,
+                  customAmount: amount,
+                  comment: commentCtrl.text.trim(),
+                ),
+                successMessage: '✅ Validé ! +$amount pts',
+              );
             },
             child: const Text('Valider',
                 style: TextStyle(fontWeight: FontWeight.bold)),
@@ -512,14 +532,15 @@ class PendingRequestsScreen extends StatelessWidget {
                 foregroundColor: Colors.white),
             onPressed: () async {
               Navigator.pop(ctx);
-              await fp.rejectRequest(r.id, reason: reasonCtrl.text.trim());
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('❌ Demande refusée, message envoyé.'),
-                      backgroundColor: Colors.redAccent),
-                );
-              }
+              await _runAction(
+                context,
+                () => fp.rejectRequest(
+                  r.id,
+                  reason: reasonCtrl.text.trim(),
+                ),
+                successMessage: '❌ Demande refusée, message envoyé.',
+                successColor: Colors.redAccent,
+              );
             },
             child: const Text('Refuser',
                 style: TextStyle(fontWeight: FontWeight.bold)),
@@ -626,21 +647,15 @@ class PendingRequestsScreen extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () async {
               Navigator.pop(ctx);
-              // 1. Valider la demande (confirme l'achat)
-              await fp.approveRequest(r.id);
-              // 2. Démarrer le chrono avec les minutes
-              if (!context.mounted) return;
-              await fp.startScreenTimeSession(r.childId, minutes);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content:
-                      Text('📺 Chrono démarré pour $childName ($minutes min).\n'
-                          'Pense à vérifier quand le temps est écoulé !'),
-                  backgroundColor: Colors.teal,
-                  behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 4),
-                ),
+              await _runAction(
+                context,
+                () async {
+                  await fp.approveRequest(r.id);
+                  await fp.startScreenTimeSession(r.childId, minutes);
+                },
+                successMessage:
+                    '📺 Chrono démarré pour $childName ($minutes min). Une sonnerie est programmée à la fin.',
+                successColor: Colors.teal,
               );
             },
           ),

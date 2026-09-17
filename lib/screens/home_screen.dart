@@ -43,7 +43,6 @@ import 'screen_time_new_screen.dart';
 import 'daily_wheel_screen.dart';
 import '../widgets/animated_page_transition.dart';
 import '../widgets/transfer_points_sheet.dart';
-import '../widgets/update_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   final String parentName;
@@ -146,7 +145,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _showChildPicker(BuildContext context, void Function(dynamic child) onSelected) {
+  void _showChildPicker(
+      BuildContext context, void Function(dynamic child) onSelected) {
     final provider = context.read<FamilyProvider>();
     final children = provider.children;
     if (children.isEmpty) {
@@ -305,8 +305,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text('${history.length} entrée(s)',
-                      style: const TextStyle(
-                          color: Colors.white54, fontSize: 13)),
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 13)),
                   const SizedBox(height: 12),
                   Expanded(
                     child: history.isEmpty
@@ -315,8 +315,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 style: TextStyle(color: Colors.white38)))
                         : ListView.builder(
                             controller: scrollController,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             itemCount: history.length,
                             itemBuilder: (_, i) {
                               final entry = history[i];
@@ -335,8 +334,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 ? Colors.green
                                                 : Colors.red)
                                             .withValues(alpha: 0.15),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                       alignment: Alignment.center,
                                       child: Text(
@@ -361,11 +359,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   fontWeight: FontWeight.w600,
                                                   fontSize: 14),
                                               maxLines: 2,
-                                              overflow:
-                                                  TextOverflow.ellipsis),
+                                              overflow: TextOverflow.ellipsis),
                                           const SizedBox(height: 4),
-                                          Text(
-                                              _formatDateTime(entry.date),
+                                          Text(_formatDateTime(entry.date),
                                               style: const TextStyle(
                                                   color: Colors.white38,
                                                   fontSize: 11)),
@@ -386,8 +382,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             style: const TextStyle(
                                                 color: Colors.cyanAccent,
                                                 fontSize: 10,
-                                                fontWeight:
-                                                    FontWeight.w600)),
+                                                fontWeight: FontWeight.w600)),
                                       ),
                                   ]),
                                 ),
@@ -417,8 +412,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             return Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF1A1A2E),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: const EdgeInsets.all(32),
               child: const Center(
@@ -471,8 +465,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: children.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (_, i) {
                             final child = children[i];
                             final isSel = selectedChildId == child.id;
@@ -517,8 +510,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   style: TextStyle(color: Colors.white38)))
                           : ListView.builder(
                               controller: scrollController,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: entries.length,
                               itemBuilder: (_, i) {
                                 final entry = entries[i];
@@ -541,8 +534,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             shape: BoxShape.circle,
                                             color:
                                                 color.withValues(alpha: 0.15)),
-                                        child: Icon(icon,
-                                            color: color, size: 20),
+                                        child:
+                                            Icon(icon, color: color, size: 20),
                                       ),
                                       const SizedBox(width: 10),
                                       Expanded(
@@ -586,38 +579,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                           16)),
-                                              title: const Text(
-                                                  'Supprimer ?',
+                                              title: const Text('Supprimer ?',
                                                   style: TextStyle(
                                                       color: Colors.white)),
                                               content: Text(entry.reason,
                                                   style: const TextStyle(
-                                                      color:
-                                                          Colors.white70),
+                                                      color: Colors.white70),
                                                   maxLines: 2,
-                                                  overflow: TextOverflow
-                                                      .ellipsis),
+                                                  overflow:
+                                                      TextOverflow.ellipsis),
                                               actions: [
                                                 TextButton(
                                                   onPressed: () =>
-                                                      Navigator.pop(
-                                                          d, false),
-                                                  child: const Text(
-                                                      'Annuler',
+                                                      Navigator.pop(d, false),
+                                                  child: const Text('Annuler',
                                                       style: TextStyle(
-                                                          color: Colors
-                                                              .white54)),
+                                                          color:
+                                                              Colors.white54)),
                                                 ),
                                                 ElevatedButton(
-                                                  style: ElevatedButton
-                                                      .styleFrom(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
                                                           backgroundColor:
                                                               Colors.red),
                                                   onPressed: () =>
-                                                      Navigator.pop(
-                                                          d, true),
-                                                  child: const Text(
-                                                      'Supprimer'),
+                                                      Navigator.pop(d, true),
+                                                  child:
+                                                      const Text('Supprimer'),
                                                 ),
                                               ],
                                             ),
@@ -626,8 +614,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               context.mounted) {
                                             await context
                                                 .read<FamilyProvider>()
-                                                .deleteHistoryEntry(
-                                                    entry.id);
+                                                .deleteHistoryEntry(entry.id);
                                             setInnerState(() {});
                                             if (context.mounted) {
                                               ScaffoldMessenger.of(context)
@@ -635,10 +622,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 const SnackBar(
                                                   content: Text(
                                                       '🗑️ Entree supprimee'),
-                                                  backgroundColor:
-                                                      Colors.red,
-                                                  behavior: SnackBarBehavior
-                                                      .floating,
+                                                  backgroundColor: Colors.red,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
                                                 ),
                                               );
                                             }
@@ -698,189 +684,188 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         extendBody: true,
         drawer: _buildDrawer(context, isParent),
         body: AnimatedBackground(
-        child: Column(
-          children: [
-            // ─── BANDEAU DE MODE (Parent / Enfant) ───
-            // Affiché SEULEMENT si un PIN est défini
-            // Protégé par SafeArea pour ne pas être coupé par l'encoche
-            if (pinProvider.isPinSet)
-              SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-                  child: EmeraldModeBanner(
-                    isParentMode: isParent,
-                    parentName: pinProvider.currentParentName,
-                    childName: familyProvider.children.isNotEmpty
-                        ? familyProvider.children.first.name
-                        : 'Enfant',
-                    onLockTap: isParent
-                        ? () {
-                            // Verrouiller le mode parent → retour à l'écran de sélection de profil
-                            context.read<PinProvider>().lockParentMode();
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ProfileSelectionScreen()),
-                            );
-                          }
-                        : null,
-                    // Bouton "Mode Parent" : retour à l'écran de sélection de profil
-                    onUnlockTap: !isParent
-                        ? () {
-                            context.read<PinProvider>().lockParentMode();
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ProfileSelectionScreen()),
-                            );
-                          }
-                        : null,
+          child: Column(
+            children: [
+              // ─── BANDEAU DE MODE (Parent / Enfant) ───
+              // Affiché SEULEMENT si un PIN est défini
+              // Protégé par SafeArea pour ne pas être coupé par l'encoche
+              if (pinProvider.isPinSet)
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                    child: EmeraldModeBanner(
+                      isParentMode: isParent,
+                      parentName: pinProvider.currentParentName,
+                      childName: familyProvider.children.isNotEmpty
+                          ? familyProvider.children.first.name
+                          : 'Enfant',
+                      onLockTap: isParent
+                          ? () {
+                              // Verrouiller le mode parent → retour à l'écran de sélection de profil
+                              context.read<PinProvider>().lockParentMode();
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ProfileSelectionScreen()),
+                              );
+                            }
+                          : null,
+                      // Bouton "Mode Parent" : retour à l'écran de sélection de profil
+                      onUnlockTap: !isParent
+                          ? () {
+                              context.read<PinProvider>().lockParentMode();
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ProfileSelectionScreen()),
+                              );
+                            }
+                          : null,
+                    ),
+                  ),
+                ),
+              // ─── CONTENU PRINCIPAL ───
+              // Chaque écran gère son propre SafeArea
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.03, 0),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey(_currentIndex),
+                    child: _getScreen(),
                   ),
                 ),
               ),
-            // ─── Bannière de mise à jour (Android uniquement) ───
-            const UpdateBanner(),
-            // ─── CONTENU PRINCIPAL ───
-            // Chaque écran gère son propre SafeArea
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.03, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                  );
-                },
-                child: KeyedSubtree(
-                  key: ValueKey(_currentIndex),
-                  child: _getScreen(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      // Bouton IA flottant 🤖 (overlay sur tout l'écran)
-        bottomNavigationBar: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 1),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-            parent: _navBarController, curve: Curves.easeOutCubic)),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D1B2E).withValues(alpha: 0.95),
-            border: Border(
-                top: BorderSide(
-                    color: Colors.cyanAccent.withValues(alpha: 0.15), width: 0.5)),
+            ],
           ),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(5, (i) {
-                  // Index 2 = Photo IA (bouton central spécial)
-                  if (i == 2) {
-                    return TvFocusWrapper(
-                      onTap: _openPhotoIA,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7C4DFF), Color(0xFF5E35B1)],
-                          ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
-                              blurRadius: 12,
-                              spreadRadius: 1,
+        ),
+        // Bouton IA flottant 🤖 (overlay sur tout l'écran)
+        bottomNavigationBar: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+              parent: _navBarController, curve: Curves.easeOutCubic)),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1B2E).withValues(alpha: 0.95),
+              border: Border(
+                  top: BorderSide(
+                      color: Colors.cyanAccent.withValues(alpha: 0.15),
+                      width: 0.5)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(5, (i) {
+                    // Index 2 = Photo IA (bouton central spécial)
+                    if (i == 2) {
+                      return TvFocusWrapper(
+                        onTap: _openPhotoIA,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF7C4DFF), Color(0xFF5E35B1)],
                             ),
-                          ],
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF7C4DFF)
+                                    .withValues(alpha: 0.4),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.camera_alt_rounded,
+                              color: Colors.white, size: 26),
                         ),
-                        child: const Icon(Icons.camera_alt_rounded,
-                            color: Colors.white, size: 26),
-                      ),
-                    );
-                  }
-                  final isSelected = _currentIndex == i;
-                  final icons = [
-                    Icons.home_rounded,
-                    Icons.star_rounded,
-                    null, // Photo IA — géré ci-dessus
-                    Icons.warning_amber_rounded,
-                    Icons.settings_rounded,
-                  ];
-                  final labels = [
-                    'Accueil',
-                    'Bonus',
-                    '', // Photo IA
-                    'Pénalité',
-                    'Reglages',
-                  ];
-                  return TvFocusWrapper(
-                    onTap: () => _onTabTapped(i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOut,
-                      padding: EdgeInsets.symmetric(
-                          horizontal: isSelected ? 16 : 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? EmeraldPalette.emerald.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedScale(
-                            scale: isSelected ? 1.2 : 1.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(icons[i],
+                      );
+                    }
+                    final isSelected = _currentIndex == i;
+                    final icons = [
+                      Icons.home_rounded,
+                      Icons.star_rounded,
+                      null, // Photo IA — géré ci-dessus
+                      Icons.warning_amber_rounded,
+                      Icons.settings_rounded,
+                    ];
+                    final labels = [
+                      'Accueil',
+                      'Bonus',
+                      '', // Photo IA
+                      'Pénalité',
+                      'Reglages',
+                    ];
+                    return TvFocusWrapper(
+                      onTap: () => _onTabTapped(i),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOut,
+                        padding: EdgeInsets.symmetric(
+                            horizontal: isSelected ? 16 : 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? EmeraldPalette.emerald.withValues(alpha: 0.12)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedScale(
+                              scale: isSelected ? 1.2 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(icons[i],
+                                  color: isSelected
+                                      ? EmeraldPalette.emeraldLight
+                                      : EmeraldPalette.textMuted,
+                                  size: 24),
+                            ),
+                            const SizedBox(height: 4),
+                            AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 200),
+                              style: TextStyle(
                                 color: isSelected
                                     ? EmeraldPalette.emeraldLight
                                     : EmeraldPalette.textMuted,
-                                size: 24),
-                          ),
-                          const SizedBox(height: 4),
-                          AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 200),
-                            style: TextStyle(
-                              color: isSelected
-                                  ? EmeraldPalette.emeraldLight
-                                  : EmeraldPalette.textMuted,
-                              fontSize: isSelected ? 11 : 10,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                                fontSize: isSelected ? 11 : 10,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                              child: Text(labels[i]),
                             ),
-                            child: Text(labels[i]),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+                ),
               ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -960,8 +945,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       PinGuard.guardAction(context, () {
                         Navigator.push(
                           context,
-                          SlidePageRoute(
-                              page: const SchoolNotesWeeklyScreen()),
+                          SlidePageRoute(page: const SchoolNotesWeeklyScreen()),
                         );
                       });
                     },
@@ -1028,8 +1012,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     _showChildPicker(context, (child) {
                       Navigator.push(
                         context,
-                        DoorPageRoute(
-                            page: TradeScreen(childId: child.id)),
+                        DoorPageRoute(page: TradeScreen(childId: child.id)),
                       );
                     });
                   },
@@ -1084,7 +1067,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(context,
-                      SlidePageRoute(page: const DailyWheelScreen()));
+                        SlidePageRoute(page: const DailyWheelScreen()));
                   },
                 ),
                 _drawerItem(
@@ -1142,8 +1125,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: Colors.lightBlue,
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(context,
-                        SlidePageRoute(page: const CalendarScreen()));
+                    Navigator.push(
+                        context, SlidePageRoute(page: const CalendarScreen()));
                   },
                 ),
                 if (isParent)
@@ -1154,8 +1137,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     onTap: () {
                       Navigator.pop(context);
                       PinGuard.guardAction(context, () {
-                        Navigator.push(context,
-                            SlidePageRoute(page: const StatsScreen()));
+                        Navigator.push(
+                            context, SlidePageRoute(page: const StatsScreen()));
                       });
                     },
                   ),
@@ -1169,7 +1152,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(context,
-                      SlidePageRoute(page: const GeminiChatScreen()));
+                        SlidePageRoute(page: const GeminiChatScreen()));
                   },
                 ),
                 if (isParent) ...[
@@ -1223,8 +1206,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: TvFocusWrapper(
         onTap: onTap,
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
           child: Row(children: [
             Container(
@@ -1252,7 +1234,3 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 }
-
-
-
-

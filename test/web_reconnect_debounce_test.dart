@@ -9,14 +9,15 @@ void main() {
 
   setUpAll(() {
     reconnectSource =
-        File('lib/utils/web_reconnect_web.dart').readAsStringSync();
+        File('lib/utils/web_reconnect_web.dart').readAsStringSync() +
+            File('lib/utils/pwa_lifecycle.dart').readAsStringSync();
     firestoreSource =
         File('lib/services/firestore_service.dart').readAsStringSync();
     mainSource = File('lib/main.dart').readAsStringSync();
   });
 
   test('focus, visibilité et retour réseau partagent un debounce', () {
-    expect(reconnectSource, contains('void scheduleResume()'));
+    expect(reconnectSource, contains('class PwaLifecycle'));
     expect(reconnectSource, contains('Duration(milliseconds: 700)'));
     expect(reconnectSource, contains('onVisibilityChange'));
     expect(reconnectSource, contains('onOnline'));
@@ -24,8 +25,8 @@ void main() {
   });
 
   test('aucune reprise n’est lancée quand la PWA est masquée', () {
-    expect(reconnectSource, contains("visibilityState != 'visible'"));
-    expect(reconnectSource, contains('pauseFn?.call();'));
+    expect(reconnectSource, contains('if (!isVisible()) return;'));
+    expect(reconnectSource, contains('onPause?.call();'));
     expect(firestoreSource, contains('_reconnectDebounceTimer?.cancel();'));
   });
 
@@ -34,10 +35,8 @@ void main() {
     expect(reconnectSource, contains('_resumeDebounce?.cancel();'));
     expect(firestoreSource, contains('detachWebReconnectHandlers();'));
     expect(firestoreSource, contains('Duration(milliseconds: 750)'));
-    for (final subscription in ['visibility', 'online', 'focus']) {
-      expect(reconnectSource, contains('_${subscription}Sub?.cancel();'));
-      expect(reconnectSource, contains('_${subscription}Sub = null;'));
-    }
+    expect(reconnectSource, contains('subscription.cancel()'));
+    expect(reconnectSource, contains('_subscriptions.clear()'));
   });
 
   test('le cycle Flutter ne double pas la reprise Web', () {

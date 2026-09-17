@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const {normalizeTribunalCase, buildTribunalCase} = require("./tribunal_cases");
 
 const ID_PATTERN = /^[^/\u0000-\u001f]{1,200}$/;
 const OPERATIONS = new Set([
@@ -10,6 +11,7 @@ const OPERATIONS = new Set([
   "sale_set",
   "sale_stop",
   "tribunal_vote",
+  "tribunal_create",
   "tribunal_remove_vote",
   "trade_create",
   "trade_accept",
@@ -36,6 +38,9 @@ function normalizeSecureOperation(data) {
     operationId: cleanId(data.operationId, "operation_id"),
     operation,
   };
+  if (operation === "tribunal_create") {
+    return {...normalized, ...normalizeTribunalCase(data, cleanId)};
+  }
   for (const key of ["childId", "rewardId", "requestId", "caseId", "tradeId", "toChildId"]) {
     if (data[key] !== undefined) normalized[key] = cleanId(data[key], key);
   }
@@ -174,6 +179,12 @@ function applyTradeTransition(status, operation) {
   return transition[1];
 }
 
+function linkedPurchaseIdForRequest(request, requestId) {
+  const purchaseId = request && request.extra && request.extra.purchaseId;
+  return typeof purchaseId === "string" && ID_PATTERN.test(purchaseId)
+    ? purchaseId : requestId;
+}
+
 function createSecureChildOperationFunctions({functions, admin, db}) {
   const HttpsError = functions.https.HttpsError;
   const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
@@ -306,10 +317,13 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             throw new HttpsError("permission-denied", "Validation parent requise.");
           }
           const requestRef = familyRef.collection("requests").doc(op.requestId);
-          const purchaseRef = familyRef.collection("purchases").doc(op.requestId);
-          const [requestSnap, purchaseSnap] = await Promise.all([tx.get(requestRef), tx.get(purchaseRef)]);
-          if (!requestSnap.exists || !purchaseSnap.exists) throw new HttpsError("not-found", "Achat introuvable.");
+          const requestSnap = await tx.get(requestRef);
+          if (!requestSnap.exists) throw new HttpsError("not-found", "Demande introuvable.");
           const request = requestSnap.data();
+          const linkedPurchaseId = linkedPurchaseIdForRequest(request, op.requestId);
+          const purchaseRef = familyRef.collection("purchases").doc(linkedPurchaseId);
+          const purchaseSnap = await tx.get(purchaseRef);
+          if (!purchaseSnap.exists) throw new HttpsError("not-found", "Achat introuvable.");
           const purchase = purchaseSnap.data();
           if (request.type !== "boutique" || request.status !== "pending" || purchase.status !== "pending") {
             throw new Error("INVALID_PURCHASE_STATE");
@@ -343,12 +357,12 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
                 lastUpdated: now,
               });
             }
-            const refundRef = familyRef.collection("history").doc(`${op.requestId}_refund`);
+            const refundRef = familyRef.collection("history").doc(`${linkedPurchaseId}_refund`);
             tx.create(refundRef, {id: refundRef.id, childId: purchase.childId, points: purchase.cost,
               reason: `Achat annulé : ${purchase.title || "récompense"}`, category: "boutique",
               date: now, isBonus: true, actionBy: "Parent", actorUid: uid});
           }
-          result = {purchaseId: op.requestId, status};
+          result = {purchaseId: linkedPurchaseId, requestId: op.requestId, status};
         } else if (op.operation === "sale_set" || op.operation === "sale_stop") {
           if (role !== "parent") throw new HttpsError("permission-denied", "Action parent requise.");
           const saleRef = familyRef.collection("settings").doc("shop");
@@ -361,6 +375,23 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             tx.set(saleRef, {percent: op.percent, endAt, label: op.label || "Soldes", updatedBy: uid});
             result = {percent: op.percent, endAt};
           }
+        } else if (op.operation === "tribunal_create") {
+          if (!authorizeChildTarget({role, member, childId: op.plaintiffId})) {
+            throw new HttpsError("permission-denied", "Un enfant ne peut déposer que sa propre affaire.");
+          }
+          const children = await Promise.all(op.participants.map(p =>
+            tx.get(familyRef.collection("children").doc(p.childId))));
+          if (children.some(snap => !snap.exists)) {
+            throw new HttpsError("not-found", "Un participant ne fait pas partie de la famille.");
+          }
+          let sender = uid;
+          if (op.senderDeviceId) {
+            const token = await tx.get(familyRef.collection("fcm_tokens").doc(op.senderDeviceId));
+            if (token.exists && token.data().uid === uid) sender = op.senderDeviceId;
+          }
+          const tribunal = buildTribunalCase(op, sender);
+          tx.create(familyRef.collection("tribunal").doc(op.operationId), tribunal);
+          result = {caseId: op.operationId, tribunal};
         } else if (op.operation.startsWith("tribunal_")) {
           if (role !== "child" || !op.caseId) {
             throw new HttpsError("permission-denied", "Vote enfant requis.");
@@ -536,5 +567,6 @@ module.exports = {
   isMatchingReplay,
   applyTradeTransition,
   buildPurchaseRequest,
+  linkedPurchaseIdForRequest,
   createSecureChildOperationFunctions,
 };

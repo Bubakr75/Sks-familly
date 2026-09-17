@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:family_score/services/update_service.dart';
 
@@ -40,96 +42,33 @@ void main() {
     });
   });
 
-  group('UpdateService.officialApkUrl', () {
-    Map<String, dynamic> release({
-      bool draft = false,
-      bool prerelease = false,
-      String tag = 'v4.8.0-build510',
-      String name = 'SKS-Family-build-510.apk',
-      String? url,
-    }) {
-      return {
-        'draft': draft,
-        'prerelease': prerelease,
-        'tag_name': tag,
-        'assets': [
-          {
-            'name': name,
-            'browser_download_url': url ??
-                'https://github.com/Bubakr75/Sks-familly/'
-                    'releases/download/$tag/$name',
-          },
-        ],
-      };
-    }
+  test('le service ne télécharge plus directement un APK', () {
+    final source = File('lib/services/update_service.dart').readAsStringSync();
+    expect(source, isNot(contains('downloadAndInstall')));
+  });
 
-    test('accepte l APK officiel du format build', () {
-      expect(UpdateService.officialApkUrl(release()), isNotNull);
-    });
+  test('le service ne consulte plus les APK des releases GitHub', () {
+    final source = File('lib/services/update_service.dart').readAsStringSync();
+    expect(source, isNot(contains('browser_download_url')));
+  });
 
-    test('conserve la compatibilit? avec l ancien format', () {
-      expect(
-        UpdateService.officialApkUrl(
-          release(
-            tag: 'v4.8.0+510',
-            name: 'app-release.apk',
-          ),
-        ),
-        isNotNull,
-      );
-    });
+  test('l accueil n affiche plus de bannière d installation externe', () {
+    final home = File('lib/screens/home_screen.dart').readAsStringSync();
+    expect(home, isNot(contains('UpdateBanner')));
+  });
 
-    test('refuse brouillons, pr?versions et URL externes', () {
-      expect(UpdateService.officialApkUrl(release(draft: true)), isNull);
-      expect(
-        UpdateService.officialApkUrl(release(prerelease: true)),
-        isNull,
-      );
-      expect(
-        UpdateService.officialApkUrl(
-          release(url: 'https://example.com/SKS-Family-build-510.apk'),
-        ),
-        isNull,
-      );
-    });
+  test('le manifeste interdit l installation directe d APK', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(manifest, isNot(contains('REQUEST_INSTALL_PACKAGES')));
+  });
 
-    test('refuse un APK dont le build ne correspond pas au tag', () {
-      expect(
-        UpdateService.officialApkUrl(
-          release(name: 'SKS-Family-build-509.apk'),
-        ),
-        isNull,
-      );
-      expect(
-        UpdateService.officialApkUrl(release(tag: 'latest')),
-        isNull,
-      );
-    });
+  test('open_filex n est plus une dépendance directe', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(pubspec, isNot(contains('open_filex:')));
+  });
 
-    test('construit la mise ? jour affich?e sur l accueil', () {
-      final update = UpdateService.parseAvailableUpdate(
-        release(),
-        '4.8.0+509',
-      );
-
-      expect(update, isNotNull);
-      expect(update!.currentVersion, '4.8.0+509');
-      expect(update.latestVersion, '4.8.0+510');
-      expect(update.apkUrl, contains('/SKS-Family-build-510.apk'));
-
-      expect(
-        UpdateService.parseAvailableUpdate(release(), '4.8.0+510'),
-        isNull,
-      );
-    });
-
-    test('refuse un t?l?chargement externe avant tout appel r?seau', () async {
-      expect(
-        await UpdateService.downloadAndInstall(
-          'https://example.com/SKS-Family-build-510.apk',
-        ),
-        UpdateInstallResult.invalidUrl,
-      );
-    });
+  test('le widget d installation externe a été supprimé', () {
+    expect(File('lib/widgets/update_banner.dart').existsSync(), isFalse);
   });
 }

@@ -2105,6 +2105,7 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<void> fileTribunalCase({
+    String? caseId,
     required String title,
     required String description,
     required String plaintiffId,
@@ -2131,8 +2132,8 @@ class FamilyProvider extends ChangeNotifier {
             .add(TribunalParticipant(childId: wId, role: TribunalRole.witness));
       }
     }
-    final tc = TribunalCase(
-      id: _uuid.v4(),
+    var tc = TribunalCase(
+      id: caseId ?? _uuid.v4(),
       title: title,
       description: description,
       plaintiffId: plaintiffId,
@@ -2140,10 +2141,15 @@ class FamilyProvider extends ChangeNotifier {
       participants: participants,
       status: TribunalStatus.filed,
     );
+    if (!_firestore.isConnected) {
+      throw StateError('Connectez une famille pour transmettre une affaire.');
+    }
+    // Ne confirmer le dépôt local qu'après l'enregistrement sécurisé serveur.
+    tc = await _firestore.createTribunalCase(tc);
     _markPending(tc.id);
+    _tribunalCases.removeWhere((existing) => existing.id == tc.id);
     _tribunalCases.add(tc);
     await _tribunalBox.put(tc.id, jsonEncode(tc.toMap()));
-    if (_firestore.isConnected) await _firestore.saveTribunalCase(tc);
     notifyListeners();
   }
 
@@ -3218,18 +3224,19 @@ class FamilyProvider extends ChangeNotifier {
   /// Les pénalités d'overtime sont déjà appliquées en temps réel par le timer,
   /// on ne les re-applique PAS ici (sinon double pénalité).
   Future<void> stopScreenTimeSession(String childId) async {
-    await NotificationService.cancelScreenTimeEnd(childId);
     if (_firestore.isConnected) {
       await _firestore.performFamilyOperation(
         operation: 'screen_stop',
         operationId: _uuid.v4(),
         childId: childId,
       );
+      await NotificationService.cancelScreenTimeEnd(childId);
       _stopOvertimeChecker();
       return;
     }
     final account = getScreenTimeAccount(childId);
     if (!account.isRunning) return;
+    await NotificationService.cancelScreenTimeEnd(childId);
 
     final remaining = account.sessionRemaining;
     final used = account.sessionMinutes - remaining;
@@ -3297,6 +3304,7 @@ class FamilyProvider extends ChangeNotifier {
   /// Prolongation (parent)
   Future<void> extendScreenTime(String childId, int minutes) async {
     final account = getScreenTimeAccount(childId);
+    final wasRunning = account.isRunning;
     if (account.isRunning) {
       account.sessionMinutes += minutes;
       account.totalEarned += minutes;
@@ -3317,6 +3325,13 @@ class FamilyProvider extends ChangeNotifier {
       try {
         await _firestore.saveScreenTimeAccount(childId, account.toMap());
       } catch (_) {}
+    }
+    if (wasRunning) {
+      await NotificationService.scheduleScreenTimeEnd(
+        childId: childId,
+        childName: getChild(childId)?.name ?? 'l’enfant',
+        minutes: account.sessionRemaining,
+      );
     }
     notifyListeners();
   }
