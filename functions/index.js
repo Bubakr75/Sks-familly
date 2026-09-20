@@ -500,6 +500,13 @@ exports.onRequestCreated = functions.firestore
     var title = "🔔 Nouvelle demande";
     var body = r.text || "Une demande attend votre validation";
     var notifType = "request";
+    const rewardTitle = r.extra && r.extra.rewardTitle ? r.extra.rewardTitle : "";
+    const isScreenTimePurchase = r.type === "boutique" && (
+      (r.extra && Number.isInteger(r.extra.screenTimeMinutes) &&
+        r.extra.screenTimeMinutes > 0) ||
+      /ecran|écran|min/i.test(rewardTitle) ||
+      (r.extra && r.extra.icon === "🎮")
+    );
 
     switch (r.type) {
       case "punishment":
@@ -529,17 +536,33 @@ exports.onRequestCreated = functions.firestore
         break;
       case "boutique":
         title = "🛒 Achat en boutique";
-        body = (r.requestedBy || "Un enfant") + " a acheté \"" + (r.extra && r.extra.rewardTitle ? r.extra.rewardTitle : "une récompense") + "\" (" + (r.amount || 0) + " pts). À confirmer !";
+        if (isScreenTimePurchase) {
+          body = "Une demande d'achat de temps d'écran attend votre validation.";
+        } else {
+          body = (r.requestedBy || "Un enfant") + " a acheté \"" +
+            (r.extra && r.extra.rewardTitle ? r.extra.rewardTitle : "une récompense") +
+            "\" (" + (r.amount || 0) + " pts). À confirmer !";
+        }
         notifType = "request_boutique";
         break;
     }
 
-    await sendToFamily(familyId, sender, title, body, {
+    const notificationData = {
       type: notifType,
       requestId: context.params.reqId,
       requestType: r.type || "",
-      childId: r.childId || "",
-    });
+    };
+    if (!isScreenTimePurchase) notificationData.childId = r.childId || "";
+    if (isScreenTimePurchase) {
+      const claimed = await db.runTransaction(async (transaction) => {
+        const current = await transaction.get(snap.ref);
+        if (!current.exists || current.data().notificationEventId) return false;
+        transaction.update(snap.ref, {notificationEventId: context.eventId});
+        return true;
+      });
+      if (!claimed) return;
+    }
+    await sendToFamily(familyId, sender, title, body, notificationData);
   });
 
 // ===== 8. OBJECTIFS (NOUVEAU) =====

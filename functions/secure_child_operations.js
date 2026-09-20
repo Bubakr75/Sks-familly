@@ -20,6 +20,8 @@ const OPERATIONS = new Set([
   "trade_service_done",
   "screen_start",
   "screen_stop",
+  "screen_add",
+  "screen_extend",
 ]);
 const VOTES = new Set(["guilty", "innocent"]);
 
@@ -48,11 +50,18 @@ function normalizeSecureOperation(data) {
     if (!VOTES.has(data.vote)) throw new Error("INVALID_VOTE");
     normalized.vote = data.vote;
   }
-  if (data.minutes !== undefined) {
+  if (data.minutes !== undefined &&
+      ["screen_start", "screen_add", "screen_extend"].includes(operation)) {
     if (!Number.isInteger(data.minutes) || data.minutes < 1 || data.minutes > 480) {
       throw new Error("INVALID_MINUTES");
     }
     normalized.minutes = data.minutes;
+  }
+  if (data.reason !== undefined && operation.startsWith("screen_")) {
+    if (typeof data.reason !== "string" || data.reason.trim().length > 200) {
+      throw new Error("INVALID_REASON");
+    }
+    normalized.reason = data.reason.trim();
   }
   if (data.immunityLines !== undefined) {
     if (!Number.isInteger(data.immunityLines) ||
@@ -123,7 +132,7 @@ function screenTimeMinutes(reward) {
   return Math.min(480, Math.max(1, match ? Number.parseInt(match[1], 10) : 15));
 }
 
-function buildPurchaseRequest({operationId, childId, childName, reward, cost, salePercent = 0, actorUid, now}) {
+function buildPurchaseRequest({operationId, childId, childName, reward, cost, salePercent = 0, screenTimeMinutes = 0, actorUid, now}) {
   const title = typeof reward.title === "string" ? reward.title.slice(0, 200) : "";
   const icon = typeof reward.icon === "string" ? reward.icon.slice(0, 16) : "";
   return {
@@ -143,6 +152,7 @@ function buildPurchaseRequest({operationId, childId, childName, reward, cost, sa
       originalCost: reward.cost,
       salePrice: cost,
       onSale: salePercent > 0,
+      screenTimeMinutes,
     },
     readBy: [],
     lastModifiedBy: actorUid,
@@ -246,10 +256,9 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
           const rewardRef = familyRef.collection("rewards").doc(op.rewardId);
           const purchaseRef = familyRef.collection("purchases").doc(op.operationId);
           const requestRef = familyRef.collection("requests").doc(op.operationId);
-          const accountRef = familyRef.collection("screen_time_accounts").doc(op.childId);
           const saleRef = familyRef.collection("settings").doc("shop");
-          const [childSnap, rewardSnap, saleSnap, accountSnap] = await Promise.all([
-            tx.get(childRef), tx.get(rewardRef), tx.get(saleRef), tx.get(accountRef),
+          const [childSnap, rewardSnap, saleSnap] = await Promise.all([
+            tx.get(childRef), tx.get(rewardRef), tx.get(saleRef),
           ]);
           if (!childSnap.exists || !rewardSnap.exists) {
             throw new HttpsError("not-found", "Enfant ou récompense introuvable.");
@@ -283,6 +292,10 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             salePercent: saleActive ? sale.percent : 0,
             originalCost: reward.cost,
             status: "pending",
+            settlementVersion: 2,
+            pointsDebitedAt: now,
+            pointsRefundedAt: null,
+            screenTimeGrantedAt: null,
             date: now,
             actorUid: uid,
             screenTimeMinutes: minutes,
@@ -294,6 +307,7 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             reward: {...reward, id: op.rewardId},
             cost,
             actorUid: uid,
+            screenTimeMinutes: minutes,
             now,
           });
           tx.update(childRef, {points: child.points - cost});
@@ -305,27 +319,25 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             reason: `Achat boutique : ${purchase.title}`, category: "boutique",
             date: now, isBonus: false, actionBy: childName, actorUid: uid,
           });
-          if (minutes > 0) {
-            const account = accountSnap.exists ? accountSnap.data() : {};
-            const balance = Number.isInteger(account.balanceMinutes) ? account.balanceMinutes : 0;
-            tx.set(accountRef, {...account, childId: op.childId,
-              balanceMinutes: balance + minutes, lastUpdated: now}, {merge: true});
-          }
-          result = {purchase, request, points: child.points - cost, minutes};
+          result = {purchase, request, points: child.points - cost, minutes: 0};
         } else if (op.operation === "purchase_approve" || op.operation === "purchase_reject") {
           if (role !== "parent" || !op.requestId) {
             throw new HttpsError("permission-denied", "Validation parent requise.");
           }
           const requestRef = familyRef.collection("requests").doc(op.requestId);
           const requestSnap = await tx.get(requestRef);
-          if (!requestSnap.exists) throw new HttpsError("not-found", "Demande introuvable.");
-          const request = requestSnap.data();
+          const request = requestSnap.exists ? requestSnap.data() : {
+            type: "boutique", status: "pending", extra: {purchaseId: op.requestId},
+          };
+          if (request.type !== "boutique" || request.status !== "pending") {
+            throw new HttpsError("not-found", "Demande introuvable.");
+          }
           const linkedPurchaseId = linkedPurchaseIdForRequest(request, op.requestId);
           const purchaseRef = familyRef.collection("purchases").doc(linkedPurchaseId);
           const purchaseSnap = await tx.get(purchaseRef);
           if (!purchaseSnap.exists) throw new HttpsError("not-found", "Achat introuvable.");
           const purchase = purchaseSnap.data();
-          if (request.type !== "boutique" || request.status !== "pending" || purchase.status !== "pending") {
+          if (purchase.status !== "pending") {
             throw new Error("INVALID_PURCHASE_STATE");
           }
           const status = op.operation === "purchase_approve" ? "approved" : "rejected";
@@ -334,22 +346,31 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
           let childSnap;
           let accountRef;
           let accountSnap;
+          const isVersion2 = purchase.settlementVersion === 2;
           if (status === "rejected") {
             childRef = familyRef.collection("children").doc(purchase.childId);
             childSnap = await tx.get(childRef);
             if (!childSnap.exists || !Number.isInteger(childSnap.data().points) || !Number.isInteger(purchase.cost)) {
               throw new Error("INVALID_PURCHASE_STATE");
             }
-            if (Number.isInteger(purchase.screenTimeMinutes) && purchase.screenTimeMinutes > 0) {
+            if (!isVersion2 && Number.isInteger(purchase.screenTimeMinutes) && purchase.screenTimeMinutes > 0) {
               accountRef = familyRef.collection("screen_time_accounts").doc(purchase.childId);
               accountSnap = await tx.get(accountRef);
             }
           }
-          tx.update(purchaseRef, {status, reviewedAt: now, reviewedBy: uid});
-          tx.delete(requestRef);
+          if (status === "approved" && isVersion2 &&
+              Number.isInteger(purchase.screenTimeMinutes) && purchase.screenTimeMinutes > 0) {
+            accountRef = familyRef.collection("screen_time_accounts").doc(purchase.childId);
+            accountSnap = await tx.get(accountRef);
+          }
+          const purchasePatch = {status, reviewedAt: now, reviewedBy: uid};
+          if (isVersion2 && status === "approved") purchasePatch.screenTimeGrantedAt = now;
+          if (isVersion2 && status === "rejected") purchasePatch.pointsRefundedAt = now;
+          tx.update(purchaseRef, purchasePatch);
+          if (requestSnap.exists) tx.delete(requestRef);
           if (status === "rejected") {
             tx.update(childRef, {points: childSnap.data().points + purchase.cost});
-            if (accountRef && accountSnap && accountSnap.exists) {
+            if (!isVersion2 && accountRef && accountSnap && accountSnap.exists) {
               const account = accountSnap.data();
               const balance = Number.isInteger(account.balanceMinutes) ? account.balanceMinutes : 0;
               tx.update(accountRef, {
@@ -361,8 +382,23 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             tx.create(refundRef, {id: refundRef.id, childId: purchase.childId, points: purchase.cost,
               reason: `Achat annulé : ${purchase.title || "récompense"}`, category: "boutique",
               date: now, isBonus: true, actionBy: "Parent", actorUid: uid});
+          } else if (isVersion2 && accountRef && accountSnap) {
+            const account = accountSnap.exists ? accountSnap.data() : {
+              childId: purchase.childId, balanceMinutes: 0, totalEarned: 0,
+              totalUsed: 0, sessionStart: null, sessionMinutes: 0,
+              appliedOvertimeTranches: 0, history: [],
+            };
+            if (!Number.isInteger(account.balanceMinutes) || account.balanceMinutes < 0 ||
+                !Number.isInteger(purchase.screenTimeMinutes) || purchase.screenTimeMinutes < 1) {
+              throw new Error("INVALID_PURCHASE_STATE");
+            }
+            tx.set(accountRef, {...account,
+              balanceMinutes: account.balanceMinutes + purchase.screenTimeMinutes,
+              totalEarned: (Number.isInteger(account.totalEarned) ? account.totalEarned : 0) + purchase.screenTimeMinutes,
+              lastUpdated: now});
           }
-          result = {purchaseId: linkedPurchaseId, requestId: op.requestId, status};
+          result = {purchaseId: linkedPurchaseId, requestId: op.requestId, status,
+            minutes: isVersion2 && status === "approved" ? purchase.screenTimeMinutes || 0 : 0};
         } else if (op.operation === "sale_set" || op.operation === "sale_stop") {
           if (role !== "parent") throw new HttpsError("permission-denied", "Action parent requise.");
           const saleRef = familyRef.collection("settings").doc("shop");
@@ -507,7 +543,10 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
           if (!Number.isInteger(account.balanceMinutes) || account.balanceMinutes < 0) {
             throw new Error("INVALID_SCREEN_ACCOUNT");
           }
-          if (op.operation === "screen_start") {
+          if (["screen_add", "screen_extend"].includes(op.operation) && role !== "parent") {
+            throw new HttpsError("permission-denied", "Action parent requise.");
+          }
+            if (op.operation === "screen_start") {
             if (!op.minutes || account.sessionStart != null ||
                 account.balanceMinutes < op.minutes) {
               throw new HttpsError("failed-precondition", "Session impossible.");
@@ -518,7 +557,7 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
               sessionMinutes: op.minutes,
               appliedOvertimeTranches: 0,
             });
-          } else {
+          } else if (op.operation === "screen_stop") {
             if (typeof account.sessionStart !== "string" ||
                 !Number.isInteger(account.sessionMinutes)) {
               throw new HttpsError("failed-precondition", "Aucune session active.");
@@ -533,6 +572,16 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             account.sessionStart = null;
             account.sessionMinutes = 0;
             account.appliedOvertimeTranches = 0;
+          } else if (["screen_add", "screen_extend"].includes(op.operation)) {
+            if (!op.minutes) throw new Error("INVALID_MINUTES");
+            const wasRunning = typeof account.sessionStart === "string";
+            if (op.operation === "screen_extend" && wasRunning) {
+              account.sessionMinutes += op.minutes;
+            } else {
+              account.balanceMinutes += op.minutes;
+            }
+            account.totalEarned = (Number.isInteger(account.totalEarned) ? account.totalEarned : 0) + op.minutes;
+            account.lastUpdated = new Date().toISOString();
           }
           account.history = Array.isArray(account.history)
             ? account.history.slice(0, 99) : [];

@@ -16,15 +16,73 @@ import 'wallet_screen.dart';
 
 // Pixel transparent 1x1 pour le fallback
 final kTransparentPixel = Uint8List.fromList([
-  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-  0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
-  0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41,
-  0x54, 0x78, 0x9C, 0x62, 0x00, 0x01, 0x00, 0x00,
-  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
-  0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-  0x42, 0x60, 0x82,
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x62,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0x0D,
+  0x0A,
+  0x2D,
+  0xB4,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
 ]);
 
 class ShopScreen extends StatefulWidget {
@@ -81,7 +139,8 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final fp = context.watch<FamilyProvider>();
-    final child = _selectedChild ?? (fp.children.isNotEmpty ? fp.children.first : null);
+    final child =
+        _selectedChild ?? (fp.children.isNotEmpty ? fp.children.first : null);
 
     return Scaffold(
       backgroundColor: const Color(0xFF051410),
@@ -121,13 +180,15 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                                 // Solde de points
                                 if (child != null)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
                                     decoration: BoxDecoration(
                                       gradient: EmeraldPalette.goldGradient,
                                       borderRadius: BorderRadius.circular(20),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: EmeraldPalette.gold.withValues(alpha: 0.4),
+                                          color: EmeraldPalette.gold
+                                              .withValues(alpha: 0.4),
                                           blurRadius: 16,
                                         ),
                                       ],
@@ -135,7 +196,8 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(Icons.stars_rounded, color: Color(0xFF051410), size: 20),
+                                        const Icon(Icons.stars_rounded,
+                                            color: Color(0xFF051410), size: 20),
                                         const SizedBox(width: 6),
                                         Text(
                                           '${child.points}',
@@ -146,7 +208,11 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                                           ),
                                         ),
                                         const SizedBox(width: 4),
-                                        const Text('pts', style: TextStyle(color: Color(0xFF051410), fontSize: 12, fontWeight: FontWeight.w600)),
+                                        const Text('pts',
+                                            style: TextStyle(
+                                                color: Color(0xFF051410),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600)),
                                       ],
                                     ),
                                   ),
@@ -176,13 +242,16 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
                           color: EmeraldPalette.textPrimary,
-                          shadows: [Shadow(color: EmeraldPalette.gold, blurRadius: 20)],
+                          shadows: [
+                            Shadow(color: EmeraldPalette.gold, blurRadius: 20)
+                          ],
                         ),
                       ),
                       const Spacer(),
                       Text(
                         '${fp.rewards.length} articles',
-                        style: const TextStyle(color: EmeraldPalette.textSecondary, fontSize: 13),
+                        style: const TextStyle(
+                            color: EmeraldPalette.textSecondary, fontSize: 13),
                       ),
                     ],
                   ),
@@ -253,14 +322,16 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               SliverToBoxAdapter(
                 child: Container(
                   margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
                       Colors.redAccent.withValues(alpha: 0.25),
                       Colors.orange.withValues(alpha: 0.15),
                     ]),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                    border: Border.all(
+                        color: Colors.redAccent.withValues(alpha: 0.4)),
                   ),
                   child: Row(
                     children: [
@@ -298,7 +369,8 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               sliver: fp.rewards.isEmpty
                   ? const SliverToBoxAdapter(child: _EmptyShop())
                   : SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         mainAxisSpacing: 12,
                         crossAxisSpacing: 12,
@@ -310,10 +382,12 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                           return _RewardCard(
                             reward: reward,
                             child: child,
-                            canAfford: child != null && child.points >= fp.salePrice(reward.cost),
+                            canAfford: child != null &&
+                                child.points >= fp.salePrice(reward.cost),
                             onBuy: child == null
                                 ? null
-                                : () => _showPurchaseDialog(context, fp, child, reward),
+                                : () => _showPurchaseDialog(
+                                    context, fp, child, reward),
                           );
                         },
                         childCount: fp.rewards.length,
@@ -344,15 +418,19 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             CircleAvatar(
               radius: 14,
               backgroundColor: EmeraldPalette.emerald.withValues(alpha: 0.2),
-              child: Text(_selectedChild?.avatar ?? '👤', style: const TextStyle(fontSize: 16)),
+              child: Text(_selectedChild?.avatar ?? '👤',
+                  style: const TextStyle(fontSize: 16)),
             ),
             const SizedBox(width: 8),
             Text(
               _selectedChild?.name ?? 'Choisir',
-              style: const TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  color: EmeraldPalette.textPrimary,
+                  fontWeight: FontWeight.w600),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.expand_more_rounded, color: EmeraldPalette.textSecondary, size: 18),
+            const Icon(Icons.expand_more_rounded,
+                color: EmeraldPalette.textSecondary, size: 18),
           ],
         ),
       ),
@@ -373,18 +451,34 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: EmeraldPalette.textMuted, borderRadius: BorderRadius.circular(2))),
-            const Text('Pour qui ?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: EmeraldPalette.textPrimary)),
+            Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    color: EmeraldPalette.textMuted,
+                    borderRadius: BorderRadius.circular(2))),
+            const Text('Pour qui ?',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: EmeraldPalette.textPrimary)),
             const SizedBox(height: 14),
             ...fp.children.map((c) => ListTile(
-              leading: CircleAvatar(child: Text(c.avatar.isNotEmpty ? c.avatar : '👤')),
-              title: Text(c.name, style: const TextStyle(color: EmeraldPalette.textPrimary)),
-              trailing: Text('${c.points} pts', style: const TextStyle(color: EmeraldPalette.gold, fontWeight: FontWeight.w700)),
-              onTap: () {
-                setState(() => _selectedChildId = c.id);
-                Navigator.pop(ctx);
-              },
-            )),
+                  leading: CircleAvatar(
+                      child: Text(c.avatar.isNotEmpty ? c.avatar : '👤')),
+                  title: Text(c.name,
+                      style:
+                          const TextStyle(color: EmeraldPalette.textPrimary)),
+                  trailing: Text('${c.points} pts',
+                      style: const TextStyle(
+                          color: EmeraldPalette.gold,
+                          fontWeight: FontWeight.w700)),
+                  onTap: () {
+                    setState(() => _selectedChildId = c.id);
+                    Navigator.pop(ctx);
+                  },
+                )),
           ],
         ),
       ),
@@ -410,13 +504,15 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showPurchaseDialog(BuildContext context, FamilyProvider fp, ChildModel child, RewardModel reward) {
+  void _showPurchaseDialog(BuildContext context, FamilyProvider fp,
+      ChildModel child, RewardModel reward) {
     final actualCost = fp.salePrice(reward.cost);
     final isOnSale = fp.isSaleActive && actualCost < reward.cost;
     if (child.points < actualCost) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Pas assez de points ! Il te manque ${actualCost - child.points} pts.'),
+          content: Text(
+              '❌ Pas assez de points ! Il te manque ${actualCost - child.points} pts.'),
           backgroundColor: Colors.red.shade700,
         ),
       );
@@ -431,19 +527,26 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         title: Row(children: [
           Text(reward.icon, style: const TextStyle(fontSize: 32)),
           const SizedBox(width: 10),
-          Expanded(child: Text(reward.title, style: const TextStyle(color: EmeraldPalette.textPrimary, fontSize: 20, fontWeight: FontWeight.w700))),
+          Expanded(
+              child: Text(reward.title,
+                  style: const TextStyle(
+                      color: EmeraldPalette.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700))),
         ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(reward.description, style: const TextStyle(color: EmeraldPalette.textSecondary)),
+            Text(reward.description,
+                style: const TextStyle(color: EmeraldPalette.textSecondary)),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
                     gradient: EmeraldPalette.goldGradient,
                     borderRadius: BorderRadius.circular(16),
@@ -455,11 +558,23 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                       const SizedBox(width: 6),
                       // Prix soldé + prix barré si en vente
                       if (isOnSale) ...[
-                        Text('$actualCost pts', style: const TextStyle(color: Color(0xFF051410), fontWeight: FontWeight.w800, fontSize: 18)),
+                        Text('$actualCost pts',
+                            style: const TextStyle(
+                                color: Color(0xFF051410),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18)),
                         const SizedBox(width: 6),
-                        Text('${reward.cost}', style: TextStyle(color: Color(0xFF051410).withValues(alpha: 0.5), decoration: TextDecoration.lineThrough, fontSize: 14)),
+                        Text('${reward.cost}',
+                            style: TextStyle(
+                                color: Color(0xFF051410).withValues(alpha: 0.5),
+                                decoration: TextDecoration.lineThrough,
+                                fontSize: 14)),
                       ] else
-                        Text('$actualCost pts', style: const TextStyle(color: Color(0xFF051410), fontWeight: FontWeight.w800, fontSize: 18)),
+                        Text('$actualCost pts',
+                            style: const TextStyle(
+                                color: Color(0xFF051410),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18)),
                     ],
                   ),
                 ),
@@ -467,17 +582,27 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             ),
             if (isOnSale) ...[
               const SizedBox(height: 8),
-              Center(child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              Center(
+                  child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
                   color: Colors.redAccent.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('-${fp.saleDiscountPercent}% 🔥', style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w800)),
+                child: Text('-${fp.saleDiscountPercent}% 🔥',
+                    style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800)),
               )),
             ],
             const SizedBox(height: 12),
-            Center(child: Text('Solde après achat : ${child.points - actualCost} pts', style: const TextStyle(color: EmeraldPalette.textMuted, fontSize: 13))),
+            Center(
+                child: Text(
+                    'Solde après achat : ${child.points - actualCost} pts',
+                    style: const TextStyle(
+                        color: EmeraldPalette.textMuted, fontSize: 13))),
           ],
         ),
         actions: [
@@ -493,27 +618,44 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler', style: TextStyle(color: EmeraldPalette.textSecondary)),
+            child: const Text('Annuler',
+                style: TextStyle(color: EmeraldPalette.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: EmeraldPalette.emerald,
               foregroundColor: const Color(0xFF051410),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
             ),
             onPressed: () async {
               Navigator.pop(ctx);
-              final ok = await fp.purchaseReward(child.id, reward.id);
+              var ok = false;
+              try {
+                ok = await fp.purchaseReward(child.id, reward.id);
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Achat non confirmé. Vérifiez la connexion puis réessayez.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
               if (ok && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('🎉 Achat réussi ! ${reward.title} en attente de validation.'),
+                    content: Text(
+                        'Points débités — en attente de validation parentale : ${reward.title}.'),
                     backgroundColor: EmeraldPalette.success,
                   ),
                 );
               }
             },
-            child: const Text('Acheter', style: TextStyle(fontWeight: FontWeight.w800)),
+            child: const Text('Acheter',
+                style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -539,7 +681,8 @@ class _RewardCard extends StatefulWidget {
   State<_RewardCard> createState() => _RewardCardState();
 }
 
-class _RewardCardState extends State<_RewardCard> with SingleTickerProviderStateMixin {
+class _RewardCardState extends State<_RewardCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _shimmerController;
 
   @override
@@ -570,7 +713,8 @@ class _RewardCardState extends State<_RewardCard> with SingleTickerProviderState
 
   @override
   Widget build(BuildContext context) {
-    final accent = widget.canAfford ? EmeraldPalette.gold : EmeraldPalette.textMuted;
+    final accent =
+        widget.canAfford ? EmeraldPalette.gold : EmeraldPalette.textMuted;
 
     return GestureDetector(
       onTap: widget.onBuy,
@@ -617,14 +761,16 @@ class _RewardCardState extends State<_RewardCard> with SingleTickerProviderState
                           ? null
                           : RadialGradient(
                               colors: [
-                                accent.withValues(alpha: widget.canAfford ? 0.3 : 0.08),
+                                accent.withValues(
+                                    alpha: widget.canAfford ? 0.3 : 0.08),
                                 Colors.transparent,
                               ],
                             ),
                       image: widget.reward.hasPhoto
                           ? DecorationImage(
-                              image: ImageCacheUtil.getImage(widget.reward.photoBase64)
-                                  ?? MemoryImage(kTransparentPixel),
+                              image: ImageCacheUtil.getImage(
+                                      widget.reward.photoBase64) ??
+                                  MemoryImage(kTransparentPixel),
                               fit: BoxFit.cover,
                               colorFilter: widget.canAfford
                                   ? null
@@ -650,7 +796,9 @@ class _RewardCardState extends State<_RewardCard> with SingleTickerProviderState
                   Text(
                     widget.reward.title,
                     style: TextStyle(
-                      color: widget.canAfford ? EmeraldPalette.textPrimary : EmeraldPalette.textMuted,
+                      color: widget.canAfford
+                          ? EmeraldPalette.textPrimary
+                          : EmeraldPalette.textMuted,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -676,19 +824,25 @@ class _RewardCardState extends State<_RewardCard> with SingleTickerProviderState
                   Builder(builder: (context) {
                     final fp = context.watch<FamilyProvider>();
                     final saleCost = fp.salePrice(widget.reward.cost);
-                    final onSale = fp.isSaleActive && saleCost < widget.reward.cost;
+                    final onSale =
+                        fp.isSaleActive && saleCost < widget.reward.cost;
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color: (onSale ? Colors.redAccent : accent).withValues(alpha: 0.12),
+                        color: (onSale ? Colors.redAccent : accent)
+                            .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: (onSale ? Colors.redAccent : accent).withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: (onSale ? Colors.redAccent : accent)
+                                .withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.stars_rounded, size: 16, color: onSale ? Colors.redAccent : accent),
+                          Icon(Icons.stars_rounded,
+                              size: 16,
+                              color: onSale ? Colors.redAccent : accent),
                           const SizedBox(width: 4),
                           if (onSale) ...[
                             Text('$saleCost',
@@ -734,9 +888,14 @@ class _EmptyShop extends StatelessWidget {
           children: [
             const Text('🛒', style: TextStyle(fontSize: 64)),
             const SizedBox(height: 16),
-            const Text('Boutique vide', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: EmeraldPalette.textPrimary)),
+            const Text('Boutique vide',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: EmeraldPalette.textPrimary)),
             const SizedBox(height: 8),
-            const Text('Le parent n\'a pas encore ajouté de récompenses.', style: TextStyle(color: EmeraldPalette.textMuted)),
+            const Text('Le parent n\'a pas encore ajouté de récompenses.',
+                style: TextStyle(color: EmeraldPalette.textMuted)),
           ],
         ),
       ),

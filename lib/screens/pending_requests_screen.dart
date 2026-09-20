@@ -147,6 +147,13 @@ class PendingRequestsScreen extends StatelessWidget {
                           itemCount: requests.length,
                           itemBuilder: (context, index) {
                             final PendingRequest r = requests[index];
+                            final processing =
+                                fp.isPurchaseActionInFlight(r.id);
+                            final purchaseMinutes = r.extra['screenTimeMinutes']
+                                        is num &&
+                                    (r.extra['screenTimeMinutes'] as num) > 0
+                                ? (r.extra['screenTimeMinutes'] as num).toInt()
+                                : _extractMinutes(r);
                             final child = fp.getChild(r.childId);
                             final childName = child?.name ?? 'Enfant';
                             return Card(
@@ -198,8 +205,9 @@ class PendingRequestsScreen extends StatelessWidget {
                                               'delete_request_${r.id}'),
                                           tooltip:
                                               'Supprimer cette notification',
-                                          onPressed: () =>
-                                              _confirmDeleteRequest(
+                                          onPressed: processing
+                                              ? null
+                                              : () => _confirmDeleteRequest(
                                                   context, fp, r),
                                           icon: const Icon(
                                             Icons.delete_outline_rounded,
@@ -210,7 +218,22 @@ class PendingRequestsScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 10),
                                     Text(r.text),
-                                    if (r.amount > 0)
+                                    if (r.type == 'boutique' &&
+                                        _isScreenTimeReward(r)) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        '${r.amount} points déjà débités · $purchaseMinutes min en attente',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const Text('En attente de validation',
+                                          style:
+                                              TextStyle(color: Colors.orange)),
+                                    ],
+                                    if (r.amount > 0 &&
+                                        !(r.type == 'boutique' &&
+                                            _isScreenTimeReward(r)))
                                       Padding(
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Text(
@@ -231,16 +254,20 @@ class PendingRequestsScreen extends StatelessWidget {
                                       runSpacing: 8,
                                       children: [
                                         TextButton.icon(
-                                          onPressed: () => _showRequestDetails(
-                                              context, fp, r),
+                                          onPressed: processing
+                                              ? null
+                                              : () => _showRequestDetails(
+                                                  context, fp, r),
                                           icon: const Icon(
                                               Icons.visibility_outlined),
                                           label: const Text('Voir le motif'),
                                         ),
                                         const SizedBox(width: 8),
                                         TextButton.icon(
-                                          onPressed: () =>
-                                              _showRejectDialog(context, fp, r),
+                                          onPressed: processing
+                                              ? null
+                                              : () => _showRejectDialog(
+                                                  context, fp, r),
                                           icon: const Icon(Icons.close,
                                               color: Colors.red),
                                           label: const Text('Refuser',
@@ -252,21 +279,34 @@ class PendingRequestsScreen extends StatelessWidget {
                                         if (r.type == 'boutique' &&
                                             _isScreenTimeReward(r)) ...[
                                           ElevatedButton.icon(
-                                            onPressed: () async {
-                                              await _runAction(
-                                                context,
-                                                () => fp.approveRequest(r.id),
-                                                successMessage:
-                                                    '✅ Achat accepté. Le chrono pourra être démarré plus tard.',
-                                              );
-                                            },
-                                            icon: const Icon(Icons.check),
-                                            label: const Text('Accepter'),
+                                            onPressed: processing
+                                                ? null
+                                                : () async {
+                                                    await _runAction(
+                                                      context,
+                                                      () => fp
+                                                          .approveRequest(r.id),
+                                                      successMessage:
+                                                          '✅ Achat accepté. Le chrono pourra être démarré plus tard.',
+                                                    );
+                                                  },
+                                            icon: processing
+                                                ? const SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                            strokeWidth: 2))
+                                                : const Icon(Icons.check),
+                                            label: Text(processing
+                                                ? 'Traitement…'
+                                                : 'Accepter'),
                                           ),
                                           const SizedBox(width: 8),
                                           ElevatedButton.icon(
-                                            onPressed: () =>
-                                                _startScreenTimeNow(
+                                            onPressed: processing
+                                                ? null
+                                                : () => _startScreenTimeNow(
                                                     context, fp, r),
                                             icon: const Icon(
                                                 Icons.play_circle_fill),
@@ -645,7 +685,11 @@ class PendingRequestsScreen extends StatelessWidget {
                 context,
                 () async {
                   await fp.approveRequest(r.id);
-                  await fp.startScreenTimeSession(r.childId, minutes);
+                  final confirmedMinutes = fp.lastApprovedPurchaseMinutes;
+                  if (confirmedMinutes == null || confirmedMinutes < 1) {
+                    throw StateError('Le serveur n’a confirmé aucune minute.');
+                  }
+                  await fp.startScreenTimeSession(r.childId, confirmedMinutes);
                 },
                 successMessage:
                     '📺 Chrono démarré pour $childName ($minutes min). Une sonnerie est programmée à la fin.',

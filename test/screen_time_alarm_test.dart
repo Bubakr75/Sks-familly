@@ -12,15 +12,19 @@ void main() {
   final screen =
       File('lib/screens/screen_time_new_screen.dart').readAsStringSync();
 
-  test('le temps écran peut être accepté avec ou sans chrono', () {
-    expect(inbox, contains("const Text('Accepter')"));
+  test('screen time purchase offers approval with or without timer', () {
+    expect(inbox, contains("'Accepter')"));
     expect(inbox, contains("const Text('Accepter + chrono')"));
     expect(inbox, contains('await fp.approveRequest(r.id)'));
+    expect(inbox, contains('fp.lastApprovedPurchaseMinutes'));
     expect(
-        inbox, contains('await fp.startScreenTimeSession(r.childId, minutes)'));
+        inbox,
+        contains(
+            'await fp.startScreenTimeSession(r.childId, confirmedMinutes)'));
+    expect(inbox, contains('Le serveur n’a confirmé aucune minute.'));
   });
 
-  test('la fin du chrono programme une alarme Android audible', () {
+  test('the Android timer keeps an audible alarm channel', () {
     expect(notifications, contains("'sks_screen_timer_channel'"));
     expect(notifications, contains('AndroidNotificationCategory.alarm'));
     expect(notifications, contains('AudioAttributesUsage.alarm'));
@@ -28,21 +32,16 @@ void main() {
     expect(notifications, contains('inexactAllowWhileIdle'));
   });
 
-  test('démarrer et arrêter une session gèrent son alarme', () {
+  test('timer actions handle their alarms and visible errors', () {
     expect(provider, contains('NotificationService.scheduleScreenTimeEnd'));
     expect(provider, contains('NotificationService.cancelScreenTimeEnd'));
-  });
-
-  test(
-      'tous les boutons du chrono attendent le résultat et signalent les erreurs',
-      () {
     expect(screen, contains('Future<void> _runTimerAction('));
     expect(screen, contains('await _runTimerAction('));
     expect(screen, contains('Erreur du chrono'));
   });
 
-  test('une prolongation reprogramme la sonnerie', () {
-    expect(provider, contains('final wasRunning = account.isRunning'));
-    expect(provider, contains('minutes: account.sessionRemaining'));
+  test('server extended minutes reschedule a running timer', () {
+    expect(provider, contains("operation: 'screen_extend'"));
+    expect(provider, contains('updated.sessionRemaining'));
   });
 }

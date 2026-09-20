@@ -5,65 +5,48 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final source =
       File('lib/screens/pending_requests_screen.dart').readAsStringSync();
-  final providerSource =
+  final provider =
       File('lib/providers/family_provider.dart').readAsStringSync();
 
-  test('chaque demande de la cloche propose une suppression', () {
+  test('the inbox can hide a notification without deleting business data', () {
     expect(source, contains("'delete_request_\${r.id}'"));
-    expect(source, contains('Supprimer cette notification ?'));
     expect(source, contains('_confirmDeleteRequest('));
+    expect(source, contains('dismissRequestNotification(request.id)'));
+  });
+
+  test('a purchase settles only through the server', () {
+    expect(provider, contains("_settlePurchaseRequest(r, 'purchase_approve')"));
+    expect(
+        provider,
+        contains(
+            "_settlePurchaseRequest(r, 'purchase_reject', reason: reason)"));
+    expect(provider, contains('operationId:'));
+    expect(provider, contains("request.extra['purchaseId']?.toString()"));
+    expect(provider, contains('_markRequestDeleted(request.id)'));
+    expect(provider, isNot(contains('_setPurchaseRequestStatus')));
+    expect(provider, contains('finally {'));
+    expect(provider, contains('_purchaseActionsInFlight.remove(request.id)'));
+    expect(source, contains('fp.isPurchaseActionInFlight(r.id)'));
+    expect(source, contains('onPressed: processing'));
+    expect(source, contains('? null'));
   });
 
   test(
-      'la suppression masque la notification sans supprimer l evenement metier',
+      'pending legacy purchases are restored without duplicate linked requests',
       () {
-    expect(source, contains('dismissRequestNotification(request.id)'));
-    expect(source, contains('La demande et les points restent inchangés.'));
+    expect(provider, contains('_restoreMissingPurchaseRequests()'));
+    expect(provider, contains("purchase['status'] != 'pending'"));
+    expect(provider,
+        contains("request.extra['purchaseId']?.toString() == purchaseId"));
+    expect(provider,
+        contains("'screenTimeMinutes': purchase['screenTimeMinutes'] ?? 0"));
   });
 
-  test('tous les boutons affichent une réussite ou une erreur', () {
-    expect(source, contains('Future<void> _runAction('));
-    expect(source, contains('Action impossible. Vérifiez la connexion'));
-    expect(source, contains('await _runAction('));
-  });
-
-  test('le statut de l’achat suit la décision prise dans la cloche', () {
-    expect(
-      providerSource,
-      contains("await _setPurchaseRequestStatus(r, 'approved')"),
-    );
-    expect(
-      providerSource,
-      contains("await _setPurchaseRequestStatus(r, 'rejected')"),
-    );
-  });
-
-  test('les achats anciens encore en attente réapparaissent dans la cloche',
+  test('purchase retries reuse an operation id and server confirmed points',
       () {
-    expect(providerSource, contains('_restoreMissingPurchaseRequests()'));
-    expect(
-      providerSource,
-      contains("purchase['status'] != 'pending'"),
-    );
-    expect(providerSource, contains("type: 'boutique'"));
-  });
-
-  test('un achat hors connexion conserve le même identifiant que sa demande',
-      () {
-    expect(providerSource, contains('requestId: purchaseId'));
-    expect(providerSource, contains("'purchaseId': purchaseId"));
-    expect(providerSource, contains('id: requestId ?? _uuid.v4()'));
-  });
-
-  test('la restauration accepte les coûts numériques Firestore', () {
-    expect(providerSource, contains('rawCost is num ? rawCost.toInt() : 0'));
-  });
-
-  test('un achat déjà traité ne peut pas être remboursé une seconde fois', () {
-    expect(
-      providerSource,
-      contains("if (purchase['status'] != 'pending') return false"),
-    );
-    expect(providerSource, contains('if (shouldRefund && child != null)'));
+    expect(provider, contains('!_firestore.isConnected) return false'));
+    expect(provider, contains('_purchaseOperationsInFlight.putIfAbsent'));
+    expect(provider, contains("operation: 'purchase_reward'"));
+    expect(provider, contains("final serverPoints = result['points']"));
   });
 }

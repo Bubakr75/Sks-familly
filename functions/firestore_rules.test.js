@@ -32,10 +32,8 @@ const parentWritableCollections = [
   "tribunal",
   "custom_badges",
   "screen_time",
-  "screen_time_accounts",
   "chores",
   "rewards",
-  "purchases",
 ];
 
 const memberReadableCollections = [
@@ -720,6 +718,29 @@ test("join requests: le demandeur lit uniquement sa demande et les clients ne mo
     await assertFails(deleteDoc(ref));
     await assertFails(setDoc(businessRef(db, "join_requests", "client-created"), {requesterUid: uid, status: "sent"}));
   }
+});
+
+test("purchases, boutique requests and screen accounts are server-write only", async () => {
+  const parentDb = testEnv.authenticatedContext("parent-a").firestore();
+  const childDb = testEnv.authenticatedContext("child-a").firestore();
+  for (const db of [parentDb, childDb]) {
+    await assertFails(setDoc(businessRef(db, "purchases", "forged"), {
+      id: "forged", status: "approved", cost: 0,
+    }));
+    await assertFails(updateDoc(businessRef(db, "purchases"), {status: "approved"}));
+    await assertFails(setDoc(businessRef(db, "screen_time_accounts", "child-1"), {
+      childId: "child-1", balanceMinutes: 999,
+    }));
+  }
+  const boutique = requestData("boutique-request", "child-1", {type: "boutique"});
+  await assertFails(setDoc(businessRef(childDb, "requests", "boutique-request"), boutique));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(businessRef(context.firestore(), "requests", "boutique-request"), boutique);
+  });
+  await assertFails(updateDoc(businessRef(parentDb, "requests", "boutique-request"), {
+    status: "approved",
+  }));
+  await assertFails(deleteDoc(businessRef(parentDb, "requests", "boutique-request")));
 });
 
 test("wallet data remains server-write-only and child-scoped", async () => {

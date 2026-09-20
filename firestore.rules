@@ -424,9 +424,7 @@ service cloud.firestore {
       // seulement jusqu'à séparation du modèle ou ajout d'une callable.
       match /screen_time_accounts/{childId} {
         allow read: if activeFamilyMember(familyId);
-        allow create, update: if isFamilyParent(familyId) &&
-          isBoundedBusinessDocument(request.resource.data);
-        allow delete: if isFamilyParent(familyId);
+        allow write: if false;
       }
 
       match /fcm_tokens/{deviceId} {
@@ -475,10 +473,13 @@ service cloud.firestore {
               isFamilyChild(familyId) &&
               member(familyId).childId == request.resource.data.childId
             )
-          );
+          ) && request.resource.data.type != "boutique";
         allow update: if isFamilyParent(familyId) &&
+          resource.data.type != "boutique" &&
+          request.resource.data.type != "boutique" &&
           isValidChildRequest(request.resource.data, requestId);
-        allow delete: if isFamilyParent(familyId);
+        allow delete: if isFamilyParent(familyId) &&
+          resource.data.type != "boutique";
       }
 
       match /chores/{choreId} {
@@ -498,9 +499,7 @@ service cloud.firestore {
       // Un achat enfant direct permettrait de forger prix, points et stock.
       match /purchases/{purchaseId} {
         allow read: if activeFamilyMember(familyId);
-        allow create, update: if isFamilyParent(familyId) &&
-          isBoundedBusinessDocument(request.resource.data);
-        allow delete: if isFamilyParent(familyId);
+        allow write: if false;
       }
 
       // Configuration boutique écrite exclusivement par la Function serveur.

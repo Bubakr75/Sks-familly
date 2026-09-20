@@ -15,7 +15,9 @@ void main() {
       expect(rules, contains('match /purchases/{purchaseId}'));
     });
 
-    test('les écritures boutique exigent le rôle parent', () {
+    test(
+        'les récompenses sont écrites par un parent et les achats par le serveur',
+        () {
       final rewardsBlock = RegExp(
         r'match /rewards/\{rewardId\}\s*\{([\s\S]*?)\n\s*\}',
       ).firstMatch(rules)?.group(1);
@@ -23,12 +25,12 @@ void main() {
         r'match /purchases/\{purchaseId\}\s*\{([\s\S]*?)\n\s*\}',
       ).firstMatch(rules)?.group(1);
 
-      for (final block in [rewardsBlock, purchasesBlock]) {
-        expect(block, isNotNull);
-        expect(block, contains('activeFamilyMember(familyId)'));
-        expect(block, contains('isFamilyParent(familyId)'));
-        expect(block, isNot(contains('allow write: if isSignedIn()')));
-      }
+      expect(rewardsBlock, isNotNull);
+      expect(rewardsBlock, contains('activeFamilyMember(familyId)'));
+      expect(rewardsBlock, contains('isFamilyParent(familyId)'));
+      expect(purchasesBlock, isNotNull);
+      expect(purchasesBlock, contains('allow write: if false'));
+      expect(purchasesBlock, contains('activeFamilyMember(familyId)'));
     });
   });
 }

@@ -261,12 +261,12 @@ jobs:
           tag_name: v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}
           name: "SKS Family ${{ steps.app_version.outputs.name }} — build ${{ steps.app_version.outputs.code }}"
           body: |
-            - Correction de la réception des demandes d’approbation d’appareil.
-            - Prise en charge des parents et responsables autorisés.
-            - Correction des notifications supprimées qui réapparaissaient.
-            - Persistance sécurisée du masquage par utilisateur.
-            - Amélioration de la fiabilité de la synchronisation iPhone/PWA.
-            - Aucune suppression des événements familiaux.
+            - Les achats de temps d’écran débitent les points à la confirmation serveur et attendent l’approbation parentale avant de créditer les minutes.
+            - Les approbations et remboursements sont atomiques et idempotents, y compris lors de rejeux ou de validations simultanées.
+            - Les responsables autorisés peuvent accepter, accepter et démarrer le chrono, ou refuser un achat.
+            - Les demandes restent disponibles dans la boîte parentale même si une notification push échoue.
+            - Les demandes d’approbation d’appareil, notifications masquées, tribunal et synchronisation iPhone/PWA restent prises en charge.
+            - Aucun événement familial n’est supprimé.
           files: build/app/outputs/flutter-apk/SKS-Family-${{ steps.app_version.outputs.name }}-build${{ steps.app_version.outputs.code }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -93,6 +93,59 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── Verrou anti-doublon pour createRequest ─────────────────
   final Set<String> _requestKeysInFlight = {};
+  final Set<String> _purchaseActionsInFlight = {};
+  final Map<String, String> _purchaseOperationsInFlight = {};
+  Map<String, dynamic>? _lastPurchaseSettlement;
+  int? get lastApprovedPurchaseMinutes =>
+      _lastPurchaseSettlement?['minutes'] as int?;
+
+  bool isPurchaseActionInFlight(String requestId) =>
+      _purchaseActionsInFlight.contains(requestId);
+
+  Future<Map<String, dynamic>> _settlePurchaseRequest(
+      PendingRequest request, String operation,
+      {String? reason}) async {
+    if (!_firestore.isConnected) {
+      throw StateError('Connection required to process this purchase.');
+    }
+    if (!_purchaseActionsInFlight.add(request.id)) {
+      throw StateError('This request is already processing.');
+    }
+    notifyListeners();
+    try {
+      final result = await _firestore.performFamilyOperation(
+        operation: operation,
+        operationId:
+            'review_${request.extra['purchaseId']?.toString() ?? request.id}',
+        requestId: request.id,
+        reason: reason,
+      );
+      _lastPurchaseSettlement = result;
+      final purchaseId = result['purchaseId']?.toString();
+      final status = result['status']?.toString();
+      final purchaseIndex = _purchases
+          .indexWhere((purchase) => purchase['id']?.toString() == purchaseId);
+      if (purchaseIndex >= 0 &&
+          (status == 'approved' || status == 'rejected')) {
+        _purchases[purchaseIndex] = {
+          ..._purchases[purchaseIndex],
+          'status': status,
+          'reviewedAt': DateTime.now().toIso8601String()
+        };
+        await _purchasesBox.put(
+            purchaseId!, jsonEncode(_purchases[purchaseIndex]));
+      }
+      if (status == 'approved' || status == 'rejected') {
+        _pendingRequests.removeWhere((item) => item.id == request.id);
+        _markRequestDeleted(request.id);
+        await _requestsBox.delete(request.id);
+      }
+      return result;
+    } finally {
+      _purchaseActionsInFlight.remove(request.id);
+      notifyListeners();
+    }
+  }
 
   // ─── Soldes boutique ──────────────────────────────────────────
   int _saleDiscountPercent = 0; // ex: 50 = -50%
@@ -696,7 +749,13 @@ class FamilyProvider extends ChangeNotifier {
           _purchases.insert(0, remote);
         } else {
           // Mettre à jour le statut si différent (pending → approved/rejected)
-          _purchases[localIdx] = remote;
+          final local = _purchases[localIdx];
+          final localStatus = local['status'];
+          if (localStatus == 'approved' || localStatus == 'rejected') {
+            if (remote['status'] != 'pending') _purchases[localIdx] = remote;
+          } else {
+            _purchases[localIdx] = remote;
+          }
         }
       }
       // 🔒 Préserver les achats locaux non synchronisés
@@ -720,7 +779,9 @@ class FamilyProvider extends ChangeNotifier {
       if (purchaseId.isEmpty || purchase['status'] != 'pending') continue;
       if (_deletedRequestIds.contains(purchaseId) ||
           _dismissedNotificationIds.contains(_dismissalKey(purchaseId)) ||
-          _pendingRequests.any((request) => request.id == purchaseId)) {
+          _pendingRequests.any((request) =>
+              request.id == purchaseId ||
+              request.extra['purchaseId']?.toString() == purchaseId)) {
         continue;
       }
 
@@ -744,6 +805,7 @@ class FamilyProvider extends ChangeNotifier {
           'rewardId': purchase['rewardId']?.toString() ?? '',
           'rewardTitle': title,
           'icon': purchase['icon']?.toString() ?? '',
+          'screenTimeMinutes': purchase['screenTimeMinutes'] ?? 0,
         },
       );
       _markPending(purchaseId);
@@ -2833,25 +2895,17 @@ class FamilyProvider extends ChangeNotifier {
         );
         break;
       case 'boutique':
-        // ✅ Les points ont déjà été déduits à l'achat.
-        // La validation du parent confirme simplement l'achat.
-        // On ajoute juste un commentaire si fourni.
-        if (_firestore.isConnected) {
-          await _firestore.performFamilyOperation(
-            operation: 'purchase_approve',
-            operationId: 'review_${_uuid.v4()}',
-            requestId: r.id,
-          );
-        } else {
-          await _setPurchaseRequestStatus(r, 'approved');
-        }
+        _lastPurchaseSettlement = null;
+        await _settlePurchaseRequest(r, 'purchase_approve');
         break;
     }
 
     _pendingRequests.removeWhere((x) => x.id == requestId);
     _markRequestDeleted(requestId);
     await _requestsBox.delete(requestId);
-    if (_firestore.isConnected) await _firestore.deleteRequest(requestId);
+    if (_firestore.isConnected && r.type != 'boutique') {
+      await _firestore.deleteRequest(requestId);
+    }
     notifyListeners();
   }
 
@@ -2861,42 +2915,12 @@ class FamilyProvider extends ChangeNotifier {
 
     // 🛒 Si c'est un achat boutique → rembourser les points
     if (r != null && r.type == 'boutique') {
-      if (_firestore.isConnected) {
-        await _firestore.performFamilyOperation(
-          operation: 'purchase_reject',
-          operationId: 'review_${_uuid.v4()}',
-          requestId: r.id,
-          reason: reason,
-        );
-        _pendingRequests.removeWhere((x) => x.id == requestId);
-        _markRequestDeleted(requestId);
-        await _requestsBox.delete(requestId);
-        notifyListeners();
-        return;
-      }
-      final shouldRefund = await _setPurchaseRequestStatus(r, 'rejected');
-      final child = getChild(r.childId);
-      if (shouldRefund && child != null) {
-        child.points += r.amount; // remboursement
-        _markPending(child.id);
-        await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-        if (_firestore.isConnected) await _firestore.saveChild(child);
-
-        // Entrée d'historique du remboursement
-        final refund = HistoryEntry(
-          id: _uuid.v4(),
-          childId: r.childId,
-          points: r.amount,
-          reason: '↩️ Achat annulé : ${r.extra['rewardTitle'] ?? 'récompense'}',
-          category: 'boutique',
-          isBonus: true,
-          actionBy: _currentParentName,
-        );
-        _markPending(refund.id);
-        _history.insert(0, refund);
-        await _historyBox.put(refund.id, jsonEncode(refund.toMap()));
-        if (_firestore.isConnected) await _firestore.saveHistoryEntry(refund);
-      }
+      await _settlePurchaseRequest(r, 'purchase_reject', reason: reason);
+      _pendingRequests.removeWhere((x) => x.id == requestId);
+      _markRequestDeleted(requestId);
+      await _requestsBox.delete(requestId);
+      notifyListeners();
+      return;
     }
 
     if (r != null && reason != null && reason.isNotEmpty) {
@@ -2920,26 +2944,6 @@ class FamilyProvider extends ChangeNotifier {
     await _requestsBox.delete(requestId);
     if (_firestore.isConnected) await _firestore.deleteRequest(requestId);
     notifyListeners();
-  }
-
-  Future<bool> _setPurchaseRequestStatus(
-    PendingRequest request,
-    String status,
-  ) async {
-    final purchaseId = request.extra['purchaseId']?.toString() ?? request.id;
-    final index = _purchases.indexWhere((p) => p['id'] == purchaseId);
-    if (index < 0) return false;
-
-    final purchase = Map<String, dynamic>.from(_purchases[index]);
-    if (purchase['status'] != 'pending') return false;
-    purchase['status'] = status;
-    purchase['reviewedAt'] = DateTime.now().toIso8601String();
-    _purchases[index] = purchase;
-    await _purchasesBox.put(purchaseId, jsonEncode(purchase));
-    if (_firestore.isConnected) {
-      await _firestore.savePurchase(purchase);
-    }
-    return true;
   }
 
   // ─── BOUTIQUE DE RÉCOMPENSES ───────────────────────────────────
@@ -2997,111 +3001,29 @@ class FamilyProvider extends ChangeNotifier {
   /// Retourne true si l'achat a réussi.
   Future<bool> purchaseReward(String childId, String rewardId) async {
     final child = getChild(childId);
-    // 🔒 Sécurité : ne pas crasher si la récompense n'existe plus
-    final rewardIdx = _rewards.indexWhere((r) => r.id == rewardId);
-    if (child == null || rewardIdx == -1) return false;
-    final reward = _rewards[rewardIdx];
-
-    if (_firestore.isConnected) {
-      await _firestore.performFamilyOperation(
-        operation: 'purchase_reward',
-        operationId: 'purch_${_uuid.v4()}',
-        childId: childId,
-        rewardId: rewardId,
-      );
-      SoundService.playPurchase();
-      return true;
-    }
-
-    // Vérifier que l'enfant a assez de points (prix soldé si vente en cours)
-    final actualCost = salePrice(reward.cost);
-    if (child.points < actualCost) return false;
-
-    // Déduire les points
-    child.points -= actualCost;
-    _markPending(child.id);
-    await _childrenBox.put(child.id, jsonEncode(child.toMap()));
-    if (_firestore.isConnected) await _firestore.saveChild(child);
-
-    // 📺 Si la récompense est du temps d'écran, ajouter les minutes au compte
-    if (reward.title.toLowerCase().contains('écran') ||
-        reward.title.toLowerCase().contains('ecran') ||
-        reward.title.toLowerCase().contains('min') ||
-        reward.icon == '🎮') {
-      // Extraire le nombre de minutes du titre
-      final match = RegExp(r'(\d+)').firstMatch(reward.title);
-      final minutes = match != null ? int.tryParse(match.group(1)!) ?? 15 : 15;
-      await addScreenTimeMinutes(
-          childId, minutes, '🛒 Achat boutique : ${reward.title}');
-    }
-
-    // Enregistrer l'achat avec un ID stable
-    final purchaseId = 'purch_${_uuid.v4()}';
-    final purchaseData = {
-      'id': purchaseId,
-      'rewardId': reward.id,
-      'childId': childId,
-      'childName': child.name,
-      'title': reward.title,
-      'icon': reward.icon,
-      'cost': actualCost,
-      'originalCost': reward.cost,
-      'status': 'pending', // pending → approved / rejected
-      'date': DateTime.now().toIso8601String(),
-    };
-    _purchases.insert(0, purchaseData);
-    await _purchasesBox.put(purchaseId, jsonEncode(purchaseData));
-    if (_firestore.isConnected) {
-      await _firestore.savePurchase(purchaseData);
-    }
-
-    // 🔔 Notification au parent via le système de demande (badge cloche)
-    // 🔒 On transmet le PRIX PAYÉ (soldé) et non le prix original
-    final onSale = actualCost < reward.cost;
-    await createRequest(
-      requestId: purchaseId,
-      type: 'boutique',
+    final rewardExists = _rewards.any((reward) => reward.id == rewardId);
+    if (child == null || !rewardExists || !_firestore.isConnected) return false;
+    final operationKey = '$childId:$rewardId';
+    final operationId = _purchaseOperationsInFlight.putIfAbsent(
+        operationKey, () => 'purch_${_uuid.v4()}');
+    final result = await _firestore.performFamilyOperation(
+      operation: 'purchase_reward',
+      operationId: operationId,
       childId: childId,
-      requestedBy: child.name,
-      text: onSale
-          ? '🛒 ${child.name} achète "${reward.title}" ($actualCost pts 🔥 -$_saleDiscountPercent%)'
-          : '🛒 ${child.name} achète "${reward.title}" ($actualCost pts)',
-      amount: actualCost,
-      extra: {
-        'purchaseId': purchaseId,
-        'rewardId': reward.id,
-        'rewardTitle': reward.title,
-        'icon': reward.icon,
-        'originalCost': reward.cost,
-        'salePrice': actualCost,
-        'onSale': onSale,
-      },
+      rewardId: rewardId,
     );
-
-    // Ajouter à l'historique (prix réellement payé)
-    final entry = HistoryEntry(
-      id: _uuid.v4(),
-      childId: childId,
-      points: actualCost,
-      reason: onSale
-          ? '🛒 Achat boutique : ${reward.title} (-$_saleDiscountPercent%)'
-          : '🛒 Achat boutique : ${reward.title}',
-      category: 'boutique',
-      isBonus: false,
-      actionBy: child.name,
-    );
-    _markPending(entry.id);
-    _history.insert(0, entry);
-    await _historyBox.put(entry.id, jsonEncode(entry.toMap()));
-    if (_firestore.isConnected) await _firestore.saveHistoryEntry(entry);
-
-    // 🔊 Feedback sonore d'achat
+    final serverPoints = result['points'];
+    if (serverPoints is int) {
+      child.points = serverPoints;
+      _markPending(child.id);
+      await _childrenBox.put(child.id, jsonEncode(child.toMap()));
+      notifyListeners();
+    }
+    _purchaseOperationsInFlight.remove(operationKey);
     SoundService.playPurchase();
-    notifyListeners();
     return true;
   }
 
-  /// Achète des lignes d'immunité depuis la boutique (ne convertit pas, crée).
   Future<bool> purchaseImmunityLines(
       String childId, int linesToBuy, int cost) async {
     final child = getChild(childId);
@@ -3203,6 +3125,20 @@ class FamilyProvider extends ChangeNotifier {
   /// Ajoute des minutes au compte d'un enfant (achat boutique ou bonus parent)
   Future<void> addScreenTimeMinutes(
       String childId, int minutes, String reason) async {
+    if (_firestore.isConnected) {
+      final result = await _firestore.performFamilyOperation(
+          operation: 'screen_add',
+          operationId: _uuid.v4(),
+          childId: childId,
+          minutes: minutes,
+          reason: reason);
+      final serverAccount = result['account'];
+      if (serverAccount is Map<String, dynamic>) {
+        _screenTimeAccounts[childId] = ScreenTimeAccount.fromMap(serverAccount);
+        notifyListeners();
+      }
+      return;
+    }
     final account = getScreenTimeAccount(childId);
     account.balanceMinutes += minutes;
     account.totalEarned += minutes;
@@ -3215,11 +3151,6 @@ class FamilyProvider extends ChangeNotifier {
           date: DateTime.now(),
         ));
     _screenTimeAccounts[childId] = account;
-    if (_firestore.isConnected) {
-      try {
-        await _firestore.saveScreenTimeAccount(childId, account.toMap());
-      } catch (_) {}
-    }
     notifyListeners();
   }
 
@@ -3257,11 +3188,6 @@ class FamilyProvider extends ChangeNotifier {
       childName: childName,
       minutes: minutes,
     );
-    if (_firestore.isConnected) {
-      try {
-        await _firestore.saveScreenTimeAccount(childId, account.toMap());
-      } catch (_) {}
-    }
     notifyListeners();
   }
 
@@ -3308,11 +3234,6 @@ class FamilyProvider extends ChangeNotifier {
     account.appliedOvertimeTranches = 0;
     _screenTimeAccounts[childId] = account;
     _stopOvertimeChecker();
-    if (_firestore.isConnected) {
-      try {
-        await _firestore.saveScreenTimeAccount(childId, account.toMap());
-      } catch (_) {}
-    }
     notifyListeners();
   }
 
@@ -3348,6 +3269,27 @@ class FamilyProvider extends ChangeNotifier {
 
   /// Prolongation (parent)
   Future<void> extendScreenTime(String childId, int minutes) async {
+    if (_firestore.isConnected) {
+      final result = await _firestore.performFamilyOperation(
+          operation: 'screen_extend',
+          operationId: _uuid.v4(),
+          childId: childId,
+          minutes: minutes,
+          reason: 'Parent extension');
+      final serverAccount = result['account'];
+      if (serverAccount is Map<String, dynamic>) {
+        _screenTimeAccounts[childId] = ScreenTimeAccount.fromMap(serverAccount);
+      }
+      final updated = getScreenTimeAccount(childId);
+      if (updated.isRunning) {
+        await NotificationService.scheduleScreenTimeEnd(
+            childId: childId,
+            childName: getChild(childId)?.name ?? 'child',
+            minutes: updated.sessionRemaining);
+      }
+      notifyListeners();
+      return;
+    }
     final account = getScreenTimeAccount(childId);
     final wasRunning = account.isRunning;
     if (account.isRunning) {
@@ -3366,11 +3308,6 @@ class FamilyProvider extends ChangeNotifier {
           date: DateTime.now(),
         ));
     _screenTimeAccounts[childId] = account;
-    if (_firestore.isConnected) {
-      try {
-        await _firestore.saveScreenTimeAccount(childId, account.toMap());
-      } catch (_) {}
-    }
     if (wasRunning) {
       await NotificationService.scheduleScreenTimeEnd(
         childId: childId,
