@@ -60,6 +60,7 @@ const {createFamilyInboxFunctions} = require("./family_inbox");
 const familyInboxFunctions =
   createFamilyInboxFunctions({functions, admin, db});
 exports.markFamilyInboxRead = familyInboxFunctions.markFamilyInboxRead;
+exports.dismissFamilyNotification = familyInboxFunctions.dismissFamilyNotification;
 
 const {createPointActionFunctions} = require("./point_actions");
 const pointActionFunctions =
@@ -578,9 +579,7 @@ exports.onNoteCreated = functions.firestore
 // Note : onCustomBadgeCreated supprimé — pas besoin de notifier pour un badge personnalisé
 
 // ===== 9. DEMANDES DE RATTACHEMENT D'APPAREIL (join_requests) =====
-// 🔔 Notifie uniquement le propriétaire de la famille quand un nouvel
-// appareil demande à rejoindre. Utilise la même fonction sendToFamily
-// mais cible spécifiquement le ownerUid.
+// Notifie les membres parents actifs quand un appareil demande à rejoindre.
 exports.onJoinRequestCreated = functions.firestore
   .document("families/{familyId}/join_requests/{requestId}")
   .onCreate(async (snap, context) => {
@@ -605,7 +604,37 @@ exports.onJoinRequestCreated = functions.firestore
         return;
       }
 
-      // Récupérer les tokens FCM du propriétaire uniquement
+      // Récupérer les tokens FCM des profils parents autorisés.
+      const membersSnap = await db
+        .collection("families")
+        .doc(familyId)
+        .collection("members")
+        .get();
+      const parentMembers = membersSnap.docs
+          .map((doc) => ({...doc.data(), id: doc.id}))
+          .filter((member) =>
+            member.active === true && member.uid === member.id &&
+            ["owner", "parent", "manager", "familyAdmin"].includes(member.role) &&
+            (member.role !== "owner" || member.uid === ownerUid)
+          );
+      const parentUids = new Set();
+      for (const member of parentMembers) {
+        if (["manager", "familyAdmin"].includes(member.role)) {
+          // La fiche membre ne suffit pas : vérifier aussi l'identité Auth.
+          try {
+            const user = await admin.auth().getUser(member.uid);
+            if (user.disabled || !user.emailVerified ||
+                !user.providerData.some((provider) => provider.providerId !== "anonymous")) {
+              continue;
+            }
+          } catch (_) {
+            continue;
+          }
+        }
+        parentUids.add(member.uid);
+      }
+
+      // Récupérer les tokens FCM des appareils parents.
       const tokensSnap = await db
         .collection("families")
         .doc(familyId)
@@ -617,7 +646,7 @@ exports.onJoinRequestCreated = functions.firestore
         return;
       }
 
-      // 🔒 Filtrer : uniquement les tokens dont uid == ownerUid
+      // Filtrer les appareils des membres parents actifs et cohérents.
       // Ignore les anciens tokens sans uid (pas de migration).
       // Exclut aussi l'appareil demandeur.
       const requesterDeviceId = req.deviceId || "";
@@ -625,10 +654,10 @@ exports.onJoinRequestCreated = functions.firestore
       tokensSnap.docs.forEach((doc) => {
         const data = doc.data();
         if (doc.id !== requesterDeviceId &&
-            data.uid === ownerUid &&
+            parentUids.has(data.uid) &&
             data.disabled !== true &&
             data.token) {
-          tokens.push(data.token);
+          if (!tokens.includes(data.token)) tokens.push(data.token);
         }
       });
 
@@ -637,12 +666,19 @@ exports.onJoinRequestCreated = functions.firestore
         return;
       }
 
-      const role = req.requestedRole || "parent";
-      const deviceName = req.deviceName || "un nouvel appareil";
+      // Réserver l'envoi une seule fois, même si Firestore rejoue l'événement.
+      // Le push est un signal facultatif : la demande reste lisible sans lui.
+      const claimed = await db.runTransaction(async (transaction) => {
+        const current = await transaction.get(snap.ref);
+        if (!current.exists || current.data().notificationEventId ||
+            !["pending", "sent", "received"].includes(current.data().status)) return false;
+        transaction.update(snap.ref, {notificationEventId: context.eventId});
+        return true;
+      });
+      if (!claimed) return;
 
       const title = "📱 Nouvelle demande de rattachement";
-      const body =
-        deviceName + " demande à rejoindre la famille en tant que " + role + ".";
+      const body = "Une demande d’appareil attend votre consultation dans SKS Family.";
 
       const message = {
         notification: { title, body },

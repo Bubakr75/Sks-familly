@@ -1,14 +1,15 @@
 class PendingRequest {
   String id;
-  String type;        // 'punishment' | 'immunity' | 'bonus' | 'tribunal'
-  String childId;     // enfant concerne
+  String type; // 'punishment' | 'immunity' | 'bonus' | 'tribunal'
+  String childId; // enfant concerne
   String requestedBy; // nom de l'enfant qui propose
-  String text;        // description / raison / texte
-  int amount;         // nb de lignes (punition/immunite) ou points (bonus)
-  String status;      // 'pending' | 'approved' | 'rejected'
+  String text; // description / raison / texte
+  int amount; // nb de lignes (punition/immunite) ou points (bonus)
+  String status; // 'pending' | 'approved' | 'rejected'
   DateTime createdAt;
   Map<String, dynamic> extra; // donnees additionnelles (tribunal, etc.)
   List<String> readBy;
+  List<String> dismissedBy;
 
   PendingRequest({
     required this.id,
@@ -21,9 +22,11 @@ class PendingRequest {
     DateTime? createdAt,
     Map<String, dynamic>? extra,
     List<String>? readBy,
+    List<String>? dismissedBy,
   })  : createdAt = createdAt ?? DateTime.now(),
         extra = extra ?? {},
-        readBy = readBy ?? [];
+        readBy = readBy ?? [],
+        dismissedBy = dismissedBy ?? [];
 
   bool get isPending =>
       status == 'pending' ||
@@ -45,6 +48,7 @@ class PendingRequest {
         'createdAt': createdAt.toIso8601String(),
         'extra': extra,
         'readBy': readBy,
+        'dismissedBy': dismissedBy,
       };
 
   factory PendingRequest.fromMap(Map<String, dynamic> map) => PendingRequest(
@@ -58,11 +62,12 @@ class PendingRequest {
         createdAt: map['createdAt'] != null
             ? DateTime.parse(map['createdAt'])
             : DateTime.now(),
-        extra: map['extra'] != null
-            ? Map<String, dynamic>.from(map['extra'])
-            : {},
-        readBy: map['readBy'] is List
-            ? List<String>.from(map['readBy'])
+        extra:
+            map['extra'] != null ? Map<String, dynamic>.from(map['extra']) : {},
+        readBy:
+            map['readBy'] is List ? List<String>.from(map['readBy']) : const [],
+        dismissedBy: map['dismissedBy'] is List
+            ? List<String>.from(map['dismissedBy'])
             : const [],
       );
 }

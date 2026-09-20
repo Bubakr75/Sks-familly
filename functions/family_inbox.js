@@ -40,9 +40,7 @@ function createFamilyInboxFunctions({functions, admin, db}) {
       HttpsError,
       permission: FAMILY_PERMISSIONS.READ_INBOX,
     });
-    const canManageJoins =
-      authorization.role === "owner" ||
-      authorization.role === "manager";
+    const canManageJoins = ["owner", "parent", "manager", "familyAdmin"].includes(authorization.role);
 
     const [requests, joins] = await Promise.all([
       familyRef.collection("requests").limit(200).get(),
@@ -71,7 +69,56 @@ function createFamilyInboxFunctions({functions, admin, db}) {
     return {updated};
   });
 
-  return {markFamilyInboxRead};
+  const dismissFamilyNotification = functions.https.onCall(
+    async (data, context) => {
+      if (!context.auth || !context.auth.uid) {
+        throw new HttpsError("unauthenticated", "Authentification requise.");
+      }
+      const familyId = data && data.familyId;
+      const notificationId = data && data.notificationId;
+      if (typeof familyId !== "string" || familyId.length < 1 ||
+          familyId.length > 128 || familyId.includes("/") ||
+          typeof notificationId !== "string" || notificationId.length < 1 ||
+          notificationId.length > 128 || notificationId.includes("/")) {
+        throw new HttpsError("invalid-argument", "Notification invalide.");
+      }
+      const familyRef = db.collection("families").doc(familyId);
+      const [familySnap, memberSnap] = await Promise.all([
+        familyRef.get(),
+        familyRef.collection("members").doc(context.auth.uid).get(),
+      ]);
+      authorizeFamilyPermission({
+        context,
+        familySnapshot: familySnap,
+        memberSnapshot: memberSnap,
+        HttpsError,
+        permission: FAMILY_PERMISSIONS.READ_INBOX,
+      });
+      const requestRef = familyRef.collection("requests").doc(notificationId);
+      await db.runTransaction(async (transaction) => {
+        const requestSnap = await transaction.get(requestRef);
+        if (!requestSnap.exists) {
+          throw new HttpsError("not-found", "Notification introuvable.");
+        }
+        const record = requestSnap.data() || {};
+        const dismissedBy = Array.isArray(record.dismissedBy)
+          ? record.dismissedBy.filter((value) => typeof value === "string")
+          : [];
+        const uid = context.auth.uid;
+        if (dismissedBy.includes(uid)) return;
+        if (dismissedBy.length >= 100) {
+          throw new HttpsError("resource-exhausted", "Trop de masquages.");
+        }
+        transaction.update(requestRef, {
+          dismissedBy: fieldValue.arrayUnion(uid),
+          updatedAt: fieldValue.serverTimestamp(),
+        });
+      });
+      return {dismissed: true, notificationId};
+    }
+  );
+
+  return {markFamilyInboxRead, dismissFamilyNotification};
 }
 
 module.exports = {

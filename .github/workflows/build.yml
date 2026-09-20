@@ -2,7 +2,7 @@ name: Build Flutter APK v2
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -124,6 +124,9 @@ jobs:
           fi
           VERSION_NAME="${BASH_REMATCH[1]}"
           VERSION_CODE="${BASH_REMATCH[2]}"
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            test "$GITHUB_REF_NAME" = "v$VERSION_FULL"
+          fi
           LATEST_TAG=$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)
           if [[ "$LATEST_TAG" =~ \+([0-9]+)$ ]]; then
             LATEST_CODE="${BASH_REMATCH[1]}"
@@ -179,7 +182,15 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner -print | sort -V | tail -1)
           test -n "$AAPT"
           test -n "$APKSIGNER"
-          "$AAPT" dump badging "$APK" | grep -q "package: name='com.bubakr.sks_family'"
+          BADGING=$("$AAPT" dump badging "$APK")
+          grep -q "package: name='com.bubakr.sks_family'" <<< "$BADGING"
+          grep -q "versionCode='${{ steps.app_version.outputs.code }}'" <<< "$BADGING"
+          grep -q "versionName='${{ steps.app_version.outputs.name }}'" <<< "$BADGING"
+          PERMISSIONS=$("$AAPT" dump permissions "$APK")
+          if grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' <<< "$PERMISSIONS"; then
+            echo "Permission REQUEST_INSTALL_PACKAGES interdite."
+            exit 1
+          fi
 
           mkdir -p /tmp/official-apk
           gh release download --repo "$GITHUB_REPOSITORY" \
@@ -235,13 +246,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare stable APK name
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            "build/app/outputs/flutter-apk/SKS-Family-${{ steps.app_version.outputs.name }}-build${{ steps.app_version.outputs.code }}.apk"
+
       - name: Create stable GitHub Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}
-          name: "Family Score v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}"
-          body: "Build #${{ steps.app_version.outputs.code }}"
-          files: build/app/outputs/flutter-apk/app-release.apk
+          name: "SKS Family ${{ steps.app_version.outputs.name }} — build ${{ steps.app_version.outputs.code }}"
+          body: |
+            - Correction de la réception des demandes d’approbation d’appareil.
+            - Prise en charge des parents et responsables autorisés.
+            - Correction des notifications supprimées qui réapparaissaient.
+            - Persistance sécurisée du masquage par utilisateur.
+            - Amélioration de la fiabilité de la synchronisation iPhone/PWA.
+            - Aucune suppression des événements familiaux.
+          files: build/app/outputs/flutter-apk/SKS-Family-${{ steps.app_version.outputs.name }}-build${{ steps.app_version.outputs.code }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

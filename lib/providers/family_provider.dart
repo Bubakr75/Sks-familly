@@ -37,6 +37,19 @@ enum RequestResult { created, duplicate, failed }
 class FamilyProvider extends ChangeNotifier {
   final FirestoreService _firestore = FirestoreService();
   static const _uuid = Uuid();
+  static const _dismissedNotificationsKey = 'dismissed_notifications_v2';
+
+  String _dismissalKey(String id) => jsonEncode([
+        _firestore.familyId,
+        FirebaseAuth.instance.currentUser?.uid,
+        id,
+      ]);
+
+  bool _isNotificationDismissed(PendingRequest request) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    return _dismissedNotificationIds.contains(_dismissalKey(request.id)) ||
+        (uid != null && request.dismissedBy.contains(uid));
+  }
 
   late Box _childrenBox;
   late Box _historyBox;
@@ -96,6 +109,7 @@ class FamilyProvider extends ChangeNotifier {
   // Firestore pendant ~1min pour éviter qu'elles réapparaissent avant que la
   // suppression distante ne soit propagée.
   final Set<String> _deletedRequestIds = {};
+  final Set<String> _dismissedNotificationIds = {};
   void _markRequestDeleted(String id) {
     _deletedRequestIds.add(id);
     Future.delayed(
@@ -159,7 +173,8 @@ class FamilyProvider extends ChangeNotifier {
   List<TribunalCase> get tribunalCases => _tribunalCases;
   List<BadgeModel> get customBadges => _customBadges;
   List<TradeModel> get trades => _trades;
-  List<PendingRequest> get pendingRequests => _pendingRequests;
+  List<PendingRequest> get pendingRequests =>
+      _pendingRequests.where((r) => !_isNotificationDismissed(r)).toList();
   List<Map<String, dynamic>> get pendingJoinRequests =>
       List.unmodifiable(_pendingJoinRequests);
   List<RewardModel> get rewards => _rewards;
@@ -471,6 +486,10 @@ class FamilyProvider extends ChangeNotifier {
         .toList();
     _currentParentName =
         _metaBox.get('current_parent', defaultValue: 'Parent') as String;
+    final dismissed = _metaBox.get(_dismissedNotificationsKey);
+    if (dismissed is List) {
+      _dismissedNotificationIds.addAll(dismissed.whereType<String>());
+    }
   }
 
   // ───────────────────────────────────────────────────────────
@@ -558,10 +577,19 @@ class FamilyProvider extends ChangeNotifier {
     _firestore.onRequestsChanged = (list) {
       // Exclure les demandes récemment approuvées/rejetées (pas encore supprimées
       // côté Firestore) pour éviter qu'elles réapparaissent.
+      for (final request in list) {
+        if (_isNotificationDismissed(request)) {
+          _dismissedNotificationIds.add(_dismissalKey(request.id));
+        }
+      }
+      _metaBox.put(
+          _dismissedNotificationsKey, _dismissedNotificationIds.toList());
       final filtered =
           list.where((r) => !_deletedRequestIds.contains(r.id)).toList();
       _pendingRequests =
-          _mergeWithPending(filtered, _pendingRequests, (r) => r.id);
+          _mergeWithPending(filtered, _pendingRequests, (r) => r.id)
+              .where((r) => !_isNotificationDismissed(r))
+              .toList();
       _saveBoxFromList(
           _requestsBox, _pendingRequests, (e) => e.id, (e) => e.toMap());
       notifyListeners();
@@ -691,6 +719,7 @@ class FamilyProvider extends ChangeNotifier {
       final purchaseId = purchase['id']?.toString() ?? '';
       if (purchaseId.isEmpty || purchase['status'] != 'pending') continue;
       if (_deletedRequestIds.contains(purchaseId) ||
+          _dismissedNotificationIds.contains(_dismissalKey(purchaseId)) ||
           _pendingRequests.any((request) => request.id == purchaseId)) {
         continue;
       }
@@ -2669,12 +2698,12 @@ class FamilyProvider extends ChangeNotifier {
 
   // ─── Demandes en attente (validation parentale) ────────────
   int get pendingRequestsCount =>
-      _pendingRequests.length + _pendingJoinRequests.length;
+      pendingRequests.length + _pendingJoinRequests.length;
 
   int get unreadRequestsCount {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final childUnread =
-        _pendingRequests.where((request) => request.isUnreadFor(uid)).length;
+        pendingRequests.where((request) => request.isUnreadFor(uid)).length;
     final joinUnread = _pendingJoinRequests.where((request) {
       final readBy = request['readBy'];
       return uid != null &&
@@ -2687,6 +2716,22 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> markFamilyInboxRead() async {
     if (!_firestore.isConnected) return;
     await _firestore.markFamilyInboxRead();
+  }
+
+  Future<void> dismissRequestNotification(String requestId) async {
+    final normalized = requestId.trim();
+    if (normalized.isEmpty) return;
+    if (_firestore.isConnected) {
+      await _firestore.dismissFamilyNotification(normalized);
+    }
+    _dismissedNotificationIds.add(_dismissalKey(normalized));
+    await _metaBox.put(
+      _dismissedNotificationsKey,
+      _dismissedNotificationIds.toList(),
+    );
+    _pendingRequests.removeWhere((request) => request.id == normalized);
+    await _requestsBox.delete(normalized);
+    notifyListeners();
   }
 
   Future<RequestResult> createRequest({

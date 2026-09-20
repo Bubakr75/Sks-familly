@@ -521,8 +521,7 @@ service cloud.firestore {
 
       // Écriture exclusivement via les Cloud Functions de rattachement.
       match /join_requests/{requestId} {
-        allow read: if isFamilyOwner(familyId) ||
-          isFamilyManager(familyId) ||
+        allow read: if isFamilyParent(familyId) ||
           (
             isSignedIn() &&
             requestId == request.auth.uid &&

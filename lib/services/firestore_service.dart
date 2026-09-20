@@ -1037,6 +1037,17 @@ class FirestoreService {
     });
   }
 
+  Future<void> dismissFamilyNotification(String notificationId) async {
+    final currentFamilyId = _familyId;
+    if (currentFamilyId == null) return;
+    await FirebaseFunctions.instance
+        .httpsCallable('dismissFamilyNotification')
+        .call({
+      'familyId': currentFamilyId,
+      'notificationId': notificationId,
+    });
+  }
+
   /// Enregistre une action de points dans une transaction côté serveur.
   Future<Map<String, dynamic>> recordPointAction({
     required String actionId,

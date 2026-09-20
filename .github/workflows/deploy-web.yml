@@ -64,5 +64,13 @@ jobs:
       - name: Setup Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Preserve exact Hosting build for verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ github.sha }}
+          path: build/web/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Deploy to Firebase Hosting
         run: firebase deploy --only hosting --project sks-familly-3f205 --non-interactive

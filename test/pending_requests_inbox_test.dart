@@ -14,11 +14,11 @@ void main() {
     expect(source, contains('_confirmDeleteRequest('));
   });
 
-  test('la suppression refuse proprement la demande et rembourse les achats',
+  test(
+      'la suppression masque la notification sans supprimer l evenement metier',
       () {
-    expect(source, contains('() => provider.rejectRequest('));
-    expect(source, contains("final isPurchase = request.type == 'boutique'"));
-    expect(source, contains('les points de l’achat seront remboursés'));
+    expect(source, contains('dismissRequestNotification(request.id)'));
+    expect(source, contains('La demande et les points restent inchangés.'));
   });
 
   test('tous les boutons affichent une réussite ou une erreur', () {

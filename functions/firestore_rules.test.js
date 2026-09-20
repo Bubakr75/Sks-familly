@@ -121,6 +121,7 @@ async function seedFirestore() {
     const familyAMembers = [
       ["owner-a", {uid: "owner-a", role: "owner", active: true}],
       ["manager-a", {uid: "manager-a", role: "manager", active: true}],
+      ["admin-a", {uid: "admin-a", role: "familyAdmin", active: true}],
       ["parent-a", {uid: "parent-a", role: "parent", active: true}],
       [
         "child-a",
@@ -607,7 +608,7 @@ test("FCM tokens require active membership and a coherent immutable UID", async 
   }
 });
 
-test("join requests stay owner/manager-only while a member reads itself", async () => {
+test("join requests are readable by authorized family roles while a member reads itself", async () => {
   const ownerDb = testEnv.authenticatedContext("owner-a").firestore();
   await assertSucceeds(
     getDoc(businessRef(ownerDb, "join_requests", "join-1"))
@@ -637,11 +638,21 @@ test("join requests stay owner/manager-only while a member reads itself", async 
   );
   await assertFails(getDocs(familyCollectionRef(managerDb, "members")));
   const parentDb = testEnv.authenticatedContext("parent-a").firestore();
-  await assertFails(
+  await assertSucceeds(
     getDoc(businessRef(parentDb, "join_requests", "join-1"))
   );
-  await assertFails(
+  await assertSucceeds(
     getDocs(familyCollectionRef(parentDb, "join_requests"))
+  );
+  const adminDb = testEnv.authenticatedContext("admin-a", {
+    email_verified: true,
+    firebase: {sign_in_provider: "password"},
+  }).firestore();
+  await assertSucceeds(
+    getDoc(businessRef(adminDb, "join_requests", "join-1"))
+  );
+  await assertSucceeds(
+    getDocs(familyCollectionRef(adminDb, "join_requests"))
   );
   await assertSucceeds(
     getDoc(businessRef(parentDb, "members", "parent-a"))
@@ -654,6 +665,7 @@ test("join requests stay owner/manager-only while a member reads itself", async 
   for (const context of [
     testEnv.unauthenticatedContext(),
     testEnv.authenticatedContext("manager-a"),
+    testEnv.authenticatedContext("admin-a"),
     testEnv.authenticatedContext("child-a"),
     testEnv.authenticatedContext("owner-b"),
     testEnv.authenticatedContext("outsider"),
@@ -665,6 +677,7 @@ test("join requests stay owner/manager-only while a member reads itself", async 
     await assertFails(
       getDoc(businessRef(db, "join_requests", "join-1"))
     );
+    await assertFails(getDocs(familyCollectionRef(db, "join_requests")));
     await assertFails(getDoc(businessRef(db, "members", "parent-a")));
   }
 
@@ -687,6 +700,25 @@ test("join requests stay owner/manager-only while a member reads itself", async 
         active: true,
       })
     );
+  }
+});
+
+test("join requests: le demandeur lit uniquement sa demande et les clients ne modifient rien", async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(businessRef(context.firestore(), "join_requests", "iphone"), {requesterUid: "iphone", status: "sent"});
+    await setDoc(businessRef(context.firestore(), "join_requests", "mismatch-request"), {requesterUid: "iphone", status: "sent"});
+  });
+  const requester = testEnv.authenticatedContext("iphone").firestore();
+  await assertSucceeds(getDoc(businessRef(requester, "join_requests", "iphone")));
+  await assertFails(getDoc(businessRef(requester, "join_requests", "mismatch-request")));
+  await assertFails(getDocs(familyCollectionRef(requester, "join_requests")));
+  const token = {email_verified: true, firebase: {sign_in_provider: "password"}};
+  for (const uid of ["iphone", "owner-a", "parent-a", "manager-a", "admin-a", "child-a", "outsider", "inactive"]) {
+    const db = testEnv.authenticatedContext(uid, token).firestore();
+    const ref = businessRef(db, "join_requests", "iphone");
+    await assertFails(updateDoc(ref, {status: "approved"}));
+    await assertFails(deleteDoc(ref));
+    await assertFails(setDoc(businessRef(db, "join_requests", "client-created"), {requesterUid: uid, status: "sent"}));
   }
 });
 

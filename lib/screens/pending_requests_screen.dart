@@ -114,11 +114,13 @@ class PendingRequestsScreen extends StatelessWidget {
             // 🔒 Trier par createdAt décroissant sans modifier la liste du provider
             final requests = List<PendingRequest>.from(fp.pendingRequests)
               ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-            final joinPanel =
-                (fp.memberRole == 'owner' || fp.memberRole == 'parent') &&
-                        fp.familyId != null
-                    ? FamilyJoinApprovalPanel(familyId: fp.familyId!)
-                    : null;
+            final joinPanel = (fp.memberRole == 'owner' ||
+                        fp.memberRole == 'parent' ||
+                        fp.memberRole == 'manager' ||
+                        fp.memberRole == 'familyAdmin') &&
+                    fp.familyId != null
+                ? FamilyJoinApprovalPanel(familyId: fp.familyId!)
+                : null;
             return Column(
               children: [
                 if (joinPanel != null)
@@ -304,15 +306,12 @@ class PendingRequestsScreen extends StatelessWidget {
     FamilyProvider provider,
     PendingRequest request,
   ) {
-    final isPurchase = request.type == 'boutique';
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer cette notification ?'),
-        content: Text(
-          isPurchase
-              ? 'La demande sera refusée et les points de l’achat seront remboursés.'
-              : 'La demande sera refusée puis retirée de la cloche.',
+        content: const Text(
+          'La notification sera masquée pour ce compte. La demande et les points restent inchangés.',
         ),
         actions: [
           TextButton(
@@ -325,13 +324,8 @@ class PendingRequestsScreen extends StatelessWidget {
               Navigator.pop(dialogContext);
               await _runAction(
                 context,
-                () => provider.rejectRequest(
-                  request.id,
-                  reason: 'Notification supprimée par un parent.',
-                ),
-                successMessage: isPurchase
-                    ? 'Notification supprimée et achat remboursé.'
-                    : 'Notification supprimée.',
+                () => provider.dismissRequestNotification(request.id),
+                successMessage: 'Notification masquée.',
               );
             },
             icon: const Icon(Icons.delete_outline_rounded),

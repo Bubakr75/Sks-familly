@@ -20,12 +20,11 @@ void main() {
       );
     }
 
-    test('la boîte de demandes est réservée au propriétaire et gestionnaire',
-        () {
+    test('la boîte de demandes est réservée aux rôles familiaux autorisés', () {
       final block = ruleBlock('match /join_requests/{requestId}');
-      expect(block, contains('isFamilyOwner(familyId)'));
-      expect(block, contains('isFamilyManager(familyId)'));
-      expect(block, isNot(contains('isFamilyParent(familyId)')));
+      expect(block, contains('isFamilyParent(familyId)'));
+      expect(block, contains('isSignedIn()'));
+      expect(block, contains('requesterUid == request.auth.uid'));
       expect(block, contains('requestId == request.auth.uid'));
       expect(block, contains('allow write: if false'));
     });
