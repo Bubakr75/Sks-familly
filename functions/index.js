@@ -601,147 +601,19 @@ exports.onNoteCreated = functions.firestore
 
 // Note : onCustomBadgeCreated supprimé — pas besoin de notifier pour un badge personnalisé
 
-// ===== 9. DEMANDES DE RATTACHEMENT D'APPAREIL (join_requests) =====
-// Notifie les membres parents actifs quand un appareil demande à rejoindre.
+// ===== 9. DEMANDES DE RATTACHEMENT D'APPAREIL =====
+const {createJoinNotificationHandler, isJoinSubmission} = require("./join_notifications");
+const notifyJoinSubmission = createJoinNotificationHandler({
+  db, admin, HttpsError: functions.https.HttpsError,
+});
 exports.onJoinRequestCreated = functions.firestore
   .document("families/{familyId}/join_requests/{requestId}")
-  .onCreate(async (snap, context) => {
-    const req = snap.data();
-    const familyId = context.params.familyId;
+  .onCreate(notifyJoinSubmission);
 
-    try {
-      // Lire le ownerUid de la famille
-      const familySnap = await db
-        .collection("families")
-        .doc(familyId)
-        .get();
-
-      if (!familySnap.exists) {
-        console.log("onJoinRequestCreated: famille introuvable");
-        return;
-      }
-
-      const ownerUid = familySnap.data().ownerUid;
-      if (!ownerUid) {
-        console.log("onJoinRequestCreated: pas de ownerUid sur la famille");
-        return;
-      }
-
-      // Récupérer les tokens FCM des profils parents autorisés.
-      const membersSnap = await db
-        .collection("families")
-        .doc(familyId)
-        .collection("members")
-        .get();
-      const parentMembers = membersSnap.docs
-          .map((doc) => ({...doc.data(), id: doc.id}))
-          .filter((member) =>
-            member.active === true && member.uid === member.id &&
-            ["owner", "parent", "manager", "familyAdmin"].includes(member.role) &&
-            (member.role !== "owner" || member.uid === ownerUid)
-          );
-      const parentUids = new Set();
-      for (const member of parentMembers) {
-        if (["manager", "familyAdmin"].includes(member.role)) {
-          // La fiche membre ne suffit pas : vérifier aussi l'identité Auth.
-          try {
-            const user = await admin.auth().getUser(member.uid);
-            if (user.disabled || !user.emailVerified ||
-                !user.providerData.some((provider) => provider.providerId !== "anonymous")) {
-              continue;
-            }
-          } catch (_) {
-            continue;
-          }
-        }
-        parentUids.add(member.uid);
-      }
-
-      // Récupérer les tokens FCM des appareils parents.
-      const tokensSnap = await db
-        .collection("families")
-        .doc(familyId)
-        .collection("fcm_tokens")
-        .get();
-
-      if (tokensSnap.empty) {
-        console.log("onJoinRequestCreated: aucun token FCM trouvé");
-        return;
-      }
-
-      // Filtrer les appareils des membres parents actifs et cohérents.
-      // Ignore les anciens tokens sans uid (pas de migration).
-      // Exclut aussi l'appareil demandeur.
-      const requesterDeviceId = req.deviceId || "";
-      const tokens = [];
-      tokensSnap.docs.forEach((doc) => {
-        const data = doc.data();
-        if (doc.id !== requesterDeviceId &&
-            parentUids.has(data.uid) &&
-            data.disabled !== true &&
-            data.token) {
-          if (!tokens.includes(data.token)) tokens.push(data.token);
-        }
-      });
-
-      if (tokens.length === 0) {
-        console.log("onJoinRequestCreated: aucun token destinataire");
-        return;
-      }
-
-      // Réserver l'envoi une seule fois, même si Firestore rejoue l'événement.
-      // Le push est un signal facultatif : la demande reste lisible sans lui.
-      const claimed = await db.runTransaction(async (transaction) => {
-        const current = await transaction.get(snap.ref);
-        if (!current.exists || current.data().notificationEventId ||
-            !["pending", "sent", "received"].includes(current.data().status)) return false;
-        transaction.update(snap.ref, {notificationEventId: context.eventId});
-        return true;
-      });
-      if (!claimed) return;
-
-      const title = "📱 Nouvelle demande de rattachement";
-      const body = "Une demande d’appareil attend votre consultation dans SKS Family.";
-
-      const message = {
-        notification: { title, body },
-        data: {
-          sender: requesterDeviceId,
-          type: "join_request",
-          requestId: context.params.requestId,
-          familyId: familyId,
-        },
-        android: {
-          notification: {
-            channelId: "sks_family_channel",
-            icon: "@mipmap/ic_launcher",
-            sound: "default",
-            priority: "high",
-          },
-        },
-        webpush: {
-          headers: { Urgency: "high" },
-          notification: {
-            title: title,
-            body: body,
-            icon: "/icons/Icon-192.png",
-            badge: "/icons/Icon-192.png",
-            requireInteraction: true,
-          },
-          fcmOptions: { link: "https://sks-familly-3f205.web.app" },
-        },
-        tokens: tokens,
-      };
-
-      const response = await admin.messaging().sendEachForMulticast(message);
-      console.log(
-        "onJoinRequestCreated: envoyé à " +
-          response.successCount +
-          "/" +
-          tokens.length +
-          " appareils"
-      );
-    } catch (e) {
-      console.error("onJoinRequestCreated error:", e);
-    }
+// Conserve le déclencheur existant et couvre une demande renvoyée après refus.
+exports.onJoinRequestResubmitted = functions.firestore
+  .document("families/{familyId}/join_requests/{requestId}")
+  .onUpdate(async (change, context) => {
+    if (!isJoinSubmission(change.before.data(), change.after.data())) return;
+    return notifyJoinSubmission(change.after, context);
   });

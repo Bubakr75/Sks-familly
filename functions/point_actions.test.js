@@ -2,6 +2,59 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const {createPointActionFunctions} = require("./point_actions");
+
+function completionFixture(punishment, role = "parent") {
+  class HttpsError extends Error {
+    constructor(code, message) { super(message); this.code = code; }
+  }
+  let writes = 0;
+  const saved = {...punishment};
+  const snapshot = (data) => ({exists: true, id: "lines", data: () => data});
+  const punishmentRef = {get: async () => snapshot(saved)};
+  const familyRef = {get: async () => snapshot({ownerUid: "owner"}),
+    collection: (name) => ({doc: () => name === "punishments" ? punishmentRef :
+      {get: async () => snapshot({uid: "actor", active: true, role})}})};
+  const db = {collection: () => ({doc: () => familyRef}),
+    runTransaction: async (fn) => fn({get: () => punishmentRef.get(),
+      update: (_, patch) => {writes++; Object.assign(saved, patch);}})};
+  const api = createPointActionFunctions({db,
+    functions: {https: {HttpsError, onCall: (fn) => fn}},
+    admin: {firestore: {FieldValue: {serverTimestamp: () => "server-time"}}}});
+  return {saved, writes: () => writes, complete: () => api.completePenaltyLines(
+    {familyId: "family", punishmentId: "lines"}, {auth: {uid: "actor"}})};
+}
+
+test("valide les lignes manuelles, conserve leur texte et rend le double appel neutre", async () => {
+  const f = completionFixture({childId: "child", text: "Ma consigne", totalLines: 15,
+    completedLines: 3, photoUrls: ["photo"]});
+  await f.complete();
+  assert.equal(f.saved.completedLines, 15);
+  assert.equal(f.saved.penaltyLinesStatus, "completed");
+  assert.equal(f.saved.penaltyLinesCompletedBy, "actor");
+  assert.equal(f.saved.pendingValidation, false);
+  assert.equal(f.saved.text, "Ma consigne");
+  assert.deepEqual(f.saved.photoUrls, ["photo"]);
+  await f.complete();
+  assert.equal(f.writes(), 1);
+});
+
+test("la validation liée reste compatible et un enfant ne peut pas valider", async () => {
+  const punishment = {penaltyHistoryId: "history", hasPenaltyLines: true,
+    penaltyLinesCount: 20, totalLines: 20};
+  const f = completionFixture(punishment);
+  await f.complete();
+  assert.equal(f.saved.completedLines, 20);
+  const child = completionFixture(punishment, "child");
+  await assert.rejects(child.complete(), (e) => e.code === "permission-denied");
+  assert.equal(child.writes(), 0);
+});
+
+test("une obligation sans lignes ne peut pas être validée", async () => {
+  const f = completionFixture({totalLines: 0});
+  await assert.rejects(f.complete(), (e) => e.code === "failed-precondition");
+  assert.equal(f.writes(), 0);
+});
 const {
   normalizePointAction,
   normalizeHistoryEvent,

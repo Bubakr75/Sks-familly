@@ -77,6 +77,11 @@ class PunishmentLines {
         'createdAt': createdAt.toIso8601String(),
         'photoUrls': photoUrls,
         'pendingValidation': pendingValidation,
+        if (!isLinkedToPenalty && completedAt != null) ...{
+          'penaltyLinesStatus': status.name,
+          'penaltyLinesCompletedAt': completedAt!.toIso8601String(),
+          'penaltyLinesCompletedBy': completedBy,
+        },
         if (penaltyHistoryId != null) 'penaltyHistoryId': penaltyHistoryId,
         if (isLinkedToPenalty) ...{
           'hasPenaltyLines': true,

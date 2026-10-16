@@ -17,28 +17,32 @@ class EmeraldPalette {
   EmeraldPalette._();
 
   // Fonds — PLUS SOMBRE pour contraste max avec les cards
-  static const Color background = Color(0xFF051410); // Vert nuit très sombre
-  static const Color surface = Color(0xFF0F2620); // Vert surface (cards)
-  static const Color surfaceHigh = Color(0xFF193530); // Cards hover/active
-  static const Color surfaceLow = Color(0xFF0A1C17); // Cards secondaires
+  static const Color background = Color(0xFF101B18); // Vert nuit très sombre
+  static const Color surface = Color(0xFF1C2B25); // Vert surface (cards)
+  static const Color surfaceHigh = Color(0xFF293D32); // Cards hover/active
+  static const Color surfaceLow = Color(0xFF16231D); // Cards secondaires
 
   // Accents — VERT + VIF (plus de contraste, plus premium)
-  static const Color emerald = Color(0xFF00E676); // Vert vif émeraude (plus flashy)
-  static const Color emeraldLight = Color(0xFF69F0AE); // Vert clair lumineux
-  static const Color emeraldDark = Color(0xFF00C853); // Vert foncé profond
-  static const Color gold = Color(0xFFD4AF37); // Doré pour médailles/récompenses
+  static const Color emerald =
+      Color(0xFF78D5A5); // Vert vif émeraude (plus flashy)
+  static const Color emeraldLight = Color(0xFF91DEB6); // Vert clair lumineux
+  static const Color emeraldDark = Color(0xFF59BC8D); // Vert foncé profond
+  static const Color gold =
+      Color(0xFFD4AF37); // Doré pour médailles/récompenses
   static const Color goldLight = Color(0xFFF4D160); // Doré clair
 
   // Textes
   static const Color textPrimary = Color(0xFFF5F1E8); // Crème
-  static const Color textSecondary = Color(0xFF94A3A0); // Vert gris
-  static const Color textMuted = Color(0xFF5A6B66); // Vert gris foncé
+  static const Color textSecondary = Color(0xFFA9BBB1); // Vert gris
+  static const Color textMuted = Color(0xFF8A9D92); // Vert gris foncé
 
   // États
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B); // Ambre
   static const Color error = Color(0xFFEF4444); // Rouge
   static const Color info = Color(0xFF3B82F6); // Bleu
+
+  static const Color penalty = Color(0xFFFF8D96);
 
   // Médaillles (podium)
   static const Color goldMedal = Color(0xFFD4AF37);
@@ -168,7 +172,7 @@ class EmeraldCard extends StatelessWidget {
                 Border.all(color: EmeraldPalette.glassBorder, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
+                color: Colors.transparent,
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -357,14 +361,14 @@ class EmeraldHeader extends StatelessWidget {
                 Text(
                   title,
                   style: EmeraldTypography.display.copyWith(fontSize: 28),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: EmeraldTypography.caption.copyWith(fontSize: 13),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -428,10 +432,10 @@ class EmeraldSectionTitle extends StatelessWidget {
             const SizedBox(width: 6),
           ],
           Text(
-            title.toUpperCase(),
+            title,
             style: EmeraldTypography.label.copyWith(
-              fontSize: 11,
-              letterSpacing: 1.5,
+              fontSize: 15,
+              letterSpacing: 0,
             ),
           ),
           const Spacer(),
@@ -471,7 +475,8 @@ class _CountUpTextState extends State<_CountUpText>
   @override
   void initState() {
     super.initState();
-    _targetValue = int.tryParse(widget.text.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+    _targetValue =
+        int.tryParse(widget.text.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
     _controller = AnimationController(
       vsync: this,
       duration: widget.duration,
@@ -522,8 +527,8 @@ class EmeraldBackground extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF051410),
-              Color(0xFF041008),
+              Color(0xFF101B18),
+              EmeraldPalette.background,
             ],
           ),
         ),
@@ -761,7 +766,8 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
       child: Center(
         child: Text(
           '👤',
-          style: TextStyle(fontSize: 40, color: Colors.white.withValues(alpha: 0.3)),
+          style: TextStyle(
+              fontSize: 40, color: Colors.white.withValues(alpha: 0.3)),
         ),
       ),
     );
@@ -805,7 +811,7 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
+                color: Colors.transparent,
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -815,172 +821,182 @@ class _EmeraldChildCardState extends State<EmeraldChildCard>
             borderRadius: BorderRadius.circular(18),
             child: Column(
               children: [
-              // ─── BANNIÈRE PHOTO PLEINE LARGEUR (remplit tout le cadre) ───
-              SizedBox(
-                height: 140,
-                width: double.infinity,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Photo : BoxFit.cover remplit TOUT le cadre (haut en bas)
-                    if (widget.bannerPhotoBase64 != null && widget.bannerPhotoBase64!.isNotEmpty)
-                      widget.bannerPhotoBase64!.startsWith('http')
-                        ? Image.network(
-                            widget.bannerPhotoBase64!,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            errorBuilder: (_, __, ___) => _gradientBanner(accent),
-                          )
-                        : Image.memory(
-                            _decodeBase64(widget.bannerPhotoBase64!),
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            errorBuilder: (_, __, ___) => _gradientBanner(accent),
-                          )
-                    else
-                      _gradientBanner(accent),
-                    // Dégradé sombre en bas pour la lisibilité du nom
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Container(
-                        height: 60,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              EmeraldPalette.surface.withValues(alpha: 0.95),
-                            ],
+                // ─── BANNIÈRE PHOTO PLEINE LARGEUR (remplit tout le cadre) ───
+                SizedBox(
+                  height: 140,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Photo : BoxFit.cover remplit TOUT le cadre (haut en bas)
+                      if (widget.bannerPhotoBase64 != null &&
+                          widget.bannerPhotoBase64!.isNotEmpty)
+                        widget.bannerPhotoBase64!.startsWith('http')
+                            ? Image.network(
+                                widget.bannerPhotoBase64!,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                errorBuilder: (_, __, ___) =>
+                                    _gradientBanner(accent),
+                              )
+                            : Image.memory(
+                                _decodeBase64(widget.bannerPhotoBase64!),
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                errorBuilder: (_, __, ___) =>
+                                    _gradientBanner(accent),
+                              )
+                      else
+                        _gradientBanner(accent),
+                      // Dégradé sombre en bas pour la lisibilité du nom
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Container(
+                          height: 60,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                EmeraldPalette.surface.withValues(alpha: 0.95),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // Nom par-dessus
-                    Positioned(
-                      bottom: 6,
-                      left: 12,
-                      right: 12,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Nom par-dessus
+                      Positioned(
+                        bottom: 6,
+                        left: 12,
+                        right: 12,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.name,
+                              style: EmeraldTypography.heading.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: accent.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: accent.withValues(alpha: 0.4)),
+                              ),
+                              child: Text(
+                                'Points disponibles',
+                                style: TextStyle(
+                                  color: accent,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // ─── Corps de la carte : POINTS EN GROS AU CENTRE ───
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Column(
+                    children: [
+                      // POINTS EN GROS (l'élément principal de la carte)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            widget.name,
-                            style: EmeraldTypography.heading.copyWith(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                            '${widget.points}',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              color: accent,
+                              shadows: [
+                                Shadow(
+                                    color: accent.withValues(alpha: 0.4),
+                                    blurRadius: 12)
+                              ],
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: accent.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: accent.withValues(alpha: 0.4)),
-                            ),
-                            child: Text(
-                              'Points disponibles',
-                              style: TextStyle(
-                                color: accent,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'points disponibles',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: EmeraldPalette.textSecondary,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              // ─── Corps de la carte : POINTS EN GROS AU CENTRE ───
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Column(
-                  children: [
-                    // POINTS EN GROS (l'élément principal de la carte)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          '${widget.points}',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            color: accent,
-                            shadows: [Shadow(color: accent.withValues(alpha: 0.4), blurRadius: 12)],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'points disponibles',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: EmeraldPalette.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 8),
 
-                    // ─── Mini stats : Série + Aujourd'hui + Total ───
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: EmeraldPalette.surfaceLow,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    // Série (jours sans pénalité)
-                    _MiniStat(
-                      icon: Icons.local_fire_department_rounded,
-                      value: '${widget.streakDays ?? 0}j',
-                      label: 'Série',
-                      color: EmeraldPalette.warning,
-                    ),
-                    Container(
-                      width: 1,
-                      height: 24,
-                      color: EmeraldPalette.glassBorder,
-                    ),
-                    // Points du jour
-                    _MiniStat(
-                      icon: Icons.bolt_rounded,
-                      value: '+${widget.pointsToday}',
-                      label: "Aujourd'hui",
-                      color: EmeraldPalette.emerald,
-                    ),
-                    Container(
-                      width: 1,
-                      height: 24,
-                      color: EmeraldPalette.glassBorder,
-                    ),
-                    // Total points bonus
-                    _MiniStat(
-                      icon: Icons.stars_rounded,
-                      value: '${widget.points}',
-                      label: 'Total',
-                      color: EmeraldPalette.gold,
-                    ),
-                  ],
-                ),
-              ),
-            ],  // fin Column enfants
+                      // ─── Mini stats : Série + Aujourd'hui + Total ───
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: EmeraldPalette.surfaceLow,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            // Série (jours sans pénalité)
+                            _MiniStat(
+                              icon: Icons.local_fire_department_rounded,
+                              value: '${widget.streakDays ?? 0}j',
+                              label: 'Série',
+                              color: EmeraldPalette.warning,
+                            ),
+                            Container(
+                              width: 1,
+                              height: 24,
+                              color: EmeraldPalette.glassBorder,
+                            ),
+                            // Points du jour
+                            _MiniStat(
+                              icon: Icons.bolt_rounded,
+                              value: '+${widget.pointsToday}',
+                              label: "Aujourd'hui",
+                              color: EmeraldPalette.emerald,
+                            ),
+                            Container(
+                              width: 1,
+                              height: 24,
+                              color: EmeraldPalette.glassBorder,
+                            ),
+                            // Total points bonus
+                            _MiniStat(
+                              icon: Icons.stars_rounded,
+                              value: '${widget.points}',
+                              label: 'Total',
+                              color: EmeraldPalette.gold,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ], // fin Column enfants
+                  ),
+                ), // fin Padding
+              ], // fin Column de ClipRRect
             ),
-          ),  // fin Padding
-            ],  // fin Column de ClipRRect
-          ),
-        ),  // fin ClipRRect
-      ),
+          ), // fin ClipRRect
+        ),
       ),
     );
   }
@@ -1037,7 +1053,8 @@ class EmeraldModeBanner extends StatelessWidget {
   final String parentName;
   final String childName;
   final VoidCallback? onLockTap; // Pour verrouiller le mode parent
-  final VoidCallback? onUnlockTap; // Pour activer le mode parent (depuis mode enfant)
+  final VoidCallback?
+      onUnlockTap; // Pour activer le mode parent (depuis mode enfant)
 
   const EmeraldModeBanner({
     super.key,
@@ -1119,8 +1136,8 @@ class EmeraldModeBanner extends StatelessWidget {
               GestureDetector(
                 onTap: onLockTap,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: EmeraldPalette.gold.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
@@ -1233,5 +1250,3 @@ class EmeraldModeBanner extends StatelessWidget {
     }
   }
 }
-
-

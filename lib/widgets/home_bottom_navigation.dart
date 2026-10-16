@@ -12,7 +12,12 @@ class HomeBottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) => NavigationBar(
         selectedIndex: selectedIndex,
         backgroundColor: EmeraldPalette.surface,
-        indicatorColor: EmeraldPalette.emerald.withValues(alpha: 0.18),
+        height: 76,
+        elevation: 0,
+        indicatorColor: (selectedIndex == 2
+                ? EmeraldPalette.penalty
+                : EmeraldPalette.emerald)
+            .withValues(alpha: 0.12),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: onSelectTab,
         destinations: const [
@@ -25,7 +30,11 @@ class HomeBottomNavigation extends StatelessWidget {
               selectedIcon: Icon(Icons.add_circle_rounded),
               label: 'Bonus'),
           NavigationDestination(
-              icon: Icon(Icons.remove_circle_outline), label: 'Pénalité'),
+              icon: Icon(Icons.remove_circle_outline,
+                  color: EmeraldPalette.penalty),
+              selectedIcon: Icon(Icons.remove_circle_rounded,
+                  color: EmeraldPalette.penalty),
+              label: 'Pénalité'),
           NavigationDestination(
               icon: Icon(Icons.menu_book_rounded), label: 'Lignes'),
           NavigationDestination(

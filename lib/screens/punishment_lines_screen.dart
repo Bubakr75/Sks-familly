@@ -10,6 +10,7 @@ import '../widgets/glass_card.dart';
 import '../services/gemini_service.dart';
 import '../widgets/family_profiles_section.dart';
 import '../widgets/punishment_form_sheet.dart';
+import '../utils/pin_guard.dart';
 
 class PunishmentLinesScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -26,6 +27,7 @@ class PunishmentLinesScreen extends StatefulWidget {
 class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     with SingleTickerProviderStateMixin {
   ChildModel? _selectedChild;
+  final Set<String> _validatingLines = {};
   final Map<String, int> _quizCounts = {};
   late TabController _tabController;
 
@@ -56,7 +58,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   @override
   Widget build(BuildContext context) {
     final fp = context.watch<FamilyProvider>();
-    final isParent = context.watch<PinProvider>().isParentMode;
+    final isParent = fp.memberRole != 'child' && context.watch<PinProvider>().isParentMode;
     final children = visibleFamilyChildren(fp.children,
       memberRole: fp.memberRole, memberChildId: fp.memberChildId);
     if (children.isEmpty) {
@@ -375,14 +377,16 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       ),
                     ),
                   ),
-                if (p.isLinkedToPenalty && isParent) ...[
+                if (p.totalLines > 0 && isParent) ...[
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () => _confirmCompletePenaltyLines(fp, p),
+                      onPressed: _validatingLines.contains(p.id) ? null : () =>
+                          PinGuard.guardAction(context, () => _confirmCompletePenaltyLines(fp, p)),
                       icon: const Icon(Icons.verified_rounded),
-                      label: const Text('Valider les lignes comme terminées'),
+                      label: Text(_validatingLines.contains(p.id)
+                          ? 'Validation en cours…' : 'Valider les lignes effectuées'),
                     ),
                   ),
                 ],
@@ -795,12 +799,17 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   // ── Bottom sheet ajout punition ───────────────────────────────────────────
   Future<void> _confirmCompletePenaltyLines(
       FamilyProvider fp, PunishmentLines punishment) async {
+    if (_validatingLines.contains(punishment.id)) return;
+    setState(() => _validatingLines.add(punishment.id));
+    try {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Valider les lignes ?'),
-        content: const Text(
-          'Confirmez que les lignes sont terminées. L’accès aux écrans sera rétabli seulement si aucune autre pénalité avec lignes n’est en attente.',
+        content: Text(
+          'Confirmez que les ${punishment.totalLines} lignes ont été effectuées. '
+          'Elles seront conservées dans les lignes terminées, sans utiliser d’immunité.'
+          '${punishment.isLinkedToPenalty ? ' L’accès aux écrans sera rétabli si aucune autre pénalité avec lignes n’est en attente.' : ''}',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Annuler')),
@@ -813,7 +822,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
       await fp.completeLinkedPenaltyLines(punishment.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lignes validées par le serveur.')),
+        const SnackBar(content: Text('Lignes effectuées et validées.')),
       );
     } catch (_) {
       if (!mounted) return;
@@ -821,6 +830,9 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
         content: Text('Validation impossible. Vérifiez la connexion et réessayez.'),
         backgroundColor: Colors.redAccent,
       ));
+    }
+    } finally {
+      if (mounted) setState(() => _validatingLines.remove(punishment.id));
     }
   }
 

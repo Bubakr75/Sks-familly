@@ -53,7 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.initState();
     _staggerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 450),
     );
 
     _headerAnim = CurvedAnimation(
@@ -120,7 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             backgroundColor: Colors.transparent,
             body: SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -132,9 +132,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                         children: [
                           Expanded(
                             child: EmeraldHeader(
-                              title: _getGreeting(),
+                              title: '${_getGreeting()}, la famille.',
                               subtitle:
-                                  '${emeraldFormatDate(DateTime.now())} · ${sorted.length} profil${sorted.length == 1 ? "" : "s"}',
+                                  'Les petits efforts font les grands progrès.',
                               actionIcon: Icons.menu_rounded,
                               onActionTap: () =>
                                   Scaffold.of(context).openDrawer(),
@@ -162,6 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       onPhoto: () => PinGuard.guardAction(context, () {
                         startAiPhotoFlow(context);
                       }),
+                      onTransfer: () => showTransferPointsSheet(context),
                     ),
                     if (canUseInbox)
                       Padding(
@@ -209,8 +210,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         title: const Text('Autres outils',
                             style:
                                 TextStyle(color: EmeraldPalette.textPrimary)),
-                        iconColor: EmeraldPalette.gold,
-                        collapsedIconColor: EmeraldPalette.gold,
+                        iconColor: EmeraldPalette.textSecondary,
+                        collapsedIconColor: EmeraldPalette.textSecondary,
                         children: [_buildQuickActions(fp)],
                       ),
                     ),

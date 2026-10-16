@@ -314,13 +314,11 @@ jobs:
           tag_name: v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}
           name: "SKS Family ${{ steps.app_version.outputs.name }} — build ${{ steps.app_version.outputs.code }}"
           body: |
-            - Accès directs aux bonus, pénalités et lignes depuis l’accueil et la navigation.
-            - Profils enfants plus lisibles ; checklist conservée dans les outils secondaires.
-            - Formulaires plus robustes : erreurs réseau expliquées, saisie conservée et doubles clics bloqués.
-            - Correction de l’aperçu des pénalités pour les soldes supérieurs à 999 points.
-            - Assistant familial harmonisé avec Emerald et respectant le verrou parental.
-            - Configuration corrigée pour les notifications locales de fin de chrono.
-            - Cache des photos borné et fermeture plus propre des écrans.
+            - Nouveau style Essentiel : accueil épuré, photos conservées et pénalités en rouge.
+            - Transfert SKS accessible directement depuis l’accueil.
+            - Validation parentale des lignes effectuées, y compris celles ajoutées manuellement.
+            - Lignes terminées conservées sans utiliser d’immunité.
+            - Corrections serveur des notifications de rattachement familial et des demandes renvoyées après refus.
             - Même identifiant et certificat Android que les versions officielles précédentes.
           files: build/app/outputs/flutter-apk/SKS-Family-${{ steps.app_version.outputs.name }}-build${{ steps.app_version.outputs.code }}.apk
         env:

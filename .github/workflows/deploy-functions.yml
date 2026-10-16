@@ -2,6 +2,14 @@ name: Deploy Firebase Functions
 
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Functions à déployer
+        type: choice
+        default: all
+        options:
+          - all
+          - notifications-and-lines
 
 permissions:
   contents: read
@@ -49,5 +57,10 @@ jobs:
             }
           }' > .firebaserc
 
+      - name: Deploy notification and lines fixes only
+        if: inputs.scope == 'notifications-and-lines'
+        run: firebase deploy --only functions:onJoinRequestCreated,functions:onJoinRequestResubmitted,functions:completePenaltyLines --project sks-familly-3f205 --non-interactive
+
       - name: Deploy Functions
+        if: inputs.scope == 'all'
         run: firebase deploy --only functions --project sks-familly-3f205

@@ -11,15 +11,15 @@ class PenaltyScreen extends StatelessWidget {
   const PenaltyScreen({super.key});
 
   static const _config = PointActionConfig(
-    title: '⚠️ Pénalité',
-    subtitle: 'Corrige un mauvais comportement',
+    title: 'Pénalité',
+    subtitle: 'Une règle claire, un suivi simple.',
     buttonText: 'Appliquer la pénalité',
     category: 'Pénalité',
     isBonus: false,
-    primaryColor: Color(0xFFF87171),
-    accentColor: Color(0xFFFCA5A5),
-    backgroundColor: Color(0xFF0F2620),
-    buttonIcon: Icons.warning_amber_rounded,
+    primaryColor: EmeraldPalette.penalty,
+    accentColor: EmeraldPalette.penalty,
+    backgroundColor: EmeraldPalette.surface,
+    buttonIcon: Icons.remove_circle_outline,
     successMessage: '⚠️ Pénalité de {amount} pts appliquée à {name}',
     motifs: [
       ActionMotif('penalty_insolence', '😤', 'Insolence', 10),
@@ -47,7 +47,7 @@ class PenaltyScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('⚠️ Pénalité',
+        title: const Text('Pénalité',
             style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,

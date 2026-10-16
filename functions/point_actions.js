@@ -545,11 +545,22 @@ function createPointActionFunctions({functions, admin, db}) {
       const punishmentRef = familyRef.collection("punishments").doc(punishmentId);
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(punishmentRef);
-        if (!snap.exists || snap.data().hasPenaltyLines !== true) {
-          throw new HttpsError("not-found", "Lignes de pénalité introuvables.");
+        if (!snap.exists) {
+          throw new HttpsError("not-found", "Lignes introuvables.");
         }
+        const punishment = snap.data();
+        const linked = typeof punishment.penaltyHistoryId === "string" &&
+          punishment.penaltyHistoryId.trim().length > 0;
+        const total = linked ? punishment.penaltyLinesCount : punishment.totalLines;
+        if (!Number.isInteger(total) || total < 1 || total > 10000 ||
+            (linked && punishment.hasPenaltyLines !== true)) {
+          throw new HttpsError("failed-precondition", "Aucune ligne à valider.");
+        }
+        // Un double appui ne modifie pas l'auteur ni la date de validation.
+        if (punishment.penaltyLinesStatus === "completed" &&
+            punishment.completedLines >= total) return;
         tx.update(punishmentRef, {
-          completedLines: snap.data().penaltyLinesCount,
+          completedLines: total,
           penaltyLinesStatus: "completed",
           penaltyLinesCompletedAt: fieldValue.serverTimestamp(),
           penaltyLinesCompletedBy: actor.actorUid,

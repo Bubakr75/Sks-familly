@@ -120,6 +120,7 @@ void main() {
                 onBonus: () {},
                 onPenalty: () {},
                 onPhoto: () {},
+                onTransfer: () {},
                 onLines: () => opened = true))));
     expect(find.text('Bonus'), findsNothing);
     expect(find.text('Pénalité'), findsNothing);
@@ -132,9 +133,9 @@ void main() {
     await tester.pumpWidget(wrap(const DashboardScreen(), parent: true));
     await tester.pump(const Duration(seconds: 2));
     expect(find.text('1 demande à traiter'), findsOneWidget);
-    expect(find.text('PROFILS ENFANTS'), findsOneWidget);
+    expect(find.text('Ma famille'), findsOneWidget);
     expect(tester.getTopLeft(find.text('1 demande à traiter')).dy,
-        lessThan(tester.getTopLeft(find.text('PROFILS ENFANTS')).dy));
+        lessThan(tester.getTopLeft(find.text('Ma famille')).dy));
     expect(tester.takeException(), isNull);
   });
 
@@ -147,7 +148,7 @@ void main() {
     expect(find.text('Lignes de punition et immunités'), findsOneWidget);
     expect(find.text('Checklist du jour'), findsNothing);
     expect(tester.getTopLeft(find.byType(HomeActionsPanel)).dy,
-        lessThan(tester.getTopLeft(find.text('PROFILS ENFANTS')).dy));
+        lessThan(tester.getTopLeft(find.text('Ma famille')).dy));
     expect(tester.takeException(), isNull);
   });
 }

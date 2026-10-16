@@ -22,7 +22,7 @@ class FamilyProfilesSection extends StatelessWidget {
       {super.key,
       required this.children,
       required this.onOpenChild,
-      this.title = 'Profils enfants'});
+      this.title = 'Ma famille'});
 
   final List<ChildModel> children;
   final ValueChanged<ChildModel> onOpenChild;
@@ -32,7 +32,10 @@ class FamilyProfilesSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          EmeraldSectionTitle(title: title, icon: Icons.people_alt_rounded),
+          EmeraldSectionTitle(
+              title: title,
+              trailing:
+                  '${children.length} profil${children.length == 1 ? '' : 's'}'),
           if (children.isEmpty)
             const EmeraldCard(
                 child: Text(
@@ -59,11 +62,19 @@ class FamilyProfilesSection extends StatelessWidget {
                       style: const TextStyle(
                           color: EmeraldPalette.textPrimary,
                           fontWeight: FontWeight.w700)),
-                  subtitle: Text('${child.points} points · Voir le profil',
+                  subtitle: Text('Voir le profil',
                       style:
                           const TextStyle(color: EmeraldPalette.textSecondary)),
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: EmeraldPalette.gold),
+                  trailing: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text('${child.points}',
+                        style: const TextStyle(
+                            color: EmeraldPalette.textPrimary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700)),
+                    const Text('points',
+                        style: TextStyle(
+                            color: EmeraldPalette.textSecondary, fontSize: 12))
+                  ]),
                   onTap: () => onOpenChild(child),
                 ),
               ),
