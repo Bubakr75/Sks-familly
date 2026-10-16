@@ -8,6 +8,8 @@ import '../models/child_model.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../services/gemini_service.dart';
+import '../widgets/family_profiles_section.dart';
+import '../widgets/punishment_form_sheet.dart';
 
 class PunishmentLinesScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -23,10 +25,7 @@ class PunishmentLinesScreen extends StatefulWidget {
 
 class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _descController = TextEditingController();
-  final TextEditingController _linesController = TextEditingController();
   ChildModel? _selectedChild;
-  bool _loading = false;
   final Map<String, int> _quizCounts = {};
   late TabController _tabController;
 
@@ -42,23 +41,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
 
   @override
   void dispose() {
-    _descController.dispose();
-    _linesController.dispose();
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<void> _savePunishment(FamilyProvider fp, ChildModel? child) async {
-    if (child == null) return;
-    final desc = _descController.text.trim();
-    final lines = int.tryParse(_linesController.text.trim()) ?? 0;
-    if (desc.isEmpty || lines <= 0) return;
-    setState(() => _loading = true);
-    await fp.addPunishment(child.id, desc, lines);
-    _descController.clear();
-    _linesController.clear();
-    setState(() { _loading = false; });
-    if (mounted) Navigator.pop(context);
   }
 
   Future<void> _deletePunishment(FamilyProvider fp, String id) async {
@@ -73,8 +57,10 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   Widget build(BuildContext context) {
     final fp = context.watch<FamilyProvider>();
     final isParent = context.watch<PinProvider>().isParentMode;
-    final children = fp.children;
+    final children = visibleFamilyChildren(fp.children,
+      memberRole: fp.memberRole, memberChildId: fp.memberChildId);
     if (children.isEmpty) {
+      _selectedChild = null;
       return AnimatedBackground(
         child: Scaffold(
           backgroundColor: Colors.transparent,
@@ -84,7 +70,8 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
         ),
       );
     }
-    _selectedChild ??= children.first;
+    _selectedChild = children.firstWhere((child) => child.id == _selectedChild?.id,
+      orElse: () => children.first);
     final child = _selectedChild!;
     final allPunishments = fp.punishments.where((p) =>
       p.childId == child.id &&
@@ -221,7 +208,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
             _divider(),
             _statItem('✏️', '$totalLines', 'Lignes restantes', Colors.orangeAccent),
             _divider(),
-            _statItem('🛡️', '$immunityLines', 'Immunities dipo', Colors.greenAccent),
+            _statItem('🛡️', '$immunityLines', 'Immunités dispo', Colors.greenAccent),
             _divider(),
             _statItem('🎯', '${_quizCounts[child.id] ?? 0}', 'Quiz faits', Colors.amberAccent),
           ],
@@ -479,7 +466,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.greenAccent.withAlpha(80)),
                     ),
-                    child: Text('${immunity.availableLines} dipo',
+                    child: Text('${immunity.availableLines} disponibles',
                         style: const TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
                 ],
@@ -601,7 +588,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
                               const SizedBox(width: 8),
                               Expanded(child: Text(i.reason,
                                   style: const TextStyle(color: Colors.white, fontSize: 13))),
-                              Text('${i.availableLines} dipo',
+                              Text('${i.availableLines} disponibles',
                                   style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
                             ],
                           ),
@@ -927,73 +914,15 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
   }
 
   void _showAddBottomSheet(BuildContext context, FamilyProvider fp, ChildModel child) {
-
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E1E2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(child: Container(width: 40, height: 4,
-                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
-                const SizedBox(height: 16),
-                const Text('Nouvelle punition',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                _buildTextField(_descController, 'Description de la punition', Icons.edit_document),
-                const SizedBox(height: 12),
-                _buildTextField(_linesController, 'Nombre de lignes', Icons.format_list_numbered, isNumber: true),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                    icon: _loading
-                        ? const SizedBox(width: 18, height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.add_circle_rounded),
-                    label: const Text('Ajouter la punition',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    onPressed: _loading ? null : () => _savePunishment(fp, child),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false}) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white54),
-        prefixIcon: Icon(icon, color: Colors.redAccent),
-        enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.white24)),
-        focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.redAccent)),
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: const Color(0xFF0F2620),
+      builder: (_) => PunishmentFormSheet(
+        childName: child.name,
+        onSubmit: (description, lines) => fp.addPunishment(child.id, description, lines),
       ),
     );
   }

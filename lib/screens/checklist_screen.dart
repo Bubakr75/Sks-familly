@@ -15,6 +15,7 @@ import '../models/child_model.dart';
 import '../models/chore_model.dart';
 import '../config/emerald_theme.dart';
 import '../utils/checklist_helpers.dart';
+import '../widgets/family_profiles_section.dart';
 
 class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({super.key});
@@ -136,7 +137,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     final fp = context.watch<FamilyProvider>();
     final pin = context.watch<PinProvider>();
     final isParent = pin.isParentMode;
-    final children = fp.children;
+    final children = visibleFamilyChildren(fp.children,
+        memberRole: fp.memberRole, memberChildId: fp.memberChildId);
     final chores = fp.chores.where((c) => c.isActive).toList();
 
     chores.sort((a, b) => (a.order ?? 0).compareTo(b.order ?? 0));

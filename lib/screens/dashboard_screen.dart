@@ -4,7 +4,6 @@
 // Refonte style Apple Fitness + Stripe + palette émeraude
 // =============================================================================
 
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +13,7 @@ import '../models/child_model.dart';
 import '../models/trade_model.dart';
 import '../models/history_entry.dart';
 import '../utils/image_cache.dart';
+import '../utils/pin_guard.dart';
 import '../utils/family_inbox_visibility.dart';
 import '../config/emerald_theme.dart';
 import '../widgets/tv_focus_wrapper.dart';
@@ -27,6 +27,12 @@ import 'screen_time_new_screen.dart';
 import 'multi_child_evaluation_screen.dart';
 import '../widgets/transfer_points_sheet.dart';
 import '../widgets/family_inbox_bell.dart';
+import '../widgets/home_actions_panel.dart';
+import '../widgets/ai_photo_flow.dart';
+import 'bonus_screen.dart';
+import 'penalty_screen.dart';
+import '../widgets/family_profiles_section.dart';
+import 'checklist_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -38,8 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     with TickerProviderStateMixin {
   late AnimationController _staggerController;
   late Animation<double> _headerAnim;
-  late Animation<double> _kpiAnim;
-  late Animation<double> _podiumAnim;
+  late Animation<double> _profilesAnim;
   late Animation<double> _actionsAnim;
   late Animation<double> _tradesAnim;
 
@@ -55,11 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       parent: _staggerController,
       curve: const Interval(0.0, 0.25, curve: Curves.easeOutCubic),
     );
-    _kpiAnim = CurvedAnimation(
-      parent: _staggerController,
-      curve: const Interval(0.15, 0.45, curve: Curves.easeOutCubic),
-    );
-    _podiumAnim = CurvedAnimation(
+    _profilesAnim = CurvedAnimation(
       parent: _staggerController,
       curve: const Interval(0.30, 0.65, curve: Curves.easeOutCubic),
     );
@@ -99,32 +100,15 @@ class _DashboardScreenState extends State<DashboardScreen>
     return 'Bonsoir';
   }
 
-  /// Récupère les entrées d'historique du jour (depuis le FamilyProvider via context)
-  List<HistoryEntry> get _historyForToday {
-    // Cette méthode est appelée dans build(), on a donc accès au provider
-    // via le Consumer parent. Mais comme on est dans _DashboardScreenState,
-    // on doit utiliser un contexte. Plus simple : on le passe en paramètre.
-    return _cachedHistory;
-  }
-
-  List<HistoryEntry> _cachedHistory = [];
-
-  int _getTodayActionsCount(FamilyProvider fp) {
-    final today = DateTime.now();
-    final todayStart = DateTime(today.year, today.month, today.day);
-    return fp.history.where((h) => h.date.isAfter(todayStart)).length;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<FamilyProvider>(
       builder: (context, fp, _) {
-        final sorted = List<ChildModel>.from(fp.children)
-          ..sort((a, b) => b.points.compareTo(a.points));
-        final totalPoints =
-            fp.children.fold<int>(0, (sum, c) => sum + c.points);
-        final activeTrades = fp.trades.where((t) => t.isActive).toList();
-        _cachedHistory = fp.history;
+        final sorted = visibleFamilyChildren(fp.children,
+            memberRole: fp.memberRole, memberChildId: fp.memberChildId);
+        final activeTrades = fp.memberRole == 'child'
+            ? <TradeModel>[]
+            : fp.trades.where((t) => t.isActive).toList();
 
         final canUseInbox = shouldShowFamilyInbox(
           isWeb: kIsWeb,
@@ -150,9 +134,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                             child: EmeraldHeader(
                               title: _getGreeting(),
                               subtitle:
-                                  '${emeraldFormatDate(DateTime.now())} · ${fp.children.length} enfants',
+                                  '${emeraldFormatDate(DateTime.now())} · ${sorted.length} profil${sorted.length == 1 ? "" : "s"}',
                               actionIcon: Icons.menu_rounded,
-                              onActionTap: () => Scaffold.of(context).openDrawer(),
+                              onActionTap: () =>
+                                  Scaffold.of(context).openDrawer(),
                             ),
                           ),
                           if (canUseInbox) ...[
@@ -163,26 +148,71 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
                     ),
 
-                    // KPIs
-                    _AnimatedFade(
-                      animation: _kpiAnim,
-                      child: _buildKpis(fp, totalPoints),
+                    HomeActionsPanel(
+                      showParentActions: fp.memberRole != 'child' &&
+                          context.watch<PinProvider>().canPerformParentAction(),
+                      onBonus: () => PinGuard.guardNavigation(
+                          context, const BonusScreen()),
+                      onPenalty: () => PinGuard.guardNavigation(
+                          context, const PenaltyScreen()),
+                      onLines: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (_) => const PunishmentLinesScreen())),
+                      onPhoto: () => PinGuard.guardAction(context, () {
+                        startAiPhotoFlow(context);
+                      }),
                     ),
+                    if (canUseInbox)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: EmeraldCard(
+                            padding: EdgeInsets.zero,
+                            child: ListTile(
+                              leading: const Icon(Icons.pending_actions_rounded,
+                                  color: EmeraldPalette.warning),
+                              title: Text(
+                                  fp.pendingRequestsCount == 0
+                                      ? 'Aucune demande en attente'
+                                      : '${fp.pendingRequestsCount} demande${fp.pendingRequestsCount > 1 ? 's' : ''} à traiter',
+                                  style: const TextStyle(
+                                      color: EmeraldPalette.textPrimary)),
+                              trailing: const Icon(Icons.chevron_right_rounded,
+                                  color: EmeraldPalette.gold),
+                              onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                      builder: (_) =>
+                                          const PendingRequestsScreen())),
+                            )),
+                      ),
 
                     // ── Alerte temps d'écran (overtime) ──
-                    ..._buildScreenTimeAlerts(fp),
+                    ..._buildScreenTimeAlerts(fp, sorted),
 
-                    // Podium (Classement)
-                    if (sorted.isNotEmpty)
-                      _AnimatedFade(
-                        animation: _podiumAnim,
-                        child: _buildPodiumSection(sorted),
-                      ),
+                    // Profils : ordre alphabétique, sans classement imposé
+                    _AnimatedFade(
+                      animation: _profilesAnim,
+                      child: FamilyProfilesSection(
+                          children: sorted,
+                          onOpenChild: (child) => Navigator.push(
+                              context,
+                              ZoomPageRoute(
+                                  page: ChildDashboardScreen(
+                                      childId: child.id)))),
+                    ),
 
                     // Quick Actions
                     _AnimatedFade(
                       animation: _actionsAnim,
-                      child: _buildQuickActions(fp),
+                      child: ExpansionTile(
+                        title: const Text('Autres outils',
+                            style:
+                                TextStyle(color: EmeraldPalette.textPrimary)),
+                        iconColor: EmeraldPalette.gold,
+                        collapsedIconColor: EmeraldPalette.gold,
+                        children: [_buildQuickActions(fp)],
+                      ),
                     ),
 
                     // Activité récente
@@ -211,9 +241,10 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // ── Bannière d'alerte pour les enfants en overtime temps d'écran ──
-  List<Widget> _buildScreenTimeAlerts(FamilyProvider fp) {
+  List<Widget> _buildScreenTimeAlerts(
+      FamilyProvider fp, List<ChildModel> children) {
     final alerts = <Widget>[];
-    for (final child in fp.children) {
+    for (final child in children) {
       final account = fp.getScreenTimeAccount(child.id);
       if (account.isOvertime) {
         alerts.add(GestureDetector(
@@ -230,11 +261,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Colors.red.withValues(alpha: 0.10),
               ]),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
+              border: Border.all(
+                  color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
             ),
             child: Row(
               children: [
-                const Icon(Icons.warning_rounded, color: Colors.redAccent, size: 22),
+                const Icon(Icons.warning_rounded,
+                    color: Colors.redAccent, size: 22),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -250,12 +283,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                       const SizedBox(height: 2),
                       Text(
                         '${account.overtimeMinutes} min de retard · -${account.overtimePenalty} pts',
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                        style: const TextStyle(
+                            color: Colors.white60, fontSize: 11),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.redAccent, size: 20),
+                const Icon(Icons.chevron_right,
+                    color: Colors.redAccent, size: 20),
               ],
             ),
           ),
@@ -272,19 +307,25 @@ class _DashboardScreenState extends State<DashboardScreen>
             decoration: BoxDecoration(
               color: Colors.teal.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.teal.withValues(alpha: 0.3), width: 1),
+              border: Border.all(
+                  color: Colors.teal.withValues(alpha: 0.3), width: 1),
             ),
             child: Row(
               children: [
-                const Icon(Icons.tv_rounded, color: Colors.tealAccent, size: 20),
+                const Icon(Icons.tv_rounded,
+                    color: Colors.tealAccent, size: 20),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '📺 ${child.name} : ${account.sessionRemaining} min restantes',
-                    style: const TextStyle(color: Colors.tealAccent, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        color: Colors.tealAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600),
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.tealAccent, size: 20),
+                const Icon(Icons.chevron_right,
+                    color: Colors.tealAccent, size: 20),
               ],
             ),
           ),
@@ -328,14 +369,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color: (pendingCount > 0
-                            ? EmeraldPalette.warning
-                            : EmeraldPalette.glassBorder),
+                        ? EmeraldPalette.warning
+                        : EmeraldPalette.glassBorder),
                     width: 1),
                 boxShadow: pendingCount > 0
                     ? [
                         BoxShadow(
-                            color: EmeraldPalette.warning
-                                .withValues(alpha: 0.4),
+                            color:
+                                EmeraldPalette.warning.withValues(alpha: 0.4),
                             blurRadius: 16)
                       ]
                     : null,
@@ -364,8 +405,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         color: EmeraldPalette.background, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                          color:
-                              EmeraldPalette.warning.withValues(alpha: 0.6),
+                          color: EmeraldPalette.warning.withValues(alpha: 0.6),
                           blurRadius: 8)
                     ],
                   ),
@@ -384,99 +424,23 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildKpis(FamilyProvider fp, int totalPoints) {
-    return Row(
-      children: [
-        Expanded(
-          child: EmeraldKpiCard(
-            label: 'Points famille',
-            value: '$totalPoints',
-            icon: Icons.emoji_events_rounded,
-            accentColor: EmeraldPalette.gold,
-            animateCountUp: true,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: EmeraldKpiCard(
-            label: 'Enfants',
-            value: '${fp.children.length}',
-            sublabel: 'actifs',
-            icon: Icons.groups_rounded,
-            accentColor: EmeraldPalette.emerald,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: EmeraldKpiCard(
-            label: "Aujourd'hui",
-            value: '${_getTodayActionsCount(fp)}',
-            sublabel: 'actions',
-            icon: Icons.bolt_rounded,
-            accentColor: EmeraldPalette.info,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPodiumSection(List<ChildModel> sorted) {
-    // Calcul des points gagnés aujourd'hui par enfant
-    final today = DateTime.now();
-    final todayStart = DateTime(today.year, today.month, today.day);
-    final pointsTodayByChild = <String, int>{};
-    for (final entry in _historyForToday) {
-      if (entry.isBonus) {
-        pointsTodayByChild[entry.childId] =
-            (pointsTodayByChild[entry.childId] ?? 0) + entry.points;
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const EmeraldSectionTitle(
-          title: 'Nos Étoiles',
-          icon: Icons.auto_awesome_rounded,
-        ),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 0.62,
-          children: sorted.map((child) {
-            return EmeraldChildCard(
-              name: child.name,
-              points: child.points,
-              pointsToday: pointsTodayByChild[child.id] ?? 0,
-              badgeCount: child.badgeIds.length,
-              streakDays: child.streakDays,
-              avatar: _buildChildAvatar(child, 32),
-              bannerPhotoBase64: child.photoBase64.isNotEmpty ? child.photoBase64 : null,
-              onTap: () => Navigator.push(
-                context,
-                ZoomPageRoute(
-                    page: ChildDashboardScreen(childId: child.id)),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
   Widget _buildQuickActions(FamilyProvider fp) {
     final actions = [
-      _Act('Lignes de punition', Icons.menu_book_rounded, EmeraldPalette.error, () {
+      _Act('Checklist du jour', Icons.checklist_rounded,
+          EmeraldPalette.emeraldLight, () {
+        Navigator.push(context,
+            MaterialPageRoute<void>(builder: (_) => const ChecklistScreen()));
+      }),
+      _Act('Lignes de punition', Icons.menu_book_rounded, EmeraldPalette.error,
+          () {
         Navigator.push(
             context,
             SlidePageRoute(
                 page: const PunishmentLinesScreen(),
                 direction: SlideDirection.up));
       }),
-      _Act("Lignes d'immunité", Icons.shield_rounded, EmeraldPalette.warning, () {
+      _Act("Lignes d'immunité", Icons.shield_rounded, EmeraldPalette.warning,
+          () {
         Navigator.push(
             context,
             SlidePageRoute(
@@ -490,21 +454,20 @@ class _DashboardScreenState extends State<DashboardScreen>
         });
       }),
       _Act('Tribunal', Icons.gavel_rounded, const Color(0xFF8B5CF6), () {
-        Navigator.push(
-            context, SlidePageRoute(page: const TribunalScreen()));
+        Navigator.push(context, SlidePageRoute(page: const TribunalScreen()));
       }),
       _Act('Transfert', Icons.swap_horiz_rounded, const Color(0xFF06B6D4), () {
-        showTransferPointsSheet(context);
+        PinGuard.guardAction(context, () => showTransferPointsSheet(context));
       }),
       _Act('Ventes', Icons.storefront_rounded, EmeraldPalette.emerald, () {
         _showChildPickerForNav(fp, (childId) {
-          Navigator.push(context,
-              DoorPageRoute(page: TradeScreen(childId: childId)));
+          Navigator.push(
+              context, DoorPageRoute(page: TradeScreen(childId: childId)));
         });
       }),
-      _Act('Notes Scolaires', Icons.note_alt_rounded, const Color(0xFFEC4899), () {
-        Navigator.push(
-            context, SlidePageRoute(page: const MultiChildEvaluationScreen()));
+      _Act('Notes Scolaires', Icons.note_alt_rounded, const Color(0xFFEC4899),
+          () {
+        PinGuard.guardNavigation(context, const MultiChildEvaluationScreen());
       }),
     ];
 
@@ -537,7 +500,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildRecentActivity(FamilyProvider fp) {
     // Prendre les 3 dernières entrées d'historique
-    final recent = List<HistoryEntry>.from(fp.history);
+    final recent = List<HistoryEntry>.from(fp.history.where((entry) =>
+        fp.memberRole != 'child' || entry.childId == fp.memberChildId));
     recent.sort((a, b) => b.date.compareTo(a.date));
     final top3 = recent.take(3).toList();
 
@@ -624,7 +588,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         color: EmeraldPalette.emerald,
                         boxShadow: [
                           BoxShadow(
-                            color: EmeraldPalette.emerald.withValues(alpha: 0.5),
+                            color:
+                                EmeraldPalette.emerald.withValues(alpha: 0.5),
                             blurRadius: 6,
                           ),
                         ],
@@ -680,11 +645,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // ─── Sélecteur enfant (gardé à l'identique, fonctionne avec le nouveau thème) ───
-  void _showChildPickerForNav(
-      FamilyProvider fp, Function(String) onSelected) {
-    if (fp.children.isEmpty) return;
-    if (fp.children.length == 1) {
-      onSelected(fp.children.first.id);
+  void _showChildPickerForNav(FamilyProvider fp, Function(String) onSelected) {
+    final children = visibleFamilyChildren(fp.children,
+        memberRole: fp.memberRole, memberChildId: fp.memberChildId);
+    if (children.isEmpty) return;
+    if (children.length == 1) {
+      onSelected(children.first.id);
       return;
     }
 
@@ -693,7 +659,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => _ChildPickerSheet(
-        children: fp.children,
+        children: children,
         onSelected: (id) {
           Navigator.pop(ctx);
           onSelected(id);
@@ -790,7 +756,8 @@ class _ChildPickerSheetState extends State<_ChildPickerSheet>
           children: [
             const SizedBox(height: 12),
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: EmeraldPalette.textMuted,
                 borderRadius: BorderRadius.circular(2),
@@ -837,8 +804,7 @@ class _ChildPickerSheetState extends State<_ChildPickerSheet>
                       prefixIcon: Icon(Icons.search,
                           color: EmeraldPalette.textMuted, size: 20),
                       border: InputBorder.none,
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
@@ -915,8 +881,7 @@ class _ChildTileState extends State<_ChildTile> {
         duration: const Duration(milliseconds: 100),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: _pressed
                 ? widget.accent.withValues(alpha: 0.15)
@@ -937,8 +902,8 @@ class _ChildTileState extends State<_ChildTile> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(c.name,
-                      style: EmeraldTypography.heading.copyWith(
-                          fontSize: 15, fontWeight: FontWeight.w700)),
+                      style: EmeraldTypography.heading
+                          .copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 2),
                   Row(children: [
                     Container(
@@ -956,8 +921,8 @@ class _ChildTileState extends State<_ChildTile> {
                     ),
                     const SizedBox(width: 6),
                     Text('${c.points} pts',
-                        style: EmeraldTypography.caption.copyWith(
-                            fontSize: 11)),
+                        style:
+                            EmeraldTypography.caption.copyWith(fontSize: 11)),
                   ]),
                 ],
               ),

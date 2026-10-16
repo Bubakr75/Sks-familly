@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
+import '../providers/pin_provider.dart';
 import '../services/gemini_service.dart';
-import '../widgets/animated_background.dart';
+import '../config/emerald_theme.dart';
 
 class GeminiChatScreen extends StatefulWidget {
-  const GeminiChatScreen({super.key});
+  const GeminiChatScreen({super.key, this.reply});
+
+  final Future<String> Function(String message, String familyContext,
+      List<Map<String, String>> history)? reply;
   @override
   State<GeminiChatScreen> createState() => _GeminiChatScreenState();
 }
@@ -15,6 +19,13 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   String _buildFamilyContext(FamilyProvider fp) {
     final buf = StringBuffer();
@@ -42,7 +53,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
     for (final tc in activeCases) {
       final plaintiff = fp.getChild(tc.plaintiffId)?.name ?? '?';
       final accused = fp.getChild(tc.accusedId)?.name ?? '?';
-      buf.writeln('  - ${tc.title} (${plaintiff} vs ${accused}) - ${tc.statusLabel}');
+      buf.writeln('  - ${tc.title} ($plaintiff vs $accused) - ${tc.statusLabel}');
     }
     buf.writeln('');
     buf.writeln('=== HISTORIQUE RECENT ===');
@@ -57,18 +68,31 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
   Future<void> _sendMessage(FamilyProvider fp) async {
     final text = _controller.text.trim();
     if (text.isEmpty || _isLoading) return;
+    if (!context.read<PinProvider>().canPerformParentAction()) return;
+    if (widget.reply == null && !GeminiService.isConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('L’assistant IA n’est pas disponible pour le moment. Ton message est conservé.'),
+      ));
+      return;
+    }
     _controller.clear();
     setState(() {
       _messages.add({'role': 'user', 'content': text});
       _isLoading = true;
     });
     _scrollToBottom();
-    final context_data = _buildFamilyContext(fp);
-    final response = await GeminiService.chatFamilyAssistant(
-      message: text,
-      familyContext: context_data,
-      history: _messages.sublist(0, _messages.length - 1),
-    );
+    final familyContext = _buildFamilyContext(fp);
+    String response;
+    try {
+      final history = _messages.sublist(0, _messages.length - 1);
+      response = widget.reply != null
+          ? await widget.reply!(text, familyContext, history)
+          : await GeminiService.chatFamilyAssistant(
+              message: text, familyContext: familyContext, history: history);
+    } catch (_) {
+      response = 'La réponse n’a pas pu être reçue. Réessaie dans un instant.';
+    }
+    if (!mounted) return;
     setState(() {
       _messages.add({'role': 'assistant', 'content': response});
       _isLoading = false;
@@ -78,7 +102,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
 
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 200), () {
-      if (_scrollController.hasClients) {
+      if (mounted && _scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
@@ -90,9 +114,15 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!context.watch<PinProvider>().canPerformParentAction()) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Assistant familial')),
+        body: const Center(child: Text('Déverrouille le mode parent pour accéder à l’assistant familial.')),
+      );
+    }
     return Consumer<FamilyProvider>(
       builder: (context, fp, _) {
-        return AnimatedBackground(
+        return EmeraldBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(
@@ -102,24 +132,25 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
                 Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Colors.cyan, Colors.purple]),
+                    gradient: const LinearGradient(colors: [EmeraldPalette.emeraldDark, EmeraldPalette.gold]),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 10),
-                const Column(
+                const Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Assistant Familial', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text('IA Gemini', style: TextStyle(color: Colors.cyanAccent, fontSize: 12)),
+                    Text('Assistant familial', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('IA Gemini', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: EmeraldPalette.gold, fontSize: 12)),
                   ],
-                ),
+                )),
               ]),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.white54),
-                  onPressed: () => setState(() => _messages.clear()),
+                  tooltip: 'Effacer la conversation',
+                  onPressed: _isLoading ? null : () => setState(() => _messages.clear()),
                 ),
               ],
             ),
@@ -141,7 +172,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
                     ),
                   ),
                 if (_isLoading && _messages.isEmpty)
-                  const Expanded(child: Center(child: CircularProgressIndicator(color: Colors.cyanAccent))),
+                  const Expanded(child: Center(child: CircularProgressIndicator(color: EmeraldPalette.gold))),
                 _buildInput(fp),
               ],
             ),
@@ -155,9 +186,9 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
     final suggestions = [
       'Qui a le plus de points ?',
       'Quelles punitions sont en cours ?',
-      'Resume le tribunal de cette semaine',
-      'Qui peut utiliser ses immunites ?',
-      'Donne moi un rapport complet de la famille',
+      'Résume le tribunal de cette semaine',
+      'Qui peut utiliser ses immunités ?',
+      'Donne-moi un résumé de la famille',
     ];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -167,15 +198,15 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
           Container(
             width: 80, height: 80,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Colors.cyan, Colors.purple]),
+              gradient: const LinearGradient(colors: [EmeraldPalette.emeraldDark, EmeraldPalette.gold]),
               borderRadius: BorderRadius.circular(40),
             ),
             child: const Icon(Icons.auto_awesome, color: Colors.white, size: 40),
           ),
           const SizedBox(height: 16),
-          const Text('Assistant Familial IA', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text('Assistant familial IA', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('Je connais toutes les donnees de ta famille.\nPose-moi n importe quelle question !',
+          Text('À l’envoi, ton message et un résumé des données familiales sont transmis à Google Gemini.\nLes réponses de l’IA peuvent contenir des erreurs.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14)),
           const SizedBox(height: 32),
@@ -195,12 +226,12 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                  border: Border.all(color: EmeraldPalette.gold.withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 16),
+                  const Icon(Icons.auto_awesome, color: EmeraldPalette.gold, size: 16),
                   const SizedBox(width: 10),
-                  Text(s, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  Expanded(child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 14))),
                 ]),
               ),
             ),
@@ -222,7 +253,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
             Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Colors.cyan, Colors.purple]),
+                gradient: const LinearGradient(colors: [EmeraldPalette.emeraldDark, EmeraldPalette.gold]),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
@@ -234,7 +265,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 gradient: isUser
-                  ? const LinearGradient(colors: [Colors.purple, Colors.deepPurple])
+                  ? const LinearGradient(colors: [EmeraldPalette.surfaceHigh, EmeraldPalette.surface])
                   : null,
                 color: isUser ? null : Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
@@ -254,7 +285,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
         Container(
           width: 32, height: 32,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Colors.cyan, Colors.purple]),
+            gradient: const LinearGradient(colors: [EmeraldPalette.emeraldDark, EmeraldPalette.gold]),
             borderRadius: BorderRadius.circular(16),
           ),
           child: const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
@@ -266,7 +297,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
             color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Text('...', style: TextStyle(color: Colors.cyanAccent, fontSize: 18, letterSpacing: 4)),
+          child: const Text('...', style: TextStyle(color: EmeraldPalette.gold, fontSize: 18, letterSpacing: 4)),
         ),
       ],
     );
@@ -292,15 +323,15 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
                 fillColor: Colors.white.withValues(alpha: 0.05),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(color: EmeraldPalette.gold.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(color: EmeraldPalette.gold.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: const BorderSide(color: Colors.cyanAccent),
+                  borderSide: const BorderSide(color: EmeraldPalette.gold),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
@@ -313,7 +344,7 @@ class _GeminiChatScreenState extends State<GeminiChatScreen> {
             child: Container(
               width: 48, height: 48,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Colors.cyan, Colors.purple]),
+                gradient: const LinearGradient(colors: [EmeraldPalette.emeraldDark, EmeraldPalette.gold]),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),

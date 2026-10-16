@@ -1,6 +1,5 @@
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
@@ -10,11 +9,8 @@ import '../utils/home_tab_history.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tv_focus_wrapper.dart';
-import '../widgets/quick_shortcut_panel.dart';
-import '../widgets/ai_photo_flow.dart';
 import '../services/fcm_service.dart';
 import 'pending_requests_screen.dart';
-import 'pin_verification_screen.dart';
 import 'profile_selection_screen.dart';
 import 'dashboard_screen.dart';
 import 'calendar_screen.dart';
@@ -25,50 +21,41 @@ import 'gemini_chat_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'shop_admin_screen.dart';
-import 'school_notes_screen.dart';
 import 'school_notes_weekly_screen.dart';
-import 'punishment_lines_screen.dart';
-import 'immunity_lines_screen.dart';
 import 'balance_screen.dart'; // â† NOUVEAU
 import 'wallet_screen.dart';
 import 'tribunal_screen.dart';
 import 'trade_screen.dart';
-import 'family_screen.dart';
-import 'child_dashboard_screen.dart';
 import 'timeline_screen.dart';
-import 'chores_screen.dart';
 import 'checklist_screen.dart';
 import 'evening_summary_screen.dart';
 import 'screen_time_new_screen.dart';
 import 'daily_wheel_screen.dart';
 import '../widgets/animated_page_transition.dart';
 import '../widgets/transfer_points_sheet.dart';
+import '../widgets/app_version_label.dart';
+import 'punishment_lines_screen.dart';
+import '../widgets/home_bottom_navigation.dart';
+import '../widgets/family_profiles_section.dart';
 
 class HomeScreen extends StatefulWidget {
   final String parentName;
-  const HomeScreen({Key? key, this.parentName = 'Parent'}) : super(key: key);
+  const HomeScreen({super.key, this.parentName = 'Parent'});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   bool _openingFamilyInbox = false;
   final HomeTabHistory _tabHistory = HomeTabHistory();
-  late AnimationController _navBarController;
-  // 🔒 Onglets protégés : Bonus (1), Pénalité (3), Réglages (4)
-  // Dashboard (0) reste visible aux enfants
-  // Photo IA (2) est protégée mais gérée séparément (bouton central)
-  final List<int> _protectedIndices = [1, 3, 4];
+  // Bonus, pénalité et réglages passent par le contrôle parental.
+  final List<int> _protectedIndices = [1, 2, 4];
 
   @override
   void initState() {
     super.initState();
-    _navBarController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..forward();
     // Quand on tape sur une notif de demande, ouvrir l'écran des demandes
     FcmService.setInboxOpenHandler(_openFamilyInbox);
   }
@@ -92,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     FcmService.setInboxOpenHandler(null);
-    _navBarController.dispose();
     super.dispose();
   }
 
@@ -102,8 +88,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return const DashboardScreen();
       case 1:
         return const BonusScreen();
-      case 3:
+      case 2:
         return const PenaltyScreen();
+      case 3:
+        return const PunishmentLinesScreen();
       case 4:
         return const SettingsScreen();
       default:
@@ -137,18 +125,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  /// Bouton central Photo IA — protégé par PinGuard, ne modifie pas l'index.
-  void _openPhotoIA() {
-    HapticFeedback.mediumImpact();
-    PinGuard.guardAction(context, () {
-      startAiPhotoFlow(context);
-    });
-  }
-
   void _showChildPicker(
       BuildContext context, void Function(dynamic child) onSelected) {
     final provider = context.read<FamilyProvider>();
-    final children = provider.children;
+    final children = visibleFamilyChildren(provider.children,
+        memberRole: provider.memberRole, memberChildId: provider.memberChildId);
     if (children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('Aucun enfant enregistre'),
@@ -499,7 +480,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     const SizedBox(height: 8),
-                    Text('\ entree(s)',
+                    Text(
+                        '${entries.length} entrée${entries.length > 1 ? 's' : ''}',
                         style: const TextStyle(
                             color: Colors.white54, fontSize: 12)),
                     const SizedBox(height: 8),
@@ -674,6 +656,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final isParent = context.watch<PinProvider>().isParentMode;
     final pinProvider = context.watch<PinProvider>();
     final familyProvider = context.watch<FamilyProvider>();
+    final visibleChildren = visibleFamilyChildren(familyProvider.children,
+        memberRole: familyProvider.memberRole,
+        memberChildId: familyProvider.memberChildId);
     return PopScope(
       canPop: _tabHistory.canExit,
       onPopInvokedWithResult: (didPop, _) {
@@ -681,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       },
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        extendBody: true,
+        extendBody: false,
         drawer: _buildDrawer(context, isParent),
         body: AnimatedBackground(
           child: Column(
@@ -697,8 +682,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: EmeraldModeBanner(
                       isParentMode: isParent,
                       parentName: pinProvider.currentParentName,
-                      childName: familyProvider.children.isNotEmpty
-                          ? familyProvider.children.first.name
+                      childName: visibleChildren.isNotEmpty
+                          ? visibleChildren.first.name
                           : 'Enfant',
                       onLockTap: isParent
                           ? () {
@@ -755,117 +740,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
           ),
         ),
-        // Bouton IA flottant 🤖 (overlay sur tout l'écran)
-        bottomNavigationBar: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-              parent: _navBarController, curve: Curves.easeOutCubic)),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D1B2E).withValues(alpha: 0.95),
-              border: Border(
-                  top: BorderSide(
-                      color: Colors.cyanAccent.withValues(alpha: 0.15),
-                      width: 0.5)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: List.generate(5, (i) {
-                    // Index 2 = Photo IA (bouton central spécial)
-                    if (i == 2) {
-                      return TvFocusWrapper(
-                        onTap: _openPhotoIA,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF7C4DFF), Color(0xFF5E35B1)],
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF7C4DFF)
-                                    .withValues(alpha: 0.4),
-                                blurRadius: 12,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.camera_alt_rounded,
-                              color: Colors.white, size: 26),
-                        ),
-                      );
-                    }
-                    final isSelected = _currentIndex == i;
-                    final icons = [
-                      Icons.home_rounded,
-                      Icons.star_rounded,
-                      null, // Photo IA — géré ci-dessus
-                      Icons.warning_amber_rounded,
-                      Icons.settings_rounded,
-                    ];
-                    final labels = [
-                      'Accueil',
-                      'Bonus',
-                      '', // Photo IA
-                      'Pénalité',
-                      'Reglages',
-                    ];
-                    return TvFocusWrapper(
-                      onTap: () => _onTabTapped(i),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOut,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: isSelected ? 16 : 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? EmeraldPalette.emerald.withValues(alpha: 0.12)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AnimatedScale(
-                              scale: isSelected ? 1.2 : 1.0,
-                              duration: const Duration(milliseconds: 200),
-                              child: Icon(icons[i],
-                                  color: isSelected
-                                      ? EmeraldPalette.emeraldLight
-                                      : EmeraldPalette.textMuted,
-                                  size: 24),
-                            ),
-                            const SizedBox(height: 4),
-                            AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 200),
-                              style: TextStyle(
-                                color: isSelected
-                                    ? EmeraldPalette.emeraldLight
-                                    : EmeraldPalette.textMuted,
-                                fontSize: isSelected ? 11 : 10,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                              child: Text(labels[i]),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ),
-          ),
+        bottomNavigationBar: HomeBottomNavigation(
+          selectedIndex: _currentIndex,
+          onSelectTab: _onTabTapped,
         ),
       ),
     );
@@ -1147,12 +1024,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 _drawerSectionHeader('⚙️ Outils'),
                 _drawerItem(
                   icon: Icons.auto_awesome_rounded,
-                  label: 'Gemini AI',
+                  label: 'Assistant familial',
                   color: Colors.cyanAccent,
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(context,
-                        SlidePageRoute(page: const GeminiChatScreen()));
+                    PinGuard.guardNavigation(context, const GeminiChatScreen());
                   },
                 ),
                 if (isParent) ...[
@@ -1171,9 +1047,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text('v5.0.0',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.2), fontSize: 12)),
+            child: const AppVersionLabel(),
           ),
         ]),
       ),

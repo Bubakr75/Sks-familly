@@ -49,11 +49,12 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
   String? _error;
   late bool _serviceAvailable;
   bool _checkingService = false;
+  bool _serviceCheckFailed = false;
 
   @override
   void initState() {
     super.initState();
-    _childId = widget.children.first.id;
+    _childId = widget.children.isEmpty ? '' : widget.children.first.id;
     _serviceAvailable = widget.checkServiceAvailability == null;
     if (widget.checkServiceAvailability != null) {
       _checkService();
@@ -63,12 +64,29 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
   Future<void> _checkService({bool force = false}) async {
     if (_checkingService || widget.checkServiceAvailability == null) return;
     setState(() => _checkingService = true);
-    final available = await widget.checkServiceAvailability!(force: force);
+    bool available;
+    bool failed = false;
+    try {
+      available = await widget.checkServiceAvailability!(force: force);
+    } catch (_) {
+      available = false;
+      failed = true;
+    }
     if (!mounted) return;
     setState(() {
       _serviceAvailable = available;
       _checkingService = false;
+      _serviceCheckFailed = failed;
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant QuickPointActionForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.children.any((child) => child.id == _childId)) {
+      _childId = widget.children.isEmpty ? '' : widget.children.first.id;
+      _operationId = null;
+    }
   }
 
   @override
@@ -92,6 +110,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
             (_hasLines == false ||
                 ((int.tryParse(_linesController.text.trim()) ?? 0) > 0)));
     return !_submitting &&
+        widget.children.any((child) => child.id == _childId) &&
         _serviceAvailable &&
         amount != null &&
         amount > 0 &&
@@ -184,9 +203,14 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (widget.children.isEmpty) const Padding(
+                  padding: EdgeInsets.only(top: 16),
+                  child: Text('Aucun profil enfant disponible. Ajoute un enfant avant d’enregistrer une action.'),
+                ),
                 if (widget.children.length > 1) ...[
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
+                    key: ValueKey(_childId),
                     initialValue: _childId,
                     items: widget.children
                         .map((child) => DropdownMenuItem(
@@ -309,10 +333,12 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                   ),
                 if (!_serviceAvailable) ...[
                   const SizedBox(height: 12),
-                  const Text(
-                    PointActionMaintenanceException.message,
-                    key: ValueKey('quick_maintenance_message'),
-                    style: TextStyle(color: Colors.orangeAccent),
+                  Text(
+                    _serviceCheckFailed
+                        ? 'Connexion au service impossible. Vérifie le réseau puis réessaie.'
+                        : PointActionMaintenanceException.message,
+                    key: const ValueKey('quick_maintenance_message'),
+                    style: const TextStyle(color: Colors.orangeAccent),
                   ),
                   TextButton.icon(
                     onPressed: _checkingService

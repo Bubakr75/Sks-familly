@@ -70,13 +70,33 @@ class NotificationService {
     await android?.createNotificationChannel(reminderChannel);
     await android?.createNotificationChannel(screenTimerChannel);
     await android?.requestNotificationsPermission();
-    try {
-      await android?.requestExactAlarmsPermission();
-    } catch (_) {
-      // Certains constructeurs Android ne proposent pas cette permission.
-    }
 
     _initialized = true;
+  }
+
+  /// Consultation seule : ne déclenche jamais l'écran des permissions.
+  static Future<bool> canScheduleScreenTimeExactly() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return true;
+    try {
+      final android = _localNotifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      return await android?.canScheduleExactNotifications() ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Appelé uniquement après une explication et une action explicite.
+  static Future<bool> requestScreenTimeAlarmPermission() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return true;
+    try {
+      final android = _localNotifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await android?.requestExactAlarmsPermission();
+      return canScheduleScreenTimeExactly();
+    } catch (_) {
+      return false;
+    }
   }
 
   // ===== SCHEDULED NOTIFICATIONS =====
@@ -226,7 +246,10 @@ class NotificationService {
               UILocalNotificationDateInterpretation.absoluteTime,
         );
     try {
-      await schedule(AndroidScheduleMode.exactAllowWhileIdle);
+      final exactAllowed = await canScheduleScreenTimeExactly();
+      await schedule(exactAllowed
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle);
     } catch (_) {
       await schedule(AndroidScheduleMode.inexactAllowWhileIdle);
     }

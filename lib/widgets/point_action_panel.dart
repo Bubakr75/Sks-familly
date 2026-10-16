@@ -1150,9 +1150,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                                   size: 18),
                               const SizedBox(width: 8),
                               Text(
-                                  widget.config.isBonus
-                                      ? '${selectedChild.points + _amount}'
-                                      : '${(selectedChild.points - (selectedChild.points <= 0 ? 0 : _amount.clamp(1, selectedChild.points))).clamp(0, 999)}',
+                                  '${pointActionBalancePreview(balance: selectedChild.points, requested: _amount, isBonus: widget.config.isBonus)}',
                                   style: TextStyle(
                                       color: config.primaryColor,
                                       fontSize: 20,

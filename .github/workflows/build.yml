@@ -1,4 +1,4 @@
-name: Build Flutter APK v2
+name: Build Flutter APK and Play bundle
 
 on:
   push:
@@ -89,6 +89,11 @@ jobs:
       - name: Run Flutter tests
         run: flutter test
 
+      - name: Test Play bundle checks
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_verify_play_bundle.py'
+          python3 -m unittest discover -s scripts -p 'test_android_notification_manifest.py'
+
       - name: Run Cloud Functions tests
         run: cd functions && npm ci && npm test
 
@@ -172,6 +177,7 @@ jobs:
           fi
 
       - name: Verify application ID and official signing certificate
+        id: official_signing
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -224,6 +230,53 @@ jobs:
             echo "Le certificat de signature diffère de l'APK officiel."
             exit 1
           fi
+          echo "sha256=$OFFICIAL_CERT" >> "$GITHUB_OUTPUT"
+
+      - name: Build Release App Bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter build appbundle --release --no-tree-shake-icons \
+            --build-name="${{ steps.app_version.outputs.name }}" \
+            --build-number="${{ steps.app_version.outputs.code }}"
+
+      - name: Download pinned bundletool
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bundletool"
+          gh release download 1.18.3 --repo google/bundletool \
+            --pattern 'bundletool-all-1.18.3.jar' --dir "$RUNNER_TEMP/bundletool"
+
+      - name: Verify actual Play bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/verify_play_bundle.py \
+            --bundle build/app/outputs/bundle/release/app-release.aab \
+            --bundletool "$RUNNER_TEMP/bundletool/bundletool-all-1.18.3.jar" \
+            --version-name "${{ steps.app_version.outputs.name }}" \
+            --version-code "${{ steps.app_version.outputs.code }}" \
+            --expected-cert "${{ steps.official_signing.outputs.sha256 }}" \
+            --report build/play-bundle-report.json
+
+      - name: Upload validated Play bundle artifact
+        if: github.event.repository.private == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: SKS-Family-Play-${{ steps.app_version.outputs.name }}-${{ steps.app_version.outputs.code }}
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/play-bundle-report.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Explain private bundle retention requirement
+        if: github.event.repository.private != true
+        run: |
+          echo 'AAB vérifié mais non téléversé : un dépôt privé est requis pour sa conservation confidentielle.'
 
       - name: Prepare test APK name
         if: github.event_name == 'workflow_dispatch'
@@ -261,12 +314,14 @@ jobs:
           tag_name: v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}
           name: "SKS Family ${{ steps.app_version.outputs.name }} — build ${{ steps.app_version.outputs.code }}"
           body: |
-            - Les achats de temps d’écran débitent les points à la confirmation serveur et attendent l’approbation parentale avant de créditer les minutes.
-            - Les approbations et remboursements sont atomiques et idempotents, y compris lors de rejeux ou de validations simultanées.
-            - Les responsables autorisés peuvent accepter, accepter et démarrer le chrono, ou refuser un achat.
-            - Les demandes restent disponibles dans la boîte parentale même si une notification push échoue.
-            - Les demandes d’approbation d’appareil, notifications masquées, tribunal et synchronisation iPhone/PWA restent prises en charge.
-            - Aucun événement familial n’est supprimé.
+            - Accès directs aux bonus, pénalités et lignes depuis l’accueil et la navigation.
+            - Profils enfants plus lisibles ; checklist conservée dans les outils secondaires.
+            - Formulaires plus robustes : erreurs réseau expliquées, saisie conservée et doubles clics bloqués.
+            - Correction de l’aperçu des pénalités pour les soldes supérieurs à 999 points.
+            - Assistant familial harmonisé avec Emerald et respectant le verrou parental.
+            - Configuration corrigée pour les notifications locales de fin de chrono.
+            - Cache des photos borné et fermeture plus propre des écrans.
+            - Même identifiant et certificat Android que les versions officielles précédentes.
           files: build/app/outputs/flutter-apk/SKS-Family-${{ steps.app_version.outputs.name }}-build${{ steps.app_version.outputs.code }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

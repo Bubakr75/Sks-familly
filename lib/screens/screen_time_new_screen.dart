@@ -14,6 +14,7 @@ import '../providers/family_provider.dart';
 import '../providers/pin_provider.dart';
 import '../models/child_model.dart';
 import '../config/emerald_theme.dart';
+import '../utils/screen_time_alarm_permission.dart';
 import 'punishment_lines_screen.dart';
 
 class ScreenTimeNewScreen extends StatefulWidget {
@@ -312,6 +313,8 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
                     onStart: account.balanceMinutes > 0
                         ? (mins) async {
                             HapticFeedback.mediumImpact();
+                            if (!await prepareScreenTimeAlarm(context)) return;
+                            if (!mounted) return;
                             await _runTimerAction(
                               () => fp.startScreenTimeSession(child.id, mins),
                               'Chrono démarré pour ${child.name} ($mins min).',

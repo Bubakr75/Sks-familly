@@ -47,6 +47,14 @@ int actualPenaltyAmount(
   return requested.clamp(1, balance);
 }
 
+/// L'aperçu suit le calcul de l'action, sans plafonner le solde à 999.
+int pointActionBalancePreview({required int balance, required int requested,
+  required bool isBonus}) {
+  final amount = actualPenaltyAmount(requested: requested, balance: balance, isBonus: isBonus);
+  final result = isBonus ? balance + amount : balance - amount;
+  return !isBonus && result < 0 ? 0 : result;
+}
+
 /// Tente de parser le résultat de Gemini (int, double, ou String numérique).
 /// Accepte les chaînes décimales via num.tryParse.
 /// Refuse NaN, Infinity, et les types non numériques.

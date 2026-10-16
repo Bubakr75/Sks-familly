@@ -24,13 +24,13 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.bubakr.sks_family"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = maxOf(36, flutter.compileSdkVersion)
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "com.bubakr.sks_family"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutterVersionCode.toInt()
         versionName = flutterVersionName
     }

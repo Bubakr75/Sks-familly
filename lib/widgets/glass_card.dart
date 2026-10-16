@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:ui';
 import 'dart:math' as math;
 
@@ -32,6 +33,7 @@ class _GlassCardState extends State<GlassCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _shimmerController;
   bool _isPressed = false;
+  Timer? _startTimer;
 
   @override
   void initState() {
@@ -41,7 +43,7 @@ class _GlassCardState extends State<GlassCard>
       duration: const Duration(milliseconds: 3000),
     );
     if (widget.animate) {
-      Future.delayed(
+      _startTimer = Timer(
         Duration(milliseconds: math.Random().nextInt(2000)),
         () {
           if (mounted) _shimmerController.repeat();
@@ -52,6 +54,7 @@ class _GlassCardState extends State<GlassCard>
 
   @override
   void dispose() {
+    _startTimer?.cancel();
     _shimmerController.dispose();
     super.dispose();
   }

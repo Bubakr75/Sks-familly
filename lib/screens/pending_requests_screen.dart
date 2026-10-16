@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
 import '../models/pending_request.dart';
 import '../widgets/family_join_approval_panel.dart';
+import '../utils/screen_time_alarm_permission.dart';
 
 class PendingRequestsScreen extends StatelessWidget {
   const PendingRequestsScreen({super.key});
@@ -681,6 +682,8 @@ class PendingRequestsScreen extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () async {
               Navigator.pop(ctx);
+              if (!await prepareScreenTimeAlarm(context)) return;
+              if (!context.mounted) return;
               await _runAction(
                 context,
                 () async {

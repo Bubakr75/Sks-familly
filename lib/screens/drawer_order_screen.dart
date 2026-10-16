@@ -27,7 +27,7 @@ class _DrawerOrderScreenState extends State<DrawerOrderScreen> {
     _DrawerItem('penalty_immunity', 'Pénalité / Immunité', Icons.assignment_late_rounded, Colors.redAccent),
     _DrawerItem('checklist', 'Checklist du jour', Icons.checklist_rounded, Colors.purpleAccent),
     _DrawerItem('wheel', 'Roue des tâches', Icons.casino_rounded, Colors.deepPurpleAccent),
-    _DrawerItem('gemini', 'Gemini AI', Icons.auto_awesome_rounded, Colors.cyanAccent),
+    _DrawerItem('gemini', 'Assistant familial', Icons.auto_awesome_rounded, Colors.cyanAccent),
     _DrawerItem('trades', 'Vente d\'immunites', Icons.sell_rounded, Colors.tealAccent),
     _DrawerItem('badges', 'Boutique', Icons.shopping_bag_rounded, Colors.yellowAccent),
     _DrawerItem('timeline', 'Timeline', Icons.timeline_rounded, Colors.cyanAccent),

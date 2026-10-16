@@ -5,15 +5,22 @@
 // UNE SEULE FOIS puis gardés en mémoire pour les rebuilds suivants.
 
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Cache statique partagé entre tous les widgets.
 /// Clé = base64 string, Valeur = MemoryImage en cache Flutter.
 class ImageCacheUtil {
-  static final Map<String, Uint8List> _bytesCache = {};
+  static const maxEntries = 64;
+  static const maxBytes = 16 * 1024 * 1024;
+  static int _cachedBytes = 0;
+  static final _bytesCache = <String, Uint8List>{};
   static final Map<String, MemoryImage> _imageCache = {};
+
+  @visibleForTesting
+  static int get cachedEntryCount => _bytesCache.length;
+  @visibleForTesting
+  static int get cachedByteCount => _cachedBytes;
 
   /// Retourne les bytes décodés d'une string base64 (mis en cache).
   static Uint8List? getBytes(String? base64Str) {
@@ -22,13 +29,26 @@ class ImageCacheUtil {
     // Si c'est une URL, on ne cache pas (géré par Image.network)
     if (base64Str.startsWith('http')) return null;
 
-    return _bytesCache.putIfAbsent(base64Str, () {
-      try {
-        return base64Decode(base64Str);
-      } catch (_) {
-        return Uint8List(0);
+    final cached = _bytesCache.remove(base64Str);
+    if (cached != null) {
+      _bytesCache[base64Str] = cached;
+      return cached;
+    }
+    try {
+      final bytes = base64Decode(base64Str);
+      if (bytes.isEmpty) return null;
+      // Les très grandes images restent utilisables sans être retenues ici.
+      if (bytes.length > maxBytes) return bytes;
+      while (_bytesCache.isNotEmpty &&
+          (_bytesCache.length >= maxEntries || _cachedBytes + bytes.length > maxBytes)) {
+        invalidate(_bytesCache.keys.first);
       }
-    });
+      _bytesCache[base64Str] = bytes;
+      _cachedBytes += bytes.length;
+      return bytes;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Retourne un MemoryImage mis en cache pour une string base64.
@@ -37,14 +57,10 @@ class ImageCacheUtil {
     if (base64Str == null || base64Str.isEmpty) return null;
     if (base64Str.startsWith('http')) return null;
 
-    return _imageCache.putIfAbsent(base64Str, () {
-      final bytes = getBytes(base64Str);
-      if (bytes == null || bytes.isEmpty) {
-        // Retourne une image 1x1 transparente comme fallback
-        return MemoryImage(_transparentPixel);
-      }
-      return MemoryImage(bytes);
-    });
+    final bytes = getBytes(base64Str);
+    if (bytes == null || bytes.isEmpty) return MemoryImage(_transparentPixel);
+    if (!_bytesCache.containsKey(base64Str)) return MemoryImage(bytes);
+    return _imageCache.putIfAbsent(base64Str, () => MemoryImage(bytes));
   }
 
   /// Précharge une image base64 dans le cache Flutter (asynchrone).
@@ -60,7 +76,8 @@ class ImageCacheUtil {
   /// Vide le cache quand une photo change (nouvelle photo uploadée).
   static void invalidate(String? base64Str) {
     if (base64Str == null) return;
-    _bytesCache.remove(base64Str);
+    final removed = _bytesCache.remove(base64Str);
+    if (removed != null) _cachedBytes -= removed.length;
     _imageCache.remove(base64Str);
   }
 
@@ -68,6 +85,7 @@ class ImageCacheUtil {
   static void clearAll() {
     _bytesCache.clear();
     _imageCache.clear();
+    _cachedBytes = 0;
   }
 
   // 1x1 pixel PNG transparent pour les fallbacks

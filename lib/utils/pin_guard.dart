@@ -14,7 +14,7 @@ class PinGuard {
         context,
         MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
       ).then((result) {
-        if (result == true) {
+        if (result == true && context.mounted) {
           onAuthorized();
         }
       });
@@ -31,7 +31,7 @@ class PinGuard {
         context,
         MaterialPageRoute(builder: (_) => const PinVerificationScreen()),
       ).then((result) {
-        if (result == true) {
+        if (result == true && context.mounted) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
         }
       });
@@ -44,7 +44,7 @@ class PinGuard {
         content: const Row(
           children: [
             Icon(Icons.lock, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text('Action protegee - Entrez le code parental'),
           ],
         ),

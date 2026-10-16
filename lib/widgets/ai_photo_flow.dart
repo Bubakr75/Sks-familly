@@ -51,6 +51,42 @@ String _aiPhotoErrorMessage(Object error) {
 /// Lance le flow Photo IA complet.
 /// Retourne true si des points ont été appliqués, false sinon.
 Future<bool> startAiPhotoFlow(BuildContext context) async {
+  if (_photoFlowRunning) return false;
+  if (!GeminiService.isConfigured) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('L’analyse photo IA n’est pas disponible pour le moment. Tu peux ajouter les points manuellement.'),
+    ));
+    return false;
+  }
+  _photoFlowRunning = true;
+  try {
+    return await _runAiPhotoFlow(context);
+  } on PlatformException catch (error) {
+    if (context.mounted) {
+      final denied = error.code.toLowerCase().contains('denied') ||
+          error.code.toLowerCase().contains('restricted');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(denied
+            ? 'L’accès à la caméra est refusé. Tu peux l’autoriser dans les réglages du téléphone.'
+            : 'La caméra n’est pas disponible. Réessaie ou utilise la saisie manuelle.'),
+      ));
+    }
+    return false;
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('La photo n’a pas pu être traitée. Réessaie dans un instant.'),
+      ));
+    }
+    return false;
+  } finally {
+    _photoFlowRunning = false;
+  }
+}
+
+bool _photoFlowRunning = false;
+
+Future<bool> _runAiPhotoFlow(BuildContext context) async {
   final fp = context.read<FamilyProvider>();
   final messenger = ScaffoldMessenger.of(context);
 
