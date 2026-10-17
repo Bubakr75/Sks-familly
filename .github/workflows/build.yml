@@ -314,12 +314,12 @@ jobs:
           tag_name: v${{ steps.app_version.outputs.name }}+${{ steps.app_version.outputs.code }}
           name: "SKS Family ${{ steps.app_version.outputs.name }} — build ${{ steps.app_version.outputs.code }}"
           body: |
-            - Identité SKS Family renforcée : bandeau d’accueil, logos sur les onglets et filigrane discret.
-            - Réglages : Vérifier les notifications et Réenregistrer ce téléphone.
-            - Diagnostic lisible avec code à communiquer, sans afficher de token ni de données personnelles.
-            - Confirmation de réparation uniquement après enregistrement réussi sur le serveur.
-            - Rappels des demandes familiales déjà en attente, limités à un par minute (correctif serveur déjà actif).
-            - Bonus, pénalités rouges, lignes et Transfert SKS conservés.
+            - Nouveau build Android signé, construit automatiquement sur GitHub.
+            - Petits points : une bonne action = 1 point.
+            - Temps d’écran : 3 points = 30 minutes ; 5 points = 1 heure.
+            - Sanctions par catégorie : lignes, corvée, rédaction, réparation, cartons jaune et rouge, personnalisée.
+            - Aucun retrait de points par défaut ; écrans bloqués jusqu’à validation du parent.
+            - Cartons sans durée imposée, décidée sur place par le parent.
             - Même identifiant et certificat Android que les versions officielles précédentes.
           files: build/app/outputs/flutter-apk/SKS-Family-${{ steps.app_version.outputs.name }}-build${{ steps.app_version.outputs.code }}.apk
         env:
