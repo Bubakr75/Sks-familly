@@ -5,6 +5,12 @@ const {isJoinSubmission, parentRecipientUids, createJoinNotificationHandler} =
   require("./join_notifications");
 class HttpsError extends Error {}
 const doc = (id, data) => ({id, exists: true, data: () => data});
+test("un rappel pending notifie une fois sans redéclenchement lors du marquage", () => {
+  assert.equal(isJoinSubmission({status: "sent"},
+    {status: "sent", notificationRevision: 1}), true);
+  assert.equal(isJoinSubmission({status: "sent", notificationRevision: 1},
+    {status: "sent", notificationRevision: 1, notificationEventId: "event"}), false);
+});
 const familySnapshot = doc("family", {ownerUid: "owner", schemaVersion: 2});
 
 test("création et nouvelle soumission après refus déclenchent une alerte", () => {
@@ -91,6 +97,13 @@ test("une demande déjà acceptée ne déclenche plus d’alerte", async () => {
   const f = fixture({currentOverride: {status: "accepted"}});
   await f.run();
   assert.equal(f.sends.length, 0);
+});
+
+test("un événement ancien ne consomme pas le rappel d’une version plus récente", async () => {
+  const f = fixture({currentOverride: {notificationRevision: 1}});
+  await f.run();
+  assert.equal(f.sends.length, 0);
+  assert.equal(f.current.notificationEventId, undefined);
 });
 
 test("sans destinataire, la demande reste disponible sans être marquée envoyée", async () => {

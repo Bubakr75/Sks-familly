@@ -1,3 +1,5 @@
+import '../widgets/notification_diagnostic_card.dart';
+import '../widgets/sks_brand_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -410,7 +412,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     index: 0,
                     child: Row(
                       children: [
-                        const Text('⚙️', style: TextStyle(fontSize: 32)),
+                        const SksBrandLogo(size: 44),
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Text(
@@ -439,6 +441,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  const NotificationDiagnosticCard(),
+                  const SizedBox(height: 20),
 
                   // ─── Apparence ───────────────────────────
                   _animatedSection(

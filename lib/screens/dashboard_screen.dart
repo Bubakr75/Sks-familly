@@ -1,3 +1,4 @@
+import '../widgets/sks_brand_logo.dart';
 // =============================================================================
 // SKS Family - Dashboard Émeraude Premium
 // =============================================================================
@@ -124,6 +125,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 8),
+                      child: const SksBrandBanner(),
+                    ),
                     // Header + bouton demandes (badge cloche)
                     _AnimatedFade(
                       animation: _headerAnim,

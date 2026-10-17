@@ -1,3 +1,4 @@
+import 'notification_diagnostic.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -231,6 +232,47 @@ class FcmService {
     await _saveToken();
   }
 
+  Future<NotificationDiagnosticResult> diagnoseNotifications(
+      {bool repair = false}) async {
+    final runner = NotificationDiagnostic(
+      contextProblem: () async {
+        final prefs = await SharedPreferences.getInstance();
+        if ((prefs.getString('family_id') ?? '').isEmpty) {
+          return 'famille-absente';
+        }
+        if (FirebaseAuth.instance.currentUser == null) {
+          return 'connexion-absente';
+        }
+        if ((prefs.getString('device_id') ?? '').isEmpty) {
+          return 'appareil-absent';
+        }
+        if (kIsWeb && !VapidKeyConfig.isConfigured) return 'web-non-configure';
+        return null;
+      },
+      permission: () async {
+        var settings = await _messaging.getNotificationSettings();
+        if (repair &&
+            settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+          settings = await _messaging.requestPermission();
+        }
+        return settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional;
+      },
+      token: () => kIsWeb
+          ? _messaging.getToken(vapidKey: VapidKeyConfig.vapidKey)
+          : _messaging.getToken(),
+      save: (token) => _saveTokenToFirestore(token, force: true, strict: true),
+      errorCode: (error) {
+        final code =
+            error is FirebaseException ? error.code : 'service-indisponible';
+        return RegExp(r'^[a-zA-Z0-9_/-]{1,80}$').hasMatch(code)
+            ? code
+            : 'service-indisponible';
+      },
+    );
+    return runner.run(repair: repair);
+  }
+
   Future<void> _saveToken() async {
     try {
       String? token;
@@ -275,7 +317,8 @@ class FcmService {
     }
   }
 
-  Future<void> _saveTokenToFirestore(String token) async {
+  Future<void> _saveTokenToFirestore(String token,
+      {bool force = false, bool strict = false}) async {
     String? tokenKey;
 
     try {
@@ -283,20 +326,24 @@ class FcmService {
       final familyId = prefs.getString('family_id');
       final deviceId = prefs.getString('device_id');
 
-      if (familyId == null || deviceId == null || token.isEmpty) return;
+      if (familyId == null || deviceId == null || token.isEmpty) {
+        if (strict) throw StateError('notification-context-missing');
+        return;
+      }
 
       // 🔒 Sécurité : ne pas enregistrer le token sans UID Firebase Auth
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null || uid.isEmpty) {
+        if (strict) throw StateError('notification-auth-missing');
         if (kDebugMode) {
           debugPrint('FCM: utilisateur non authentifié, token non enregistré.');
         }
         return;
       }
 
-      tokenKey = '$familyId|$deviceId|$token';
+      tokenKey = '$familyId|$deviceId|$uid|$token';
 
-      if (_lastSavedTokenKey == tokenKey) {
+      if (!force && _lastSavedTokenKey == tokenKey) {
         if (kDebugMode) {
           debugPrint('FCM: token deja enregistre pour cet appareil.');
         }
@@ -331,6 +378,7 @@ class FcmService {
       if (kDebugMode) {
         debugPrint('Save FCM token error: $e');
       }
+      if (strict) rethrow;
     }
   }
 }

@@ -10,6 +10,7 @@
 
 import 'dart:convert';
 import 'dart:typed_data';
+import '../widgets/sks_brand_logo.dart';
 import 'package:flutter/material.dart';
 
 /// Palette de couleurs Emerald
@@ -532,7 +533,7 @@ class EmeraldBackground extends StatelessWidget {
             ],
           ),
         ),
-        child: child,
+        child: Stack(children: [const SksBrandWatermark(), child]),
       ),
     );
   }

@@ -93,6 +93,18 @@ function buildJoinRequestData({
   };
 }
 
+function buildJoinReminderPatch(request, fieldValue, now = Date.now()) {
+  if (!request || !["pending", "sent", "received"].includes(request.status)) return null;
+  const previous = request.notificationRequestedAt || request.createdAt;
+  const millis = previous && typeof previous.toMillis === "function"
+    ? previous.toMillis() : null;
+  if (millis !== null && now - millis < 60000) return null;
+  const revision = Number.isSafeInteger(request.notificationRevision) &&
+    request.notificationRevision >= 0 ? request.notificationRevision : 0;
+  return {notificationRequestedAt: fieldValue.serverTimestamp(),
+    notificationRevision: revision + 1, notificationEventId: null};
+}
+
 function buildApprovedMemberData({
   requesterUid,
   requestedRole,
@@ -420,6 +432,8 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
               existingRequest.data().status
             )
           ) {
+            const reminder = buildJoinReminderPatch(existingRequest.data(), fieldValue);
+            if (reminder) transaction.update(requestRef, {...reminder, deviceId, deviceName});
             return {
               alreadyPending: true,
               requestedRole: existingRequest.data().requestedRole,
@@ -1042,6 +1056,7 @@ function createFamilyJoinFunctions({ functions, admin, db }) {
 }
 
 module.exports = {
+  buildJoinReminderPatch,
   normalizeFamilyCode,
   normalizeJoinRole,
   cleanText,

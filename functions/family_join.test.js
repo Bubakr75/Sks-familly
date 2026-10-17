@@ -2,6 +2,26 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const {buildJoinReminderPatch} = require("./family_join");
+
+test("une demande en attente peut relancer l’alerte sans changer son statut", () => {
+  const fieldValue = {serverTimestamp: () => "server-time"};
+  const request = {status: "received", createdAt: {toMillis: () => 1000}};
+  const patch = buildJoinReminderPatch(request, fieldValue, 120000);
+  assert.equal(patch.notificationRevision, 1);
+  assert.equal(patch.notificationEventId, null);
+  assert.equal(patch.notificationRequestedAt, "server-time");
+  assert.equal(patch.status, undefined);
+  assert.equal(patch.createdAt, undefined);
+  assert.equal(request.status, "received");
+});
+
+test("les rappels rapprochés et les demandes déjà acceptées restent sans effet", () => {
+  const fieldValue = {serverTimestamp: () => "server-time"};
+  assert.equal(buildJoinReminderPatch({status: "sent",
+    notificationRequestedAt: {toMillis: () => 100000}}, fieldValue, 120000), null);
+  assert.equal(buildJoinReminderPatch({status: "accepted"}, fieldValue, 120000), null);
+});
 
 const {
   normalizeFamilyCode,

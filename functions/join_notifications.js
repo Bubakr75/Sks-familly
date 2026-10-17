@@ -7,14 +7,17 @@ const pending = (data) => Boolean(data &&
 // Une nouvelle soumission peut remplacer un document précédemment refusé.
 // Les changements de lecture et le marquage d'envoi ne sont pas des demandes.
 function isJoinSubmission(before, after) {
-  return pending(after) && !pending(before);
+  return pending(after) && (!pending(before) ||
+    (Number.isSafeInteger(after.notificationRevision) &&
+      after.notificationRevision > (before.notificationRevision || 0)));
 }
 
 function sameSubmission(event, current) {
   const a = event && event.createdAt;
   const b = current && current.createdAt;
   return Boolean(a && b && a.seconds === b.seconds &&
-    a.nanoseconds === b.nanoseconds);
+    a.nanoseconds === b.nanoseconds &&
+    (event.notificationRevision || 0) === (current.notificationRevision || 0));
 }
 
 async function parentRecipientUids({familySnapshot, members, admin, HttpsError}) {

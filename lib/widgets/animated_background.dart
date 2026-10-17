@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math' as math;
+import 'sks_brand_logo.dart';
 
 class AnimatedBackground extends StatefulWidget {
   final Widget child;
@@ -115,6 +116,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
             ),
             child: const SizedBox.expand(),
           ),
+          const SksBrandWatermark(),
           RepaintBoundary(child: widget.child),
         ],
       );
@@ -197,6 +199,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
         ),
 
         // Child content
+        const SksBrandWatermark(),
         widget.child,
       ],
     );

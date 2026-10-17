@@ -1,3 +1,4 @@
+import '../widgets/sks_brand_logo.dart';
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -771,27 +772,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      accentColor.withValues(alpha: 0.3),
-                      accentColor.withValues(alpha: 0.1),
-                    ]),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                          color: accentColor.withValues(alpha: 0.2),
-                          blurRadius: 12)
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.family_restroom_rounded,
-                      color: accentColor, size: 28),
-                ),
+                const SksBrandLogo(size: 64),
                 const SizedBox(height: 14),
-                const Text('Family Rewards',
+                const Text('SKS Family',
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,

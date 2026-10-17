@@ -1,3 +1,4 @@
+import '../widgets/sks_brand_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/family_provider.dart';
@@ -89,7 +90,7 @@ class _PunishmentLinesScreenState extends State<PunishmentLinesScreen>
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text('Punitions & Immunités', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const SksPageTitle('Lignes & Immunités'),
           actions: [
             if (isParent) IconButton(
               icon: const Icon(Icons.add_circle_rounded, color: Colors.redAccent, size: 28),

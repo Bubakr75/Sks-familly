@@ -1,3 +1,4 @@
+import '../widgets/sks_brand_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -117,23 +118,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            gradient: EmeraldPalette.emeraldGradient,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: EmeraldPalette.emerald.withValues(alpha: 0.4),
-                blurRadius: 24,
-                spreadRadius: 3,
-              ),
-            ],
-          ),
-          child: const Icon(Icons.family_restroom_rounded,
-              color: Colors.white, size: 36),
-        ),
+        const SksBrandLogo(size: 88),
         const SizedBox(height: 14),
         ShaderMask(
           shaderCallback: (bounds) =>

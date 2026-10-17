@@ -1,3 +1,4 @@
+import '../widgets/sks_brand_logo.dart';
 // lib/screens/bonus_screen.dart
 //
 // Écran Bonus moderne — utilise PointActionPanel avec configuration bonus.
@@ -47,11 +48,7 @@ class BonusScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('✨ Bonus',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold)),
+        title: const SksPageTitle('Bonus'),
       ),
       body: const PointActionPanel(config: _config),
     );

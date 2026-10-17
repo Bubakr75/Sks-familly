@@ -1,3 +1,4 @@
+import '../widgets/sks_brand_logo.dart';
 // lib/screens/penalty_screen.dart
 //
 // Écran Pénalité moderne — utilise PointActionPanel avec configuration pénalité.
@@ -47,11 +48,7 @@ class PenaltyScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Pénalité',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold)),
+        title: const SksPageTitle('Pénalité'),
       ),
       body: const PointActionPanel(config: _config),
     );
