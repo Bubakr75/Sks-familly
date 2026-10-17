@@ -1277,23 +1277,14 @@ class FamilyProvider extends ChangeNotifier {
   // Le montant augmente automatiquement selon le nombre d'actions du jour.
 
   /// Calcule le montant d'un bonus selon le nombre de bonus déjà donnés aujourd'hui.
-  /// 1er = 10, 2e = 15, 3e = 20, 4e+ = 25.
-  int _calculateBonusAmount(String childId) {
-    final count = _getTodayActionsCount(childId, isBonus: true);
-    if (count == 0) return 10;
-    if (count == 1) return 15;
-    if (count == 2) return 20;
-    return 25; // plafond
-  }
+  /// Une bonne action rapporte toujours un point.
+  int _calculateBonusAmount(String childId) => 1;
 
   /// Calcule le montant d'une pénalité selon le nombre de pénalités déjà données aujourd'hui.
-  /// 1ère = 5, 2e = 10, 3e = 15, 4e+ = 20.
+  /// Les pénalités automatiques restent entre un et trois points.
   int _calculatePenaltyAmount(String childId) {
     final count = _getTodayActionsCount(childId, isBonus: false);
-    if (count == 0) return 5;
-    if (count == 1) return 10;
-    if (count == 2) return 15;
-    return 20; // plafond
+    return (count + 1).clamp(1, 3);
   }
 
   /// Compte le nombre de bonus ou pénalités donnés aujourd'hui.
@@ -1365,6 +1356,8 @@ class FamilyProvider extends ChangeNotifier {
     DateTime? date,
     int? penaltyLinesCount,
     String? penaltyLinesInstruction,
+    String? sanctionType,
+    String? sanctionLabel,
     void Function()? onVerifying,
   }) async {
     final child = getChild(childId);
@@ -1397,6 +1390,8 @@ class FamilyProvider extends ChangeNotifier {
       photoStoragePath: photoStoragePath,
       penaltyLinesCount: penaltyLinesCount,
       penaltyLinesInstruction: penaltyLinesInstruction,
+      sanctionType: sanctionType,
+      sanctionLabel: sanctionLabel,
       onVerifying: onVerifying,
     );
     late final int authoritativeBalance;
@@ -1748,7 +1743,7 @@ class FamilyProvider extends ChangeNotifier {
     final entry = HistoryEntry(
       id: _uuid.v4(),
       childId: childId,
-      points: (deduction * 100).round(),
+      points: deduction.round(),
       reason: 'Déduction automatique : $totalLines lignes ($deduction pt)',
       category: 'punition',
       isBonus: false,
@@ -1887,6 +1882,8 @@ class FamilyProvider extends ChangeNotifier {
     try {
       final im = _immunities.firstWhere((i) => i.id == immunityId);
       final p = _punishments.firstWhere((p) => p.id == punishmentId);
+      if (!p.isLines)
+        throw StateError('Une immunité de lignes ne remplace pas une corvée.');
       final actualLines = lines
           .clamp(0, im.availableLines)
           .clamp(0, p.totalLines - p.completedLines);
@@ -2999,6 +2996,50 @@ class FamilyProvider extends ChangeNotifier {
 
   /// L'enfant achète une récompense. Déduit les points et crée une demande.
   /// Retourne true si l'achat a réussi.
+  /// Achat atomique : le serveur fixe le prix et crédite les minutes.
+  Future<void> purchaseScreenTime(String childId, int minutes) async {
+    final cost = minutes == 30
+        ? 3
+        : minutes == 60
+            ? 5
+            : null;
+    final child = getChild(childId);
+    if (cost == null || child == null || !_firestore.isConnected) {
+      throw StateError('Achat indisponible. Vérifie ta connexion.');
+    }
+    final key = 'screen:$childId:$minutes';
+    if (!_purchaseOperationsInFlight.containsKey(key) &&
+        (child.points < cost || isScreenAccessBlocked(childId))) {
+      throw StateError('Solde insuffisant ou sanction en attente.');
+    }
+    if (!_purchaseActionsInFlight.add(key)) {
+      throw StateError('Un achat est déjà en cours de vérification.');
+    }
+    final operationId = _purchaseOperationsInFlight.putIfAbsent(
+        key, () => 'screen_${_uuid.v4()}');
+    try {
+      final result = await _firestore.performFamilyOperation(
+        operation: 'screen_buy',
+        operationId: operationId,
+        childId: childId,
+        minutes: minutes,
+      );
+      final account = ScreenTimeAccount.fromMap(
+          Map<String, dynamic>.from(result['account'] as Map));
+      child.points = (result['points'] as num).toInt();
+      _screenTimeAccounts[childId] = account;
+      _markPending(childId);
+      _purchaseOperationsInFlight.remove(key);
+      notifyListeners();
+      // Une panne du cache ne transforme pas une réussite serveur en échec.
+      try {
+        await _childrenBox.put(childId, jsonEncode(child.toMap()));
+      } catch (_) {}
+    } finally {
+      _purchaseActionsInFlight.remove(key);
+    }
+  }
+
   Future<bool> purchaseReward(String childId, String rewardId) async {
     final child = getChild(childId);
     final rewardExists = _rewards.any((reward) => reward.id == rewardId);
@@ -3252,7 +3293,7 @@ class FamilyProvider extends ChangeNotifier {
           // Appliquer -10 pts pour chaque NOUVELLE tranche de 5 min
           while (account.appliedOvertimeTranches < currentTranches) {
             account.appliedOvertimeTranches++;
-            addPoints(entry.key, 10,
+            addPoints(entry.key, 1,
                 '⚠️ Overtime : +5 min de retard sur le temps d\'écran',
                 category: 'overtime', isBonus: false);
           }

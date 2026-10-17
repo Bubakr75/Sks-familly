@@ -28,14 +28,17 @@ class ShopAdminScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: const Text('Gérer la Boutique',
-            style:
-                TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: EmeraldPalette.textPrimary,
+                fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: EmeraldPalette.textPrimary),
         actions: [
           // 🔥 Bouton Soldes
           IconButton(
             icon: Icon(
-              fp.isSaleActive ? Icons.local_fire_department_rounded : Icons.local_offer_outlined,
+              fp.isSaleActive
+                  ? Icons.local_fire_department_rounded
+                  : Icons.local_offer_outlined,
               color: fp.isSaleActive ? Colors.orange : Colors.redAccent,
               size: 26,
             ),
@@ -50,8 +53,7 @@ class ShopAdminScreen extends StatelessWidget {
       ),
       body: fp.rewards.isEmpty
           ? const Center(
-              child: Text(
-                  'Aucune récompense. Cliquez sur + pour en ajouter.',
+              child: Text('Aucune récompense. Cliquez sur + pour en ajouter.',
                   style: TextStyle(color: EmeraldPalette.textSecondary)))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -72,14 +74,40 @@ class ShopAdminScreen extends StatelessWidget {
   void _showAddEditDialog(BuildContext context, FamilyProvider fp,
       {RewardModel? existing}) {
     final titleCtrl = TextEditingController(text: existing?.title ?? '');
-    final descCtrl =
-        TextEditingController(text: existing?.description ?? '');
+    final descCtrl = TextEditingController(text: existing?.description ?? '');
     final costCtrl =
-        TextEditingController(text: existing?.cost.toString() ?? '50');
+        TextEditingController(text: existing?.cost.toString() ?? '3');
     final allEmojis = [
-      '🎁', '🎮', '🌙', '🍕', '🃏', '🍫', '🎬', '⚽', '🎨', '📚',
-      '🎲', '🍦', '🍔', '🚗', '✈️', '🎪', '🛌', '🎸', '📱', '💵',
-      '🏆', '⭐', '🎈', '🍿', '🚲', '🏊', '🎯', '🧩', '🔌', '🎧'
+      '🎁',
+      '🎮',
+      '🌙',
+      '🍕',
+      '🃏',
+      '🍫',
+      '🎬',
+      '⚽',
+      '🎨',
+      '📚',
+      '🎲',
+      '🍦',
+      '🍔',
+      '🚗',
+      '✈️',
+      '🎪',
+      '🛌',
+      '🎸',
+      '📱',
+      '💵',
+      '🏆',
+      '⭐',
+      '🎈',
+      '🍿',
+      '🚲',
+      '🏊',
+      '🎯',
+      '🧩',
+      '🔌',
+      '🎧'
     ];
 
     // État mutable pour le dialogue
@@ -109,8 +137,8 @@ class ShopAdminScreen extends StatelessWidget {
 
           return AlertDialog(
             backgroundColor: EmeraldPalette.surface,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             title: Text(
               existing == null ? 'Nouvelle récompense' : 'Modifier',
               style: const TextStyle(
@@ -168,7 +196,8 @@ class ShopAdminScreen extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.add_a_photo_rounded,
-                                    color: EmeraldPalette.gold.withValues(alpha: 0.6),
+                                    color: EmeraldPalette.gold
+                                        .withValues(alpha: 0.6),
                                     size: 36),
                                 const SizedBox(height: 8),
                                 Text('Ajouter une photo',
@@ -199,8 +228,7 @@ class ShopAdminScreen extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final e = allEmojis[index];
                         return GestureDetector(
-                          onTap: () =>
-                              setDialogState(() => selectedIcon = e),
+                          onTap: () => setDialogState(() => selectedIcon = e),
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -213,8 +241,8 @@ class ShopAdminScreen extends StatelessWidget {
                                       ? EmeraldPalette.gold
                                       : Colors.transparent),
                             ),
-                            child: Text(e,
-                                style: const TextStyle(fontSize: 24)),
+                            child:
+                                Text(e, style: const TextStyle(fontSize: 24)),
                           ),
                         );
                       },
@@ -224,7 +252,8 @@ class ShopAdminScreen extends StatelessWidget {
                   TextField(
                     controller: titleCtrl,
                     style: const TextStyle(color: EmeraldPalette.textPrimary),
-                    decoration: _inputDecoration('Titre', 'Ex: 15 min de console'),
+                    decoration:
+                        _inputDecoration('Titre', 'Ex: 15 min de console'),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -239,7 +268,7 @@ class ShopAdminScreen extends StatelessWidget {
                     controller: costCtrl,
                     style: const TextStyle(color: EmeraldPalette.textPrimary),
                     keyboardType: TextInputType.number,
-                    decoration: _inputDecoration('Coût (points)', 'Ex: 50'),
+                    decoration: _inputDecoration('Coût (points)', 'Ex: 3'),
                   ),
                 ],
               ),
@@ -257,7 +286,7 @@ class ShopAdminScreen extends StatelessWidget {
                 ),
                 onPressed: () async {
                   final title = titleCtrl.text.trim();
-                  final cost = int.tryParse(costCtrl.text.trim()) ?? 50;
+                  final cost = int.tryParse(costCtrl.text.trim()) ?? 3;
                   if (title.isEmpty) return;
 
                   if (existing != null) {
@@ -311,7 +340,8 @@ class ShopAdminScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 12),
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: Colors.white24,
                 borderRadius: BorderRadius.circular(2),
@@ -319,8 +349,8 @@ class ShopAdminScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading:
-                  const Icon(Icons.camera_alt_rounded, color: EmeraldPalette.gold),
+              leading: const Icon(Icons.camera_alt_rounded,
+                  color: EmeraldPalette.gold),
               title: const Text('Prendre une photo',
                   style: TextStyle(color: Colors.white)),
               onTap: () {
@@ -362,21 +392,27 @@ class ShopAdminScreen extends StatelessWidget {
 
   /// 🔥 Dialogue de gestion des soldes
   void _showSaleDialog(BuildContext context, FamilyProvider fp) {
-    int selectedPercent = fp.saleDiscountPercent > 0 ? fp.saleDiscountPercent : 50;
+    int selectedPercent =
+        fp.saleDiscountPercent > 0 ? fp.saleDiscountPercent : 50;
     int selectedHours = 24;
-    final labelCtrl = TextEditingController(text: fp.saleLabel.isNotEmpty ? fp.saleLabel : 'Soldes');
+    final labelCtrl = TextEditingController(
+        text: fp.saleLabel.isNotEmpty ? fp.saleLabel : 'Soldes');
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
           backgroundColor: EmeraldPalette.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Row(children: [
-            const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 28),
+            const Icon(Icons.local_fire_department_rounded,
+                color: Colors.orange, size: 28),
             const SizedBox(width: 10),
             const Text('Soldes Boutique',
-                style: TextStyle(color: EmeraldPalette.textPrimary, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: EmeraldPalette.textPrimary,
+                    fontWeight: FontWeight.bold)),
           ]),
           content: SingleChildScrollView(
             child: Column(
@@ -390,22 +426,29 @@ class ShopAdminScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.orange.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                      border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.4)),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.access_time, color: Colors.orange, size: 16),
+                      const Icon(Icons.access_time,
+                          color: Colors.orange, size: 16),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Vente en cours : -${fp.saleDiscountPercent}%',
-                          style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w600),
                         ),
                       ),
                     ]),
                   ),
                 ],
                 const Text('Réduction :',
-                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 // Choix du pourcentage
                 Wrap(
@@ -415,11 +458,15 @@ class ShopAdminScreen extends StatelessWidget {
                     return GestureDetector(
                       onTap: () => setSt(() => selectedPercent = p),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: isSel ? Colors.orange.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.05),
+                          color: isSel
+                              ? Colors.orange.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isSel ? Colors.orange : Colors.white12),
+                          border: Border.all(
+                              color: isSel ? Colors.orange : Colors.white12),
                         ),
                         child: Text('-$p%',
                             style: TextStyle(
@@ -431,7 +478,10 @@ class ShopAdminScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text('Durée :',
-                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 // Choix de la durée
                 Wrap(
@@ -449,11 +499,15 @@ class ShopAdminScreen extends StatelessWidget {
                     return GestureDetector(
                       onTap: () => setSt(() => selectedHours = h),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: isSel ? Colors.orange.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.05),
+                          color: isSel
+                              ? Colors.orange.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isSel ? Colors.orange : Colors.white12),
+                          border: Border.all(
+                              color: isSel ? Colors.orange : Colors.white12),
                         ),
                         child: Text(label,
                             style: TextStyle(
@@ -470,10 +524,13 @@ class ShopAdminScreen extends StatelessWidget {
                   style: const TextStyle(color: EmeraldPalette.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Nom de la vente',
-                    labelStyle: const TextStyle(color: EmeraldPalette.textSecondary),
+                    labelStyle:
+                        const TextStyle(color: EmeraldPalette.textSecondary),
                     filled: true,
                     fillColor: EmeraldPalette.surfaceLow,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
                   ),
                 ),
               ],
@@ -487,15 +544,19 @@ class ShopAdminScreen extends StatelessWidget {
                   await fp.stopSale();
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('✅ Vente arrêtée'), backgroundColor: Colors.grey),
+                      const SnackBar(
+                          content: Text('✅ Vente arrêtée'),
+                          backgroundColor: Colors.grey),
                     );
                   }
                 },
-                child: const Text('Arrêter la vente', style: TextStyle(color: Colors.redAccent)),
+                child: const Text('Arrêter la vente',
+                    style: TextStyle(color: Colors.redAccent)),
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -507,18 +568,22 @@ class ShopAdminScreen extends StatelessWidget {
                 await fp.startSale(
                   percent: selectedPercent,
                   durationHours: selectedHours,
-                  label: labelCtrl.text.trim().isEmpty ? 'Soldes' : labelCtrl.text.trim(),
+                  label: labelCtrl.text.trim().isEmpty
+                      ? 'Soldes'
+                      : labelCtrl.text.trim(),
                 );
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('🔥 Vente lancée ! -$selectedPercent% pendant ${selectedHours}h'),
+                      content: Text(
+                          '🔥 Vente lancée ! -$selectedPercent% pendant ${selectedHours}h'),
                       backgroundColor: Colors.orange,
                     ),
                   );
                 }
               },
-              child: const Text('Lancer 🔥', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Lancer 🔥',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -532,8 +597,7 @@ class ShopAdminScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: EmeraldPalette.surface,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Supprimer ?',
             style: TextStyle(color: EmeraldPalette.textPrimary)),
         content: Text('Voulez-vous supprimer "${reward.title}" ?',
@@ -541,7 +605,8 @@ class ShopAdminScreen extends StatelessWidget {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annuler', style: TextStyle(color: Colors.grey))),
+              child:
+                  const Text('Annuler', style: TextStyle(color: Colors.grey))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
@@ -577,8 +642,7 @@ class _RewardAdminTile extends StatelessWidget {
         border: Border.all(color: EmeraldPalette.glassBorder),
       ),
       child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: SizedBox(
@@ -608,8 +672,7 @@ class _RewardAdminTile extends StatelessWidget {
             const SizedBox(width: 4),
             Text('${reward.cost} pts',
                 style: const TextStyle(
-                    color: EmeraldPalette.gold,
-                    fontWeight: FontWeight.w700)),
+                    color: EmeraldPalette.gold, fontWeight: FontWeight.w700)),
             if (reward.hasPhoto) ...[
               const SizedBox(width: 8),
               const Icon(Icons.photo_camera_rounded,

@@ -1,3 +1,4 @@
+import '../widgets/screen_time_store.dart';
 // lib/screens/shop_screen.dart
 //
 // Boutique de Récompenses SKS Family (remplace l'écran des badges).
@@ -259,6 +260,12 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               ),
             ),
 
+            if (child != null)
+              SliverToBoxAdapter(
+                  child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: ScreenTimeStore(child: child),
+              )),
             if (child != null)
               SliverToBoxAdapter(
                 child: InkWell(

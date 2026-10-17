@@ -20,8 +20,7 @@ class GoalsScreen extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(
-                color: primary.withValues(alpha: 0.3), blurRadius: 16)
+            BoxShadow(color: primary.withValues(alpha: 0.3), blurRadius: 16)
           ],
         ),
         child: FloatingActionButton.extended(
@@ -95,16 +94,15 @@ class GoalsScreen extends StatelessWidget {
                                     const SizedBox(height: 8),
                                     Text(
                                         'Définissez des objectifs pour vos enfants',
-                                        style: TextStyle(
-                                            color: Colors.grey[600])),
+                                        style:
+                                            TextStyle(color: Colors.grey[600])),
                                   ],
                                 ),
                               )
                             : ListView(
-                                padding: const EdgeInsets.fromLTRB(
-                                    16, 0, 16, 100),
-                                children:
-                                    provider.children.map((child) {
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                                children: provider.children.map((child) {
                                   final childGoals =
                                       provider.getGoalsForChild(child.id);
                                   if (childGoals.isEmpty)
@@ -114,8 +112,7 @@ class GoalsScreen extends StatelessWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Padding(
-                                        padding: const EdgeInsets
-                                            .symmetric(
+                                        padding: const EdgeInsets.symmetric(
                                             horizontal: 4, vertical: 8),
                                         child: Row(children: [
                                           Text(
@@ -140,10 +137,8 @@ class GoalsScreen extends StatelessWidget {
                                         ]),
                                       ),
                                       ...childGoals.map((goal) {
-                                        final progress = goal.targetPoints >
-                                                0
-                                            ? (child.points /
-                                                    goal.targetPoints)
+                                        final progress = goal.targetPoints > 0
+                                            ? (child.points / goal.targetPoints)
                                                 .clamp(0.0, 1.0)
                                             : 0.0;
                                         final isAchieved =
@@ -152,8 +147,7 @@ class GoalsScreen extends StatelessWidget {
                                             ? const Color(0xFF00E676)
                                             : const Color(0xFF00B0FF);
                                         return GlassCard(
-                                          margin: const EdgeInsets
-                                              .symmetric(
+                                          margin: const EdgeInsets.symmetric(
                                               horizontal: 0, vertical: 4),
                                           padding: const EdgeInsets.all(14),
                                           borderRadius: 16,
@@ -166,15 +160,16 @@ class GoalsScreen extends StatelessWidget {
                                               height: 42,
                                               decoration: BoxDecoration(
                                                 shape: BoxShape.circle,
-                                                color: goalColor
-                                                    .withValues(alpha: 0.12),
+                                                color: goalColor.withValues(
+                                                    alpha: 0.12),
                                                 border: Border.all(
-                                                    color: goalColor
-                                                        .withValues(alpha: 0.3)),
+                                                    color: goalColor.withValues(
+                                                        alpha: 0.3)),
                                                 boxShadow: [
                                                   BoxShadow(
-                                                      color: goalColor
-                                                          .withValues(alpha: 0.15),
+                                                      color:
+                                                          goalColor.withValues(
+                                                              alpha: 0.15),
                                                       blurRadius: 8)
                                                 ],
                                               ),
@@ -195,23 +190,21 @@ class GoalsScreen extends StatelessWidget {
                                                   Text(
                                                     goal.title,
                                                     maxLines: 1,
-                                                    overflow: TextOverflow
-                                                        .ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: TextStyle(
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       fontSize: 15,
                                                       color: Colors.white,
-                                                      decoration: goal
-                                                              .completed
+                                                      decoration: goal.completed
                                                           ? TextDecoration
                                                               .lineThrough
                                                           : null,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 6),
-                                                  TweenAnimationBuilder<
-                                                      double>(
+                                                  TweenAnimationBuilder<double>(
                                                     tween: Tween(
                                                         begin: 0.0,
                                                         end: progress),
@@ -221,15 +214,16 @@ class GoalsScreen extends StatelessWidget {
                                                     builder: (_, v, __) =>
                                                         ClipRRect(
                                                       borderRadius:
-                                                          BorderRadius
-                                                              .circular(4),
+                                                          BorderRadius.circular(
+                                                              4),
                                                       child:
                                                           LinearProgressIndicator(
                                                         value: v,
                                                         minHeight: 6,
-                                                        backgroundColor:
-                                                            Colors.white
-                                                                .withValues(alpha: 0.06),
+                                                        backgroundColor: Colors
+                                                            .white
+                                                            .withValues(
+                                                                alpha: 0.06),
                                                         valueColor:
                                                             AlwaysStoppedAnimation(
                                                                 goalColor),
@@ -241,8 +235,8 @@ class GoalsScreen extends StatelessWidget {
                                                       '${child.points}/${goal.targetPoints} points',
                                                       style: TextStyle(
                                                           fontSize: 11,
-                                                          color:
-                                                              Colors.grey[500])),
+                                                          color: Colors
+                                                              .grey[500])),
                                                 ],
                                               ),
                                             ),
@@ -250,13 +244,11 @@ class GoalsScreen extends StatelessWidget {
                                               icon: Icon(Icons.more_vert,
                                                   color: Colors.grey[600],
                                                   size: 20),
-                                              color:
-                                                  const Color(0xFF162033),
-                                              shape:
-                                                  RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius
-                                                              .circular(14)),
+                                              color: const Color(0xFF162033),
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          14)),
                                               itemBuilder: (_) => [
                                                 PopupMenuItem(
                                                   value: 'toggle',
@@ -265,8 +257,7 @@ class GoalsScreen extends StatelessWidget {
                                                           ? 'Rouvrir'
                                                           : 'Terminer',
                                                       style: const TextStyle(
-                                                          color:
-                                                              Colors.white)),
+                                                          color: Colors.white)),
                                                 ),
                                                 const PopupMenuItem(
                                                   value: 'delete',
@@ -277,14 +268,14 @@ class GoalsScreen extends StatelessWidget {
                                                 ),
                                               ],
                                               onSelected: (v) {
-                                                PinGuard.guardAction(
-                                                    context, () {
+                                                PinGuard.guardAction(context,
+                                                    () {
                                                   if (v == 'toggle')
-                                                    provider.toggleGoal(
-                                                        goal.id);
+                                                    provider
+                                                        .toggleGoal(goal.id);
                                                   if (v == 'delete')
-                                                    provider.removeGoal(
-                                                        goal.id);
+                                                    provider
+                                                        .removeGoal(goal.id);
                                                 });
                                               },
                                             ),
@@ -309,7 +300,7 @@ class GoalsScreen extends StatelessWidget {
   void _showAddGoal(BuildContext context) {
     final provider = context.read<FamilyProvider>();
     final titleCtrl = TextEditingController();
-    int targetPoints = 100;
+    int targetPoints = 5;
     String? selectedChildId =
         provider.children.isNotEmpty ? provider.children.first.id : null;
     final primary = Theme.of(context).colorScheme.primary;
@@ -319,12 +310,10 @@ class GoalsScreen extends StatelessWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
           backgroundColor: const Color(0xFF0D1B2A),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const NeonText(
-              text: 'Nouvel objectif',
-              fontSize: 18,
-              color: Colors.white),
+              text: 'Nouvel objectif', fontSize: 18, color: Colors.white),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               // Correction : value: au lieu de initialValue:
@@ -367,18 +356,16 @@ class GoalsScreen extends StatelessWidget {
                   icon: const Icon(Icons.remove_circle_outline,
                       color: Colors.white54),
                   onPressed: () {
-                    if (targetPoints > 10)
-                      setState(() => targetPoints -= 10);
+                    if (targetPoints > 1) setState(() => targetPoints -= 1);
                   },
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
                     color: primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
-                    border:
-                        Border.all(color: primary.withValues(alpha: 0.2)),
+                    border: Border.all(color: primary.withValues(alpha: 0.2)),
                   ),
                   child: NeonText(
                       text: '$targetPoints',
@@ -389,8 +376,7 @@ class GoalsScreen extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline,
                       color: Colors.white54),
-                  onPressed: () =>
-                      setState(() => targetPoints += 10),
+                  onPressed: () => setState(() => targetPoints += 1),
                 ),
               ]),
             ]),
@@ -403,8 +389,8 @@ class GoalsScreen extends StatelessWidget {
               onPressed: () {
                 if (titleCtrl.text.trim().isNotEmpty &&
                     selectedChildId != null) {
-                  provider.addGoal(selectedChildId!,
-                      titleCtrl.text.trim(), targetPoints);
+                  provider.addGoal(
+                      selectedChildId!, titleCtrl.text.trim(), targetPoints);
                   Navigator.pop(ctx);
                 }
               },
@@ -416,4 +402,3 @@ class GoalsScreen extends StatelessWidget {
     );
   }
 }
-

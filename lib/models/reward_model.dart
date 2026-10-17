@@ -6,15 +6,15 @@
 
 class RewardModel {
   String id;
-  String title;          // Ex: "15 min de console"
-  String description;    // Ex: "Tu peux jouer 15 min de plus sur ta console"
-  int cost;              // Coût en points (ex: 50)
-  String icon;           // Emoji ou icône (ex: "🎮")
-  String category;       // 'privilege', 'treat', 'chore_pass', 'custom'
-  bool isActive;         // Si la récompense est disponible à l'achat
-  int? maxPerWeek;       // Limite d'achat par semaine (null = illimité)
+  String title; // Ex: "15 min de console"
+  String description; // Ex: "Tu peux jouer 15 min de plus sur ta console"
+  int cost; // Coût en points (ex: 50)
+  String icon; // Emoji ou icône (ex: "🎮")
+  String category; // 'privilege', 'treat', 'chore_pass', 'custom'
+  bool isActive; // Si la récompense est disponible à l'achat
+  int? maxPerWeek; // Limite d'achat par semaine (null = illimité)
   DateTime createdAt;
-  String? photoBase64;   // 📸 Photo optionnelle du produit
+  String? photoBase64; // 📸 Photo optionnelle du produit
 
   RewardModel({
     required this.id,
@@ -67,58 +67,66 @@ class RewardModel {
 
   /// Récompenses par défaut (pré-remplies quand une famille démarre)
   static List<RewardModel> get defaultRewards => [
-    RewardModel(
-      id: 'default_screen_time',
-      title: '15 min d\'écran',
-      description: '15 minutes supplémentaires de console, tablette ou TV',
-      cost: 50,
-      icon: '🎮',
-      category: 'privilege',
-      maxPerWeek: 4,
-    ),
-    RewardModel(
-      id: 'default_bedtime',
-      title: 'Coucher tardif',
-      description: 'Se coucher 30 min plus tard le week-end',
-      cost: 80,
-      icon: '🌙',
-      category: 'privilege',
-      maxPerWeek: 1,
-    ),
-    RewardModel(
-      id: 'default_meal_choice',
-      title: 'Choix du repas',
-      description: 'Tu choisis le repas d\'un soir de cette semaine',
-      cost: 100,
-      icon: '🍕',
-      category: 'privilege',
-      maxPerWeek: 1,
-    ),
-    RewardModel(
-      id: 'default_chore_pass',
-      title: 'Joker corvée',
-      description: 'Échapper à une tâche ménagère de ton choix',
-      cost: 150,
-      icon: '🃏',
-      category: 'chore_pass',
-      maxPerWeek: 1,
-    ),
-    RewardModel(
-      id: 'default_treat',
-      title: 'Petite gourmandise',
-      description: 'Une petite gourmandise au choix',
-      cost: 60,
-      icon: '🍫',
-      category: 'treat',
-    ),
-    RewardModel(
-      id: 'default_movie_choice',
-      title: 'Choix du film',
-      description: 'Tu choisis le film du vendredi soir',
-      cost: 120,
-      icon: '🎬',
-      category: 'privilege',
-      maxPerWeek: 1,
-    ),
-  ];
+        RewardModel(
+          id: 'default_screen_time',
+          title: '30 min d\'écran',
+          description: '30 minutes supplémentaires de console, tablette ou TV',
+          cost: 3,
+          icon: '🎮',
+          category: 'privilege',
+          maxPerWeek: 4,
+        ),
+        RewardModel(
+          id: 'default_screen_hour',
+          title: '60 min d\'écran',
+          description: 'Une heure de console, tablette ou TV',
+          cost: 5,
+          icon: '🎮',
+          category: 'privilege',
+        ),
+        RewardModel(
+          id: 'default_bedtime',
+          title: 'Coucher tardif',
+          description: 'Se coucher 30 min plus tard le week-end',
+          cost: 4,
+          icon: '🌙',
+          category: 'privilege',
+          maxPerWeek: 1,
+        ),
+        RewardModel(
+          id: 'default_meal_choice',
+          title: 'Choix du repas',
+          description: 'Tu choisis le repas d\'un soir de cette semaine',
+          cost: 5,
+          icon: '🍕',
+          category: 'privilege',
+          maxPerWeek: 1,
+        ),
+        RewardModel(
+          id: 'default_chore_pass',
+          title: 'Joker corvée',
+          description: 'Échapper à une tâche ménagère de ton choix',
+          cost: 8,
+          icon: '🃏',
+          category: 'chore_pass',
+          maxPerWeek: 1,
+        ),
+        RewardModel(
+          id: 'default_treat',
+          title: 'Petite gourmandise',
+          description: 'Une petite gourmandise au choix',
+          cost: 3,
+          icon: '🍫',
+          category: 'treat',
+        ),
+        RewardModel(
+          id: 'default_movie_choice',
+          title: 'Choix du film',
+          description: 'Tu choisis le film du vendredi soir',
+          cost: 6,
+          icon: '🎬',
+          category: 'privilege',
+          maxPerWeek: 1,
+        ),
+      ];
 }

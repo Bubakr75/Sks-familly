@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const {normalizePointsScaleVersion, assertPointsScale} = require("./points_scale");
 const {
   isDurableVerifiedAuth,
 } = require("./family_access_control");
@@ -24,7 +25,7 @@ function normalizePointAction(data) {
   const reason = data && data.reason;
   const category = data && data.category;
   const isBonus = data && data.isBonus;
-  if (!Number.isInteger(amount) || amount < 1 || amount > 999) {
+  if (!Number.isInteger(amount) || amount < 0 || amount > 999) {
     throw new Error("INVALID_AMOUNT");
   }
   if (typeof reason !== "string" ||
@@ -61,6 +62,25 @@ function normalizePointAction(data) {
     throw new Error("INVALID_PENALTY_LINES_INSTRUCTION");
   }
 
+  const sanctionType = data.sanctionType == null ? null : data.sanctionType;
+  const sanctionLabel = typeof data.sanctionLabel === "string" ? data.sanctionLabel.trim() : null;
+  if (sanctionType != null && !["lines", "chore", "essay", "repair", "yellow_card", "red_card", "custom"].includes(sanctionType)) {
+    throw new Error("INVALID_SANCTION_TYPE");
+  }
+  if (sanctionType != null && (isBonus || penaltyLinesCount == null)) {
+    throw new Error("INVALID_SANCTION_TYPE");
+  }
+  if (["chore", "repair", "yellow_card", "red_card", "custom"].includes(sanctionType) &&
+      (penaltyLinesCount !== 1 || !penaltyLinesInstruction || !sanctionLabel ||
+       sanctionLabel.length > 80 || /[\u0000-\u001f]/.test(sanctionLabel))) {
+    throw new Error("INVALID_SANCTION_DETAILS");
+  }
+  if (amount === 0 && (isBonus || penaltyLinesCount == null)) {
+    throw new Error("INVALID_AMOUNT");
+  }
+  if (sanctionType === "essay" && (!penaltyLinesInstruction || !sanctionLabel || sanctionLabel.length > 80 || /[\u0000-\u001f]/.test(sanctionLabel))) {
+    throw new Error("INVALID_SANCTION_DETAILS");
+  }
   let photoStoragePath = null;
   if (data.photoStoragePath != null) {
     if (typeof data.photoStoragePath !== "string") {
@@ -80,9 +100,11 @@ function normalizePointAction(data) {
     reason: reason.trim(),
     category: category.trim(),
     isBonus,
+    ...(data.pointsScaleVersion === undefined ? {} : {pointsScaleVersion: normalizePointsScaleVersion(data.pointsScaleVersion)}),
     photoStoragePath,
     penaltyLinesCount,
     penaltyLinesInstruction,
+    ...(sanctionType == null ? {} : {sanctionType, sanctionLabel}),
   };
 }
 
@@ -172,6 +194,7 @@ function buildPointHistory({
     reason: action.reason,
     category: action.category,
     isBonus: action.isBonus,
+    ...(action.pointsScaleVersion == null ? {} : {pointsScaleVersion: action.pointsScaleVersion}),
     date: serverDate,
     createdAt,
     actorUid: actor.actorUid,
@@ -181,6 +204,10 @@ function buildPointHistory({
     proofPhotoPath: action.photoStoragePath,
   };
   if (action.penaltyLinesCount != null) {
+    if (action.sanctionType) {
+      history.sanctionType = action.sanctionType;
+      history.sanctionLabel = action.sanctionLabel;
+    }
     history.hasPenaltyLines = true;
     history.penaltyLinesCount = action.penaltyLinesCount;
     history.penaltyLinesInstruction = action.penaltyLinesInstruction;
@@ -198,6 +225,7 @@ function buildPenaltyLines({action, actor, createdAt, serverDate}) {
   return {
     id: action.actionId,
     penaltyHistoryId: action.actionId,
+    ...(action.sanctionType ? {sanctionType: action.sanctionType, sanctionLabel: action.sanctionLabel} : {}),
     childId: action.childId,
     text: action.penaltyLinesInstruction || "",
     totalLines: count,
@@ -237,6 +265,9 @@ function createPointActionFunctions({functions, admin, db}) {
     if (error && typeof error.message === "string" &&
         error.message.startsWith("INVALID_")) {
       return new HttpsError("invalid-argument", "Action de points invalide.");
+    }
+    if (error?.message === "POINTS_SCALE_UPDATE_REQUIRED") {
+      return new HttpsError("failed-precondition", "Mets à jour SKS Family pour utiliser le nouveau barème de points.");
     }
     console.error("Point action error:", error);
     return new HttpsError("internal", "L'action n'a pas pu être enregistrée.");
@@ -305,6 +336,7 @@ function createPointActionFunctions({functions, admin, db}) {
           return {...existing.result, status: "committed", idempotent: true};
         }
 
+        assertPointsScale(familySnap.data(), action.pointsScaleVersion);
         const child = childSnap.data();
         if (!Number.isInteger(child.points) || child.points < 0) {
           throw new HttpsError(
@@ -314,7 +346,7 @@ function createPointActionFunctions({functions, admin, db}) {
         }
         const actualAmount = action.isBonus
           ? action.amount : Math.min(action.amount, child.points);
-        if (actualAmount < 1) {
+        if (actualAmount < 1 && action.penaltyLinesCount == null) {
           throw new HttpsError(
             "failed-precondition",
             "Aucun point ne peut être retiré."

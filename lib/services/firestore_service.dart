@@ -44,10 +44,13 @@ class FirestoreService {
     String? photoStoragePath,
     int? penaltyLinesCount,
     String? penaltyLinesInstruction,
+    String? sanctionType,
+    String? sanctionLabel,
   }) {
     return {
       'familyId': familyId,
       'actionId': actionId,
+      'pointsScaleVersion': 2,
       'childId': childId,
       'amount': amount,
       'reason': reason.trim(),
@@ -57,6 +60,8 @@ class FirestoreService {
       if (penaltyLinesCount != null) 'penaltyLinesCount': penaltyLinesCount,
       if (penaltyLinesInstruction != null)
         'penaltyLinesInstruction': penaltyLinesInstruction.trim(),
+      if (sanctionType != null) 'sanctionType': sanctionType,
+      if (sanctionLabel != null) 'sanctionLabel': sanctionLabel.trim(),
     };
   }
 
@@ -1059,6 +1064,8 @@ class FirestoreService {
     String? photoStoragePath,
     int? penaltyLinesCount,
     String? penaltyLinesInstruction,
+    String? sanctionType,
+    String? sanctionLabel,
     void Function()? onVerifying,
   }) async {
     final currentFamilyId = _familyId;
@@ -1080,6 +1087,8 @@ class FirestoreService {
       photoStoragePath: photoStoragePath,
       penaltyLinesCount: penaltyLinesCount,
       penaltyLinesInstruction: penaltyLinesInstruction,
+      sanctionType: sanctionType,
+      sanctionLabel: sanctionLabel,
     );
     await _savePendingPointAction(
       familyId: currentFamilyId,
@@ -1544,6 +1553,7 @@ class FirestoreService {
     final payload = <String, dynamic>{
       'familyId': currentFamilyId,
       'operation': operation,
+      'pointsScaleVersion': 2,
       'operationId': operationId,
       if (childId != null) 'childId': childId,
       if (rewardId != null) 'rewardId': rewardId,

@@ -1,3 +1,4 @@
+import 'sanction_selector.dart';
 // lib/widgets/point_action_panel.dart
 //
 // Composant partagé pour les écrans Bonus et Pénalité.
@@ -92,7 +93,9 @@ class _PointActionPanelState extends State<PointActionPanel>
 
   String? _selectedChildId;
   ActionMotif? _selectedMotif;
-  int _amount = 5;
+  int _amount = 1;
+  bool _deductPoints = false;
+  int get _effectiveAmount => widget.config.isBonus || _deductPoints ? _amount : 0;
   bool _processing = false;
   bool _verifying = false;
   late AnimationController _celebrationController;
@@ -119,6 +122,9 @@ class _PointActionPanelState extends State<PointActionPanel>
   late final TextEditingController _penaltyLinesCountCtrl;
   late final TextEditingController _penaltyLinesInstructionCtrl;
   bool? _hasPenaltyLines;
+  String? _sanctionType;
+  String? _sanctionLabel;
+  int _sanctionReset = 0;
 
   @override
   void initState() {
@@ -209,6 +215,7 @@ class _PointActionPanelState extends State<PointActionPanel>
   bool get _editingLocked => _processing || _retryStateUncertain;
 
   bool get _isAmountValid {
+    if (!widget.config.isBonus && !_deductPoints) return true;
     final value = int.tryParse(_amountTextCtrl.text);
     return value != null && value >= 1 && value <= 999;
   }
@@ -216,9 +223,11 @@ class _PointActionPanelState extends State<PointActionPanel>
   bool get _isPenaltyLinesValid {
     if (widget.config.isBonus) return true;
     if (_hasPenaltyLines == null) return false;
-    if (_hasPenaltyLines == false) return true;
+    if (_hasPenaltyLines == false) return _deductPoints;
+    if ((_sanctionType != 'lines' && _sanctionType != 'essay'))
+      return _penaltyLinesInstructionCtrl.text.trim().isNotEmpty;
     final count = int.tryParse(_penaltyLinesCountCtrl.text.trim());
-    return count != null && count > 0 && count <= 10000;
+    return count != null && count > 0 && count <= 10000 && (_sanctionType != 'essay' || _penaltyLinesInstructionCtrl.text.trim().isNotEmpty);
   }
 
   /// Un motif classique est toujours valide. "Autre" nécessite un texte non vide.
@@ -345,7 +354,7 @@ class _PointActionPanelState extends State<PointActionPanel>
       return;
     }
 
-    if (!widget.config.isBonus && child.points <= 0) {
+    if (!widget.config.isBonus && _deductPoints && _hasPenaltyLines != true && child.points <= 0) {
       HapticFeedback.heavyImpact();
       messenger.showSnackBar(const SnackBar(
         content: Text('Cet enfant n’a aucun point à retirer'),
@@ -361,7 +370,7 @@ class _PointActionPanelState extends State<PointActionPanel>
     // Toutes les valeurs sont figées avant le premier await.
     final childName = child.name;
     final capturedMotif = _selectedMotif!;
-    final capturedAmount = _amount;
+    final capturedAmount = _effectiveAmount;
     final capturedIsBonus = widget.config.isBonus;
     final capturedCategory = widget.config.category;
     final capturedPhoto = _photo;
@@ -384,7 +393,7 @@ class _PointActionPanelState extends State<PointActionPanel>
         ? _penaltyLinesInstructionCtrl.text.trim()
         : null;
 
-    if (actualAmount < 1) {
+    if (actualAmount < 1 && _hasPenaltyLines != true) {
       setState(() => _processing = false);
       messenger.showSnackBar(const SnackBar(
         content: Text('Aucun point ne peut être appliqué.'),
@@ -405,6 +414,8 @@ class _PointActionPanelState extends State<PointActionPanel>
         hasPhoto: capturedPhoto != null,
         penaltyLinesCount: capturedLinesCount,
         penaltyLinesInstruction: capturedLinesInstruction,
+        sanctionType: capturedLinesCount != null ? _sanctionType : null,
+        sanctionLabel: capturedLinesCount != null ? _sanctionLabel : null,
         onVerifying: () {
           if (mounted) setState(() => _verifying = true);
         },
@@ -441,6 +452,8 @@ class _PointActionPanelState extends State<PointActionPanel>
           hasPhoto: capturedPhoto != null,
           penaltyLinesCount: capturedLinesCount,
           penaltyLinesInstruction: capturedLinesInstruction,
+          sanctionType: capturedLinesCount != null ? _sanctionType : null,
+          sanctionLabel: capturedLinesCount != null ? _sanctionLabel : null,
           onVerifying: () {
             if (mounted) setState(() => _verifying = true);
           },
@@ -458,6 +471,8 @@ class _PointActionPanelState extends State<PointActionPanel>
           photoStoragePath: photoStoragePath,
           penaltyLinesCount: capturedLinesCount,
           penaltyLinesInstruction: capturedLinesInstruction,
+          sanctionType: capturedLinesCount != null ? _sanctionType : null,
+          sanctionLabel: capturedLinesCount != null ? _sanctionLabel : null,
           onVerifying: draft.onVerifying,
         );
         return entry.points;
@@ -497,6 +512,10 @@ class _PointActionPanelState extends State<PointActionPanel>
       _processing = false;
       _verifying = false;
       _hasPenaltyLines = null;
+      _deductPoints = false;
+      _sanctionReset++;
+      _sanctionType = null;
+      _sanctionLabel = null;
       _penaltyLinesCountCtrl.clear();
       _penaltyLinesInstructionCtrl.clear();
     });
@@ -826,7 +845,14 @@ class _PointActionPanelState extends State<PointActionPanel>
 
                     // ── Montant ──
                     if (_selectedMotif != null) ...[
-                      Text('Montant',
+                      if (!config.isBonus)
+                        SwitchListTile(
+                          title: const Text('Retirer aussi des points'),
+                          subtitle: const Text('Aucun retrait par défaut'),
+                          value: _deductPoints,
+                          onChanged: _editingLocked ? null : (value) => setState(() { _deductPoints = value; _actionId = null; }),
+                        ),
+                      Text(config.isBonus ? 'Montant' : 'Points à retirer si l’option est activée',
                           style: TextStyle(
                               color: config.accentColor,
                               fontSize: 16,
@@ -915,7 +941,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                       // Presets rapides
                       Wrap(
                         spacing: 8,
-                        children: [1, 2, 3, 5, 10].map((v) {
+                        children: [1, 2, 3, 4, 5].map((v) {
                           return GestureDetector(
                             onTap: _editingLocked ? null : () => _setAmount(v),
                             child: Container(
@@ -947,58 +973,38 @@ class _PointActionPanelState extends State<PointActionPanel>
                       const SizedBox(height: 20),
 
                       if (!widget.config.isBonus) ...[
-                        Text(
-                          'Cette pénalité comporte-t-elle des lignes à faire ?',
-                          style: TextStyle(
-                            color: config.accentColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        RadioGroup<bool>(
-                          groupValue: _hasPenaltyLines,
-                          onChanged: _editingLocked
-                              ? (_) {}
-                              : (value) => setState(() {
-                                    _hasPenaltyLines = value;
-                                    if (value == false) {
-                                      _penaltyLinesCountCtrl.clear();
-                                      _penaltyLinesInstructionCtrl.clear();
-                                    }
-                                  }),
-                          child: const Row(
-                            children: [
-                              Expanded(
-                                child: RadioListTile<bool>(
-                                  value: false,
-                                  title: Text('Non'),
-                                ),
-                              ),
-                              Expanded(
-                                child: RadioListTile<bool>(
-                                  value: true,
-                                  title: Text('Oui'),
-                                ),
-                              ),
-                            ],
-                          ),
+                        SanctionSelector(
+                          key: ValueKey(_sanctionReset),
+                          enabled: !_editingLocked,
+                          onChanged: (type, label, instruction) => setState(() {
+                            _sanctionType = type;
+                            if (type == null) _deductPoints = true;
+                            _sanctionLabel = label;
+                            _hasPenaltyLines = type != null;
+                            _penaltyLinesCountCtrl.text =
+                                (type == 'lines' || type == 'essay') ? '' : '1';
+                            _penaltyLinesInstructionCtrl.text = instruction;
+                            _actionId = null;
+                          }),
                         ),
                         if (_hasPenaltyLines == true) ...[
-                          TextField(
-                            key: const ValueKey('penalty_lines_count'),
-                            controller: _penaltyLinesCountCtrl,
-                            enabled: !_editingLocked,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Nombre de lignes à faire',
-                              errorText: null,
+                          if ((_sanctionType == 'lines' || _sanctionType == 'essay'))
+                            TextField(
+                              key: const ValueKey('penalty_lines_count'),
+                              controller: _penaltyLinesCountCtrl,
+                              enabled: !_editingLocked,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              decoration: InputDecoration(
+                                labelText: _sanctionType == 'essay' ? 'Nombre de lignes de rédaction' : 'Nombre de lignes à copier',
+                                errorText: null,
+                              ),
+                              onChanged: (_) => setState(() {}),
                             ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          if (_penaltyLinesCountCtrl.text.isNotEmpty &&
+                          if ((_sanctionType == 'lines' || _sanctionType == 'essay') &&
+                              _penaltyLinesCountCtrl.text.isNotEmpty &&
                               !_isPenaltyLinesValid)
                             const Padding(
                               padding: EdgeInsets.only(top: 6),
@@ -1013,9 +1019,11 @@ class _PointActionPanelState extends State<PointActionPanel>
                             enabled: !_editingLocked,
                             maxLength: 500,
                             maxLines: 3,
-                            decoration: const InputDecoration(
-                              labelText:
-                                  'Consigne ou texte à recopier (facultatif)',
+                            onChanged: (_) => setState(() => _actionId = null),
+                            decoration: InputDecoration(
+                              labelText: (_sanctionType == 'lines' || _sanctionType == 'essay')
+                                  ? (_sanctionType == 'essay' ? 'Questions de réflexion à développer' : 'Texte à recopier (facultatif)')
+                                  : 'Consigne à effectuer',
                             ),
                           ),
                           Container(
@@ -1027,7 +1035,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                                   Border.all(color: Colors.deepOrangeAccent),
                             ),
                             child: const Text(
-                              "L’accès aux écrans sera interdit jusqu’à validation des lignes par un parent.",
+                              "L’accès aux écrans sera interdit jusqu’à validation de la sanction par un parent.",
                               style: TextStyle(
                                 color: Colors.orangeAccent,
                                 fontWeight: FontWeight.w700,
@@ -1150,7 +1158,7 @@ class _PointActionPanelState extends State<PointActionPanel>
                                   size: 18),
                               const SizedBox(width: 8),
                               Text(
-                                  '${pointActionBalancePreview(balance: selectedChild.points, requested: _amount, isBonus: widget.config.isBonus)}',
+                                  '${pointActionBalancePreview(balance: selectedChild.points, requested: _effectiveAmount, isBonus: widget.config.isBonus)}',
                                   style: TextStyle(
                                       color: config.primaryColor,
                                       fontSize: 20,

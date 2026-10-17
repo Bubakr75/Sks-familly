@@ -1,3 +1,4 @@
+import 'sanction_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
@@ -36,13 +37,16 @@ class QuickPointActionForm extends StatefulWidget {
 class _QuickPointActionFormState extends State<QuickPointActionForm> {
   static const _uuid = Uuid();
   final _reasonController = TextEditingController();
-  final _amountController = TextEditingController(text: '5');
+  bool _deductPoints = false;
+  final _amountController = TextEditingController(text: '1');
   final _linesController = TextEditingController();
   final _instructionController = TextEditingController();
   QuickPointActionPreset? _preset;
   late String _childId;
   bool _isOther = false;
   bool? _hasLines;
+  String? _sanctionType;
+  String? _sanctionLabel;
   bool _submitting = false;
   bool _verifying = false;
   String? _operationId;
@@ -108,12 +112,15 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
     final linesValid = widget.isBonus ||
         (_hasLines != null &&
             (_hasLines == false ||
-                ((int.tryParse(_linesController.text.trim()) ?? 0) > 0)));
+                ((int.tryParse(_linesController.text.trim()) ?? 0) > 0 &&
+                    (int.tryParse(_linesController.text.trim()) ?? 0) <= 10000 &&
+                    (_sanctionType == 'lines' ||
+                        _instructionController.text.trim().isNotEmpty))));
     return !_submitting &&
         widget.children.any((child) => child.id == _childId) &&
         _serviceAvailable &&
         amount != null &&
-        amount > 0 &&
+        (widget.isBonus || _deductPoints ? amount > 0 : _hasLines == true) &&
         amount <= 999 &&
         reasonValid &&
         linesValid;
@@ -155,7 +162,7 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
     final draft = PointActionDraft(
       actionId: _operationId ??= _uuid.v4(),
       childId: _childId,
-      amount: int.parse(_amountController.text.trim()),
+      amount: widget.isBonus || _deductPoints ? int.parse(_amountController.text.trim()) : 0,
       reason: reason,
       category: widget.isBonus ? 'bonus' : 'penalty',
       isBonus: widget.isBonus,
@@ -164,6 +171,8 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
           _hasLines == true ? int.parse(_linesController.text.trim()) : null,
       penaltyLinesInstruction:
           _hasLines == true ? _instructionController.text.trim() : null,
+      sanctionType: _hasLines == true ? _sanctionType : null,
+      sanctionLabel: _hasLines == true ? _sanctionLabel : null,
       onVerifying: () {
         if (mounted) setState(() => _verifying = true);
       },
@@ -203,10 +212,12 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (widget.children.isEmpty) const Padding(
-                  padding: EdgeInsets.only(top: 16),
-                  child: Text('Aucun profil enfant disponible. Ajoute un enfant avant d’enregistrer une action.'),
-                ),
+                if (widget.children.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Text(
+                        'Aucun profil enfant disponible. Ajoute un enfant avant d’enregistrer une action.'),
+                  ),
                 if (widget.children.length > 1) ...[
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
@@ -257,10 +268,17 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                   ),
                 ],
                 const SizedBox(height: 12),
+                if (!widget.isBonus)
+                  SwitchListTile(
+                    title: const Text('Retirer aussi des points'),
+                    subtitle: const Text('Aucun retrait par défaut'),
+                    value: _deductPoints,
+                    onChanged: _submitting ? null : (value) => setState(() { _deductPoints = value; _operationId = null; }),
+                  ),
                 TextField(
                   key: const ValueKey('quick_amount'),
                   controller: _amountController,
-                  enabled: !_submitting,
+                  enabled: !_submitting && (widget.isBonus || _deductPoints),
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(labelText: 'Points'),
@@ -268,55 +286,39 @@ class _QuickPointActionFormState extends State<QuickPointActionForm> {
                 ),
                 if (!widget.isBonus) ...[
                   const SizedBox(height: 16),
-                  const Text(
-                    'Cette pénalité comporte-t-elle des lignes à faire ?',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  RadioGroup<bool>(
-                    groupValue: _hasLines,
-                    onChanged: _submitting
-                        ? (_) {}
-                        : (value) => setState(() {
-                              _hasLines = value;
-                              _operationId = null;
-                            }),
-                    child: const Row(
-                      children: [
-                        Expanded(
-                          child: RadioListTile<bool>(
-                            value: false,
-                            title: Text('Non'),
-                          ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<bool>(
-                            value: true,
-                            title: Text('Oui'),
-                          ),
-                        ),
-                      ],
-                    ),
+                  SanctionSelector(
+                    enabled: !_submitting,
+                    onChanged: (type, label, instruction) => setState(() {
+                      _sanctionType = type;
+                            if (type == null) _deductPoints = true;
+                      _sanctionLabel = label;
+                      _hasLines = type != null;
+                      _linesController.text = (type == 'lines' || type == 'essay') ? '' : '1';
+                      _instructionController.text = instruction;
+                      _operationId = null;
+                    }),
                   ),
                   if (_hasLines == true) ...[
-                    TextField(
-                      key: const ValueKey('quick_lines_count'),
-                      controller: _linesController,
-                      enabled: !_submitting,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre de lignes à faire',
+                    if ((_sanctionType == 'lines' || _sanctionType == 'essay'))
+                      TextField(
+                        key: const ValueKey('quick_lines_count'),
+                        controller: _linesController,
+                        enabled: !_submitting,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          labelText: _sanctionType == 'essay' ? 'Nombre de lignes de rédaction' : 'Nombre de lignes à copier',
+                        ),
+                        onChanged: (_) => setState(() => _operationId = null),
                       ),
-                      onChanged: (_) => setState(() => _operationId = null),
-                    ),
                     TextField(
                       controller: _instructionController,
                       enabled: !_submitting,
                       maxLength: 500,
                       decoration: const InputDecoration(
-                        labelText: 'Consigne facultative',
+                        labelText: 'Consigne (quantité ou durée à préciser)',
                       ),
                       onChanged: (_) => setState(() => _operationId = null),
                     ),

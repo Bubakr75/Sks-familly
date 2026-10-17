@@ -35,12 +35,12 @@ void main() {
       ChangeNotifierProvider(create: (_) => PinProvider()),
     ], child: const MaterialApp(home: PunishmentLinesScreen())));
     await tester.pump();
-    expect(find.text('Consigne Adam'), findsOneWidget);
+    expect(find.textContaining('Consigne Adam'), findsOneWidget);
     family.currentChildren = [ChildModel(id: 'b', name: 'Lina')];
     family.notifyListeners();
     await tester.pump();
-    expect(find.text('Consigne Adam'), findsNothing);
-    expect(find.text('Consigne Lina'), findsOneWidget);
+    expect(find.textContaining('Consigne Adam'), findsNothing);
+    expect(find.textContaining('Consigne Lina'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     family.dispose();

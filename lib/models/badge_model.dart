@@ -41,79 +41,94 @@ class BadgeModel {
 
   String get powerEmoji {
     switch (powerType) {
-      case 'tv':             return '📺';
-      case 'no_chores':      return '🧹';
-      case 'dessert':        return '🎂';
-      case 'late_bed':       return '🌙';
-      case 'game':           return '🎮';
-      case 'outing':         return '🏠';
-      case 'star':           return '⭐';
-      case 'school':         return '🎓';
-      case 'thumb_up':       return '👍';
-      case 'home':           return '🏠';
-      case 'emoji_events':   return '🏆';
-      case 'military_tech':  return '🎖️';
-      case 'gift':           return '🎁';
-      default:               return '⚡';
+      case 'tv':
+        return '📺';
+      case 'no_chores':
+        return '🧹';
+      case 'dessert':
+        return '🎂';
+      case 'late_bed':
+        return '🌙';
+      case 'game':
+        return '🎮';
+      case 'outing':
+        return '🏠';
+      case 'star':
+        return '⭐';
+      case 'school':
+        return '🎓';
+      case 'thumb_up':
+        return '👍';
+      case 'home':
+        return '🏠';
+      case 'emoji_events':
+        return '🏆';
+      case 'military_tech':
+        return '🎖️';
+      case 'gift':
+        return '🎁';
+      default:
+        return '⚡';
     }
   }
 
   static List<BadgeModel> defaultBadges = [
     BadgeModel(
-      id:             'power_dessert',
-      name:           'Super Dessert',
-      icon:           'dessert',
-      description:    'Choisis le dessert de ton choix',
-      requiredPoints: 25,
-      powerType:      'dessert',
+      id: 'power_dessert',
+      name: 'Super Dessert',
+      icon: 'dessert',
+      description: 'Choisis le dessert de ton choix',
+      requiredPoints: 2,
+      powerType: 'dessert',
     ),
     BadgeModel(
-      id:             'power_tv',
-      name:           'Maitre de la tele',
-      icon:           'tv',
-      description:    'Choisis les dessins animés et films de la journée',
-      requiredPoints: 50,
-      powerType:      'tv',
+      id: 'power_tv',
+      name: 'Maitre de la tele',
+      icon: 'tv',
+      description: 'Choisis les dessins animés et films de la journée',
+      requiredPoints: 3,
+      powerType: 'tv',
     ),
     BadgeModel(
-      id:             'power_late_bed',
-      name:           'Couche-tard',
-      icon:           'late_bed',
-      description:    'Se coucher 30 minutes plus tard',
-      requiredPoints: 80,
-      powerType:      'late_bed',
+      id: 'power_late_bed',
+      name: 'Couche-tard',
+      icon: 'late_bed',
+      description: 'Se coucher 30 minutes plus tard',
+      requiredPoints: 4,
+      powerType: 'late_bed',
     ),
     BadgeModel(
-      id:             'power_game',
-      name:           'Roi du jeu',
-      icon:           'game',
-      description:    '30 minutes de jeu vidéo en bonus',
-      requiredPoints: 120,
-      powerType:      'game',
+      id: 'power_game',
+      name: 'Roi du jeu',
+      icon: 'game',
+      description: '30 minutes de jeu vidéo en bonus',
+      requiredPoints: 6,
+      powerType: 'game',
     ),
     BadgeModel(
-      id:             'power_no_chores',
-      name:           'Pas de corvées',
-      icon:           'no_chores',
-      description:    'Pas de tâches ménagères pour la journée',
-      requiredPoints: 180,
-      powerType:      'no_chores',
+      id: 'power_no_chores',
+      name: 'Pas de corvées',
+      icon: 'no_chores',
+      description: 'Pas de tâches ménagères pour la journée',
+      requiredPoints: 9,
+      powerType: 'no_chores',
     ),
     BadgeModel(
-      id:             'power_outing',
-      name:           'Sortie spéciale',
-      icon:           'outing',
-      description:    'Choisis une sortie en famille',
-      requiredPoints: 250,
-      powerType:      'outing',
+      id: 'power_outing',
+      name: 'Sortie spéciale',
+      icon: 'outing',
+      description: 'Choisis une sortie en famille',
+      requiredPoints: 13,
+      powerType: 'outing',
     ),
     BadgeModel(
-      id:             'power_gift',
-      name:           'Cadeau surprise',
-      icon:           'gift',
-      description:    'Bravo ! Tu as atteint le niveau MAX et tu gagnes un cadeau !',
-      requiredPoints: 300,
-      powerType:      'gift',
+      id: 'power_gift',
+      name: 'Cadeau surprise',
+      icon: 'gift',
+      description:
+          'Bravo ! Tu as atteint le niveau MAX et tu gagnes un cadeau !',
+      requiredPoints: 15,
+      powerType: 'gift',
     ),
   ];
 }

@@ -27,7 +27,7 @@ class HomeActionsPanel extends StatelessWidget {
               Expanded(
                   child: _ActionTile(
                       title: 'Bonus',
-                      subtitle: 'Valoriser un effort',
+                      subtitle: 'Bonne action = 1 point',
                       icon: Icons.add_rounded,
                       color: EmeraldPalette.emeraldLight,
                       onTap: onBonus)),
@@ -49,12 +49,12 @@ class HomeActionsPanel extends StatelessWidget {
                     color: EmeraldPalette.textSecondary),
                 title: Text(
                     showParentActions
-                        ? 'Lignes de punition et immunités'
-                        : 'Mes lignes et immunités',
+                        ? 'Sanctions et immunités'
+                        : 'Mes sanctions et immunités',
                     style: const TextStyle(
                         color: EmeraldPalette.textPrimary,
                         fontWeight: FontWeight.w700)),
-                subtitle: const Text('Voir les lignes et leur progression',
+                subtitle: const Text('Lignes, corvées et suivi des sanctions',
                     style: TextStyle(color: EmeraldPalette.textSecondary)),
                 trailing: const Icon(Icons.chevron_right_rounded,
                     color: EmeraldPalette.textSecondary),

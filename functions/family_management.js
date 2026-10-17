@@ -69,6 +69,7 @@ function buildManagedFamilyData({
     memberCount: 1,
     ownerUid,
     schemaVersion: 2,
+    pointsScaleVersion: 2,
     migrationStatus: "native",
   };
 }

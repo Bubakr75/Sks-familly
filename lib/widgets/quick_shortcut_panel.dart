@@ -17,7 +17,7 @@ class QuickPenaltyFormState {
 
   String selectedChildId;
   (String, int)? selectedPreset;
-  int customPoints = 3;
+  int customPoints = 1;
   bool isSubmitting = false;
   bool? hasPenaltyLines;
   int? penaltyLinesCount;
@@ -381,16 +381,16 @@ void _showReliableQuickPointAction(
   if (fp.children.isEmpty) return;
   final presets = isBonus
       ? const [
-          QuickPointActionPreset('Devoirs faits', 5),
-          QuickPointActionPreset('Chambre rangée', 3),
-          QuickPointActionPreset('Aide en cuisine', 3),
-          QuickPointActionPreset('Bonne attitude', 3),
+          QuickPointActionPreset('Devoirs faits', 1),
+          QuickPointActionPreset('Chambre rangée', 1),
+          QuickPointActionPreset('Aide en cuisine', 1),
+          QuickPointActionPreset('Bonne attitude', 1),
         ]
       : const [
-          QuickPointActionPreset('Dispute', 5),
-          QuickPointActionPreset('Insolence', 5),
-          QuickPointActionPreset('Devoirs non faits', 4),
-          QuickPointActionPreset('Manque de respect', 5),
+          QuickPointActionPreset('Dispute', 1),
+          QuickPointActionPreset('Insolence', 1),
+          QuickPointActionPreset('Devoirs non faits', 1),
+          QuickPointActionPreset('Manque de respect', 1),
         ];
   showModalBottomSheet<void>(
     context: context,
@@ -421,6 +421,8 @@ void _showReliableQuickPointAction(
               actionId: draft.actionId,
               penaltyLinesCount: draft.penaltyLinesCount,
               penaltyLinesInstruction: draft.penaltyLinesInstruction,
+              sanctionType: draft.sanctionType,
+              sanctionLabel: draft.sanctionLabel,
               onVerifying: draft.onVerifying,
             );
             if (context.mounted) {
@@ -456,7 +458,7 @@ void _showQuickBonus(BuildContext context, FamilyProvider fp,
   ];
   String selectedId = fp.children.first.id;
   (String, int)? selectedPreset;
-  int customPoints = 5;
+  int customPoints = 1;
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,

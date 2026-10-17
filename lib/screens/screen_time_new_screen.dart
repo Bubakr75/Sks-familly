@@ -1,3 +1,4 @@
+import '../widgets/screen_time_store.dart';
 // lib/screens/screen_time_new_screen.dart
 //
 // Temps d'Écran — Design premium type Apple Watch
@@ -18,7 +19,8 @@ import '../utils/screen_time_alarm_permission.dart';
 import 'punishment_lines_screen.dart';
 
 class ScreenTimeNewScreen extends StatefulWidget {
-  const ScreenTimeNewScreen({super.key});
+  const ScreenTimeNewScreen({super.key, this.initialChildId});
+  final String? initialChildId;
 
   @override
   State<ScreenTimeNewScreen> createState() => _ScreenTimeNewScreenState();
@@ -36,6 +38,7 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
   @override
   void initState() {
     super.initState();
+    _selectedChildId = widget.initialChildId;
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -97,10 +100,13 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
   Widget build(BuildContext context) {
     final fp = context.watch<FamilyProvider>();
     final isParent = context.watch<PinProvider>().isParentMode;
-    final children = fp.children;
+    final children = fp.memberRole == 'child'
+        ? fp.children.where((c) => c.id == fp.memberChildId).toList()
+        : fp.children;
 
-    final child = _selectedChildId != null
-        ? fp.getChild(_selectedChildId!)
+    final matching = children.where((c) => c.id == _selectedChildId);
+    final child = matching.isNotEmpty
+        ? matching.first
         : (children.isNotEmpty ? children.first : null);
 
     if (child == null) {
@@ -121,7 +127,7 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
 
     if (!isParent && fp.isScreenAccessBlocked(child.id)) {
       final pending = fp.pendingPenaltyLinesForChild(child.id);
-      final total = pending.fold<int>(0, (sum, item) => sum + item.totalLines);
+      final total = pending.length;
       return Scaffold(
         backgroundColor: EmeraldPalette.background,
         appBar: AppBar(
@@ -151,7 +157,7 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Lignes de pénalité en attente',
+                    'Sanction en attente',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -160,14 +166,14 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    'L’accès aux écrans est interdit jusqu’à ce que tes lignes soient terminées et validées par un parent.',
+                  Text(
+                    'Écrans bloqués : ${pending.map((s) => s.isWriting ? '${s.sanctionTitle} (${s.totalLines} lignes)' : '${s.sanctionTitle} : ${s.text}').join(', ')}. Termine tes sanctions et fais-les valider par un parent.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white, fontSize: 15),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '$total ligne${total > 1 ? 's' : ''} à faire',
+                    '$total sanction${total > 1 ? 's' : ''} à effectuer',
                     style: const TextStyle(
                       color: Colors.amberAccent,
                       fontWeight: FontWeight.bold,
@@ -182,7 +188,7 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
                       ),
                     ),
                     icon: const Icon(Icons.visibility_rounded),
-                    label: const Text('Voir mes lignes'),
+                    label: const Text('Voir mes sanctions'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white,
                       side: const BorderSide(color: Colors.white),
@@ -280,6 +286,8 @@ class _ScreenTimeNewScreenState extends State<ScreenTimeNewScreen>
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(children: [
+                ScreenTimeStore(child: child),
+                const SizedBox(height: 24),
                 // Horloge circulaire
                 if (account.isOvertime)
                   _OvertimeClock(

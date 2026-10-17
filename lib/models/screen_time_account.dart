@@ -6,11 +6,11 @@
 
 class ScreenTimeAccount {
   String childId;
-  int balanceMinutes;        // Solde de minutes disponibles
-  int totalEarned;           // Total gagné (pour stats)
-  int totalUsed;             // Total consommé (pour stats)
-  DateTime? sessionStart;    // Début de la session en cours (null = pas en cours)
-  int sessionMinutes;        // Minutes au début de la session
+  int balanceMinutes; // Solde de minutes disponibles
+  int totalEarned; // Total gagné (pour stats)
+  int totalUsed; // Total consommé (pour stats)
+  DateTime? sessionStart; // Début de la session en cours (null = pas en cours)
+  int sessionMinutes; // Minutes au début de la session
   List<ScreenTimeTransaction> history;
   int appliedOvertimeTranches; // 🔒 Tranches d'overtime déjà appliquées (par enfant)
 
@@ -28,7 +28,7 @@ class ScreenTimeAccount {
   bool get isRunning => sessionStart != null;
 
   /// True si le temps est écoulé mais que le parent n'a pas encore confirmé l'arrêt.
-  /// Dans ce mode, l'enfant perd 10 pts toutes les 5 minutes.
+  /// Dans ce mode, l'enfant perd 1 point toutes les 5 minutes.
   bool get isOvertime => isRunning && sessionRemaining <= 0;
 
   /// Nombre de minutes d'overtime écoulées depuis la fin du chrono
@@ -39,8 +39,8 @@ class ScreenTimeAccount {
     return DateTime.now().difference(sessionEnd).inMinutes;
   }
 
-  /// Points de pénalité accumulés en overtime (10 pts par tranche de 5 min)
-  int get overtimePenalty => (overtimeMinutes ~/ 5) * 10;
+  /// Points de pénalité accumulés en overtime (1 point par tranche de 5 min)
+  int get overtimePenalty => overtimeMinutes ~/ 5;
 
   /// Minutes restantes dans la session en cours
   int get sessionRemaining {
@@ -74,19 +74,23 @@ class ScreenTimeAccount {
       balanceMinutes: map['balanceMinutes'] ?? 0,
       totalEarned: map['totalEarned'] ?? 0,
       totalUsed: map['totalUsed'] ?? 0,
-      sessionStart: map['sessionStart'] != null ? DateTime.parse(map['sessionStart']) : null,
+      sessionStart: map['sessionStart'] != null
+          ? DateTime.parse(map['sessionStart'])
+          : null,
       sessionMinutes: map['sessionMinutes'] ?? 0,
       appliedOvertimeTranches: map['appliedOvertimeTranches'] ?? 0,
       history: (map['history'] as List<dynamic>?)
-          ?.map((t) => ScreenTimeTransaction.fromMap(Map<String, dynamic>.from(t)))
-          .toList() ?? [],
+              ?.map((t) =>
+                  ScreenTimeTransaction.fromMap(Map<String, dynamic>.from(t)))
+              .toList() ??
+          [],
     );
   }
 }
 
 class ScreenTimeTransaction {
   final int minutes;
-  final String type;        // 'earned' (achat/bonus) ou 'used' (consommé)
+  final String type; // 'earned' (achat/bonus) ou 'used' (consommé)
   final String reason;
   final DateTime date;
 

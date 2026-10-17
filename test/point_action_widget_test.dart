@@ -84,13 +84,40 @@ Future<void> choosePenaltyLines(
   bool value, {
   Key scrollKey = const ValueKey('point_action_scroll_view'),
 }) async {
-  final label = find.text(value ? 'Oui' : 'Non');
-  await scrollTo(tester, label, scrollKey);
-  await tester.tap(label);
-  await tester.pump();
+  final selector = find.byType(DropdownButtonFormField<String>);
+  await scrollTo(tester, selector, scrollKey);
+  await tester.tap(selector);
+  await tester.pumpAndSettle();
+  await tester.tap(find
+      .text(value ? 'Lignes à copier' : 'Retrait de points uniquement')
+      .last);
+  await tester.pumpAndSettle();
 }
 
 void main() {
+  for (final category in [('Rédaction / réflexion','essay'),('🟨 Carton jaune','yellow_card'),('🟥 Carton rouge','red_card')]) {
+    testWidgets('formulaire transmet ${category.$2} sans retrait', (tester) async {
+      PointActionDraft? sent;
+      await pumpMain(tester,isBonus:false,submit:(draft) async {sent=draft;return draft.amount;});
+      await tester.tap(find.text('Insolence'));
+      final selector=find.byType(DropdownButtonFormField<String>);
+      await scrollTo(tester,selector,const ValueKey('point_action_scroll_view'));
+      await tester.tap(selector);await tester.pumpAndSettle();
+      await tester.tap(find.text(category.$1).last);await tester.pumpAndSettle();
+      if(category.$2=='essay') {
+        final count=find.byKey(const ValueKey('penalty_lines_count'));
+        await scrollTo(tester,count,const ValueKey('point_action_scroll_view'));
+        await tester.enterText(count,'12');await tester.pump();
+      }
+      final button=find.byKey(const ValueKey('point_action_apply_button'));
+      expect(tester.widget<ElevatedButton>(button).onPressed,isNotNull);
+      await tester.tap(button);await tester.pumpAndSettle();
+      expect(sent?.amount,0);expect(sent?.sanctionType,category.$2);
+      expect(sent?.penaltyLinesCount,category.$2=='essay'?12:1);
+      expect(sent?.penaltyLinesInstruction,isNotEmpty);
+    });
+  }
+
   group('PointActionPanel réel sur petit écran', () {
     testWidgets('bonus prédéfini reste visible, tappable et transmet le motif',
         (tester) async {

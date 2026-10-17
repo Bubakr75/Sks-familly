@@ -28,7 +28,7 @@ class GoalModel {
         id: map['id'] ?? '',
         childId: map['childId'] ?? '',
         title: map['title'] ?? '',
-        targetPoints: map['targetPoints'] ?? 100,
+        targetPoints: map['targetPoints'] ?? 5,
         completed: map['completed'] ?? false,
         createdAt: map['createdAt'] != null
             ? DateTime.parse(map['createdAt'])

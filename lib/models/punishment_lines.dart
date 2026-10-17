@@ -38,8 +38,17 @@ class PunishmentLines {
     this.status = PenaltyLinesStatus.pending,
     this.completedAt,
     this.completedBy,
+    this.sanctionType = 'lines',
+    this.sanctionLabel,
   })  : createdAt = createdAt ?? DateTime.now(),
         photoUrls = photoUrls ?? [];
+
+  final String sanctionType;
+  final String? sanctionLabel;
+  bool get isLines => sanctionType == 'lines';
+  bool get isWriting => isLines || sanctionType == 'essay';
+  String get sanctionTitle =>
+      isLines ? 'Lignes à copier' : (sanctionLabel ?? 'Corvée');
 
   String id;
   String childId;
@@ -70,6 +79,8 @@ class PunishmentLines {
 
   Map<String, dynamic> toMap() => {
         'id': id,
+        'sanctionType': sanctionType,
+        if (sanctionLabel != null) 'sanctionLabel': sanctionLabel,
         'childId': childId,
         'text': text,
         'totalLines': totalLines,
@@ -104,6 +115,9 @@ class PunishmentLines {
         : PenaltyLinesStatus.pending;
     return PunishmentLines(
       id: _readString(map['id']),
+      sanctionType:
+          map['sanctionType'] is String ? map['sanctionType'] : 'lines',
+      sanctionLabel: _readOptionalString(map['sanctionLabel']),
       childId: _readString(map['childId']),
       text: _readString(
         map['penaltyLinesInstruction'] ?? map['text'],

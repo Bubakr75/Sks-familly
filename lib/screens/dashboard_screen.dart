@@ -1,3 +1,4 @@
+import 'screen_time_new_screen.dart';
 import '../widgets/sks_brand_logo.dart';
 // =============================================================================
 // SKS Family - Dashboard Émeraude Premium
@@ -24,7 +25,6 @@ import 'trade_screen.dart';
 import 'child_dashboard_screen.dart';
 import 'pending_requests_screen.dart';
 import 'tribunal_screen.dart';
-import 'screen_time_new_screen.dart';
 import 'multi_child_evaluation_screen.dart';
 import '../widgets/transfer_points_sheet.dart';
 import '../widgets/family_inbox_bell.dart';
@@ -153,6 +153,20 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
                     ),
 
+                    const SizedBox(height: 16),
+                    EmeraldCard(
+                        child: ListTile(
+                      leading: const Icon(Icons.sports_esports_rounded,
+                          color: EmeraldPalette.gold),
+                      title: const Text('Gagner des points, choisir son temps'),
+                      subtitle: const Text(
+                          'Bonne action : 1 point · 30 min : 3 points · 1 h : 5 points'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (_) => const ScreenTimeNewScreen())),
+                    )),
                     HomeActionsPanel(
                       showParentActions: fp.memberRole != 'child' &&
                           context.watch<PinProvider>().canPerformParentAction(),

@@ -5,7 +5,7 @@
 // - Évaluation hebdomadaire (pas journalière)
 // - Stats filtrées (exclut boutique/overtime/refus)
 // - Questions comportement parent (5 questions pertinentes)
-// - Calcul automatique des points (10 à 200 selon la note)
+// - Calcul automatique des points (1 point par évaluation)
 // - IA Gemini qui prend en compte bonus/pénalités + réponses comportement
 
 import 'dart:convert';
@@ -209,16 +209,7 @@ class _SchoolNotesWeeklyScreenState extends State<SchoolNotesWeeklyScreen>
   }
 
   /// Points attribués selon la note
-  int _noteToPoints(int note) {
-    if (note >= 20) return 200;
-    if (note >= 18) return 180;
-    if (note >= 16) return 150;
-    if (note >= 14) return 120;
-    if (note >= 12) return 90;
-    if (note >= 10) return 60;
-    if (note >= 8) return 30;
-    return 10;
-  }
+  int _noteToPoints(int note) => 1;
 
   /// Évaluation IA pour UN enfant (avec stats + comportement)
   Future<void> _evaluateWithAI(
@@ -635,16 +626,7 @@ class _ChildNoteCard extends StatelessWidget {
     return Colors.redAccent;
   }
 
-  int _noteToPoints(int note) {
-    if (note >= 20) return 200;
-    if (note >= 18) return 180;
-    if (note >= 16) return 150;
-    if (note >= 14) return 120;
-    if (note >= 12) return 90;
-    if (note >= 10) return 60;
-    if (note >= 8) return 30;
-    return 10;
-  }
+  int _noteToPoints(int note) => 1;
 
   void _showFullAppreciation(BuildContext context, String childName) {
     showModalBottomSheet(

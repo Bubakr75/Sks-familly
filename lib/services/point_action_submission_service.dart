@@ -53,6 +53,8 @@ class PointActionDraft {
     required this.hasPhoto,
     this.penaltyLinesCount,
     this.penaltyLinesInstruction,
+    this.sanctionType,
+    this.sanctionLabel,
     this.onVerifying,
   });
 
@@ -65,6 +67,8 @@ class PointActionDraft {
   final bool hasPhoto;
   final int? penaltyLinesCount;
   final String? penaltyLinesInstruction;
+  final String? sanctionType;
+  final String? sanctionLabel;
   final void Function()? onVerifying;
 
   bool get hasPenaltyLines =>
@@ -280,7 +284,7 @@ class PointActionSubmissionCoordinator {
       }
       recordStarted = true;
       final appliedAmount = await recordAction(photoPath);
-      if (appliedAmount < 1) {
+      if (appliedAmount < 0 || (appliedAmount == 0 && (draft.isBonus || draft.penaltyLinesCount == null))) {
         throw const PointActionRemoteException(
           code: 'failed-precondition',
           message: 'Aucun point n’a été appliqué.',

@@ -22,6 +22,14 @@ PointActionDraft draft({
 }
 
 void main() {
+  test('sanction sans retrait confirmée avec zéro point appliqué', () async {
+    final result = await PointActionSubmissionCoordinator().submit(
+      draft: PointActionDraft(actionId: 'zero', childId: 'child-a', amount: 0, reason: 'Rangement', category: 'penalty', isBonus: false, hasPhoto: false, penaltyLinesCount: 1, penaltyLinesInstruction: 'Ranger les jouets', sanctionType: 'chore', sanctionLabel: 'Rangement'),
+      existingPhotoStoragePath: null,
+      uploadPhoto: () async => 'unused', deletePhoto: (_) async {}, recordAction: (_) async => 0);
+    expect(result.success, isTrue);
+    expect(result.appliedAmount, 0);
+  });
   for (final isBonus in [true, false]) {
     for (final custom in [true, false]) {
       for (final withPhoto in [true, false]) {

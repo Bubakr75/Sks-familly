@@ -36,7 +36,7 @@ class HomeBottomNavigation extends StatelessWidget {
                   color: EmeraldPalette.penalty),
               label: 'Pénalité'),
           NavigationDestination(
-              icon: Icon(Icons.menu_book_rounded), label: 'Lignes'),
+              icon: Icon(Icons.menu_book_rounded), label: 'Sanctions'),
           NavigationDestination(
               icon: Icon(Icons.settings_outlined),
               selectedIcon: Icon(Icons.settings_rounded),

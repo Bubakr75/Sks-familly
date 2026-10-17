@@ -105,7 +105,7 @@ void main() {
     expect(selected, 1);
     await tester.tap(find.text('Pénalité'));
     expect(selected, 2);
-    await tester.tap(find.text('Lignes'));
+    await tester.tap(find.text('Sanctions'));
     expect(selected, 3);
     expect(find.text('Checklist'), findsNothing);
   });
@@ -124,7 +124,7 @@ void main() {
                 onLines: () => opened = true))));
     expect(find.text('Bonus'), findsNothing);
     expect(find.text('Pénalité'), findsNothing);
-    await tester.tap(find.text('Mes lignes et immunités'));
+    await tester.tap(find.text('Mes sanctions et immunités'));
     expect(opened, isTrue);
   });
 
@@ -145,7 +145,7 @@ void main() {
     await tester.pumpWidget(wrap(const HomeScreen(), parent: true));
     await tester.pump(const Duration(seconds: 2));
     expect(find.byType(HomeActionsPanel), findsOneWidget);
-    expect(find.text('Lignes de punition et immunités'), findsOneWidget);
+    expect(find.text('Sanctions et immunités'), findsOneWidget);
     expect(find.text('Checklist du jour'), findsNothing);
     expect(tester.getTopLeft(find.byType(HomeActionsPanel)).dy,
         lessThan(tester.getTopLeft(find.text('Ma famille')).dy));

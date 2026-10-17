@@ -198,7 +198,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [10, 20, 30, 50, 100, 200].map((n) {
+                    children: [1, 2, 3, 4, 5].map((n) {
                       final isSel = nbLines == n;
                       return GestureDetector(
                         onTap: () => setS(() => nbLines = n),
@@ -283,7 +283,16 @@ class _BalanceScreenState extends State<BalanceScreen>
                           return;
                         }
                         for (final id in _selectedIds) {
-                          if (context.read<PinProvider>().isParentMode) { fp.addPunishment(id, finalDesc, nbLines); } else { fp.createRequest(type: 'punishment', childId: id, requestedBy: fp.getChild(id)?.name ?? 'Enfant', text: finalDesc, amount: nbLines); }
+                          if (context.read<PinProvider>().isParentMode) {
+                            fp.addPunishment(id, finalDesc, nbLines);
+                          } else {
+                            fp.createRequest(
+                                type: 'punishment',
+                                childId: id,
+                                requestedBy: fp.getChild(id)?.name ?? 'Enfant',
+                                text: finalDesc,
+                                amount: nbLines);
+                          }
                         }
                         Navigator.pop(ctx);
                         setState(() {
@@ -435,7 +444,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [5, 10, 20, 30, 50, 100].map((n) {
+                    children: [1, 2, 3, 4, 5].map((n) {
                       final isSel = nbLines == n;
                       return GestureDetector(
                         onTap: () => setS(() => nbLines = n),
@@ -496,8 +505,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                         initialDate:
                             DateTime.now().add(const Duration(days: 7)),
                         firstDate: DateTime.now(),
-                        lastDate:
-                            DateTime.now().add(const Duration(days: 365)),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
                         builder: (context, child) => Theme(
                           data: ThemeData.dark().copyWith(
                             colorScheme: const ColorScheme.dark(
@@ -580,7 +588,17 @@ class _BalanceScreenState extends State<BalanceScreen>
                           return;
                         }
                         for (final id in _selectedIds) {
-                          if (context.read<PinProvider>().isParentMode) { fp.addImmunity(id, reason, nbLines, expiresAt: expiresAt); } else { fp.createRequest(type: 'immunity', childId: id, requestedBy: fp.getChild(id)?.name ?? 'Enfant', text: reason, amount: nbLines); }
+                          if (context.read<PinProvider>().isParentMode) {
+                            fp.addImmunity(id, reason, nbLines,
+                                expiresAt: expiresAt);
+                          } else {
+                            fp.createRequest(
+                                type: 'immunity',
+                                childId: id,
+                                requestedBy: fp.getChild(id)?.name ?? 'Enfant',
+                                text: reason,
+                                amount: nbLines);
+                          }
                         }
                         Navigator.pop(ctx);
                         setState(() {
@@ -691,8 +709,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                               : Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color:
-                                  isSel ? Colors.redAccent : Colors.white24),
+                              color: isSel ? Colors.redAccent : Colors.white24),
                         ),
                         child: Row(children: [
                           const Icon(Icons.menu_book_rounded,
@@ -710,8 +727,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                                 Text(
                                     '$remaining lignes restantes / ${p.totalLines}',
                                     style: const TextStyle(
-                                        color: Colors.white38,
-                                        fontSize: 11)),
+                                        color: Colors.white38, fontSize: 11)),
                               ],
                             ),
                           ),
@@ -740,9 +756,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                               : Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: isSel
-                                  ? Colors.amberAccent
-                                  : Colors.white24),
+                              color:
+                                  isSel ? Colors.amberAccent : Colors.white24),
                         ),
                         child: Row(children: [
                           const Icon(Icons.shield_rounded,
@@ -759,8 +774,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                                         fontWeight: FontWeight.w600)),
                                 Text('${im.availableLines} lignes disponibles',
                                     style: const TextStyle(
-                                        color: Colors.white38,
-                                        fontSize: 11)),
+                                        color: Colors.white38, fontSize: 11)),
                               ],
                             ),
                           ),
@@ -937,8 +951,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () =>
-                          _showAddPunishmentDialog(context, fp),
+                      onPressed: () => _showAddPunishmentDialog(context, fp),
                       icon: const Icon(Icons.menu_book_rounded, size: 18),
                       label: const Text('Punir',
                           style: TextStyle(fontWeight: FontWeight.bold)),
@@ -954,8 +967,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () =>
-                          _showAddImmunityDialog(context, fp),
+                      onPressed: () => _showAddImmunityDialog(context, fp),
                       icon: const Icon(Icons.shield_rounded, size: 18),
                       label: const Text('Immunité',
                           style: TextStyle(fontWeight: FontWeight.bold)),
@@ -1001,8 +1013,7 @@ class _BalanceScreenState extends State<BalanceScreen>
         fp.punishments.where((p) => p.childId == child.id).toList();
     final immunities = fp.getImmunitiesForChild(child.id);
     final usableImmunity = fp.getTotalAvailableImmunity(child.id);
-    final completedCount =
-        allPunishments.where((p) => p.isCompleted).length;
+    final completedCount = allPunishments.where((p) => p.isCompleted).length;
 
     return GestureDetector(
       onTap: () => _toggleSelect(child.id),
@@ -1045,18 +1056,15 @@ class _BalanceScreenState extends State<BalanceScreen>
                     margin: const EdgeInsets.only(right: 10),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isSelected
-                          ? Colors.cyanAccent
-                          : Colors.transparent,
+                      color:
+                          isSelected ? Colors.cyanAccent : Colors.transparent,
                       border: Border.all(
-                          color: isSelected
-                              ? Colors.cyanAccent
-                              : Colors.white38,
+                          color:
+                              isSelected ? Colors.cyanAccent : Colors.white38,
                           width: 2),
                     ),
                     child: isSelected
-                        ? const Icon(Icons.check,
-                            color: Colors.black, size: 14)
+                        ? const Icon(Icons.check, color: Colors.black, size: 14)
                         : null,
                   ),
                   CircleAvatar(
@@ -1083,8 +1091,7 @@ class _BalanceScreenState extends State<BalanceScreen>
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold)),
-                        Text(
-                            '${child.points} points disponibles',
+                        Text('${child.points} points disponibles',
                             style: const TextStyle(
                                 color: Colors.white38, fontSize: 12)),
                       ],
@@ -1114,18 +1121,12 @@ class _BalanceScreenState extends State<BalanceScreen>
                 spacing: 8,
                 runSpacing: 6,
                 children: [
-                  _statBadge(
-                      ' ${punishments.length} en cours',
-                      punishments.isEmpty
-                          ? Colors.white24
-                          : Colors.redAccent),
+                  _statBadge(' ${punishments.length} en cours',
+                      punishments.isEmpty ? Colors.white24 : Colors.redAccent),
                   _statBadge('✅ $completedCount terminées',
                       Colors.greenAccent.withValues(alpha: 0.5)),
-                  _statBadge(
-                      ' ${immunities.length} immunités',
-                      immunities.isEmpty
-                          ? Colors.white24
-                          : Colors.amberAccent),
+                  _statBadge(' ${immunities.length} immunités',
+                      immunities.isEmpty ? Colors.white24 : Colors.amberAccent),
                 ],
               ),
               // Punitions actives
@@ -1159,7 +1160,8 @@ class _BalanceScreenState extends State<BalanceScreen>
                           child: LinearProgressIndicator(
                             value: progress,
                             minHeight: 5,
-                            backgroundColor: Colors.white.withValues(alpha: 0.08),
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.08),
                             valueColor: AlwaysStoppedAnimation(
                               progress >= 0.75
                                   ? Colors.greenAccent
@@ -1174,10 +1176,9 @@ class _BalanceScreenState extends State<BalanceScreen>
                   );
                 }),
                 if (punishments.length > 3)
-                  Text(
-                      '"¦ et ${punishments.length - 3} autre(s) punition(s)',
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 11)),
+                  Text('"¦ et ${punishments.length - 3} autre(s) punition(s)',
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11)),
               ],
               // Bouton utiliser immunité
               if (punishments.isNotEmpty &&
@@ -1191,10 +1192,11 @@ class _BalanceScreenState extends State<BalanceScreen>
                     icon: const Icon(Icons.shield_rounded,
                         color: Colors.tealAccent, size: 16),
                     label: const Text('Utiliser une immunité',
-                        style: TextStyle(color: Colors.tealAccent, fontSize: 13)),
+                        style:
+                            TextStyle(color: Colors.tealAccent, fontSize: 13)),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                          color: Colors.tealAccent, width: 1),
+                      side:
+                          const BorderSide(color: Colors.tealAccent, width: 1),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1264,5 +1266,3 @@ class _BalanceScreenState extends State<BalanceScreen>
   String _fmtDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 }
-
-

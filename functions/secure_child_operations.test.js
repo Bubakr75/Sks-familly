@@ -12,14 +12,65 @@ const {
   buildPurchaseRequest,
   linkedPurchaseIdForRequest,
   createSecureChildOperationFunctions,
+  screenTimeOfferCost,
 } = require("./secure_child_operations");
 
-function tribunalHarness({role = "child", active = true} = {}) {
+test("les forfaits écran sont fixés au serveur : 3 points / 30 min, 5 points / 60 min", () => {
+  assert.equal(screenTimeOfferCost(30), 3);
+  assert.equal(screenTimeOfferCost(60), 5);
+  for (const minutes of [0, 1, 15, 31, 120, "30"]) {
+    assert.throws(() => screenTimeOfferCost(minutes), /INVALID_SCREEN_OFFER/);
+  }
+});
+
+test("achat direct : solde exact, débit et crédit atomiques, rejeu sans doublon", async () => {
+  for (const [minutes, points] of [[30, 3], [60, 5]]) {
+    const h = purchaseHarness({points, pointsScaleVersion: 2});
+    const data = {...h.payload, operation: "screen_buy", pointsScaleVersion: 2, minutes};
+    const result = await h.call(data, h.auth);
+    assert.equal(result.points, 0);
+    assert.equal(result.account.balanceMinutes, minutes);
+    const replay = await h.call(data, h.auth);
+    assert.equal(replay.idempotent, true);
+    assert.equal(h.store.get("families/f/children/c1").points, 0);
+    assert.equal(h.store.get("families/f/screen_time_accounts/c1").balanceMinutes, minutes);
+    assert.equal(h.store.get("families/f/history/purchase-1").points, points);
+  }
+});
+
+test("achat direct : deux achats concurrents ne dépassent pas le solde", async () => {
+  const h = purchaseHarness({points: 5, pointsScaleVersion: 2});
+  const data = {...h.payload, operation: "screen_buy", pointsScaleVersion: 2, minutes: 30};
+  const results = await Promise.allSettled([
+    h.call(data, h.auth),
+    h.call({...data, operationId: "second-purchase"}, h.auth),
+  ]);
+  assert.equal(results.filter(value => value.status === "fulfilled").length, 1);
+  assert.equal(h.store.get("families/f/children/c1").points, 2);
+  assert.equal(h.store.get("families/f/screen_time_accounts/c1").balanceMinutes, 30);
+});
+
+test("achat direct : fonds insuffisants, usurpation, forfait invalide et sanction bloquante refusés", async () => {
+  const h = purchaseHarness({points: 2, pointsScaleVersion: 2});
+  const data = {...h.payload, operation: "screen_buy", pointsScaleVersion: 2, minutes: 30};
+  await assert.rejects(h.call(data, h.auth), {code: "failed-precondition"});
+  await assert.rejects(h.call({...data, childId: "c2"}, h.auth), {code: "permission-denied"});
+  await assert.rejects(h.call({...data, minutes: 15}, h.auth));
+  assert.equal(h.store.has("families/f/screen_time_accounts/c1"), false);
+  h.store.set("families/f/children/c1", {name: "Test", points: 5});
+  h.store.set("families/f/punishments/task", {childId: "c1", penaltyHistoryId: "task", hasPenaltyLines: true, penaltyLinesCount: 1, penaltyLinesStatus: "pending", sanctionType: "chore"});
+  await assert.rejects(h.call(data, h.auth), {code: "failed-precondition"});
+  assert.equal(h.store.get("families/f/children/c1").points, 5);
+  h.store.get("families/f/punishments/task").penaltyLinesStatus = "completed";
+  assert.equal((await h.call(data, h.auth)).points, 2);
+});
+
+function tribunalHarness({role = "child", active = true, pointsScaleVersion} = {}) {
   class HttpsError extends Error {
     constructor(code, message) { super(message); this.code = code; }
   }
   const store = new Map([
-    ["families/f", {ownerUid: "owner"}],
+    ["families/f", {ownerUid: "owner", ...(pointsScaleVersion ? {pointsScaleVersion} : {})}],
     ["families/f/members/u", {uid: "u", role, active, childId: "c1"}],
     ["families/f/children/c1", {name: "Test 1"}],
     ["families/f/children/c2", {name: "Test 2"}],
@@ -55,12 +106,12 @@ function tribunalHarness({role = "child", active = true} = {}) {
   return {store, db, functions, admin, sent, call, payload, auth};
 }
 
-function purchaseHarness({role = "child", active = true, points = 100, reward} = {}) {
+function purchaseHarness({role = "child", active = true, points = 100, reward, pointsScaleVersion} = {}) {
   class HttpsError extends Error {
     constructor(code, message) { super(message); this.code = code; }
   }
   const store = new Map([
-    ["families/f", {ownerUid: "owner"}],
+    ["families/f", {ownerUid: "owner", ...(pointsScaleVersion ? {pointsScaleVersion} : {})}],
     ["families/f/members/u", {uid: "u", role, active, childId: "c1"}],
     ["families/f/members/parent", {uid: "parent", role: "parent", active: true}],
     ["families/f/children/c1", {name: "Test", points}],
@@ -71,13 +122,16 @@ function purchaseHarness({role = "child", active = true, points = 100, reward} =
   ]);
   const snapshot = path => ({exists: store.has(path), data: () => store.get(path)});
   const ref = path => ({path, id: path.split("/").pop(),
-    collection: name => ref(path + "/" + name), doc: id => ref(path + "/" + id)});
+    collection: name => ref(path + "/" + name), doc: id => ref(path + "/" + id),
+    where: (field, operator, value) => ({path, query: {field, operator, value}})});
   let tail = Promise.resolve();
   const db = {collection: name => ref(name), runTransaction: fn => {
     const run = tail.then(async () => {
       const writes = [];
       const result = await fn({
-        get: async r => snapshot(r.path),
+        get: async r => r.query ? {docs: [...store]
+          .filter(([key, value]) => key.startsWith(r.path + "/") && value[r.query.field] === r.query.value)
+          .map(([key, value]) => ({id: key.split("/").pop(), data: () => value}))} : snapshot(r.path),
         create: (r, data) => writes.push({type: "create", path: r.path, data}),
         update: (r, data) => writes.push({type: "update", path: r.path, data}),
         set: (r, data) => writes.push({type: "set", path: r.path, data}),
@@ -110,6 +164,20 @@ function purchaseHarness({role = "child", active = true, points = 100, reward} =
   return {store, call, payload, auth: {auth: {uid: "u", token: {}}},
     parentAuth: {auth: {uid: "parent", token: {}}}};
 }
+
+test("après conversion, l’ancien client est refusé et le nouveau garde les achats fonctionnels", async () => {
+  const h = purchaseHarness({points: 30, pointsScaleVersion: 2});
+  await assert.rejects(h.call(h.payload, h.auth), {code: "failed-precondition"});
+  assert.equal(h.store.get("families/f/children/c1").points, 30);
+  const result = await h.call({...h.payload, pointsScaleVersion: 2}, h.auth);
+  assert.equal(result.points, 20);
+});
+
+test("un forfait bon marché est refusé avant la conversion des anciens soldes", async () => {
+  const h = purchaseHarness({points: 300});
+  await assert.rejects(h.call({...h.payload, operation: "screen_buy", minutes: 30, pointsScaleVersion: 2}, h.auth), {code: "failed-precondition"});
+  assert.equal(h.store.get("families/f/children/c1").points, 300);
+});
 
 test("tribunal : enfant enregistre au serveur, notification vers autre mobile, rejeu sans doublon", async () => {
   const h = tribunalHarness();

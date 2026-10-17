@@ -1,11 +1,13 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const {normalizePointsScaleVersion, assertPointsScale} = require("./points_scale");
 const {normalizeTribunalCase, buildTribunalCase} = require("./tribunal_cases");
 
 const ID_PATTERN = /^[^/\u0000-\u001f]{1,200}$/;
 const OPERATIONS = new Set([
   "purchase_reward",
+  "screen_buy",
   "purchase_approve",
   "purchase_reject",
   "sale_set",
@@ -39,6 +41,7 @@ function normalizeSecureOperation(data) {
     familyId: cleanId(data.familyId, "family_id"),
     operationId: cleanId(data.operationId, "operation_id"),
     operation,
+    ...(data.pointsScaleVersion === undefined ? {} : {pointsScaleVersion: normalizePointsScaleVersion(data.pointsScaleVersion)}),
   };
   if (operation === "tribunal_create") {
     return {...normalized, ...normalizeTribunalCase(data, cleanId)};
@@ -51,7 +54,7 @@ function normalizeSecureOperation(data) {
     normalized.vote = data.vote;
   }
   if (data.minutes !== undefined &&
-      ["screen_start", "screen_add", "screen_extend"].includes(operation)) {
+      ["screen_start", "screen_add", "screen_extend", "screen_buy"].includes(operation)) {
     if (!Number.isInteger(data.minutes) || data.minutes < 1 || data.minutes > 480) {
       throw new Error("INVALID_MINUTES");
     }
@@ -121,6 +124,12 @@ function memberRole({uid, family, member, authToken = {}}) {
       typeof member.childId === "string" &&
       ID_PATTERN.test(member.childId)) return "child";
   return null;
+}
+
+function screenTimeOfferCost(minutes) {
+  if (minutes === 30) return 3;
+  if (minutes === 60) return 5;
+  throw new Error("INVALID_SCREEN_OFFER");
 }
 
 function screenTimeMinutes(reward) {
@@ -212,6 +221,9 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
         "Opération refusée : données ou transition invalides."
       );
     }
+    if (["POINTS_SCALE_UPDATE_REQUIRED", "POINTS_SCALE_MIGRATION_REQUIRED"].includes(error?.message)) {
+      return new HttpsError("failed-precondition", error.message === "POINTS_SCALE_UPDATE_REQUIRED" ? "Mets à jour SKS Family pour utiliser le nouveau barème." : "Le nouveau barème de cette famille doit être activé avant les achats d’écran.");
+    }
     console.error("Secure family operation error:", error);
     return new HttpsError("internal", "L'opération n'a pas pu être effectuée.");
   }
@@ -246,6 +258,9 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
           return {...logSnap.data().result, idempotent: true};
         }
 
+        if (op.operation !== "screen_stop") {
+          assertPointsScale(familySnap.data(), op.pointsScaleVersion, {requiresMigration: op.operation === "screen_buy"});
+        }
         let result;
         if (op.operation === "purchase_reward") {
           if (!op.childId || !op.rewardId ||
@@ -546,7 +561,33 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
           if (["screen_add", "screen_extend"].includes(op.operation) && role !== "parent") {
             throw new HttpsError("permission-denied", "Action parent requise.");
           }
-            if (op.operation === "screen_start") {
+          if (["screen_start", "screen_buy"].includes(op.operation)) {
+            const sanctions = await tx.get(familyRef.collection("punishments").where("childId", "==", op.childId));
+            if (sanctions.docs.some(doc => {
+              const value = doc.data();
+              return value.penaltyHistoryId && value.hasPenaltyLines === true &&
+                value.penaltyLinesCount > 0 && value.penaltyLinesStatus !== "completed";
+            })) {
+              throw new HttpsError("failed-precondition", "Une sanction doit être validée par un parent avant les écrans.");
+            }
+          }
+          if (op.operation === "screen_buy") {
+            const cost = screenTimeOfferCost(op.minutes);
+            const child = childSnap.data();
+            if (!Number.isInteger(child.points) || child.points < cost) {
+              throw new HttpsError("failed-precondition", "Points insuffisants.");
+            }
+            const now = new Date().toISOString();
+            account.balanceMinutes += op.minutes;
+            account.totalEarned = (Number.isInteger(account.totalEarned) ? account.totalEarned : 0) + op.minutes;
+            account.history = [{minutes: op.minutes, type: "earned", reason: `Achat : ${cost} points`, date: now}, ...(Array.isArray(account.history) ? account.history : [])];
+            tx.update(childRef, {points: child.points - cost});
+            tx.create(familyRef.collection("history").doc(op.operationId), {
+              id: op.operationId, childId: op.childId, points: cost,
+              reason: `Achat de ${op.minutes} minutes d’écran`, category: "boutique",
+              isBonus: false, date: now, actorUid: uid,
+            });
+          } else if (op.operation === "screen_start") {
             if (!op.minutes || account.sessionStart != null ||
                 account.balanceMinutes < op.minutes) {
               throw new HttpsError("failed-precondition", "Session impossible.");
@@ -587,7 +628,7 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
             ? account.history.slice(0, 99) : [];
           if (accountSnap.exists) tx.set(accountRef, account);
           else tx.create(accountRef, account);
-          result = {account};
+          result = {account, ...(op.operation === "screen_buy" ? {points: childSnap.data().points - screenTimeOfferCost(op.minutes)} : {})};
         }
 
         tx.create(logRef, {
@@ -608,6 +649,7 @@ function createSecureChildOperationFunctions({functions, admin, db}) {
 }
 
 module.exports = {
+  screenTimeOfferCost,
   OPERATIONS,
   normalizeSecureOperation,
   memberRole,

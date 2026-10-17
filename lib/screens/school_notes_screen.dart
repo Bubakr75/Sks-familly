@@ -170,8 +170,10 @@ class _SchoolNotesScreenState extends State<SchoolNotesScreen>
     });
     await _saveNotes();
 
-    final pointsGagnes = (moyenne / 2).round();
-    fp.addPoints(widget.childId, pointsGagnes, "Conseil de classe familial");
+    final pointsGagnes = moyenne > 0 ? 1 : 0;
+    if (pointsGagnes > 0) {
+      await fp.addPoints(widget.childId, pointsGagnes, "Conseil de classe familial");
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

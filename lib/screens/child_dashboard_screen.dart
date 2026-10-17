@@ -1,3 +1,5 @@
+import '../widgets/screen_time_store.dart';
+import 'screen_time_new_screen.dart';
 // lib/screens/child_dashboard_screen.dart
 
 import 'dart:convert';
@@ -35,7 +37,9 @@ class _ScreenTimePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width, size.height) / 2 - 8;
-    canvas.drawCircle(center, radius,
+    canvas.drawCircle(
+        center,
+        radius,
         Paint()
           ..color = Colors.white10
           ..style = PaintingStyle.stroke
@@ -56,13 +60,14 @@ class _ScreenTimePainter extends CustomPainter {
         ..strokeWidth = 10
         ..strokeCap = StrokeCap.round,
     );
-    final angle  = -pi / 2 + 2 * pi * progress * animValue;
+    final angle = -pi / 2 + 2 * pi * progress * animValue;
     final dotPos = Offset(
       center.dx + radius * cos(angle),
       center.dy + radius * sin(angle),
     );
-    canvas.drawCircle(dotPos, 6,  Paint()..color = color);
-    canvas.drawCircle(dotPos, 10, Paint()..color = color.withValues(alpha: 0.3));
+    canvas.drawCircle(dotPos, 6, Paint()..color = color);
+    canvas.drawCircle(
+        dotPos, 10, Paint()..color = color.withValues(alpha: 0.3));
   }
 
   @override
@@ -90,8 +95,7 @@ class ChildDashboardScreen extends StatefulWidget {
 
 class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     with TickerProviderStateMixin {
-
-  late TabController       _tabController;
+  late TabController _tabController;
   late AnimationController _contentController;
   late AnimationController _glowController;
   late AnimationController _bonusFloatController;
@@ -106,19 +110,31 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   String _historyFilter = 'Tout';
   static const _historyFilters = [
-    'Tout', 'Bonus', 'Punition', 'Immunité', 'Tribunal', 'École', 'Échange',
+    'Tout',
+    'Bonus',
+    'Punition',
+    'Immunité',
+    'Tribunal',
+    'École',
+    'Échange',
   ];
 
   Set<int> _joursSources = {0, 1, 2, 3, 4};
 
-  bool   _showBonusAnim = false;
+  bool _showBonusAnim = false;
   String _bonusAnimText = '';
 
-  List<_CustomBadgeItem> _customLocalBadges    = [];
-  List<String>           _hiddenDefaultBadgeIds = [];
+  List<_CustomBadgeItem> _customLocalBadges = [];
+  List<String> _hiddenDefaultBadgeIds = [];
 
   static const _joursNoms = [
-    'Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'
+    'Lundi',
+    'Mardi',
+    'Mercredi',
+    'Jeudi',
+    'Vendredi',
+    'Samedi',
+    'Dimanche'
   ];
 
   @override
@@ -128,21 +144,21 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
     _contentController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
-    _glowController = AnimationController(
-        vsync: this, duration: const Duration(seconds: 2))
-      ..repeat(reverse: true);
+    _glowController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..repeat(reverse: true);
     _bonusFloatController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200));
 
-    _contentFade = CurvedAnimation(
-        parent: _contentController, curve: Curves.easeIn);
-    _glowAnim = CurvedAnimation(
-        parent: _glowController, curve: Curves.easeInOut);
+    _contentFade =
+        CurvedAnimation(parent: _contentController, curve: Curves.easeIn);
+    _glowAnim =
+        CurvedAnimation(parent: _glowController, curve: Curves.easeInOut);
     _bonusFloatAnim =
         Tween(begin: 0.0, end: -60.0).animate(_bonusFloatController);
     _bonusOpacity = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
-      TweenSequenceItem(tween: ConstantTween(1.0),           weight: 60),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
     ]).animate(_bonusFloatController);
 
@@ -172,8 +188,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   // ─── Prefs ───────────────────────────────────────────────
   Future<void> _loadPrefs(String childId) async {
-    final prefs  = await SharedPreferences.getInstance();
-    final raw    = prefs.getStringList('custom_badges_$childId') ?? [];
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList('custom_badges_$childId') ?? [];
     final hidden = prefs.getStringList('hidden_badges_$childId') ?? [];
     setState(() {
       _customLocalBadges = raw.map((s) {
@@ -217,15 +233,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           ),
           const SizedBox(height: 12),
           TextField(
-            controller:   emojiCtrl,
-            style:        const TextStyle(color: Colors.white, fontSize: 30),
-            textAlign:    TextAlign.center,
+            controller: emojiCtrl,
+            style: const TextStyle(color: Colors.white, fontSize: 30),
+            textAlign: TextAlign.center,
             keyboardType: TextInputType.text,
             decoration: InputDecoration(
-              labelText:  'Émoji',
+              labelText: 'Émoji',
               labelStyle: const TextStyle(color: Colors.white54),
-              hintText:   '🏆',
-              hintStyle:  const TextStyle(color: Colors.white24),
+              hintText: '🏆',
+              hintStyle: const TextStyle(color: Colors.white24),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Colors.white24)),
@@ -237,12 +253,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           const SizedBox(height: 10),
           TextField(
             controller: labelCtrl,
-            style:      const TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText:  'Nom du badge',
+              labelText: 'Nom du badge',
               labelStyle: const TextStyle(color: Colors.white54),
-              hintText:   'ex : Super lecteur',
-              hintStyle:  const TextStyle(color: Colors.white24),
+              hintText: 'ex : Super lecteur',
+              hintStyle: const TextStyle(color: Colors.white24),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Colors.white24)),
@@ -296,24 +312,33 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   Color _childColor(ChildModel child) {
     if (child.accentColorHex != null) {
       try {
-        return Color(int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
+        return Color(
+            int.parse(child.accentColorHex!.replaceFirst('#', '0xFF')));
       } catch (_) {}
     }
     const palette = [
-      Colors.deepPurpleAccent, Colors.blueAccent,
-      Color(0xFF00897B),        Color(0xFFF57C00),
-      Colors.pinkAccent,        Color(0xFF00ACC1),
+      Colors.deepPurpleAccent,
+      Colors.blueAccent,
+      Color(0xFF00897B),
+      Color(0xFFF57C00),
+      Colors.pinkAccent,
+      Color(0xFF00ACC1),
     ];
     return palette[child.name.codeUnitAt(0) % palette.length];
   }
 
   Color _categoryColor(HistoryEntry e) {
     final cat = e.category.toLowerCase();
-    if (cat.contains('punition') || cat.contains('penalty')) return Colors.redAccent;
-    if (cat.contains('immunité') || cat.contains('immunity')) return Colors.amberAccent;
-    if (cat.contains('tribunal') || cat.contains('verdict')) return Colors.purpleAccent;
-    if (cat.contains('school') || cat.contains('école') || cat.contains('note')) return Colors.blueAccent;
-    if (cat.contains('échange') || cat.contains('trade')) return Colors.tealAccent;
+    if (cat.contains('punition') || cat.contains('penalty'))
+      return Colors.redAccent;
+    if (cat.contains('immunité') || cat.contains('immunity'))
+      return Colors.amberAccent;
+    if (cat.contains('tribunal') || cat.contains('verdict'))
+      return Colors.purpleAccent;
+    if (cat.contains('school') || cat.contains('école') || cat.contains('note'))
+      return Colors.blueAccent;
+    if (cat.contains('échange') || cat.contains('trade'))
+      return Colors.tealAccent;
     if (cat.contains('screen')) return Colors.cyanAccent;
     if (e.isBonus) return Colors.greenAccent;
     return Colors.redAccent;
@@ -351,9 +376,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         backgroundColor: color.withValues(alpha: 0.3),
         child: Text(child.name.isEmpty ? '?' : child.name[0].toUpperCase(),
             style: TextStyle(
-                fontSize:   radius * 0.9,
+                fontSize: radius * 0.9,
                 fontWeight: FontWeight.bold,
-                color:      color)),
+                color: color)),
       );
 
   // ─── Sélecteur enfant ────────────────────────────────────
@@ -369,25 +394,26 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         children: [
           const Text('Choisir un enfant',
               style: TextStyle(
-                  color: Colors.white, fontSize: 16,
+                  color: Colors.white,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold),
               textAlign: TextAlign.center),
           const SizedBox(height: 12),
           ...fp.children.map((c) => ListTile(
-            leading:  _buildAvatar(c, 22),
-            title:    Text(c.name,
-                style: const TextStyle(color: Colors.white)),
-            subtitle: Text('${c.points} pts bonus',
-                style: const TextStyle(color: Colors.white54)),
-            trailing: c.id == _selectedChildId
-                ? const Icon(Icons.check_circle, color: Colors.greenAccent)
-                : null,
-            onTap: () {
-              setState(() => _selectedChildId = c.id);
-              Navigator.pop(context);
-              _loadPrefs(c.id);
-            },
-          )),
+                leading: _buildAvatar(c, 22),
+                title:
+                    Text(c.name, style: const TextStyle(color: Colors.white)),
+                subtitle: Text('${c.points} pts bonus',
+                    style: const TextStyle(color: Colors.white54)),
+                trailing: c.id == _selectedChildId
+                    ? const Icon(Icons.check_circle, color: Colors.greenAccent)
+                    : null,
+                onTap: () {
+                  setState(() => _selectedChildId = c.id);
+                  Navigator.pop(context);
+                  _loadPrefs(c.id);
+                },
+              )),
         ],
       ),
     );
@@ -433,22 +459,22 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       {required bool requirePin}) async {
     if (requirePin) {
       final pin = context.read<PinProvider>();
-      bool ok   = false;
+      bool ok = false;
       await showDialog(
         context: context,
         builder: (ctx) {
           final ctrl = TextEditingController();
           return AlertDialog(
             backgroundColor: EmeraldPalette.surface,
-            title: const Text('PIN parent',
-                style: TextStyle(color: Colors.white)),
+            title:
+                const Text('PIN parent', style: TextStyle(color: Colors.white)),
             content: TextField(
-              controller:   ctrl,
-              obscureText:  true,
+              controller: ctrl,
+              obscureText: true,
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
-                labelText:  'Code PIN',
+                labelText: 'Code PIN',
                 labelStyle: TextStyle(color: Colors.white54),
               ),
             ),
@@ -518,11 +544,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: ctrl,
-          style:      const TextStyle(color: Colors.white),
-          maxLength:  60,
+          style: const TextStyle(color: Colors.white),
+          maxLength: 60,
           decoration: const InputDecoration(
-            labelText:    'Slogan',
-            labelStyle:   TextStyle(color: Colors.white54),
+            labelText: 'Slogan',
+            labelStyle: TextStyle(color: Colors.white54),
             counterStyle: TextStyle(color: Colors.white38),
           ),
         ),
@@ -568,11 +594,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       final color = _childColor(child);
 
       return Scaffold(
-        backgroundColor:        EmeraldPalette.background,
+        backgroundColor: EmeraldPalette.background,
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          elevation:       0,
+          elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70),
             onPressed: () => Navigator.pop(context),
@@ -588,7 +614,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             if (children.length > 1)
               TextButton.icon(
                 onPressed: () => _showChildSwitcher(fp),
-                icon:  const Icon(Icons.swap_horiz, color: Colors.white70, size: 18),
+                icon: const Icon(Icons.swap_horiz,
+                    color: Colors.white70, size: 18),
                 label: const Text('Changer',
                     style: TextStyle(color: Colors.white70)),
               ),
@@ -597,18 +624,21 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: Colors.white70),
                 color: EmeraldPalette.surface,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
                 onSelected: (value) {
                   if (value == 'reset_points') {
-                    _confirmReset(context, fp, child,
+                    _confirmReset(
+                        context,
+                        fp,
+                        child,
                         'Réinitialiser les points ?',
                         'Les points de ${child.name} repassent à 0. Les badges seront retirés.',
                         () async {
                       await fp.resetChildPoints(child.id);
                     });
                   } else if (value == 'reset_all') {
-                    _confirmReset(context, fp, child,
-                        'Tout réinitialiser ?',
+                    _confirmReset(context, fp, child, 'Tout réinitialiser ?',
                         'Points, badges, punitions, immunités, objectifs, notes et historique de ${child.name} seront supprimés. Action irréversible.',
                         () async {
                       await fp.resetChildCompletely(child.id);
@@ -622,32 +652,35 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     child: Row(children: [
                       Icon(Icons.refresh, color: Colors.amber, size: 20),
                       const SizedBox(width: 10),
-                      Text('Réinitialiser les points', style: TextStyle(color: Colors.white)),
+                      Text('Réinitialiser les points',
+                          style: TextStyle(color: Colors.white)),
                     ]),
                   ),
                   const PopupMenuItem(
                     value: 'reset_all',
                     child: Row(children: [
-                      Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
+                      Icon(Icons.delete_forever,
+                          color: Colors.redAccent, size: 20),
                       const SizedBox(width: 10),
-                      Text('Tout réinitialiser', style: TextStyle(color: Colors.redAccent)),
+                      Text('Tout réinitialiser',
+                          style: TextStyle(color: Colors.redAccent)),
                     ]),
                   ),
                 ],
               ),
           ],
           bottom: TabBar(
-            controller:           _tabController,
-            indicatorColor:       color,
-            labelColor:           color,
+            controller: _tabController,
+            indicatorColor: color,
+            labelColor: color,
             unselectedLabelColor: Colors.white38,
-            dividerColor:         Colors.transparent,
-            overlayColor:         WidgetStateProperty.all(Colors.transparent),
-            indicatorSize:        TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            overlayColor: WidgetStateProperty.all(Colors.transparent),
+            indicatorSize: TabBarIndicatorSize.tab,
             tabs: const [
-              Tab(icon: Icon(Icons.person),      text: 'Profil'),
-              Tab(icon: Icon(Icons.tv),           text: 'Écran'),
-              Tab(icon: Icon(Icons.history),      text: 'Historique'),
+              Tab(icon: Icon(Icons.person), text: 'Profil'),
+              Tab(icon: Icon(Icons.tv), text: 'Écran'),
+              Tab(icon: Icon(Icons.history), text: 'Historique'),
               Tab(icon: Icon(Icons.shopping_bag_rounded), text: 'Boutique'),
             ],
           ),
@@ -684,13 +717,17 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         title: Row(children: [
           const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
           const SizedBox(width: 10),
-          Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 17))),
+          Expanded(
+              child: Text(title,
+                  style: const TextStyle(color: Colors.white, fontSize: 17))),
         ]),
-        content: Text(message, style: TextStyle(color: Colors.white.withValues(alpha: 0.8))),
+        content: Text(message,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+            child:
+                const Text('Annuler', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -699,11 +736,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               await onConfirm();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Réinitialisé'), backgroundColor: Colors.green),
+                  const SnackBar(
+                      content: Text('Réinitialisé'),
+                      backgroundColor: Colors.green),
                 );
               }
             },
-            child: const Text('Confirmer', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Confirmer', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -711,20 +751,26 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   // ─── Proposition enfant : Demande de BONUS ───
-  void _showBonusRequestDialog(BuildContext context, FamilyProvider fp, ChildModel child) {
+  void _showBonusRequestDialog(
+      BuildContext context, FamilyProvider fp, ChildModel child) {
     final reasonCtrl = TextEditingController();
-    int amount = 10;
+    int amount = 1;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF0F2620),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
             Text('⭐', style: TextStyle(fontSize: 28)),
             const SizedBox(width: 10),
-            Text('Demander un bonus', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Demander un bonus',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
           ]),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -736,36 +782,52 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 controller: reasonCtrl,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Ex: J\'ai rangé ma chambre sans qu\'on me le demande',
+                  hintText:
+                      'Ex: J\'ai rangé ma chambre sans qu\'on me le demande',
                   hintStyle: const TextStyle(color: Colors.white30),
                   filled: true,
                   fillColor: Colors.white.withValues(alpha: 0.06),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none),
                 ),
                 maxLines: 2,
               ),
               const SizedBox(height: 16),
-              const Text('Points demandés :', style: TextStyle(color: Colors.white54, fontSize: 13)),
+              const Text('Points demandés :',
+                  style: TextStyle(color: Colors.white54, fontSize: 13)),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    onPressed: () => setDialogState(() { if (amount > 1) amount--; }),
-                    icon: const Icon(Icons.remove_circle_outline, color: Colors.white54),
+                    onPressed: () => setDialogState(() {
+                      if (amount > 1) amount--;
+                    }),
+                    icon: const Icon(Icons.remove_circle_outline,
+                        color: Colors.white54),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                      border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.4)),
                     ),
-                    child: Text('$amount pts', style: const TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.w800)),
+                    child: Text('$amount pts',
+                        style: const TextStyle(
+                            color: Colors.green,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800)),
                   ),
                   IconButton(
-                    onPressed: () => setDialogState(() { if (amount < 50) amount++; }),
-                    icon: const Icon(Icons.add_circle_outline, color: Colors.white54),
+                    onPressed: () => setDialogState(() {
+                      if (amount < 50) amount++;
+                    }),
+                    icon: const Icon(Icons.add_circle_outline,
+                        color: Colors.white54),
                   ),
                 ],
               ),
@@ -774,10 +836,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green, foregroundColor: Colors.white),
               onPressed: () {
                 final reason = reasonCtrl.text.trim();
                 if (reason.isEmpty) return;
@@ -791,13 +855,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Demande de bonus envoyée ! En attente du parent.'),
+                    content: Text(
+                        'Demande de bonus envoyée ! En attente du parent.'),
                     backgroundColor: Colors.green,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
               },
-              child: const Text('Envoyer', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Envoyer',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -806,14 +872,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   // ─── Proposition enfant (penalite / immunite) avec validation parentale ───
-  void _showProposeRequestDialog(BuildContext context, FamilyProvider fp, ChildModel child, String type) {
+  void _showProposeRequestDialog(
+      BuildContext context, FamilyProvider fp, ChildModel child, String type) {
     final isPenalite = type == 'punishment';
-    final mainColor = isPenalite ? const Color(0xFFFF5252) : const Color(0xFFFFC107);
+    final mainColor =
+        isPenalite ? const Color(0xFFFF5252) : const Color(0xFFFFC107);
     final commentCtrl = TextEditingController();
     final customCtrl = TextEditingController();
     int nbLines = 20;
     bool isCustom = false;
-    final presets = [20, 50, 100];
+    final presets = [1, 2, 3];
 
     showDialog(
       context: context,
@@ -830,9 +898,13 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 end: Alignment.bottomRight,
                 colors: [Color(0xFF1E1E3F), Color(0xFF15152B)],
               ),
-              border: Border.all(color: mainColor.withValues(alpha: 0.4), width: 1.5),
+              border: Border.all(
+                  color: mainColor.withValues(alpha: 0.4), width: 1.5),
               boxShadow: [
-                BoxShadow(color: mainColor.withValues(alpha: 0.25), blurRadius: 30, spreadRadius: 2),
+                BoxShadow(
+                    color: mainColor.withValues(alpha: 0.25),
+                    blurRadius: 30,
+                    spreadRadius: 2),
               ],
             ),
             child: SingleChildScrollView(
@@ -851,8 +923,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          isPenalite ? Icons.edit_document : Icons.shield_rounded,
-                          color: mainColor, size: 28,
+                          isPenalite
+                              ? Icons.edit_document
+                              : Icons.shield_rounded,
+                          color: mainColor,
+                          size: 28,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -862,11 +937,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                           children: [
                             Text(
                               isPenalite ? 'Me proposer' : 'Me proposer',
-                              style: const TextStyle(color: Colors.white54, fontSize: 13),
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 13),
                             ),
                             Text(
                               isPenalite ? 'une penalite' : 'une immunite',
-                              style: TextStyle(color: mainColor, fontSize: 20, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  color: mainColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -875,7 +954,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ),
                   const SizedBox(height: 24),
                   // Champ commentaire
-                  const Text("Qu'as-tu fait ?", style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const Text("Qu'as-tu fait ?",
+                      style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
@@ -897,7 +980,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ),
                   const SizedBox(height: 24),
                   // Nombre de lignes
-                  const Text('Nombre de lignes', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const Text('Nombre de lignes',
+                      style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 10,
@@ -906,21 +993,36 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       ...presets.map((p) {
                         final sel = !isCustom && nbLines == p;
                         return GestureDetector(
-                          onTap: () => setS(() { isCustom = false; nbLines = p; }),
+                          onTap: () => setS(() {
+                            isCustom = false;
+                            nbLines = p;
+                          }),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
-                            width: 70, height: 60,
+                            width: 70,
+                            height: 60,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(14),
-                              gradient: sel ? LinearGradient(colors: [mainColor, mainColor.withValues(alpha: 0.7)]) : null,
-                              color: sel ? null : Colors.white.withValues(alpha: 0.06),
-                              border: Border.all(color: sel ? mainColor : Colors.white12, width: 1.5),
+                              gradient: sel
+                                  ? LinearGradient(colors: [
+                                      mainColor,
+                                      mainColor.withValues(alpha: 0.7)
+                                    ])
+                                  : null,
+                              color: sel
+                                  ? null
+                                  : Colors.white.withValues(alpha: 0.06),
+                              border: Border.all(
+                                  color: sel ? mainColor : Colors.white12,
+                                  width: 1.5),
                             ),
                             child: Center(
-                              child: Text('$p',
+                              child: Text(
+                                '$p',
                                 style: TextStyle(
                                   color: sel ? Colors.black : Colors.white,
-                                  fontSize: 20, fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
@@ -932,19 +1034,37 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                         onTap: () => setS(() => isCustom = true),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          width: 70, height: 60,
+                          width: 70,
+                          height: 60,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
-                            gradient: isCustom ? LinearGradient(colors: [mainColor, mainColor.withValues(alpha: 0.7)]) : null,
-                            color: isCustom ? null : Colors.white.withValues(alpha: 0.06),
-                            border: Border.all(color: isCustom ? mainColor : Colors.white12, width: 1.5),
+                            gradient: isCustom
+                                ? LinearGradient(colors: [
+                                    mainColor,
+                                    mainColor.withValues(alpha: 0.7)
+                                  ])
+                                : null,
+                            color: isCustom
+                                ? null
+                                : Colors.white.withValues(alpha: 0.06),
+                            border: Border.all(
+                                color: isCustom ? mainColor : Colors.white12,
+                                width: 1.5),
                           ),
                           child: Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.tune_rounded, color: isCustom ? Colors.black : Colors.white, size: 20),
-                                Text('Perso', style: TextStyle(color: isCustom ? Colors.black : Colors.white, fontSize: 11)),
+                                Icon(Icons.tune_rounded,
+                                    color:
+                                        isCustom ? Colors.black : Colors.white,
+                                    size: 20),
+                                Text('Perso',
+                                    style: TextStyle(
+                                        color: isCustom
+                                            ? Colors.black
+                                            : Colors.white,
+                                        fontSize: 11)),
                               ],
                             ),
                           ),
@@ -959,17 +1079,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: mainColor.withValues(alpha: 0.5)),
+                        border:
+                            Border.all(color: mainColor.withValues(alpha: 0.5)),
                       ),
                       child: TextField(
                         controller: customCtrl,
                         keyboardType: TextInputType.number,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 16),
                         decoration: const InputDecoration(
                           hintText: 'Nombre de lignes...',
                           hintStyle: TextStyle(color: Colors.white30),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                         ),
                       ),
                     ),
@@ -981,8 +1104,12 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       Expanded(
                         child: TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                          child: const Text('Annuler', style: TextStyle(color: Colors.white54, fontSize: 15)),
+                          style: TextButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14)),
+                          child: const Text('Annuler',
+                              style: TextStyle(
+                                  color: Colors.white54, fontSize: 15)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -993,22 +1120,26 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             backgroundColor: mainColor,
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                           ),
                           onPressed: () {
                             final txt = commentCtrl.text.trim();
                             if (txt.isEmpty) {
                               ScaffoldMessenger.of(ctx).showSnackBar(
-                                const SnackBar(content: Text('Ajoute un commentaire')),
+                                const SnackBar(
+                                    content: Text('Ajoute un commentaire')),
                               );
                               return;
                             }
                             int finalLines = nbLines;
                             if (isCustom) {
-                              final parsed = int.tryParse(customCtrl.text.trim());
+                              final parsed =
+                                  int.tryParse(customCtrl.text.trim());
                               if (parsed == null || parsed <= 0) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(content: Text('Entre un nombre valide')),
+                                  const SnackBar(
+                                      content: Text('Entre un nombre valide')),
                                 );
                                 return;
                               }
@@ -1024,12 +1155,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Demande envoyee ! En attente du parent'),
+                                content: Text(
+                                    'Demande envoyee ! En attente du parent'),
                                 backgroundColor: Colors.green,
                               ),
                             );
                           },
-                          child: const Text('Envoyer la demande', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                          child: const Text('Envoyer la demande',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -1042,11 +1176,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       ),
     );
   }
-  
+
   Widget _buildProfileTab(ChildModel child, FamilyProvider fp, Color color) {
     final pendingLines = fp.pendingPenaltyLinesForChild(child.id);
     return SingleChildScrollView(
-      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24),
+      padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top +
+              kToolbarHeight +
+              kTextTabBarHeight +
+              8,
+          bottom: 24),
       child: Column(children: [
         if (pendingLines.isNotEmpty)
           _buildPenaltyLinesAlert(child, pendingLines),
@@ -1062,7 +1201,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    onPressed: () => _showBonusRequestDialog(context, fp, child),
+                    onPressed: () =>
+                        _showBonusRequestDialog(context, fp, child),
                     icon: const Icon(Icons.star_rounded, size: 18),
                     label: const Text('Bonus', style: TextStyle(fontSize: 12)),
                   ),
@@ -1074,9 +1214,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       backgroundColor: Colors.redAccent,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    onPressed: () => _showProposeRequestDialog(context, fp, child, 'punishment'),
+                    onPressed: () => _showProposeRequestDialog(
+                        context, fp, child, 'punishment'),
                     icon: const Icon(Icons.edit_document, size: 18),
-                    label: const Text('Pénalité', style: TextStyle(fontSize: 12)),
+                    label:
+                        const Text('Pénalité', style: TextStyle(fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1086,22 +1228,24 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       backgroundColor: Colors.amberAccent,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    onPressed: () => _showProposeRequestDialog(context, fp, child, 'immunity'),
+                    onPressed: () => _showProposeRequestDialog(
+                        context, fp, child, 'immunity'),
                     icon: const Icon(Icons.shield_rounded, size: 18),
-                    label: const Text('Immunité', style: TextStyle(fontSize: 12)),
+                    label:
+                        const Text('Immunité', style: TextStyle(fontSize: 12)),
                   ),
                 ),
               ],
             ),
           ),
-        if (!context.watch<PinProvider>().isParentMode) const SizedBox(height: 16),
+        if (!context.watch<PinProvider>().isParentMode)
+          const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(children: [
-
                 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                 // BANNIÃˆRE — pleine largeur, 200 px, centrée
                 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1111,26 +1255,30 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     borderRadius: BorderRadius.circular(14),
                     child: SizedBox(
                       height: 200,
-                      width:  double.infinity,
+                      width: double.infinity,
                       child: child.isBannerUrl
-                        ? Image.network(
-                            child.bannerBase64!,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: EmeraldPalette.surfaceLow,
-                              child: const Center(child: Icon(Icons.image, color: Colors.white24, size: 40)),
+                          ? Image.network(
+                              child.bannerBase64!,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: EmeraldPalette.surfaceLow,
+                                child: const Center(
+                                    child: Icon(Icons.image,
+                                        color: Colors.white24, size: 40)),
+                              ),
+                            )
+                          : Image.memory(
+                              base64Decode(child.bannerBase64!),
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: EmeraldPalette.surfaceLow,
+                                child: const Center(
+                                    child: Icon(Icons.image,
+                                        color: Colors.white24, size: 40)),
+                              ),
                             ),
-                          )
-                        : Image.memory(
-                            base64Decode(child.bannerBase64!),
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: EmeraldPalette.surfaceLow,
-                              child: const Center(child: Icon(Icons.image, color: Colors.white24, size: 40)),
-                            ),
-                          ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1140,14 +1288,16 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 const SizedBox(height: 12),
                 Text(child.name,
                     style: const TextStyle(
-                        color: Colors.white, fontSize: 22,
+                        color: Colors.white,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold)),
                 if (child.sloganText != null && child.sloganText!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text('"${child.sloganText}"',
                         style: const TextStyle(
-                            color: Colors.white60, fontSize: 12,
+                            color: Colors.white60,
+                            fontSize: 12,
                             fontStyle: FontStyle.italic)),
                   ),
                 const SizedBox(height: 16),
@@ -1157,8 +1307,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(14),
-                    border:
-                        Border.all(color: color.withValues(alpha: 0.35)),
+                    border: Border.all(color: color.withValues(alpha: 0.35)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1251,7 +1400,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () => _editPhoto(child, fp),
-                icon:  const Icon(Icons.camera_alt, size: 16),
+                icon: const Icon(Icons.camera_alt, size: 16),
                 label: const Text('Photo', style: TextStyle(fontSize: 12)),
               ),
             ),
@@ -1288,7 +1437,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => _editSlogan(child, fp),
-              icon:  const Icon(Icons.edit, size: 16),
+              icon: const Icon(Icons.edit, size: 16),
               label: const Text('Modifier le slogan',
                   style: TextStyle(fontSize: 12)),
             ),
@@ -1305,21 +1454,24 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   Widget _buildStatsGrid(ChildModel child, FamilyProvider fp, Color color) {
-    final history   = fp.history.where((h) => h.childId == child.id).toList();
-    final bonuses   = history.where((h) => h.isBonus).length;
+    final history = fp.history.where((h) => h.childId == child.id).toList();
+    final bonuses = history.where((h) => h.isBonus).length;
     final penalties = history.where((h) => h.isPenalty).length;
     return GridView.count(
-      shrinkWrap:        true,
-      physics:           const NeverScrollableScrollPhysics(),
-      crossAxisCount:    2,
-      crossAxisSpacing:  10,
-      mainAxisSpacing:   10,
-      childAspectRatio:  1.6,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.6,
       children: [
-        _statCard('🎯', 'Bonus',     '$bonuses',   Colors.greenAccent),
+        _statCard('🎯', 'Bonus', '$bonuses', Colors.greenAccent),
         _statCard('⚡', 'Pénalités', '$penalties', Colors.redAccent),
         _statCard(
-            '\u{2B50}', 'Points disponibles', '${child.points} pts', color),        _statCard('🛡️', 'Immunités',
+            '\u{2B50}', 'Points disponibles', '${child.points} pts', color),
+        _statCard(
+            '🛡️',
+            'Immunités',
             '${fp.getTotalAvailableImmunity(child.id)} lignes',
             Colors.amberAccent),
       ],
@@ -1328,8 +1480,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
   Widget _statCard(String emoji, String label, String value, Color color) =>
       GlassCard(
-        child: Column(
-            mainAxisAlignment: MainAxisAlignment.center, children: [
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(height: 4),
           Text(value,
@@ -1345,7 +1496,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildPenaltyLinesAlert(
       ChildModel child, List<PunishmentLines> pendingLines) {
-    final total = pendingLines.fold<int>(0, (sum, item) => sum + item.totalLines);
+    final total =
+        pendingLines.fold<int>(0, (sum, item) => sum + item.totalLines);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Container(
@@ -1372,7 +1524,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Lignes de pénalité en attente',
+                  'Sanction en attente',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -1383,8 +1535,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ]),
             const SizedBox(height: 10),
             const Text(
-              'L’accès aux écrans est interdit jusqu’à ce que tes lignes soient terminées et validées par un parent.',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              'L’accès aux écrans est interdit jusqu’à ce que tes sanctions soient terminées et validées par un parent.',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
             Text(
@@ -1395,19 +1548,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               ),
             ),
             ...pendingLines.where((item) => item.text.trim().isNotEmpty).map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  '• ${item.totalLines} lignes : ${item.text}',
-                  style: const TextStyle(color: Colors.white),
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '• ${item.totalLines} lignes : ${item.text}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
-              ),
-            ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PunishmentLinesScreen()),
+                MaterialPageRoute(
+                    builder: (_) => const PunishmentLinesScreen()),
               ),
               icon: const Icon(Icons.visibility_rounded),
               label: Text('Voir les lignes de ${child.name}'),
@@ -1431,209 +1585,31 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   Widget _buildScreenTab(ChildModel child, FamilyProvider fp, Color color) {
-    final immunities    = fp.getUsableImmunitiesForChild(child.id);
-    final immunityBonus = immunities.fold(0, (s, i) => s + i.availableLines);
-    final bonusMinutes  = fp.getParentBonusMinutes(child.id);
-
-    _selectedDay ??= _joursNoms[DateTime.now().weekday - 1];
-
-    final schoolNotes   = _getSchoolNotes(child, fp);
-    final behaviorNotes = _getBehaviorNotes(child, fp);
-    final minutes = _calculerTempsEcranPourJour(
-        _selectedDay!, schoolNotes, behaviorNotes, bonusMinutes, child, fp);
-
-    final schoolAvg     = fp.getSchoolAverageForDays(child.id, _joursSources);
-    final behaviorScore = fp.getBehaviorScoreForDays(child.id, _joursSources);
-    final globalScore   = fp.getGlobalScoreForDays(child.id, _joursSources);
-
+    final account = fp.getScreenTimeAccount(child.id);
     return SingleChildScrollView(
-      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
+      padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top +
+              kToolbarHeight +
+              kTextTabBarHeight +
+              8,
+          bottom: 24,
+          left: 16,
+          right: 16),
       child: Column(children: [
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Text('📊 Résumé',
-                  style: TextStyle(
-                      color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-              const SizedBox(height: 8),
-              _infoRow('🛡️ Immunités', '$immunityBonus lignes', Colors.amberAccent),
-              _infoRow('⏱️ Bonus parent',
-                  '${bonusMinutes > 0 ? '+' : ''}$bonusMinutes min',
-                  Colors.greenAccent),
-              _infoRow('📅 Jour affiché', _selectedDay!, color),
-              _infoRow('⏰ Temps écran calculé', _formatMinutes(minutes), Colors.white),
-              if (_joursSources.isNotEmpty) ...[
-                const Divider(color: Colors.white12, height: 20),
-                _infoRow(
-                    '📚 Moy. scolaire (jours cochés)',
-                    schoolAvg >= 0
-                        ? '${schoolAvg.toStringAsFixed(1)}/20'
-                        : 'Aucune note',
-                    Colors.purpleAccent),
-                _infoRow('😊 Comportement (jours cochés)',
-                    '${behaviorScore.toStringAsFixed(1)}/20',
-                    Colors.lightBlueAccent),
-                _infoRow('🌟 Score global',
-                    '${globalScore.toStringAsFixed(1)}/20',
-                    Colors.orangeAccent),
-              ],
-            ]),
-          ),
-        ),
+        ScreenTimeStore(child: child),
         const SizedBox(height: 16),
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Icon(Icons.calendar_today, color: color, size: 15),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text('📚 Jours pour le calcul des notes',
-                        style: TextStyle(
-                            color: color, fontWeight: FontWeight.bold,
-                            fontSize: 13)),
-                  ),
-                ]),
-                const SizedBox(height: 4),
-                const Text(
-                  'Ex : noter le mercredi pour lundi + mardi → cocher Lun & Mar',
-                  style: TextStyle(color: Colors.white38, fontSize: 11),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: List.generate(7, (i) {
-                    final sel = _joursSources.contains(i);
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() {
-                          if (sel) _joursSources.remove(i);
-                          else     _joursSources.add(i);
-                        }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin:  const EdgeInsets.symmetric(horizontal: 2),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            color: sel ? color.withValues(alpha: 0.25) : Colors.white10,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: sel ? color : Colors.white24,
-                              width: sel ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Column(children: [
-                            Text(
-                              _joursNoms[i].substring(0, 3),
-                              style: TextStyle(
-                                color:      sel ? color : Colors.white38,
-                                fontSize:   9,
-                                fontWeight: sel
-                                    ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 2),
-                            Icon(
-                              sel ? Icons.check_circle
-                                  : Icons.radio_button_unchecked,
-                              color: sel ? color : Colors.white24,
-                              size: 11,
-                            ),
-                          ]),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 10),
-                Row(children: [
-                  _joursShortcut('Sem.',    {0, 1, 2, 3, 4},       color),
-                  const SizedBox(width: 6),
-                  _joursShortcut('Lun-Mar', {0, 1},                 color),
-                  const SizedBox(width: 6),
-                  _joursShortcut('Lun-Mer', {0, 1, 2},              color),
-                  const SizedBox(width: 6),
-                  _joursShortcut('Tout',    {0, 1, 2, 3, 4, 5, 6}, color),
-                ]),
-              ],
-            ),
-          ),
+        Text('${account.balanceMinutes} minutes disponibles',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                  builder: (_) =>
+                      ScreenTimeNewScreen(initialChildId: child.id))),
+          icon: const Icon(Icons.timer_outlined),
+          label: const Text('Ouvrir mon chrono'),
         ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text('📅 Jour pour le temps d\'écran',
-                style: TextStyle(
-                    color: color.withValues(alpha: 0.8),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-          ),
-        ),
-        SizedBox(
-          height: 36,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount:       _joursNoms.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
-            itemBuilder: (_, i) {
-              final j        = _joursNoms[i];
-              final selected = j == _selectedDay;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedDay = j),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: selected ? color.withValues(alpha: 0.25) : Colors.white10,
-                    borderRadius: BorderRadius.circular(10),
-                    border: selected ? Border.all(color: color) : null,
-                  ),
-                  child: Text(j.substring(0, 3),
-                      style: TextStyle(
-                        color:      selected ? color : Colors.white54,
-                        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                        fontSize:   12,
-                      )),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          height: 200,
-          child: Stack(alignment: Alignment.center, children: [
-            AnimatedBuilder(
-              animation: _contentFade,
-              builder: (_, __) => CustomPaint(
-                size: const Size(180, 180),
-                painter: _ScreenTimePainter(
-                  progress:  (minutes / 180).clamp(0, 1),
-                  animValue: _contentFade.value,
-                ),
-              ),
-            ),
-            Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(_formatMinutes(minutes),
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w900,
-                      fontSize: 28)),
-              const Text('temps écran',
-                  style: TextStyle(color: Colors.white54, fontSize: 12)),
-            ]),
-          ]),
-        ),
-        const SizedBox(height: 16),
-        _buildQuickBonusRow(child, fp, color),
-        const SizedBox(height: 16),
-        _buildImmunitySection(child, fp),
       ]),
     );
   }
@@ -1646,14 +1622,14 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color:  isActive ? color.withValues(alpha: 0.2) : Colors.white10,
+          color: isActive ? color.withValues(alpha: 0.2) : Colors.white10,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: isActive ? color : Colors.white24),
         ),
         child: Text(label,
             style: TextStyle(
-                color:      isActive ? color : Colors.white38,
-                fontSize:   10,
+                color: isActive ? color : Colors.white38,
+                fontSize: 10,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
       ),
     );
@@ -1665,43 +1641,45 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('🛡️ Immunités disponibles',
               style: TextStyle(
-                  color: Colors.amberAccent, fontWeight: FontWeight.bold,
+                  color: Colors.amberAccent,
+                  fontWeight: FontWeight.bold,
                   fontSize: 14)),
           const SizedBox(height: 8),
           ...immunities.map((imm) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(children: [
-              const Text('🛡️', style: TextStyle(fontSize: 16)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(imm.reason,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    overflow: TextOverflow.ellipsis),
-              ),
-              Text('${imm.availableLines} ligne(s)',
-                  style: const TextStyle(
-                      color: Colors.amberAccent, fontWeight: FontWeight.bold,
-                      fontSize: 12)),
-            ]),
-          )),
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  const Text('🛡️', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(imm.reason,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  Text('${imm.availableLines} ligne(s)',
+                      style: const TextStyle(
+                          color: Colors.amberAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12)),
+                ]),
+              )),
         ]),
       ),
     );
   }
 
-  Widget _infoRow(String label, String value, Color vColor) =>
-      Padding(
+  Widget _infoRow(String label, String value, Color vColor) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Flexible(child: Text(label,
-                style: const TextStyle(color: Colors.white60, fontSize: 12))),
+            Flexible(
+                child: Text(label,
+                    style:
+                        const TextStyle(color: Colors.white60, fontSize: 12))),
             Text(value,
                 style: TextStyle(
                     color: vColor, fontWeight: FontWeight.bold, fontSize: 12)),
@@ -1709,30 +1687,37 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         ),
       );
 
-  Widget _buildQuickBonusRow(ChildModel child, FamilyProvider fp, Color color) =>
+  Widget _buildQuickBonusRow(
+          ChildModel child, FamilyProvider fp, Color color) =>
       Row(
-          children: [15, 30, 60].map((min) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color.withValues(alpha: 0.2),
-                  foregroundColor: color,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () async {
-                  await fp.addScreenTimeBonus(
-                      child.id, min, 'Bonus parent +$min min');
-                  _triggerBonusAnim('+$min min 🎉');
-                },
-                child: Text('+$min min', style: const TextStyle(fontSize: 12)),
-              ),
-            ),
-          )).toList());
+          children: [15, 30, 60]
+              .map((min) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: color.withValues(alpha: 0.2),
+                          foregroundColor: color,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () async {
+                          await fp.addScreenTimeBonus(
+                              child.id, min, 'Bonus parent +$min min');
+                          _triggerBonusAnim('+$min min 🎉');
+                        },
+                        child: Text('+$min min',
+                            style: const TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ))
+              .toList());
 
   void _triggerBonusAnim(String text) {
-    setState(() { _showBonusAnim = true; _bonusAnimText = text; });
+    setState(() {
+      _showBonusAnim = true;
+      _bonusAnimText = text;
+    });
     _bonusFloatController.forward(from: 0).then((_) {
       if (mounted) setState(() => _showBonusAnim = false);
     });
@@ -1760,16 +1745,21 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     ChildModel child,
     FamilyProvider fp,
   ) {
-    if (jour == 'Samedi')  return fp.getSaturdayMinutes(child.id);
+    if (jour == 'Samedi') return fp.getSaturdayMinutes(child.id);
     if (jour == 'Dimanche') return fp.getSundayMinutes(child.id);
     final globalScore = fp.getWeeklyGlobalScore(child.id);
     int base = 0;
-    if (globalScore >= 18)      base = 180;
-    else if (globalScore >= 16) base = 150;
-    else if (globalScore >= 14) base = 120;
-    else if (globalScore >= 12) base = 90;
-    else if (globalScore >= 10) base = 60;
-    else if (globalScore >= 8)  base = 30;
+    if (globalScore >= 18)
+      base = 180;
+    else if (globalScore >= 16)
+      base = 150;
+    else if (globalScore >= 14)
+      base = 120;
+    else if (globalScore >= 12)
+      base = 90;
+    else if (globalScore >= 10)
+      base = 60;
+    else if (globalScore >= 8) base = 30;
     return (base + bonusMinutes).clamp(0, 480);
   }
 
@@ -1802,22 +1792,36 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                     !cat.contains('school') &&
                     !cat.contains('note') &&
                     !cat.contains('échange');
-              case 'Punition':   return cat.contains('punition');
-              case 'Immunité':   return cat.contains('immunité') || cat.contains('immunity');
-              case 'Tribunal':   return cat.contains('tribunal') || cat.contains('verdict');
+              case 'Punition':
+                return cat.contains('punition');
+              case 'Immunité':
+                return cat.contains('immunité') || cat.contains('immunity');
+              case 'Tribunal':
+                return cat.contains('tribunal') || cat.contains('verdict');
               case 'École':
-                return cat.contains('school') || cat.contains('note') ||
-                    cat.contains('école') || cat.contains('saturday');
-              case 'Échange':    return cat.contains('échange') || cat.contains('trade');
-              default:           return true;
+                return cat.contains('school') ||
+                    cat.contains('note') ||
+                    cat.contains('école') ||
+                    cat.contains('saturday');
+              case 'Échange':
+                return cat.contains('échange') || cat.contains('trade');
+              default:
+                return true;
             }
           }).toList();
 
-    final bonuses   = allEntries.where((h) => h.isBonus).length;
+    final bonuses = allEntries.where((h) => h.isBonus).length;
     final penalties = allEntries.where((h) => h.isPenalty).length;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
+      padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top +
+              kToolbarHeight +
+              kTextTabBarHeight +
+              8,
+          bottom: 24,
+          left: 16,
+          right: 16),
       child: Column(children: [
         // ── Résumé ──
         GlassCard(
@@ -1826,10 +1830,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _histStat('✅ Bonus',     '$bonuses',   Colors.greenAccent),
+                _histStat('✅ Bonus', '$bonuses', Colors.greenAccent),
                 _histStat('❌ Pénalités', '$penalties', Colors.redAccent),
-                _histStat('📋 Total',
-                    '${allEntries.length}', Colors.white70),
+                _histStat('📋 Total', '${allEntries.length}', Colors.white70),
               ],
             ),
           ),
@@ -1840,18 +1843,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         SizedBox(
           height: 36,
           child: ListView.separated(
-            scrollDirection:  Axis.horizontal,
-            itemCount:        _historyFilters.length,
+            scrollDirection: Axis.horizontal,
+            itemCount: _historyFilters.length,
             separatorBuilder: (_, __) => const SizedBox(width: 6),
             itemBuilder: (_, i) {
-              final f   = _historyFilters[i];
+              final f = _historyFilters[i];
               final sel = f == _historyFilter;
               return GestureDetector(
                 onTap: () => setState(() => _historyFilter = f),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: sel ? color.withValues(alpha: 0.25) : Colors.white10,
                     borderRadius: BorderRadius.circular(20),
@@ -1861,10 +1864,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                   ),
                   child: Text(f,
                       style: TextStyle(
-                          color:      sel ? color : Colors.white54,
-                          fontSize:   12,
-                          fontWeight: sel
-                              ? FontWeight.bold : FontWeight.normal)),
+                          color: sel ? color : Colors.white54,
+                          fontSize: 12,
+                          fontWeight:
+                              sel ? FontWeight.bold : FontWeight.normal)),
                 ),
               );
             },
@@ -1880,8 +1883,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               const Text('📭', style: TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
               Text('Aucune entrée dans « $_historyFilter »',
-                  style: const TextStyle(
-                      color: Colors.white54, fontSize: 13),
+                  style: const TextStyle(color: Colors.white54, fontSize: 13),
                   textAlign: TextAlign.center),
             ]),
           )
@@ -1892,29 +1894,29 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   }
 
   Widget _histStat(String label, String value, Color c) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(value,
-          style: TextStyle(
-              color: c, fontWeight: FontWeight.bold, fontSize: 18)),
-      Text(label,
-          style: const TextStyle(color: Colors.white54, fontSize: 11)),
-    ],
-  );
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value,
+              style: TextStyle(
+                  color: c, fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        ],
+      );
 
   Widget _buildHistoryCard(HistoryEntry e, Color accentColor) {
-    final cat   = _categoryColor(e);
+    final cat = _categoryColor(e);
     final emoji = _categoryEmoji(e);
-    final pts   = e.points;
+    final pts = e.points;
     // 🔒 Utiliser isBonus (pas pts >= 0 qui est toujours vrai)
     final isBonus = e.isBonus;
-    final sign  = isBonus ? '+' : '-';
+    final sign = isBonus ? '+' : '-';
     final ptsLabel = isBonus ? '$sign$pts pts' : '$sign$pts pts';
 
     // Formatage date
-    final now   = DateTime.now();
+    final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final eDay  = DateTime(e.date.year, e.date.month, e.date.day);
+    final eDay = DateTime(e.date.year, e.date.month, e.date.day);
     String dateLabel;
     if (eDay == today) {
       dateLabel = "Aujourd'hui";
@@ -1932,66 +1934,67 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     return GestureDetector(
       onLongPress: isParent ? () => _showHistoryEditMenu(e) : null,
       child: Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color:        cat.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(12),
-          border:       Border.all(color: cat.withValues(alpha: 0.35), width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Text(emoji, style: const TextStyle(fontSize: 18)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(e.reason,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w600,
-                          fontSize: 13),
-                      overflow: TextOverflow.ellipsis),
-                ),
-                Text(isBonus ? '+$pts pts' : '-$pts pts',
-                    style: TextStyle(
-                        color:      isBonus ? Colors.greenAccent : Colors.redAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize:   14)),
-              ]),
-              const SizedBox(height: 4),
-              Row(children: [
-                Icon(Icons.access_time, size: 11, color: Colors.white38),
-                const SizedBox(width: 4),
-                Text('$dateLabel à $timeLabel',
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 11)),
-                const SizedBox(width: 8),
-                const Text('·',
-                    style: TextStyle(color: Colors.white24)),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    'par ${e.displayActorName}',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 11),
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: cat.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cat.withValues(alpha: 0.35), width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Text(emoji, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(e.reason,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13),
+                        overflow: TextOverflow.ellipsis),
                   ),
-                ),
-              ]),
-              if (e.hasProofPhoto) ...[
-                const SizedBox(height: 8),
-                HistoryProofPhoto(
-                  entry: e,
-                  height: 120,
-                  width: double.infinity,
-                ),
+                  Text(isBonus ? '+$pts pts' : '-$pts pts',
+                      style: TextStyle(
+                          color:
+                              isBonus ? Colors.greenAccent : Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                ]),
+                const SizedBox(height: 4),
+                Row(children: [
+                  Icon(Icons.access_time, size: 11, color: Colors.white38),
+                  const SizedBox(width: 4),
+                  Text('$dateLabel à $timeLabel',
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11)),
+                  const SizedBox(width: 8),
+                  const Text('·', style: TextStyle(color: Colors.white24)),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      'par ${e.displayActorName}',
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11),
+                    ),
+                  ),
+                ]),
+                if (e.hasProofPhoto) ...[
+                  const SizedBox(height: 8),
+                  HistoryProofPhoto(
+                    entry: e,
+                    height: 120,
+                    width: double.infinity,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -2010,7 +2013,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
           children: [
             const SizedBox(height: 12),
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: Colors.white24,
                 borderRadius: BorderRadius.circular(2),
@@ -2018,9 +2022,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+              leading:
+                  const Icon(Icons.edit_outlined, color: Colors.blueAccent),
               title: const Text('Modifier',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600)),
               subtitle: Text('Changer les points, la raison ou le type',
                   style: const TextStyle(color: Colors.white54, fontSize: 12)),
               onTap: () {
@@ -2029,16 +2035,19 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              leading:
+                  const Icon(Icons.delete_outline, color: Colors.redAccent),
               title: const Text('Supprimer',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600)),
               subtitle: Text("Efface l'entrée et recalcule les points",
                   style: const TextStyle(color: Colors.white54, fontSize: 12)),
               onTap: () async {
                 Navigator.pop(ctx);
                 final confirm = await _confirmDialog(
                   title: 'Supprimer ?',
-                  message: "Cette entrée (${e.isBonus ? '+' : '-'}${e.points} pts)"
+                  message:
+                      "Cette entrée (${e.isBonus ? '+' : '-'}${e.points} pts)"
                       "\nva être supprimée et les points de l'enfant recalculés.",
                   confirmLabel: 'Supprimer',
                   isDanger: true,
@@ -2093,9 +2102,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                                 : Colors.white10,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isBonus
-                                  ? Colors.greenAccent
-                                  : Colors.white24,
+                              color:
+                                  isBonus ? Colors.greenAccent : Colors.white24,
                             ),
                           ),
                           child: Center(
@@ -2122,9 +2130,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                                 : Colors.white10,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: !isBonus
-                                  ? Colors.redAccent
-                                  : Colors.white24,
+                              color:
+                                  !isBonus ? Colors.redAccent : Colors.white24,
                             ),
                           ),
                           child: Center(
@@ -2145,7 +2152,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 TextField(
                   controller: ptsCtrl,
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                   decoration: const InputDecoration(
                     labelText: 'Points',
@@ -2189,8 +2199,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 final reason = reasonCtrl.text.trim();
                 if (reason.isEmpty || pts == 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('⚠️ Raison et points requis')),
+                    const SnackBar(content: Text('⚠️ Raison et points requis')),
                   );
                   return;
                 }
@@ -2231,8 +2240,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler',
-                style: TextStyle(color: Colors.white54)),
+            child:
+                const Text('Annuler', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -2252,10 +2261,18 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildBadgesTab(ChildModel child, FamilyProvider fp, Color color) {
     // 🛒 NOUVEAU : on remplace les badges par "Mes Récompenses" (boutique)
-    final myPurchases = fp.purchases.where((p) => p['childId'] == child.id).toList();
+    final myPurchases =
+        fp.purchases.where((p) => p['childId'] == child.id).toList();
 
     return SingleChildScrollView(
-      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight + 8, bottom: 24, left: 16, right: 16),
+      padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top +
+              kToolbarHeight +
+              kTextTabBarHeight +
+              8,
+          bottom: 24,
+          left: 16,
+          right: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ─── Solde actuel ───
         Container(
@@ -2269,7 +2286,9 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
-              BoxShadow(color: const Color(0xFFD4AF37).withValues(alpha: 0.3), blurRadius: 16),
+              BoxShadow(
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+                  blurRadius: 16),
             ],
           ),
           child: Row(
@@ -2279,7 +2298,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
                 children: [
                   Icon(Icons.stars_rounded, color: Color(0xFF051410), size: 28),
                   const SizedBox(width: 8),
-                  Text('Mes points', style: TextStyle(color: Color(0xFF051410), fontSize: 16, fontWeight: FontWeight.w600)),
+                  Text('Mes points',
+                      style: TextStyle(
+                          color: Color(0xFF051410),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600)),
                 ],
               ),
               Text(
@@ -2297,9 +2320,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         // ─── Bouton vers la boutique ───
         GestureDetector(
           onTap: () {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => const ShopScreen(),
-            ));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ShopScreen(),
+                ));
           },
           child: Container(
             width: double.infinity,
@@ -2322,7 +2347,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
               children: [
                 Text('🛒', style: TextStyle(fontSize: 24)),
                 const SizedBox(width: 10),
-                Text('Aller à la Boutique', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+                Text('Aller à la Boutique',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700)),
                 const SizedBox(width: 8),
                 Icon(Icons.chevron_right_rounded, color: Colors.white70),
               ],
@@ -2332,7 +2361,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
 
         // ─── Mes achats ───
         Text('📦 Mes achats (${myPurchases.length})',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14)),
         const SizedBox(height: 10),
 
         if (myPurchases.isEmpty)
@@ -2367,7 +2399,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
     String formattedDate = '';
     try {
       final dt = DateTime.parse(dateStr);
-      formattedDate = '${dt.day}/${dt.month} à ${dt.hour}h${dt.minute.toString().padLeft(2, '0')}';
+      formattedDate =
+          '${dt.day}/${dt.month} à ${dt.hour}h${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {}
 
     // Couleur selon le statut
@@ -2399,19 +2432,24 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: statusColor.withValues(alpha: 0.3)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 3)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3)),
         ],
       ),
       child: Row(
         children: [
           // Icône
           Container(
-            width: 48, height: 48,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(child: Text(icon, style: const TextStyle(fontSize: 24))),
+            child:
+                Center(child: Text(icon, style: const TextStyle(fontSize: 24))),
           ),
           const SizedBox(width: 12),
           // Infos
@@ -2419,15 +2457,25 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14)),
                 const SizedBox(height: 3),
                 Row(
                   children: [
                     Icon(statusIcon, size: 14, color: statusColor),
                     const SizedBox(width: 4),
-                    Text(statusText, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                    Text(statusText,
+                        style: TextStyle(
+                            color: statusColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
                     const SizedBox(width: 8),
-                    Text(formattedDate, style: const TextStyle(color: Colors.white24, fontSize: 10)),
+                    Text(formattedDate,
+                        style: const TextStyle(
+                            color: Colors.white24, fontSize: 10)),
                   ],
                 ),
               ],
@@ -2439,14 +2487,20 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
             decoration: BoxDecoration(
               color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+              border: Border.all(
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.stars_rounded, size: 14, color: Color(0xFFD4AF37)),
+                const Icon(Icons.stars_rounded,
+                    size: 14, color: Color(0xFFD4AF37)),
                 const SizedBox(width: 3),
-                Text('$cost', style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 12, fontWeight: FontWeight.w800)),
+                Text('$cost',
+                    style: const TextStyle(
+                        color: Color(0xFFD4AF37),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800)),
               ],
             ),
           ),
@@ -2454,8 +2508,4 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen>
       ),
     );
   }
-
 }
-
-
-

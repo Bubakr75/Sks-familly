@@ -4,6 +4,37 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {createPointActionFunctions} = require("./point_actions");
 
+test("le changement de barème refuse les anciennes attributions sans modifier le solde", async () => {
+  class HttpsError extends Error {
+    constructor(code, message) { super(message); this.code = code; }
+  }
+  const store = new Map([
+    ["families/f", {ownerUid: "owner", pointsScaleVersion: 2}],
+    ["families/f/members/u", {uid: "u", role: "parent", active: true}],
+    ["families/f/children/c", {points: 100}],
+  ]);
+  const ref = path => ({path, collection: name => ref(`${path}/${name}`), doc: id => ref(`${path}/${id}`)});
+  const db = {collection: name => ref(name), runTransaction: async callback => callback({
+    get: async reference => ({exists: store.has(reference.path), data: () => store.get(reference.path)}),
+    update: (reference, patch) => store.set(reference.path, {...store.get(reference.path), ...patch}),
+    create: (reference, data) => store.set(reference.path, data),
+  })};
+  const api = createPointActionFunctions({db,
+    functions: {https: {HttpsError, onCall: handler => handler}},
+    admin: {firestore: {FieldValue: {serverTimestamp: () => "now"}}}});
+  const action = {familyId: "f", actionId: "a", childId: "c", amount: 200, reason: "Aide", category: "Bonus", isBonus: true};
+  await assert.rejects(api.recordPointAction(action, {auth: {uid: "u"}}), {code: "failed-precondition"});
+  assert.equal(store.get("families/f/children/c").points, 100);
+  const result = await api.recordPointAction({...action, amount: 1, pointsScaleVersion: 2}, {auth: {uid: "u"}});
+  assert.equal(result.newBalance, 101);
+  assert.equal(result.history.pointsScaleVersion, 2);
+  store.set('families/f/children/c', {points: 0});
+  const sanction = await api.recordPointAction({...action, actionId: 'sanction-zero', isBonus: false, amount: 0, pointsScaleVersion: 2, penaltyLinesCount: 1, penaltyLinesInstruction: 'Ranger les jouets', sanctionType: 'chore', sanctionLabel: 'Rangement'}, {auth: {uid: 'u'}});
+  assert.equal(sanction.newBalance, 0);
+  assert.equal(sanction.history.points, 0);
+  assert.equal(sanction.punishment.penaltyLinesStatus, 'pending');
+});
+
 function completionFixture(punishment, role = "parent") {
   class HttpsError extends Error {
     constructor(code, message) { super(message); this.code = code; }
@@ -77,6 +108,30 @@ function payload(overrides = {}) {
     ...overrides,
   };
 }
+
+test("corvée et sanction personnalisée conservent leur type et leur consigne", async () => {
+  for (const sanctionType of ["chore", "custom"]) {
+    const action = normalizePointAction(payload({
+      amount: 1, sanctionType, sanctionLabel: "Rangement",
+      penaltyLinesCount: 1, penaltyLinesInstruction: "Ranger les jouets",
+    }));
+    const punishment = buildPenaltyLines({action, actor: {actorUid: "parent-a"}, createdAt: "now", serverDate: "now"});
+    assert.equal(punishment.sanctionType, sanctionType);
+    assert.equal(punishment.sanctionLabel, "Rangement");
+    assert.equal(punishment.text, "Ranger les jouets");
+    assert.equal(punishment.penaltyLinesStatus, "pending");
+    const fixture = completionFixture(punishment);
+    await fixture.complete();
+    assert.equal(fixture.saved.penaltyLinesStatus, "completed");
+  }
+});
+
+test("sanctions : type inconnu, consigne vide et faux nombre de corvées refusés", () => {
+  const chore = {sanctionType: "chore", sanctionLabel: "Corvée", penaltyLinesCount: 1, penaltyLinesInstruction: "Ranger"};
+  for (const invalid of [{sanctionType: "unknown"}, {penaltyLinesInstruction: ""}, {penaltyLinesCount: 20}, {sanctionLabel: ""}, {isBonus: true}]) {
+    assert.throws(() => normalizePointAction(payload({...chore, ...invalid})), /INVALID_/);
+  }
+});
 
 test("normalise une action avec ou sans photo isolée", () => {
   assert.equal(normalizePointAction(payload()).photoStoragePath, null);
@@ -275,4 +330,24 @@ test("l'idempotence dépend du contenu et de l'UID authentifié", () => {
   const action = normalizePointAction(payload());
   assert.equal(fingerprint(action, "uid-a"), fingerprint(action, "uid-a"));
   assert.notEqual(fingerprint(action, "uid-a"), fingerprint(action, "uid-b"));
+});
+
+ test('une sanction sans retrait accepte zéro, un bonus ou retrait vide le refuse', () => {
+ const sanction = {...payload(), isBonus: false, amount: 0, penaltyLinesCount: 1, penaltyLinesInstruction: 'Ranger sa chambre', sanctionType: 'chore', sanctionLabel: 'Rangement'};
+ assert.equal(normalizePointAction(sanction).amount, 0);
+ assert.throws(() => normalizePointAction({...sanction, penaltyLinesCount: null}), /INVALID/);
+ assert.throws(() => normalizePointAction({...payload(), amount: 0}), /INVALID_AMOUNT/);
+ });
+
+for (const type of ['essay', 'repair', 'yellow_card', 'red_card']) {
+ test('catégorie '+type+' validée et conservée sans retrait', () => {
+ const a=normalizePointAction({...payload(), amount:0, isBonus:false, penaltyLinesCount:type==='essay'?12:1, penaltyLinesInstruction:'Consigne du parent', sanctionType:type, sanctionLabel:type});
+ assert.equal(a.sanctionType,type); assert.equal(a.amount,0);
+ const p=buildPenaltyLines({action:a,actor:{actorUid:'parent'},createdAt:'now',serverDate:'now'});
+ assert.equal(p.penaltyLinesStatus,'pending');assert.equal(p.totalLines,type==='essay'?12:1);
+ });
+}
+test('rédaction vide et carton avec faux nombre de lignes refusés', () => {
+ assert.throws(()=>normalizePointAction({...payload(),isBonus:false,amount:0,penaltyLinesCount:10,penaltyLinesInstruction:'',sanctionType:'essay',sanctionLabel:'Réflexion'}),/INVALID/);
+ assert.throws(()=>normalizePointAction({...payload(),isBonus:false,amount:0,penaltyLinesCount:10,penaltyLinesInstruction:'Chambre',sanctionType:'red_card',sanctionLabel:'Carton rouge'}),/INVALID/);
 });

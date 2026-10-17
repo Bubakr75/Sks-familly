@@ -54,6 +54,7 @@ test("builds the secured family document", () => {
       memberCount: 1,
       ownerUid: "owner-1",
       schemaVersion: 2,
+      pointsScaleVersion: 2,
       migrationStatus: "native",
     }
   );
